@@ -287,9 +287,11 @@ describe('the sales facts — what a buyer may be told, and the check every emai
     expect(html).toMatch(/^<li class="cline-aud is-nested" data-segment-id="s-e4f50ba1" data-segment-state="approved"><details open=""><summary class="cline-aud-sum">/);
     expect(html).toContain('AUDIENCE · Base token teams');
     expect(html).toContain('APPROVE THE LIST (1)');
-    expect(html).toContain('ON THE LEAD LIST · 1');
-    expect(html).toContain('<b>Venice</b> (venice.ai) — Venice support team, support');
-    expect(html).toContain('COMPANIES FOUND, NOT YET LEADS · 1');
+    // Its companies are ONE list: a table, each company once with where it stands; a scored one opens to why.
+    expect(html).toContain('data-fold="audience-companies:s-e4f50ba1"');
+    expect(html).toMatch(/<tr data-company="venice\.ai" data-company-standing="lead">/);
+    expect((html.match(/<tr data-company=/g) ?? []).length).toBe(2);
+    expect(html).not.toContain('COMPANIES FOUND, NOT YET LEADS');
     expect(html).toContain('THE PITCH — THE OFFER, WHO IT REACHES, WHAT MAKES A FIT');
     // The count tiles are the campaign's; the audience under it repeats none of them.
     expect(html).not.toContain('cline-tile');

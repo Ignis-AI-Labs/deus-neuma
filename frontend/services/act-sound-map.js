@@ -56,7 +56,7 @@ export const ACT_FAMILIES = Object.freeze({
     'security.scan', // a scan IS a hunt for what is not yet known to be there
     'legal.scan',    // …and the legal watch hunts the same way
     'tool_search',       // hunting the catalog for a capability, same shape
-    'sales.gather', 'sales.contacts', 'sales.mail-scan', // companies gathered from public lists, the people found at one, the mailbox searched for people on no list — hunts
+    'sales.gather', 'sales.read-sites', 'sales.contacts', 'sales.mail-scan', // companies gathered from public lists, the people found at one, the mailbox searched for people on no list — hunts
   ]),
   // Changing something that already existed.
   actEdit: Object.freeze([
@@ -67,6 +67,7 @@ export const ACT_FAMILIES = Object.freeze({
     'tasks.operator-update', 'staff.dispatch-update', 'board.update',
     'team.tune', // a working run's width and clocks change — the run already existed
     'marketing.board-arrange', // the operator's marketing board laid out anew — the board already existed
+    'marketing.card', // a company's own card redesigned, retired or restored — the company's cards already existed
     'accounts.void', // a booked entry voided with why — the books already held it
     'house.charter', // a member sets its house's charter — the charter already existed
     'house.wake', // a member sets what wakes it — its own rules, edited in place

@@ -128,6 +128,11 @@ export const KIND = Object.freeze({
   // having to open the panel (ruling, 2026-08-10).
   securityAlert: 'security_alert',
 
+  // The RAM keeper (backend/services/ram-keeper/) rested an idle engine, or memory stayed short after it
+  // cleaned what was its to clean (Design note, 2026-11-16: […]).
+  // System standing — the machine keeping itself; the card says what it did or what it may not touch.
+  memoryKeeper: 'memory_keeper',
+
   // The standing legal watch found NEW serious matters (critical/high): a
   // licence that may bar shipping, a missing paper a user is owed. System
   // standing — the Praetor's office reads the ledger, but the operator must

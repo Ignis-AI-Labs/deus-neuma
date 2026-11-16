@@ -100,6 +100,9 @@ export const collectToolAction = (ws, event) => {
     // A benchmark launched from the chat: its comparison, so the card watches
     // the run to its end — live, and again on a resumed chat.
     ...(event.bench?.comparisonId ? { bench: event.bench } : {}),
+    // A shadow clone split: each clone's sub-channel (its report and acts), so the chat shows them
+    // again when it is reopened (shadow-clone.js).
+    ...(event.split?.clones?.length ? { split: event.split } : {}),
     mark: marks.get(ws) || 0,
   };
   const live = lastLiveActionIndex(actions, action.tool);

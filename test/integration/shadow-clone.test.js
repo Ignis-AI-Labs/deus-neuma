@@ -118,6 +118,20 @@ describe('a being splits into shadow clones of itself — real turns, at once, r
     const chips = frames.filter((f) => f.type === 'tool:usage' && f.tool === 'team/shadow_clone');
     expect(chips.map((f) => f.status)).toEqual(['executing', 'ok']);
     expect(chips[1].summary).toMatch(/^3 of 3 shadow clones reported · 3 at once · \d+s$/);
+
+    // …and each clone in its own sub-channel, live: the split, each place, each act, each word, each end.
+    const split = frames.find((f) => f.type === 'clone:split');
+    expect(split.clones.map((c) => c.title)).toEqual(PARTS.map((p) => `write ${p}.md`));
+    const of = (type, index) => frames.filter((f) => f.type === type && f.splitId === split.splitId && (f.index ?? f.clone?.index) === index);
+    for (const [i, part] of PARTS.entries()) {
+      expect(of('clone:state', i + 1).some((f) => f.state === 'working')).toBe(true);
+      expect(of('clone:tool', i + 1).some((f) => f.act.tool.includes('write') && f.act.status !== 'executing')).toBe(true);
+      expect(of('clone:text', i + 1).map((f) => f.chunk).join('')).toContain(`I wrote ${part}.md in the arena.`);
+      expect(of('clone:end', i + 1)[0].clone).toMatchObject({ index: i + 1, state: 'done', report: `I wrote ${part}.md in the arena. Nothing needs the operator.` });
+    }
+    // The chip's record keeps every clone's report and acts, so a reopened chat draws them again.
+    expect(chips[1].split.splitId).toBe(split.splitId);
+    expect(chips[1].split.clones.map((c) => [c.index, c.state, c.acts.length > 0, Boolean(c.sessionId)])).toEqual([[1, 'done', true, true], [2, 'done', true, true], [3, 'done', true, true]]);
   }, 60000);
 
   test('one task is the being\'s own; a clone never splits again; the tool is offered only to the original', async () => {

@@ -118,7 +118,11 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     await page.keyboard.press('Enter');
     expect(await firstCompany.textContent()).toContain('Founder is not a developer — 4/5: the about page says twenty years as a welder (4)');
     // What is due on the lead list.
-    expect(await page.locator('[data-upkeep="answer"]').textContent()).toBe('Grace Hopper — REPLIED — WAITING FOR AN ANSWER (0 H) — PROMISED: two short written ideas on a field app');
+    const grace = page.locator('[data-person]').filter({ hasText: 'Grace Hopper' });
+    expect((await grace.locator('[data-upkeep="answer"]').textContent()).trim()).toBe('ANSWER OWED (0 H)');
+    expect(await grace.locator('[data-lead-status]').textContent()).toBe('THEY WROTE');
+    expect(await grace.locator('[data-promised]').textContent()).toContain('PROMISED: two short written ideas on a field app');
+    expect(await page.locator('[data-people-stat]').first().textContent()).toMatch(/ACTIVE LEAD/);
     // The facts sheet waits for the operator: every fact with its source.
     expect(await page.locator('[data-facts-state]').textContent()).toBe('WAITS FOR YOUR APPROVAL');
     expect(await page.locator('[data-fact]').count()).toBe(3);

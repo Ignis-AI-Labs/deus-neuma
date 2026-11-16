@@ -44,12 +44,15 @@ const meanFit = (p) => p.fit.reduce((n, s) => n + s.score, 0) / (p.fit.length ||
  */
 export const segmentRows = (engine) => {
   const prospects = engine?.prospects ?? [];
+  const candidates = engine?.candidates ?? [];
   return [...(engine?.segments ?? [])].filter((s) => s.state !== 'retired').reverse().map((segment) => {
     const mine = prospects.filter((p) => p.segmentId === segment.id);
     const pool = mine.filter((p) => p.stage === 'found').sort((a, b) => b.match - a.match || meanFit(b) - meanFit(a));
     return {
       segment,
       pool,
+      // every company gathered for this audience from a lead source, scored or not (AudienceCompanies.jsx)
+      gathered: candidates.filter((c) => c.segmentId === segment.id),
       // the companies of this audience already on the lead list, each with the people read for it
       leads: mine.filter((p) => p.stage === 'promoted'),
       listable: segment.state === 'approved' ? pool.filter((p) => p.match >= 2 && !p.listApproved).length : 0,

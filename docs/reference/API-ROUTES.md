@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-714 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
+718 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
 
 ## /api/v1/accounts
 
@@ -104,6 +104,7 @@
 | DELETE | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | GET | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | PUT | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
+| PUT | `/api/v1/brands/:brand/cards/:template/use` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | GET | `/api/v1/brands/:brand/marks` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
 | POST | `/api/v1/brands/:brand/marks` | `mapLaneQueryToken`, `(inline check)`, `requireAuth`, `multerMiddleware` |
 | GET | `/api/v1/brands/:brand/new` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
@@ -555,6 +556,7 @@
 | POST | `/api/v1/neuma/:companionName/vessel` | `mapLaneQueryToken`, `requireAuth` |
 | GET | `/api/v1/neuma/:neumaId/lp` | `mapLaneQueryToken`, `requireAuth` |
 | PUT | `/api/v1/neuma/:neumaId/lp/budget` | `mapLaneQueryToken`, `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/controls` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/lp/open` | `mapLaneQueryToken`, `requireAuth` |
 | PUT | `/api/v1/neuma/:neumaId/lp/pace` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/lp/pending/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
@@ -562,6 +564,7 @@
 | POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/decline` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/delivered` | `mapLaneQueryToken`, `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/vault` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/recovery/export-identity` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/neuma/:neumaId/recovery/retired/:address/reveal` | `mapLaneQueryToken`, `requireAuth`, `requireLocalScope` |
 | POST | `/api/v1/neuma/:neumaId/recovery/rotate` | `mapLaneQueryToken`, `requireAuth` |
@@ -699,6 +702,7 @@
 | POST | `/api/v1/revenue/lead-engine/leads/:id/kind` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/campaign` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/list` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/segments/:id/read-sites` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/state` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/spend` | `mapLaneQueryToken`, `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/suppress` | `mapLaneQueryToken`, `requireAuth` |

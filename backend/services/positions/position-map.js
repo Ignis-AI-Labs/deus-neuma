@@ -43,7 +43,7 @@ export const POSITIONS = Object.freeze([
     functions: [
       fn('model', 'COMPANY', 'What is true of each company, in one place: its business model (what it sells, who pays, what it costs, what objectively changes for the buyer) and the facts a buyer may be told. Everything said for a company starts here.', ['company/model']),
       fn('campaigns', 'CAMPAIGNS', 'One flow per push: its goal and numbers, then each audience that serves it (the offer, who it reaches and where) with the companies found for it and the leads it produced, then the campaigns of other positions it works with.', ['sales/campaign', 'campaigns/link', 'sales/segment']),
-      fn('leads', 'LEADS', 'What belongs to no one campaign: what is due on the lead list, the do-not-contact list, and when paid lead data may be spent.', ['sales/gather', 'sales/contacts', 'sales/prospect', 'sales/drop', 'sales/lead', 'sales/facts', 'sales/suppress', 'sales/mail-scan', 'sales/inbound', 'sales/kind']),
+      fn('leads', 'LEADS', 'What belongs to no one campaign: what is due on the lead list, the do-not-contact list, and when paid lead data may be spent.', ['sales/gather', 'sales/read-sites', 'sales/contacts', 'sales/prospect', 'sales/drop', 'sales/lead', 'sales/facts', 'sales/suppress', 'sales/mail-scan', 'sales/inbound', 'sales/kind']),
       fn('deals', 'DEALS', 'The pipeline, each open deal with its next step, and what was delivered.', ['revenue/deal', 'revenue/move', 'delivery/publish']),
       fn('mailbox', 'MAILBOX', 'The house email account: who holds it, what was sent and what came back, kept in order under labels.', ['email/send'], ['check_email_inbox', 'read_email', 'list_email_labels', 'label_email']),
     ],
@@ -56,7 +56,7 @@ export const POSITIONS = Object.freeze([
     functions: [
       fn('model', 'COMPANY', 'What is true of each company, in one place: its business model (what it sells, who pays, what it costs, what objectively changes for the buyer) and the facts a buyer may be told. Everything said for a company starts here.', ['company/model']),
       fn('campaigns', 'CAMPAIGNS', 'Each marketing campaign once: what it is, the campaigns of other positions it works with, and the press onto its own page.'),
-      fn('marketing', 'MARKETING', 'The post queue, accounts, the brand and the board; a campaign is opened from CAMPAIGNS.', ['campaigns/create', 'campaigns/update', 'campaigns/ask', 'marketing/plan', 'marketing/account-handle', 'marketing/account-holder', 'marketing/account-company', 'marketing/company-links', 'marketing/board-arrange', 'social/queue', 'social/post'], ['queue_list', 'queue_get']),
+      fn('marketing', 'MARKETING', 'The post queue, accounts, the brand and the board; a campaign is opened from CAMPAIGNS.', ['campaigns/create', 'campaigns/update', 'campaigns/ask', 'marketing/plan', 'marketing/account-handle', 'marketing/account-holder', 'marketing/account-company', 'marketing/company-links', 'marketing/board-arrange', 'marketing/card', 'social/queue', 'social/post'], ['queue_list', 'queue_get']),
       fn('gallery', 'GALLERY', 'Every image and video the house has made.', ['image/generate']),
     ],
     waiting: ['post', 'reply', 'campaign-ask', 'mandate', 'link-change'],

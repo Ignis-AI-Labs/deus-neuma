@@ -5,6 +5,7 @@
 // house already keeps, every time it is asked for (SHINKEI — each count is the
 // length of the list it names):
 //   - the people a seat read on a company's own pages     (prospects.people)
+//   - the addresses a company publishes on its own site   (candidates' site readings)
 //   - the people a contact-data provider returned         (contact lookups)
 //   - everyone on the lead list                            (the lead ledger)
 //   - addresses that bounced                               (do-not-contact, reason bounced)
@@ -64,6 +65,12 @@ export const foldContacts = ({ leads = [], prospects = [], lookups = [], suppres
   for (const p of prospects) {
     for (const person of p.people ?? []) {
       seen.push(sighting({ name: person.name, title: person.role, company: p.name, domain: p.domain, email: person.email, state: person.email ? 'published' : 'none', source: person.sourceUrl, at: p.foundAt, forCompany: houseCompany(p.segmentId) }));
+    }
+  }
+  // An address a company publishes on its own site (company-reader.js): a way in, with the page it stands on.
+  for (const c of candidates) {
+    for (const e of c.site?.emails ?? []) {
+      seen.push(sighting({ name: '', title: '', company: c.name, domain: c.domain, email: e.email, state: 'published', source: e.page, at: c.site.readAt, forCompany: houseCompany(c.segmentId) }));
     }
   }
   for (const look of lookups) {

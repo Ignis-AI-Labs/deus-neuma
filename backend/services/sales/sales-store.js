@@ -149,9 +149,20 @@ export const reviewSalesFacts = (wallet, review) => serialize(async () => {
 /** Every candidate, oldest first, each `waiting` or `scored`. */
 export const readCandidates = async (wallet) => {
   const scored = new Set((await readProspects(wallet)).map((p) => p.domain));
-  return (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'gathered' && e.candidate?.domain)
-    .map((e) => ({ ...e.candidate, id: e.id, segmentId: e.segmentId, gatheredAt: e.at, state: scored.has(e.candidate.domain) ? 'scored' : 'waiting' }));
+  const all = await events(wallet, CANDIDATES);
+  // What the company's own site said when it was last read (company-reader.js): its words fill an empty description.
+  const sites = new Map(all.filter((e) => e?.type === 'site' && e.domain && e.site).map((e) => [e.domain, e.site]));
+  return all.filter((e) => e?.type === 'gathered' && e.candidate?.domain)
+    .map((e) => {
+      const site = sites.get(e.candidate.domain) ?? null;
+      return { ...e.candidate, ...(site ? { site, description: e.candidate.description || site.description || '' } : {}), id: e.id, segmentId: e.segmentId, gatheredAt: e.at, state: scored.has(e.candidate.domain) ? 'scored' : 'waiting' };
+    });
 };
+
+/** Keep what each company's own site said (or that it could not be read, and why). */
+export const noteSites = (wallet, rows, by) => serialize(async () => {
+  for (const { domain, site } of rows) await appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'site', domain, site, by, at: new Date().toISOString() });
+});
 
 /**
  * Add gathered candidates for a segment; a company already gathered, pooled

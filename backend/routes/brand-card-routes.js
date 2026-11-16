@@ -7,6 +7,8 @@
  * PUT    /:brand/cards/:template  keep {svg, spec} as the company's own design (refused unless it
  *                                 is safe to draw and draws against the saved kit)
  * DELETE /:brand/cards/:template  let the company's own design go; the shared card stands again
+ * PUT    /:brand/cards/:template/use  {use: boolean} — stop using a shared card type for this
+ *                                 company, or use it again (card-set.js); other companies keep it
  *
  * Design note, 2026-11-16: cards […]. Auth is brand-routes.js's one requireAuth; req.walletAddress is set.
  */
@@ -17,6 +19,7 @@ import { cardGallery } from '../services/branding/card-gallery.js';
 import { loadTemplate } from '../services/branding/brand-tokens.js';
 import { saveDesign, removeDesign } from '../services/branding/card-design-save.js';
 import { designNameRefusal } from '../services/branding/card-designs.js';
+import { setRetired } from '../services/branding/card-set.js';
 
 const router = Router();
 const log = createLogger('Brands.Cards');
@@ -63,6 +66,14 @@ router.delete('/:brand/cards/:template', async (req, res) => {
   if (refusal) return res.status(400).json({ error: refusal });
   const removed = await removeDesign({ brand: req.params.brand, template: req.params.template, wallet: req.walletAddress });
   return removed.ok ? res.json(removed) : res.status(404).json({ error: removed.error });
+});
+
+router.put('/:brand/cards/:template/use', async (req, res) => {
+  const refusal = refused(req);
+  if (refusal) return res.status(400).json({ error: refusal });
+  if (typeof req.body?.use !== 'boolean') return res.status(400).json({ error: 'send {use: true} or {use: false}' });
+  const set = await setRetired({ brand: req.params.brand, template: req.params.template, retired: !req.body.use, wallet: req.walletAddress });
+  return set.ok ? res.json(set) : res.status(409).json({ error: set.error });
 });
 
 export default router;

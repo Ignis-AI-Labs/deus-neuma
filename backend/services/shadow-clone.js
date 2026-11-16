@@ -16,12 +16,17 @@
 // hold; from a wake or a team part they are house work and leave the operator's slot free. More
 // clones than slots wait in line and start as others finish.
 //
+// EACH CLONE HAS ITS OWN SUB-CHANNEL in the chat (Design note, 2026-11-16: […]). The split streams clone:* frames to the operator's desk — each
+// clone's place in line, its words as they come, its acts, its report — and the chip's record keeps
+// every clone's report and acts, so the sub-channels stand again when the chat is reopened.
+//
 // LIKE THE JUTSU, WHAT A CLONE LEARNED COMES BACK. The call returns when every clone has reported;
 // each clone's final word is the original's to read (fitted to its room), and every report is kept
 // whole in its lane at clones/<stamp>.md.
 //
 // impure — runs model turns, writes the clones' sittings and the record.
 
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { linePlace, leaseKind, withLineKind } from './substrate-lease.js';
@@ -82,6 +87,16 @@ export const cloneTasksOf = (args) => {
   }
   return { ok: true, tasks, shared: String(args?.shared ?? '').trim().slice(0, SHARED_MAX) };
 };
+
+/** What one clone keeps on the chat's record: its report and its acts, bounded. Pure. */
+export const KEPT_REPORT_CHARS = 4000;
+const KEPT_ACTS = 40;
+export const keptClone = (index, task, r, acts) => ({
+  index, title: task.title, task: task.task.slice(0, 600), state: r.ok ? 'done' : 'failed',
+  sessionId: r.sessionId || null,
+  report: (r.ok ? r.text : `DID NOT FINISH — ${r.error}`).trim().slice(0, KEPT_REPORT_CHARS),
+  acts: acts.slice(-KEPT_ACTS),
+});
 
 /** One clone's brief: who it is, its one task, and what its original needs back. Pure. */
 export const cloneBrief = ({ name, index, count, task, shared, siblings }) => [
@@ -150,6 +165,13 @@ export const handleShadowClone = async (connection, args) => {
   const started = Date.now();
   let running = 0;
   let together = 0;
+  // The sub-channels: every frame names this split and its clone, so the desk files each word under it.
+  const splitId = randomUUID();
+  const tell = (frame) => {
+    try { ws?.send?.(JSON.stringify({ ...frame, tool: TOOL, splitId, neumaId: laneId })); } catch { /* a closed desk misses a frame; the record keeps the report */ }
+  };
+  tell({ type: 'clone:split', clones: tasks.map((t, i) => ({ index: i + 1, title: t.title, task: t.task.slice(0, 600) })) });
+  const acts = tasks.map(() => []);
   const place = linePlace();
   place?.stepOut();
   let results;
@@ -159,11 +181,23 @@ export const handleShadowClone = async (connection, args) => {
         name, index: i + 1, count: tasks.length, task, shared,
         siblings: tasks.filter((_, j) => j !== i).map((t) => t.title),
       });
+      const index = i + 1;
+      let admitted = false;
       try {
         const out = await runMemberTurn({
           neumaId: laneId, name, wallet: connection.walletAddress, brief,
           workspace: connection._teamWorkspace || null, signal,
-          onLine: ({ state }) => { if (state === 'running') { running += 1; together = Math.max(together, running); } },
+          onLine: ({ state, position }) => {
+            if (state === 'running' && !admitted) { admitted = true; running += 1; together = Math.max(together, running); }
+            tell({ type: 'clone:state', index, state: state === 'running' ? 'working' : 'waiting', position: position ?? null });
+          },
+          onSession: (sessionId) => tell({ type: 'clone:state', index, sessionId }),
+          onText: (chunk) => tell({ type: 'clone:text', index, chunk }),
+          onTool: (event) => {
+            const act = { tool: event.tool, status: event.status, summary: event.summary ?? '' };
+            if (event.status !== 'executing') acts[i].push(act);
+            tell({ type: 'clone:tool', index, act });
+          },
           as: {
             kind,
             label: `${name} (clone ${i + 1}/${tasks.length})`,
@@ -174,11 +208,15 @@ export const handleShadowClone = async (connection, args) => {
             toolMode: connection.toolMode,
           },
         });
-        return { ok: true, title: task.title, text: out.text, sessionId: out.sessionId };
+        const done = { ok: true, title: task.title, text: out.text, sessionId: out.sessionId };
+        tell({ type: 'clone:end', clone: keptClone(index, task, done, acts[i]) });
+        return done;
       } catch (err) {
-        return { ok: false, title: task.title, error: err.message, sessionId: null };
+        const failed = { ok: false, title: task.title, error: err.message, sessionId: null };
+        tell({ type: 'clone:end', clone: keptClone(index, task, failed, acts[i]) });
+        return failed;
       } finally {
-        running = Math.max(0, running - 1);
+        if (admitted) running = Math.max(0, running - 1);
       }
     })));
   } finally {
@@ -197,6 +235,11 @@ export const handleShadowClone = async (connection, args) => {
     status: finished ? 'ok' : 'error',
     summary: `${finished} of ${tasks.length} shadow clones reported · ${Math.max(1, together)} at once · ${seconds}s`,
     detail: content.slice(0, 2000),
+    // the sub-channels, kept with the chip so they stand again when the chat is reopened
+    split: {
+      splitId, together: Math.max(1, together), seconds, record,
+      clones: results.map((r, i) => keptClone(i + 1, tasks[i], r, acts[i])),
+    },
   });
   return finished
     ? { tool: TOOL, status: 'ok', content, cap: content.length + 200 }

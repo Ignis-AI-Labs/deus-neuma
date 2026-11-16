@@ -103,7 +103,7 @@ export const BrandKitsShell = ({ brand = null }) => {
                 onClick={() => setActive(CARDS_SECTION)}
               >
                 <span className="bk-rail-name label-data">CARDS</span>
-                {cards.gallery ? <span className="bk-rail-n label-data">{cards.gallery.own}/{cards.gallery.cards.length}</span> : null}
+                {cards.gallery ? <span className="bk-rail-n label-data">{cards.gallery.own}/{cards.gallery.cards.length - (cards.gallery.retired || 0)}</span> : null}
               </button>
               <button
                 type="button"

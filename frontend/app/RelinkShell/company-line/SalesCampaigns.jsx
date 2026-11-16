@@ -25,7 +25,7 @@ const Funnel = ({ campaign }) => (
   </div>
 );
 
-const Campaign = ({ campaign, rows, loose, busy, links, onMove, onPut, onSegment, onList }) => {
+const Campaign = ({ campaign, rows, loose, busy, links, onMove, onPut, onSegment, onList, onRead }) => {
   const [pick, setPick] = useState('');
   const [edit, setEdit] = useState(null); // {name, goal} while editing
   const [sure, setSure] = useState(false);
@@ -42,7 +42,7 @@ const Campaign = ({ campaign, rows, loose, busy, links, onMove, onPut, onSegment
       ) : <p className="cline-move-t">NO LEAD YET — NOTHING TO SHOW BY CHANNEL</p>}
       {rows.length ? (
         <ul className="cline-aud-list is-nested" aria-label={`audiences of ${campaign.name}`} data-campaign-audiences="">
-          {rows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={onSegment} onList={onList} mode="nested" />)}
+          {rows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={onSegment} onList={onList} onRead={onRead} mode="nested" />)}
         </ul>
       ) : <p className="cline-move-t" data-campaign-audiences="">NO AUDIENCE YET — THE SALES SEAT FILES ONE UNDER THIS CAMPAIGN</p>}
       <CampaignLinkLine campaignKey={`cro:${campaign.id}`} links={links} />
@@ -77,7 +77,7 @@ const Campaign = ({ campaign, rows, loose, busy, links, onMove, onPut, onSegment
 };
 
 export const SalesCampaigns = () => {
-  const { engine, busy, error, notice, refresh, openCampaign, moveCampaign, putAudience, moveSegment, approveList } = useLeadEngine();
+  const { engine, busy, error, notice, refresh, openCampaign, moveCampaign, putAudience, moveSegment, approveList, readSites } = useLeadEngine();
   const links = useCampaignLinks();
   const rows = segmentRows(engine);
   const known = new Set((engine?.campaigns ?? []).map((c) => c.id));
@@ -95,13 +95,13 @@ export const SalesCampaigns = () => {
       {engine && !campaigns.length ? <EmptyState title="NO CAMPAIGN YET" /> : null}
       <ul className="cline-list" aria-label="campaigns">
         {campaigns.map((c) => <Campaign key={c.id} campaign={c} rows={rows.filter((r) => r.segment.campaign === c.id)} loose={loose.filter((s) => s.company === c.company)} busy={busy} links={links}
-          onMove={(...args) => moveCampaign(...args).then(links.reload)} onPut={putAudience} onSegment={moveSegment} onList={approveList} />)}
+          onMove={(...args) => moveCampaign(...args).then(links.reload)} onPut={putAudience} onSegment={moveSegment} onList={approveList} onRead={readSites} />)}
       </ul>
       {looseRows.length ? (
         <div data-campaign-loose="">
           <p className="cline-h label-data">AUDIENCES UNDER NO CAMPAIGN · {looseRows.length} — PUT EACH UNDER THE CAMPAIGN IT SERVES, ABOVE</p>
           <ul className="cline-aud-list is-nested" aria-label="audiences under no campaign">
-            {looseRows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} mode="nested" />)}
+            {looseRows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} onRead={readSites} mode="nested" />)}
           </ul>
         </div>
       ) : null}

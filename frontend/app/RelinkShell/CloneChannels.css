@@ -1,0 +1,54 @@
+/* CloneChannels — a shadow clone split's sub-channels under its chip (CloneChannels.jsx). */
+
+.clone-split {
+  margin: var(--space-2) 0 var(--space-1);
+  border: 1px solid var(--color-border-primary);
+  border-left: 2px solid var(--signal);
+  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.02));
+}
+
+.clone-split-head {
+  margin: 0;
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border-primary);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.12em;
+}
+
+.clone-tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--color-border-primary); }
+
+.clone-tab {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-2);
+  min-width: 0;
+  flex: 1 1 180px;
+  padding: var(--space-2);
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--color-border-primary);
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.clone-tab:hover { color: var(--color-text-primary); }
+.clone-tab.is-on { border-bottom-color: var(--signal); color: var(--color-text-primary); background: var(--color-glass-light, rgba(255, 255, 255, 0.03)); }
+.clone-tab-n { grid-row: 1 / 3; align-self: center; color: var(--color-text-tertiary); }
+.clone-tab-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.clone-tab-state { font-size: var(--text-xs, 11px); letter-spacing: 0.1em; color: var(--color-text-tertiary); }
+.clone-tab.is-working .clone-tab-state { color: var(--signal); }
+.clone-tab.is-done .clone-tab-state { color: var(--color-text-secondary); }
+.clone-tab.is-failed .clone-tab-state { color: var(--alert, #d44a2c); }
+
+.clone-channel { padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); max-height: 520px; overflow-y: auto; }
+.clone-task { margin: 0; font-size: 13px; color: var(--color-text-tertiary); }
+.clone-acts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.clone-acts li { font-size: var(--text-xs, 11px); letter-spacing: 0.06em; color: var(--color-text-tertiary); }
+.clone-acts li::before { content: '⟐ '; color: var(--signal); }
+.clone-acts li.is-error::before, .clone-acts li.is-denied::before { color: var(--alert, #d44a2c); }
+.clone-report { border-left: 2px solid var(--signal); padding-left: var(--space-2); }
+.clone-report > .label-data { margin: 0 0 var(--space-1); color: var(--signal); letter-spacing: 0.12em; }
+.clone-words-all summary { cursor: pointer; color: var(--color-text-tertiary); letter-spacing: 0.1em; }
+.clone-quiet { margin: 0; color: var(--color-text-tertiary); }

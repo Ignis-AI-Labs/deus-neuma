@@ -164,7 +164,7 @@ export const segmentHandlers = Object.freeze({
     }, action.at, action.take),
 
   TOOL_RESULT: (state, action) => {
-    const { tool, status, summary, detail, sources, images, findings, bench } = action.data;
+    const { tool, status, summary, detail, sources, images, findings, bench, split } = action.data;
     return mapStreamingSegments(state, (segments) => {
       const i = firstActingTool(segments);
       const resolved = {
@@ -187,6 +187,12 @@ export const segmentHandlers = Object.freeze({
         // a benchmark the chat launched — the card watches it to its end
         bench: bench || (i !== -1 ? segments[i].bench || null : null),
       };
+      // A shadow clone split (clone-split.js): its sub-channels stand on the chip; the kept record
+      // (each clone's report and acts) settles them, and each clone's live words stay readable.
+      const prior = i !== -1 ? segments[i] : segments[lastLiveToolIndex(segments, resolved.label)];
+      const liveSplit = prior?.split ?? null;
+      const kept = split ? { ...split, clones: split.clones.map((c) => ({ ...c, text: liveSplit?.clones?.find((l) => l.index === c.index)?.text ?? '' })) } : liveSplit;
+      if (kept) resolved.split = kept;
       if (i !== -1) {
         const copy = segments.slice();
         copy[i] = resolved;

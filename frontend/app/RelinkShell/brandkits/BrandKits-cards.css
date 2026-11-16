@@ -36,6 +36,8 @@
 .bk-note.bk-card-tone-alike,
 .bk-note.bk-card-tone-shared { color: var(--accent-warning, #ff9d3c); }
 .bk-card-tone-error .bk-card-standing { color: var(--accent-danger); }
+.bk-card-tone-retired { opacity: 0.45; }
+.bk-card-tone-retired .bk-card-standing { color: var(--text-muted); }
 
 .bk-quiet,
 .bk-back {

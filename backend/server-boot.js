@@ -47,6 +47,7 @@ import { startLpReports } from './services/umbrae-lp/lp-report.js';
 import { startLpWatch } from './services/umbrae-lp/lp-watch.js';
 import { startReplyListener } from './services/social/reply-listener.js';
 import { startSecurityScheduler } from './services/security/security-scheduler.js';
+import { startRamKeeper } from './services/ram-keeper/ram-keeper.js';
 import { startSttAtBoot } from './services/managed-stt.js';
 import { startSystemDictation } from './services/system-dictation/system-dictation.js';
 import { startLegalScheduler } from './services/legal/legal-scheduler.js';
@@ -103,6 +104,7 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
   let stopChatBridge = null;
   let stopStatusSweep = null;
   let stopHouseClock = null;
+  let stopRamKeeper = null;
 
   // --- Directory bootstrapping ---
 
@@ -319,6 +321,8 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     // The house clock — the house wakes itself for its own work, inside the
     // charter its operator approved (house-clock.js).
     stopHouseClock = startGuarded('house clock', startHouseClock);
+    // The RAM keeper — idle engines rest, stale /tmp leftovers go, short memory is named (ram-keeper/).
+    stopRamKeeper = startGuarded('RAM keeper', startRamKeeper);
     // The LP wallets' daily report — once a local day, one card per house
     // member with positions, actions or a waiting deposit (lp-report.js).
     startGuarded('LP daily report', startLpReports);
@@ -369,6 +373,7 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopChatBridge?.(); // every chat bot's line closes with the server
     stopStatusSweep?.(); // the office's cadence stops with the server
     stopHouseClock?.(); // no wake starts into the drain window
+    stopRamKeeper?.(); // the RAM keeper's lock is released with the server
     stopBenchWatchdog(); // the bench watch stops with the server
     stopMeditation?.(); // an in-flight dream aborts; nothing of it lands
     stopRemoteTunnel?.().catch(() => {}); // the native road's listeners close with it

@@ -11,6 +11,7 @@ const brandList = (likeness) => likeness.map((l) => l.brand.toUpperCase()).join(
 export const cardStanding = (card, brandName) => {
   const name = String(brandName || 'this company').toUpperCase();
   if (card.error) return { tone: 'error', label: 'CANNOT BE DRAWN', detail: card.error };
+  if (card.retired) return { tone: 'retired', label: 'NOT USED', detail: `${name} does not use this card. Every other company keeps it.` };
   const alike = card.likeness || [];
   if (card.source === 'shared') {
     return {
@@ -39,7 +40,7 @@ export const cardStanding = (card, brandName) => {
 /** The line over the gallery: how much of the company still wears the shared look. Pure. */
 export const gallerySummary = (gallery, brandName) => {
   const name = String(brandName || 'this company').toUpperCase();
-  const total = gallery?.cards?.length || 0;
+  const total = (gallery?.cards || []).filter((c) => !c.retired).length;
   if (!total) return 'No cards yet.';
   const shared = gallery.shared || 0;
   const alike = (gallery.cards || []).filter((c) => c.source === 'company' && c.likeness?.length).length;

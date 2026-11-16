@@ -12,6 +12,10 @@
 //                   (site, socials, holders). Paced under the public limit.
 //   base-protocols  every DeFi protocol on Base, from DefiLlama's public list
 //                   (one read): site, X handle, category, value locked.
+//   company-index   the house's OWN company database on this machine
+//                   (company-index.js): 22M+ companies with industry, size,
+//                   country, founding year and a traffic rank, searched by
+//                   words and filters. Hundreds at a time, nothing leaves.
 // ATTACHED SOURCES (the operator's own key, Settings, API, Service keys):
 //   hunter, tomba, apollo — the people at a company's domain with their
 //                   addresses (lead-providers.js). They spend the operator's
@@ -22,6 +26,7 @@
 
 import process from 'node:process';
 import { PEOPLE_PROVIDERS, peopleOfHunter } from './lead-providers.js';
+import { searchIndex, indexStats, industriesOf, candidateOfCompany, SIZES } from './company-index.js';
 
 export { peopleOfHunter };
 
@@ -132,11 +137,12 @@ const wait = (ms, signal) => new Promise((resolve, reject) => {
 });
 
 // impure — one GET, JSON or a thrown reason. A busy answer (429) waits and asks again, three times.
-const getJson = async (url, signal, busyWaitMs) => {
+const getJson = async (url, signal, busyWaitMs, onBusy = () => {}) => {
   for (let tries = 0; ; tries += 1) {
     const res = await fetch(url, { headers: { accept: 'application/json' }, signal });
     if (res.ok) return res.json();
     if (res.status !== 429 || tries >= 3) throw new Error(res.status === 429 ? 'the list is busy (its public limit) — gather again in a few minutes' : `the list answered ${res.status}`);
+    onBusy(tries + 1);
     await wait(busyWaitMs, signal);
   }
 };
@@ -145,17 +151,20 @@ const getJson = async (url, signal, busyWaitMs) => {
  * Gather up to `count` NEW candidates: walk the pool pages until enough tokens
  * the house has not seen (`known` domains and token addresses) have a profile.
  * impure — network. Never throws: what was gathered so far comes back with why it stopped.
- * @param {{count?: number, known?: {domains: Set<string>, tokens: Set<string>}, baseUrl?: string, paceMs?: number, busyWaitMs?: number, signal?: AbortSignal}} opts
+ * @param {{count?: number, known?: {domains: Set<string>, tokens: Set<string>}, baseUrl?: string, paceMs?: number, busyWaitMs?: number, signal?: AbortSignal, onProgress?: (words: string) => void}} opts
  * @returns {Promise<{candidates: object[], looked: number, stopped: ?string}>}
  */
-export const gatherBaseTokens = async ({ count = GATHER_MAX, known = { domains: new Set(), tokens: new Set() }, baseUrl = urlOf('GECKO', GECKO_URL), paceMs = PACE_MS, busyWaitMs = BUSY_WAIT_MS, signal } = {}) => {
+export const gatherBaseTokens = async ({ count = GATHER_MAX, known = { domains: new Set(), tokens: new Set() }, baseUrl = urlOf('GECKO', GECKO_URL), paceMs = PACE_MS, busyWaitMs = BUSY_WAIT_MS, signal, onProgress = () => {} } = {}) => {
   const want = Math.min(Math.max(parseInt(count, 10) || GATHER_MAX, 1), GATHER_MAX);
   const candidates = [];
+  // A paced gather runs for minutes: say where it stands after every token, and when the list makes it wait.
+  const busy = (n) => onProgress(`the list is busy, waiting ${Math.round(busyWaitMs / 1000)} s (${n} of 3) — ${candidates.length} of ${want} found so far`);
   const seen = new Set(known.tokens);
   let looked = 0;
   try {
     for (let page = 1; page <= 10 && candidates.length < want; page += 1) {
-      const pools = await getJson(`${baseUrl}/networks/base/pools?page=${page}&sort=h24_volume_usd_desc&include=base_token,dex`, signal, busyWaitMs);
+      onProgress(`reading page ${page} of the most traded pools — ${candidates.length} of ${want} found`);
+      const pools = await getJson(`${baseUrl}/networks/base/pools?page=${page}&sort=h24_volume_usd_desc&include=base_token,dex`, signal, busyWaitMs, busy);
       if (!(pools?.data ?? []).length) break;
       for (const token of tokensOfPools(pools)) {
         if (candidates.length >= want) break;
@@ -163,8 +172,9 @@ export const gatherBaseTokens = async ({ count = GATHER_MAX, known = { domains: 
         seen.add(token.address);
         await wait(paceMs, signal);
         looked += 1;
-        const row = candidateOf(token, await getJson(`${baseUrl}/networks/base/tokens/${token.address}/info`, signal, busyWaitMs));
+        const row = candidateOf(token, await getJson(`${baseUrl}/networks/base/tokens/${token.address}/info`, signal, busyWaitMs, busy));
         if (row && !known.domains.has(row.domain) && !candidates.some((c) => c.domain === row.domain)) candidates.push(row);
+        onProgress(`${candidates.length} of ${want} found — ${looked} tokens read, last ${token.symbol}${row ? '' : ' (no team site, skipped)'}`);
       }
       await wait(paceMs, signal);
     }
@@ -193,6 +203,33 @@ export const gatherBaseProtocols = async ({ count = GATHER_MAX, known = { domain
   }
 };
 
+export const INDEX_GATHER_MAX = 500;
+export const INDEX_EMPTY = 'the company index is not loaded on this machine yet — tell your operator: download the free company file (peopledatalabs.com/data-lab/dataset/company-dataset) and run "node scripts/load-company-index.mjs <that file>" once';
+
+/**
+ * Gather up to `count` companies the house has not seen from its own company index, most visited
+ * first. The audience's countries apply unless the search names its own. impure — one local read. Never throws.
+ * @param {{count?: number, known?: {domains: Set<string>}, segment?: object, query?: {words?: string, industries?: string[], countries?: string[], sizes?: string[], foundedFrom?: number, live?: boolean}}} opts
+ * @returns {Promise<{candidates: object[], looked: number, stopped: ?string}>}
+ */
+export const gatherCompanyIndex = async ({ count = 100, known = { domains: new Set() }, segment = null, query = {} } = {}) => {
+  const want = Math.min(Math.max(parseInt(count, 10) || 100, 1), INDEX_GATHER_MAX);
+  try {
+    if (!indexStats().loaded) return { candidates: [], looked: 0, stopped: INDEX_EMPTY };
+    const countries = query.countries?.length ? query.countries : segment?.countries ?? [];
+    const badSize = (query.sizes ?? []).find((s) => !SIZES.includes(s));
+    if (badSize) return { candidates: [], looked: 0, stopped: `"${badSize}" is not a size the index knows — sizes are: ${SIZES.join(', ')}` };
+    const { rows, looked } = searchIndex({ ...query, countries }, { count: want, known: known.domains });
+    if (!looked && query.industries?.length) {
+      const near = query.industries.flatMap((i) => industriesOf({ like: String(i).split(/\s+/)[0], limit: 8 })).map((i) => i.industry);
+      return { candidates: [], looked: 0, stopped: `no company matches. The index files industries under exact names${near.length ? `; close to yours: ${[...new Set(near)].join(', ')}` : ''}. The most common: ${industriesOf({ limit: 15 }).map((i) => i.industry).join(', ')}` };
+    }
+    return { candidates: rows.map(candidateOfCompany), looked, stopped: null };
+  } catch (err) {
+    return { candidates: [], looked: 0, stopped: err.message };
+  }
+};
+
 /**
  * Every source, free first. kind: what it returns. key: the service key it
  * needs (null: free). A new source is one entry here.
@@ -200,5 +237,6 @@ export const gatherBaseProtocols = async ({ count = GATHER_MAX, known = { domain
 export const LEAD_SOURCES = Object.freeze({
   'base-protocols': Object.freeze({ kind: 'companies', key: null, label: 'DeFi protocols on Base (DefiLlama, free)', gather: gatherBaseProtocols }),
   'base-tokens': Object.freeze({ kind: 'companies', key: null, label: 'tokens trading on Base (GeckoTerminal, free, about 50 an hour)', gather: gatherBaseTokens }),
+  'company-index': Object.freeze({ kind: 'companies', key: null, local: true, max: INDEX_GATHER_MAX, label: `the house's own company database: 22M+ companies with industry, size, country, founding year and traffic rank (free, on this machine, up to ${INDEX_GATHER_MAX} at a time)`, gather: gatherCompanyIndex }),
   ...PEOPLE_PROVIDERS,
 });

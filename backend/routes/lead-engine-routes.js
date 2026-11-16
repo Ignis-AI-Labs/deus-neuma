@@ -19,6 +19,8 @@ import { listCompanies } from '../services/marketing/companies.js';
 import { leadLedgerFor, LEAD_KINDS, kindOf, sourceOf } from '../services/leads/lead-ledger.js';
 import { spendState, setSpend, SPEND_MODES } from '../services/sales/lead-spend.js';
 import { foldContacts, contactStats } from '../services/sales/contact-book.js';
+import { readAudienceSites } from '../services/sales/site-reads.js';
+import { isConnectionOn } from '../services/connections/connection-switches.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('LeadEngine');
@@ -70,6 +72,20 @@ router.post('/segments/:id/list', async (req, res) => {
   } catch (error) {
     log.error('List approval failed', { error: error.message });
     res.status(500).json({ error: 'Could not approve the list' });
+  }
+});
+
+// The operator has the sites of an audience's gathered companies read (company-reader.js): alive or not, what each says it is, its published addresses.
+router.post('/segments/:id/read-sites', async (req, res) => {
+  if (!isConnectionOn('lead-sources')) return res.status(409).json({ error: 'LEAD SOURCES is off — turn it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS' });
+  try {
+    const done = await readAudienceSites(req.walletAddress, req.params.id, { count: req.body?.count, by: 'operator' });
+    if (!done.ok) return res.status(409).json({ error: done.reason });
+    log.info('Company sites read at the operator\'s press', { id: req.params.id, read: done.read.length });
+    return res.json({ ok: true, read: done.read.length, alive: done.read.filter((r) => r.site.alive).length, left: done.left });
+  } catch (error) {
+    log.error('Company sites could not be read', { error: error.message });
+    return res.status(500).json({ error: 'Could not read the sites' });
   }
 });
 

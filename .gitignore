@@ -33,6 +33,8 @@ data/covenant/
 data/capacity/
 # Product-integrated team trial records stay under data; the global harness lives in benchmarks/.
 data/benchmarks/
+# The house's company index (sales/company-index.js): a local database loaded from free bulk files.
+data/lead-index/
 # Chat watches (chat-watch.js) — which conversation waits on what; machine-local state.
 data/watches/
 # Run records + delivery manifests name beings and wallets — local, like arenas

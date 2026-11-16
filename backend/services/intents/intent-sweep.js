@@ -67,6 +67,7 @@ import { logToolCall } from '../tool-sandbox.js';
 import { intentType } from './registry.js';
 import { captureIntentContext, validateIntentPolicy } from './intent-context.js';
 import { maySettle } from './intent-owners.js';
+import { pulseWaiting } from '../waiting/waiting-pulse.js';
 
 const log = createLogger('IntentSweep');
 
@@ -306,6 +307,7 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
     return { tool: tool(policyTool), status: 'uncertain', error: outcome.reason, txHash: outcome.txHash };
   }
   if (outcome.ok) {
+    pulseWaiting(connection?.walletAddress); // a member's settled act may have put a decision before the operator, or settled one
     await writeResult(dir, name, { status: 'done', detail: outcome.detail });
     await clearExecuting(dir, name);
     await logToolCall(neumaWorkspace, laneId, 'intents', policyTool, payload, 'success', null);

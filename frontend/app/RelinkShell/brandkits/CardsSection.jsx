@@ -77,7 +77,7 @@ export const CardsSection = () => {
   return (
     <div className="bk-section">
       <header className="bk-section-head">
-        <h4 className="label-data">CARDS<span className="bk-section-n">{gallery ? `${gallery.own}/${gallery.cards.length} OWN` : ''}</span></h4>
+        <h4 className="label-data">CARDS<span className="bk-section-n">{gallery ? `${gallery.own}/${gallery.cards.length - (gallery.retired || 0)} OWN${gallery.retired ? ` · ${gallery.retired} NOT USED` : ''}` : ''}</span></h4>
         <p className="bk-note">{gallery ? gallerySummary(gallery, name) : (error || 'READING THE CARDS…')}</p>
       </header>
       {gallery && !making ? (
@@ -87,11 +87,12 @@ export const CardsSection = () => {
         <NewCardType gallery={gallery} onCancel={() => setMaking(false)} onMade={async (made) => { setMaking(false); await reload(); setOpen(made); }} />
       ) : null}
       <ul className="bk-card-grid">
-        {(gallery?.cards || []).map((card) => {
+        {/* The cards the company uses first; the ones it retired stand last, dimmed. */}
+        {[...(gallery?.cards || [])].sort((a, b) => Number(Boolean(a.retired)) - Number(Boolean(b.retired))).map((card) => {
           const standing = cardStanding(card, name);
           const thumb = thumbs[card.name];
           return (
-            <li key={card.name}>
+            <li key={card.name} data-card={card.name} data-card-retired={card.retired ? '' : undefined}>
               <button type="button" className={`bk-card-tile bk-card-tone-${standing.tone}`} onClick={() => setOpen(card.name)} title={standing.detail}>
                 <span className="bk-card-thumb">
                   {thumb?.svg ? <InlineSvg svg={thumb.svg} label={`${card.name} card`} /> : (

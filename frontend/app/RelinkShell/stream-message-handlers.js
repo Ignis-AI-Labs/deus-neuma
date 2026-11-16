@@ -21,6 +21,7 @@ import { announceBoardArrangement } from './marketing/board-change.js';
 import { shouldAnnounceStorage } from './storage-warning.js';
 import { TOOL_MODES, CHAT_MODES } from './stream-preferences.js';
 import { isBootActive } from '../Opening/opening-state.js';
+import { CLONE_FRAMES } from './clone-split.js';
 
 export const createStreamHandlers = ({
   wsService, dispatch, flushSpeech, ensureFilter, ensureSink, applyPurpose,
@@ -339,6 +340,8 @@ export const createStreamHandlers = ({
     ['citation:held', onCitationHeld],
     // A /compact, drawn in the thread where it happened (compact-marker.js).
     ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
+    // A shadow clone split, filed into its sub-channels on the turn's chip (clone-split.js).
+    ...CLONE_FRAMES.map((type) => [type, (frame) => dispatch({ type: 'CLONE', frame })]),
     ['tool:usage', onTool],
     // a finished act's result, for a chip that came up with nothing to open (TOOL_DETAIL)
     ['tool:detail', (data) => dispatchAfterSpeech(lifecycleAction('tool:detail', data))],

@@ -114,3 +114,5 @@ export const getBrandCard = async (brand, template) => apiCall('GET', cardsUrl(b
 export const saveBrandCard = async (brand, template, { svg, spec }) =>
   apiCall('PUT', cardsUrl(brand, template), { body: { svg, spec } });
 export const dropBrandCard = async (brand, template) => apiCall('DELETE', cardsUrl(brand, template));
+/** Stop using a shared card type for this company (use: false), or use it again. */
+export const setBrandCardUse = async (brand, template, use) => apiCall('PUT', `${cardsUrl(brand, template)}/use`, { body: { use } });

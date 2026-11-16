@@ -41,6 +41,7 @@ import { applyFileSettings } from './services/user-files-settings.js';
 import { installRemoteGate, mountRemoteRoutes, attachRemoteTunnelTarget } from './services/remote/wire.js';
 import { attachUpgradeRouter } from './services/ws-upgrade-router.js';
 import { installWalletBridgeIpc } from './services/auth-bridge-ipc.js';
+import { waitingPulse } from './services/waiting/waiting-pulse.js';
 
 // --- Bootstrap ---
 
@@ -223,6 +224,8 @@ app.use((req, res, next) => {
 // The global ceiling, minus the routes that only hand back bytes already on
 // disk (THE GALLERY's files) — see isUnmeteredApiPath for why.
 app.use('/api', apiLimiter);
+// Any change the operator makes tells every open window of theirs to read what waits again (waiting-pulse.js).
+app.use('/api/v1', waitingPulse);
 
 // Security headers — defense-in-depth (HEADERS-001), see security-headers.js
 app.use(securityHeaders);

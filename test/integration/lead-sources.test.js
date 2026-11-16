@@ -140,7 +140,7 @@ describe('the lead sources, read as they answer (pure)', () => {
   });
 
   test('free sources come first and need no key; the people source names the operator\'s own key', () => {
-    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
+    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['company-index', 'companies', null], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
     for (const id of ['hunter', 'tomba', 'apollo']) expect(getService(id), id).toMatchObject({ kind: 'service', group: 'Lead data', requiresKey: true });
     // Every paid source says the most one lookup may spend.
     expect(Object.values(LEAD_SOURCES).filter((s) => s.kind === 'people').map((s) => s.cost)).toEqual([1, 1, 5]);
@@ -241,8 +241,16 @@ describe('GATHERING through the real stack (gnosis)', () => {
   });
 
   test('the token source adds the team with its own site and leaves the launchpad token and the dust out', async () => {
+    // A paced gather says where it stands on the chat's own line, step by step (Design note, 2026-11-16: […]).
+    const said = [];
+    const hear = (raw) => { try { const f = JSON.parse(String(raw)); const d = f.data ?? f; if (d?.tool === 'intents/sales.gather' && d.status === 'running') said.push(d.summary); } catch { /* not a frame */ } };
+    client.on('message', hear);
     const got = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'base-tokens', count: 5 });
+    await new Promise((resolve) => { setTimeout(resolve, 100); });
+    client.off('message', hear);
     expect(got.status).toBe('ok');
+    expect(said[0]).toBe('gathering from base-tokens — reading page 1 of the most traded pools — 0 of 5 found');
+    expect(said.some((s) => /^gathering from base-tokens — 1 of 5 found — \d+ tokens read, last /.test(s))).toBe(true);
     expect(got.content).toMatch(/1 new candidate\(s\)/);
     expect((await readCandidates(me.address)).at(-1)).toMatchObject({ domain: 'limitless.exchange', token: '0xaaa', state: 'waiting' });
     // The dust token (under the liquidity floor) was never even looked up.

@@ -6,7 +6,7 @@
 import { describe, test, expect } from 'vitest';
 import { foldContacts, contactStats, contactLine, EMAIL_STATES } from '../../backend/services/sales/contact-book.js';
 import { makeProspect } from '../../backend/services/sales/prospect-shape.js';
-import { bookLine, contactGroups, companyLine, contactsCsv, STATE_WORDS } from '../../frontend/app/RelinkShell/company-line/contact-book-view.js';
+import { peopleRows, narrow, contactsCsv, STATE_WORDS } from '../../frontend/app/RelinkShell/company-line/people-view.js';
 
 const NOW = '2026-11-16T09:00:00.000Z';
 const segments = [{ id: 's-1', company: 'ignis' }];
@@ -66,17 +66,15 @@ describe('the contact book', () => {
     expect(filed.people).toEqual([{ name: 'Bo Chen', role: 'Head of Security', sourceUrl: 'https://acme.example/team', email: 'bo@acme.example' }, { name: 'Ada Lovelace', role: 'CTO', sourceUrl: 'https://acme.example/team' }]);
   });
 
-  test('the screen reads it by company, the confirmed first, narrows on a search, and writes it out as a spreadsheet', () => {
+  test('the screen reads every person once, narrows on a search, and writes the book out as a spreadsheet', () => {
     const book = [...read({ leads: [lead({ touches: [{ at: NOW, direction: 'in' }] })] }), { name: 'Dee Roe', title: 'CEO', company: 'Zeta Labs', domain: 'zeta.example', email: null, reach: null, state: 'none', source: 'https://zeta.example/about', at: NOW, lead: null }];
-    const stats = contactStats(book);
-    expect(bookLine(stats)).toEqual(['4 PEOPLE', '2 COMPANIES', { text: '1 CONFIRMED', tone: 'on' }, '1 VERIFIED', '1 READ ON A PAGE', '1 NO ADDRESS']);
-    expect(bookLine(contactStats([]))).toEqual(['NOBODY YET']);
-    const groups = contactGroups(book);
-    expect(groups.map((g) => [g.company, g.people.length, g.confirmed, g.reachable])).toEqual([['Acme Protocol', 3, 1, 3], ['Zeta Labs', 1, 0, 0]]);
-    expect(companyLine(groups[0])).toEqual(['3 PEOPLE', '3 WITH AN ADDRESS', { text: '1 CONFIRMED', tone: 'on' }]);
-    expect(contactGroups(book, 'security').map((g) => g.people.map((p) => p.name))).toEqual([['Bo Chen']]);
-    expect(contactGroups(book, 'zeta.example').map((g) => g.company)).toEqual(['Zeta Labs']);
-    expect(contactGroups(book, 'nobody at all')).toEqual([]);
+    expect(contactStats(book)).toMatchObject({ people: 4, companies: 2, confirmed: 1, verified: 1, published: 1, none: 1 });
+    const rows = peopleRows({ contacts: book, leads: [] });
+    expect(rows).toHaveLength(4);
+    expect(rows.filter((r) => r.lead).length).toBe(1);
+    expect(narrow(rows, { query: 'security' }).map((r) => r.name)).toEqual(['Bo Chen']);
+    expect(narrow(rows, { query: 'zeta.example' }).map((r) => r.company)).toEqual(['Zeta Labs']);
+    expect(narrow(rows, { query: 'nobody at all' })).toEqual([]);
     const csv = contactsCsv(book).split('\r\n');
     expect(csv[0]).toBe('"name","title","company","domain","email","address is","other way to reach","filed as","lead status","came from","first seen","source"');
     expect(csv).toHaveLength(5);

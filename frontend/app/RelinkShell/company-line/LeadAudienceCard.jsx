@@ -7,6 +7,7 @@
 // APPROVE THE LIST stand in the head and under the tiles. Pure rendering.
 
 import { MATCH_WORDS, STATE_WORDS, LIST_WORDS, segmentMoves } from './lead-engine-view.js';
+import { AudienceCompanies } from './AudienceCompanies.jsx';
 import { poolTiles, chipsOf, poolWords, audienceWaits } from './lead-audience-view.js';
 
 const Prospect = ({ p }) => (
@@ -81,33 +82,13 @@ const Pitch = ({ s }) => (
   </>
 );
 
-const Companies = ({ s, pool, leads = [] }) => (
-  <>
-    {leads.length ? (
-      <div data-audience-leads="">
-        <p className="cline-aud-k label-data">ON THE LEAD LIST · {leads.length}</p>
-        <ul className="cline-ws-src" aria-label={`leads from ${s.name}`}>
-          {leads.map((p) => <li key={p.id} data-lead-of={p.id}><b>{p.name}</b> ({p.domain}){p.people.length ? ` — ${p.people.map((m) => `${m.name}, ${m.role}`).join('; ')}` : ''}</li>)}
-        </ul>
-      </div>
-    ) : null}
-    {pool.length ? (
-      <div>
-        <p className="cline-aud-k label-data">COMPANIES FOUND, NOT YET LEADS · {pool.length}</p>
-        <ul className="cline-ws-src" aria-label={`companies for ${s.name}`}>{pool.map((p) => <Prospect key={p.id} p={p} />)}</ul>
-      </div>
-    ) : null}
-    {!pool.length && !leads.length ? <p className="cline-move-t">NO COMPANY FOUND FOR THIS AUDIENCE YET</p> : null}
-  </>
-);
-
 /**
  * @param {{row: {segment: object, pool: object[], leads?: object[], counts: object, listable: number}, busy: boolean, onMove: Function, onList: Function,
  *   mode?: 'full' | 'nested'}} props — nested: folded under its campaign (one line; a press opens the pitch, the
  *   companies and the leads; it stands open while it waits on the operator)
  */
-export const LeadAudienceCard = ({ row, busy, onMove, onList, mode = 'full' }) => {
-  const { segment: s, pool, leads = [], counts, listable } = row;
+export const LeadAudienceCard = ({ row, busy, onMove, onList, onRead = null, mode = 'full' }) => {
+  const { segment: s, pool, leads = [], gathered = [], counts, listable } = row;
   if (mode === 'nested') {
     return (
       <li className="cline-aud is-nested" data-segment-id={s.id} data-segment-state={s.state}>
@@ -120,7 +101,9 @@ export const LeadAudienceCard = ({ row, busy, onMove, onList, mode = 'full' }) =
           <div className="cline-aud-in">
             <Moves s={s} busy={busy} onMove={onMove} />
             <ListApproval s={s} listable={listable} busy={busy} onList={onList} />
-            <Companies s={s} pool={pool} leads={leads} />
+            {/* The one list of this audience's companies; a scored one opens to why, and who was read. */}
+            <AudienceCompanies segment={s} gathered={gathered} pool={pool} leads={leads} busy={busy} onRead={onRead}
+              detailOf={(domain) => { const p = [...leads, ...pool].find((x) => x.domain === domain); return p ? <ul className="cline-ws-src"><Prospect p={p} /></ul> : null; }} />
             <details className="cline-aud-why" open={s.state === 'draft'}>
               <summary className="cline-aud-k label-data">THE PITCH — THE OFFER, WHO IT REACHES, WHAT MAKES A FIT</summary>
               <Pitch s={s} />

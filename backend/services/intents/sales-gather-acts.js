@@ -4,6 +4,8 @@
  *   sales/gather    pull companies for an audience from a lead source
  *                   (sales/lead-sources.js) into the candidate pool. A
  *                   candidate is not a prospect: the seat still scores it.
+ *   sales/read-sites  each gathered company's own site, read in bulk: alive
+ *                   or not, what it says it is, its published addresses.
  *   sales/contacts  the people and published addresses at one gathered
  *                   company, from the contact-data provider the operator
  *                   attached with their own key. No key: the seat is told to
@@ -16,10 +18,18 @@
  */
 import { officeContext } from './revenue-acts.js';
 import { isConnectionOn } from '../connections/connection-switches.js';
-import { LEAD_SOURCES, GATHER_MAX, candidateLine } from '../sales/lead-sources.js';
+import { LEAD_SOURCES, GATHER_MAX, INDEX_GATHER_MAX, candidateLine } from '../sales/lead-sources.js';
+import { readAudienceSites } from '../sales/site-reads.js';
+import { READ_MAX, siteLine } from '../sales/company-reader.js';
+import { SIZES, trafficOf, trafficLoaded, trafficWords } from '../sales/company-index.js';
 import { readSegments, readProspects, readCandidates, addCandidates, noteContacts, readContactLookups } from '../sales/sales-store.js';
 import { readSpend, spentThisMonth, spendRefusal, attachedProviders } from '../sales/lead-spend.js';
 
+const SHOWN_GATHERED = 40;
+// A gather is paced by the list it reads and can run for minutes (Design note, 2026-11-16: […]). Each step it reports becomes the act's own line in the chat, in place of a bare […].
+const saying = (emit, policyTool, doing) => (words) => {
+  try { emit?.({ tool: `intents/${policyTool}`, status: 'running', summary: `${doing} — ${words}` }); } catch { /* a closed stream must not end the work */ }
+};
 const officerRefusal = { ok: false, status: 'denied', reason: 'the lead engine is the Mercator office\'s — only the seated Mercator files to it (house/post reaches them; the operator seats the office)' };
 const offRefusal = { ok: false, status: 'denied', reason: 'the LEAD SOURCES connection is off — the operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS; until then find companies by reading the web yourself' };
 const invalid = (reason) => ({ ok: false, status: 'invalid', reason });
@@ -31,8 +41,8 @@ const PEOPLE_SOURCES = Object.entries(LEAD_SOURCES).filter(([, s]) => s.kind ===
 const salesGatherIntent = Object.freeze({
   name: 'sales/gather',
   policyTool: 'sales.gather',
-  fieldsForPrompt: `{segment, source: ${COMPANY_SOURCES.map(([id]) => `"${id}"`).join(' | ')}, count?}`,
-  descriptionForPrompt: `THE LEAD ENGINE. Gather companies for an audience in bulk from a public list (count: 1 to ${GATHER_MAX}, new ones only): ${COMPANY_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}. They land as CANDIDATES in your briefing with what the list says about each. Score the ones that fit with sales/prospect; a candidate is nobody's lead until you have.`,
+  fieldsForPrompt: `{segment, source: ${COMPANY_SOURCES.map(([id]) => `"${id}"`).join(' | ')}, count?, words?, industries?: [name], sizes?: [${SIZES.map((s) => `"${s}"`).join(' | ')}], foundedFrom?: year, live?: boolean}`,
+  descriptionForPrompt: `THE LEAD ENGINE. Gather companies for an audience in bulk from a public list (count: 1 to ${GATHER_MAX}, new ones only): ${COMPANY_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}. company-index is the big one: it takes a SEARCH (words: matched in a company's name, industry and city; industries: exact names, a wrong one is answered with the right ones; sizes; foundedFrom; live: true keeps only companies whose site is among the million most visited, which drops dead ones) and returns up to ${INDEX_GATHER_MAX} a call, most visited first, in the audience's own countries. Gather wide there, then read and score. They land as CANDIDATES in your briefing with what the list says about each. Score the ones that fit with sales/prospect; a candidate is nobody's lead until you have.`,
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -42,16 +52,22 @@ const salesGatherIntent = Object.freeze({
     if (!source) return invalid(`source is one of: ${COMPANY_SOURCES.map(([id, s]) => `${id} (${s.label})`).join('; ')}`);
     const segment = (await readSegments(context.wallet)).find((s) => s.id === String(payload?.segment ?? '').trim());
     if (!segment || segment.state === 'retired') return invalid(`"${payload?.segment ?? ''}" is not one of your audiences — file it with sales/segment first`);
-    return { ok: true, value: { context, segment, sourceId: source[0], count: payload?.count } };
+    const strings = (v) => (Array.isArray(v) ? v : v ? [v] : []).map((x) => String(x).trim()).filter(Boolean).slice(0, 12);
+    const query = { words: String(payload?.words ?? '').slice(0, 200), industries: strings(payload?.industries), sizes: strings(payload?.sizes), foundedFrom: parseInt(payload?.foundedFrom, 10) || null, live: payload?.live === true };
+    if (source[1].local && !query.words && !query.industries.length) return invalid('a search of the company index needs words or industries (what kind of company), or it would return the whole world');
+    return { ok: true, value: { context, segment, sourceId: source[0], count: payload?.count, query } };
   },
   summarize: (payload) => `gather companies from ${payload?.source ?? '?'} for audience ${payload?.segment ?? '?'}`,
-  execute: async ({ context, segment, sourceId, count }, { signal } = {}) => {
+  execute: async ({ context, segment, sourceId, count, query }, { signal, emit } = {}) => {
     const [candidates, prospects] = await Promise.all([readCandidates(context.wallet), readProspects(context.wallet)]);
     const known = { domains: new Set([...candidates.map((c) => c.domain), ...prospects.map((p) => p.domain)]), tokens: new Set(candidates.map((c) => c.token).filter(Boolean)) };
-    const found = await LEAD_SOURCES[sourceId].gather({ count, known, signal });
-    const added = await addCandidates(context.wallet, segment.id, found.candidates, context.laneId);
+    const found = await LEAD_SOURCES[sourceId].gather({ count, known, signal, segment, query, onProgress: saying(emit, 'sales.gather', `gathering from ${sourceId}`) });
+    // Every gathered company carries its traffic, whatever list it came from: the free answer to "is anybody there".
+    const ranks = trafficLoaded() ? trafficOf(found.candidates.filter((c) => !('trafficRank' in c)).map((c) => c.domain)) : null;
+    const rows = ranks ? found.candidates.map((c) => ('trafficRank' in c ? c : { ...c, trafficRank: ranks.get(c.domain) ?? null, signal: `${c.signal} · ${trafficWords(ranks.get(c.domain) ?? null)}` })) : found.candidates;
+    const added = await addCandidates(context.wallet, segment.id, rows, context.laneId);
     if (!added.length) return { ok: false, reason: `Nothing new was gathered from ${sourceId}${found.stopped ? `: ${found.stopped}` : ' — the house already holds every company it returned'}.` };
-    return { ok: true, detail: [`${added.length} new candidate(s) for "${segment.name}" from ${sourceId}${found.stopped ? ` (it stopped early: ${found.stopped})` : ''}:`, ...added.map((c) => `- [${c.id}] ${candidateLine(c)}`), 'Read the ones that could fit, then score them with sales/prospect (source: the candidate\'s own page).'].join('\n') };
+    return { ok: true, detail: [`${added.length} new candidate(s) for "${segment.name}" from ${sourceId}${found.stopped ? ` (it stopped early: ${found.stopped})` : ''}:`, ...added.slice(0, SHOWN_GATHERED).map((c) => `- [${c.id}] ${candidateLine(c)}`), ...(added.length > SHOWN_GATHERED ? [`… and ${added.length - SHOWN_GATHERED} more, all in your briefing and on the campaign's screen.`] : []), 'Read the ones that could fit, then score them with sales/prospect (source: the candidate\'s own page).'].join('\n') };
   },
 });
 
@@ -90,4 +106,27 @@ const salesContactsIntent = Object.freeze({
   },
 });
 
-export const salesGatherIntents = Object.freeze([salesGatherIntent, salesContactsIntent]);
+const salesReadSitesIntent = Object.freeze({
+  name: 'sales/read-sites',
+  policyTool: 'sales.read-sites',
+  fieldsForPrompt: `{segment, count?}`,
+  descriptionForPrompt: `THE LEAD ENGINE. Read the own sites of an audience's gathered companies in bulk (count: 1 to ${READ_MAX}; the next ones not yet read, most visited first). For each: whether the site is ALIVE, what the company says it is, the addresses it publishes with the page each stands on, and its own social links. A company with NO SITE is a dead end: do not score it. Do this after a gather and before scoring, so you score from what each company says about itself; open a company's pages yourself only where this leaves a question.`,
+  availableFor,
+  validate: async (payload, { connection }) => {
+    const context = await seated(connection);
+    if (!context) return officerRefusal;
+    if (!isConnectionOn('lead-sources')) return offRefusal;
+    const segment = (await readSegments(context.wallet)).find((s) => s.id === String(payload?.segment ?? '').trim());
+    if (!segment || segment.state === 'retired') return invalid(`"${payload?.segment ?? ''}" is not one of your audiences`);
+    return { ok: true, value: { context, segment, count: payload?.count } };
+  },
+  summarize: (payload) => `read the sites of companies gathered for audience ${payload?.segment ?? '?'}`,
+  execute: async ({ context, segment, count }, { signal, emit } = {}) => {
+    const done = await readAudienceSites(context.wallet, segment.id, { count, by: context.laneId, signal, onProgress: saying(emit, 'sales.read-sites', 'reading sites') });
+    if (!done.ok) return { ok: false, reason: done.reason };
+    const dead = done.read.filter((r) => !r.site.alive).length;
+    return { ok: true, detail: [`${done.read.length} site(s) read for "${segment.name}": ${done.read.length - dead} alive, ${dead} with no site. ${done.left} gathered compan${done.left === 1 ? 'y is' : 'ies are'} still unread.`, ...done.read.map((r) => `- ${siteLine(r.domain, r.site)}`)].join('\n').slice(0, 9000) };
+  },
+});
+
+export const salesGatherIntents = Object.freeze([salesGatherIntent, salesContactsIntent, salesReadSitesIntent]);

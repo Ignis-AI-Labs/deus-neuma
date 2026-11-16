@@ -6,7 +6,7 @@
 // then on every card of that name this company posts is drawn from this design. impure — network.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getBrandCard, previewBrandCard, saveBrandCard, dropBrandCard } from '../../../services/brands.js';
+import { getBrandCard, previewBrandCard, saveBrandCard, dropBrandCard, setBrandCardUse } from '../../../services/brands.js';
 import { useKit } from './kit-context.js';
 import { InlineSvg } from './InlineSvg.jsx';
 import { cardStanding } from './card-gallery-view.js';
@@ -82,6 +82,9 @@ export const CardDesigner = ({ template, card, onBack, onChanged }) => {
   const keep = () => act(() => saveBrandCard(brand, template, { svg, spec: parsed.spec }), `Saved. Every ${template} card ${name} posts is drawn from this design.`);
   const letGo = () => act(() => dropBrandCard(brand, template), card?.ownType ? `The ${template} card type is gone.` : `${name} draws the shared ${template} card again.`);
 
+  const retire = () => act(() => setBrandCardUse(brand, template, false), `${name} no longer uses the ${template} card. Every other company keeps it.`);
+  const restore = () => act(() => setBrandCardUse(brand, template, true), `${name} uses the ${template} card again.`);
+
   if (!saved) {
     return (
       <div className="bk-section">
@@ -97,7 +100,7 @@ export const CardDesigner = ({ template, card, onBack, onChanged }) => {
     <div className="bk-section bk-designer">
       <header className="bk-section-head">
         <button type="button" className="bk-back label-data" onClick={onBack}>← ALL CARDS</button>
-        <h4 className="label-data">{(saved.spec?.title || template).toUpperCase()} · {own ? `${name}'S OWN DESIGN` : 'SHARED LAYOUT'}</h4>
+        <h4 className="label-data">{(saved.spec?.title || template).toUpperCase()} · {own ? `${name}'S OWN DESIGN` : card?.retired ? `NOT USED BY ${name}` : 'SHARED LAYOUT'}</h4>
         {standing ? <p className={`bk-note bk-card-tone-${standing.tone}`}>{standing.detail}</p> : null}
       </header>
 
@@ -116,6 +119,8 @@ export const CardDesigner = ({ template, card, onBack, onChanged }) => {
         {!own && !dirty ? <button type="button" className="bk-save label-data" disabled={state.busy} onClick={keep}>MAKE IT {name}&rsquo;S OWN</button> : null}
         {dirty ? <button type="button" className="bk-save label-data" disabled={state.busy || Boolean(parsed.error)} onClick={keep}>SAVE THIS DESIGN</button> : null}
         {dirty ? <button type="button" className="bk-quiet label-data" disabled={state.busy} onClick={() => { setSvg(saved.svg); setSpecText(asText(saved.spec)); }}>UNDO CHANGES</button> : null}
+        {!own && !dirty && !card?.retired ? <button type="button" className="bk-quiet label-data" disabled={state.busy} onClick={retire} title="Every other company keeps this card">REMOVE FROM {name}</button> : null}
+        {!own && !dirty && card?.retired ? <button type="button" className="bk-quiet label-data" disabled={state.busy} onClick={restore}>USE IT AGAIN</button> : null}
         {own && !dirty ? (
           <button type="button" className="bk-quiet label-data" disabled={state.busy} onClick={letGo}>
             {card?.ownType ? 'DELETE THIS CARD TYPE' : 'BACK TO THE SHARED DESIGN'}

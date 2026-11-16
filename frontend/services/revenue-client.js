@@ -29,6 +29,8 @@ export const setSegmentState = (id, state) => revenueCall('POST', `/lead-engine/
 export const suppressContact = (target, reason) => revenueCall('POST', '/lead-engine/suppress', { body: { target, reason }, errorPrefix: 'Could not add to the do-not-contact list' });
 
 /** Approve an approved audience's company list as it stands; its leads' emails then go within the daily limits. impure. @param {string} id */
+/** Have the next gathered companies' own sites read (alive or not, what each says it is, its published addresses). */
+export const readSegmentSites = (id, count = 40) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(id)}/read-sites`, { body: { count }, errorPrefix: 'Could not read the sites' });
 export const approveSegmentList = (id) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(id)}/list`, { errorPrefix: 'Could not approve the list' });
 
 /** Approve or return the Mercator's latest sales facts sheet. impure. @param {string} sheetId @param {'approved'|'returned'} verdict @param {string} [note] */

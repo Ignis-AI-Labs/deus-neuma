@@ -48,6 +48,8 @@ const historyToolSegments = (tools) =>
     findings: t.findings && t.findings.count ? t.findings : null,
     // a benchmark the chat launched — on resume its card reads how it ended
     bench: t.bench?.comparisonId ? t.bench : null,
+    // a shadow clone split — its sub-channels, each clone's report and acts (clone-split.js)
+    ...(t.split?.clones?.length ? { split: { ...t.split, clones: t.split.clones.map((c) => ({ ...c, text: '' })) } } : {}),
   }));
 
 /** Text between two acts → a speech segment, or nothing. The slice inherits the

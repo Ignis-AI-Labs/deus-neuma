@@ -28,7 +28,7 @@ import { leadEmailRefusal } from '../../backend/services/sales/email-ledger.js';
 import { addSuppression } from '../../backend/services/sales/sales-store.js';
 import { makeSuppression } from '../../backend/services/sales/suppress-shape.js';
 import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-briefing.js';
-import { leadGroups, groupLine, listLine, statusWords, SCAN_ASK, SORT_ASK, sourceCounts, fromSource, sourceWords } from '../../frontend/app/RelinkShell/company-line/lead-list-view.js';
+import { peopleRows, viewCounts, firstView, kindCounts, sourceCounts, narrow, peopleLine, statusWords, SCAN_ASK, SORT_ASK, sourceWords } from '../../frontend/app/RelinkShell/company-line/people-view.js';
 
 const [mailScan, inbound, refile] = salesInboundIntents;
 const SAVED = Object.fromEntries(['DNA_ENCRYPTION_KEY', 'NEUMA_EMAIL_CREDENTIALS_PATH', 'NEUMA_EMAIL_BINDING_PATH'].map((k) => [k, process.env[k]]));
@@ -59,12 +59,19 @@ describe('who wrote to the house, read from envelopes (pure)', () => {
     expect(scanText(missedSenders({ messages: [], leads: [], suppressed: () => false }))).toContain('Nobody new');
   });
 
-  test('the lead list reads by kind, the ones owed an answer first', () => {
-    const leads = [{ id: '1', name: 'Ana', kind: 'applicant', status: 'replied', updatedAt: '2' }, { id: '2', name: 'Bo', kind: 'buyer', status: 'won', updatedAt: '3' }, { id: '3', name: 'Cy', kind: 'buyer', status: 'replied', updatedAt: '1' }];
-    const groups = leadGroups(leads, LEAD_KINDS);
-    expect(groups.map((g) => [g.label, g.leads.map((l) => l.name), g.open, g.owed])).toEqual([['BUYERS', ['Cy', 'Bo'], 1, 1], ['APPLICANTS', ['Ana'], 1, 1]]);
-    expect(groupLine(groups[0])).toEqual(['2 LEADS', '1 OPEN', { text: '1 OWED AN ANSWER', tone: 'alert' }]);
-    expect(listLine(groups)).toEqual(['3 LEADS', '2 BUYERS', '1 APPLICANTS', { text: '2 OWED AN ANSWER', tone: 'alert' }]);
+  test('the leads are one list of people: owed an answer first, counted by what they are, narrowed on a press', () => {
+    const leads = [{ id: '1', name: 'Ana', kind: 'applicant', status: 'replied', updatedAt: '2', channel: 'email' }, { id: '2', name: 'Bo', kind: 'buyer', status: 'won', updatedAt: '3', channel: 'x' }, { id: '3', name: 'Cy', kind: 'buyer', status: 'replied', updatedAt: '1', channel: 'x' }];
+    const contacts = [...leads.map((l) => ({ name: l.name, state: 'none', lead: { id: l.id, kind: l.kind, status: l.status, channel: l.channel } })), { name: 'Dee', company: 'Zeta', state: 'published', email: 'dee@zeta.example', lead: null }];
+    const rows = peopleRows({ contacts, leads, upkeep: [{ leadId: '1', kind: 'answer', hours: 2 }] });
+    expect(rows.map((r) => [r.name, r.active, r.owed, r.due.length])).toEqual([['Ana', true, true, 1], ['Cy', true, true, 0], ['Bo', false, false, 0], ['Dee', false, false, 0]]);
+    expect(viewCounts(rows).map((v) => [v.label, v.n])).toEqual([['ACTIVE LEADS', 2], ['DUE', 1], ['WON OR CLOSED', 1], ['NOT LEADS YET', 1], ['EVERYONE', 4]]);
+    expect([firstView(rows), firstView(rows.map((r) => ({ ...r, due: [] }))), firstView([])]).toEqual(['due', 'active', 'all']);
+    expect(kindCounts(rows, 'all').map((k) => [k.label, k.n])).toEqual([['BUYERS', 2], ['APPLICANTS', 1]]);
+    expect(narrow(rows, { view: 'active', kind: 'buyer' }).map((r) => r.name)).toEqual(['Cy']);
+    expect(narrow(rows, { view: 'all', query: 'zeta' }).map((r) => r.name)).toEqual(['Dee']);
+    expect(peopleLine(rows, { confirmed: 1, bounced: 0 })).toEqual(['2 ACTIVE LEADS', { text: '2 OWED AN ANSWER', tone: 'alert' }, { text: '1 DUE', tone: 'alert' }, '4 PEOPLE KNOWN', { text: '1 CONFIRMED ADDRESS', tone: 'on' }]);
+    // A lead the book did not carry still stands on the list.
+    expect(peopleRows({ contacts: [], leads: [leads[0]] }).map((r) => [r.name, r.lead.id])).toEqual([['Ana', '1']]);
     expect([statusWords({ status: 'replied' }), statusWords({ status: 'cold' })]).toEqual(['THEY WROTE — OWED AN ANSWER', 'NOT WRITTEN TO YET']);
     expect(SCAN_ASK).toMatch(/sales\/mail-scan[\s\S]*sales\/inbound[\s\S]*Do not answer anyone yet/);
   });
@@ -78,9 +85,9 @@ describe('where a lead came from (pure)', () => {
   });
 
   test('the list counts its leads by source, most first, and shows one source alone on a press', () => {
-    const leads = [{ id: '1', channel: 'x', status: 'contacted' }, { id: '2', channel: 'email', status: 'replied' }, { id: '3', channel: 'x', status: 'replied' }, { id: '4', channel: 'other', status: 'cold' }];
-    expect(sourceCounts(leads)).toEqual([{ channel: 'x', label: 'X (TWITTER)', n: 2, owed: 1 }, { channel: 'other', label: 'ELSEWHERE', n: 1, owed: 0 }, { channel: 'email', label: 'EMAIL', n: 1, owed: 1 }]);
-    expect([fromSource(leads, 'x').map((l) => l.id), fromSource(leads, '').length, fromSource(leads, 'linkedin')]).toEqual([['1', '3'], 4, []]);
+    const rows = peopleRows({ leads: [{ id: '1', channel: 'x', status: 'contacted' }, { id: '2', channel: 'email', status: 'replied' }, { id: '3', channel: 'x', status: 'replied' }, { id: '4', channel: 'other', status: 'cold' }].map((l) => ({ ...l, name: l.id })) });
+    expect(sourceCounts(rows, 'all')).toEqual([{ id: 'x', label: 'X (TWITTER)', n: 2 }, { id: 'other', label: 'ELSEWHERE', n: 1 }, { id: 'email', label: 'EMAIL', n: 1 }]);
+    expect([narrow(rows, { source: 'x' }).map((r) => r.lead.id).sort(), narrow(rows, {}).length, narrow(rows, { source: 'linkedin' })]).toEqual([['1', '3'], 4, []]);
     expect([sourceWords('linkedin'), sourceWords('sms'), sourceWords(undefined)]).toEqual(['LINKEDIN', 'SMS', 'OTHER']);
   });
 });
@@ -99,10 +106,10 @@ describe('nobody is a buyer by default (pure)', () => {
   });
 
   test('the list shows the unsorted first, marked, with the ask that hands them to the seat', () => {
-    const groups = leadGroups([{ id: '1', name: 'Lynx', kind: 'unsorted', status: 'contacted', updatedAt: '1' }, { id: '2', name: 'Raj', kind: 'buyer', status: 'cold', updatedAt: '2' }], LEAD_KINDS);
-    expect(groups.map((g) => [g.label, g.unsorted])).toEqual([['NOT SORTED YET', true], ['BUYERS', false]]);
-    expect(groupLine(groups[0])).toEqual([{ text: '1 TO SORT', tone: 'alert' }, '1 OPEN']);
-    expect(listLine(groups)).toEqual(['2 LEADS', { text: '1 NOT SORTED YET', tone: 'alert' }, '1 BUYERS']);
+    const rows = peopleRows({ leads: [{ id: '1', name: 'Lynx', kind: 'unsorted', status: 'contacted', updatedAt: '1' }, { id: '2', name: 'Raj', kind: 'buyer', status: 'cold', updatedAt: '2' }], upkeep: [{ leadId: '1', kind: 'sort' }] });
+    expect(rows.map((r) => r.name)).toEqual(['Lynx', 'Raj']);
+    expect(kindCounts(rows, 'all')).toEqual([{ id: 'unsorted', label: 'NOT SORTED YET', n: 1, tone: 'alert' }, { id: 'buyer', label: 'BUYERS', n: 1, tone: null }]);
+    expect(peopleLine(rows, null)).toEqual(['2 ACTIVE LEADS', { text: '1 NOT SORTED YET', tone: 'alert' }, { text: '1 DUE', tone: 'alert' }, '2 PEOPLE KNOWN']);
     expect(SORT_ASK).toMatch(/in one sales\/kind filing[\s\S]*a vendor is selling to us[\s\S]*Where you cannot tell, say so and ask me/);
   });
 });

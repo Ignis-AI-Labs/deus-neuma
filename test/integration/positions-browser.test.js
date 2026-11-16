@@ -175,9 +175,11 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     await hub.locator('[data-lead-engine="leads"]').waitFor({ timeout: 60000 });
     expect(await hub.locator('[data-facts-sheet], [data-business-model], [data-sales-campaigns], [data-segment-id]').count()).toBe(0);
     // A setting is not a lead: paid lead data stands on SETTINGS as one switch, never here.
-    await hub.locator('[data-fold="leads:list"]').waitFor({ timeout: 60000 });
+    await hub.locator('[data-people]').waitFor({ timeout: 60000 });
     expect(await hub.locator('[data-switch-limit], [data-paid-lead]').count()).toBe(0);
-    expect(await hub.locator('[data-suppress-form], [data-fold="leads:list"], [data-fold="leads:contacts"]').count()).toBe(3);
+    // LEADS is one list of people and the do-not-contact list: no second list, nothing nested.
+    expect(await hub.locator('[data-suppress-form], [data-people]').count()).toBe(2);
+    expect(await hub.locator('[data-lead-engine="leads"] details').count()).toBe(1);
 
     await hub.getByRole('tab', { name: 'DEALS' }).click();
     await hub.locator('[data-sales]').waitFor();
