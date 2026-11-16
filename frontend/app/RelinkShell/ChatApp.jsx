@@ -295,6 +295,8 @@ const ChatBody = () => {
   // speaks (2026-09-28 smoothness pass): an inline arrow here re-rendered every
   // row of the transcript on every streamed frame.
   const retry = useCallback((turnId) => sendRetry(turnId), [sendRetry]);
+  // CONTINUE on a reply the app's close cut short: the portal runs the turn that picks it up (portal-turn-adopt.js).
+  const continueCut = useCallback((turnId) => wsService.send('consciousness:continue', { turnId }), [wsService]);
   const queueEdit = useCallback(({ holdId, text }) => editQueuedThought(holdId, text), [editQueuedThought]);
   const send = useCallback((text, preset, attachments, revisionTurnId) => (
     revisionTurnId
@@ -322,6 +324,7 @@ const ChatBody = () => {
       // ↻ on any settled answer asks its POINT again as take N+1; disk
       // stays append-only, the view folds. The busy gate hides it mid-turn.
       onRetry={!busy && state.connected ? retry : null}
+      onContinue={!busy && state.connected ? continueCut : null}
       onTakeSwitch={switchTake}
       onApprove={respondApproval}
       onAsk={respondAsk}

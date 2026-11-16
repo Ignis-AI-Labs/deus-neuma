@@ -3,8 +3,6 @@
 // what was gathered, what the seat scored, what became a lead; counted by country, by size and by whether
 // its site has any traffic; then one row each. Pure.
 
-export const PAGE = 100;
-
 const STANDING = Object.freeze({ lead: ['ON THE LEAD LIST', 'on'], strong: ['STRONG MATCH', 'on'], weak: ['WEAK MATCH', null], none: ['NO MATCH', null], gathered: ['GATHERED — NOT SCORED YET', null] });
 export const standingWords = (standing) => STANDING[standing] ?? [String(standing).toUpperCase(), null];
 const ORDER = Object.keys(STANDING);
@@ -88,12 +86,4 @@ export const companiesLine = (rows) => {
     sites.read ? `${sites.read.toLocaleString('en-US')} SITES READ · ${sites.withAddress.toLocaleString('en-US')} WITH AN ADDRESS` : null,
     sites.dead ? { text: `${sites.dead.toLocaleString('en-US')} DEAD ENDS`, tone: 'alert' } : null,
   ].filter(Boolean);
-};
-
-/** The rows that show: the dead ends left out when asked, one page of them. */
-export const pageOf = (rows, { liveOnly = false, page = 0 } = {}) => {
-  const kept = liveOnly ? rows.filter((r) => !isDeadEnd(r)) : rows;
-  const pages = Math.max(1, Math.ceil(kept.length / PAGE));
-  const at = Math.min(Math.max(page, 0), pages - 1);
-  return { rows: kept.slice(at * PAGE, (at + 1) * PAGE), total: kept.length, page: at, pages, from: kept.length ? at * PAGE + 1 : 0, to: Math.min((at + 1) * PAGE, kept.length) };
 };

@@ -58,9 +58,10 @@ const rebaseMarks = (entries, raw) =>
     : t));
 
 // A user-role row the PLATFORM wrote — a watch's report, a house wake's
-// opening note, another chat's link, the citation law's hold — keeps its origin, so a resumed sitting
+// opening note, another chat's link, the citation law's hold, CONTINUE on a
+// cut reply — keeps its origin, so a resumed sitting
 // draws it as that line and never as the operator's bubble (stream-reducer-messages.js).
-const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link', 'hold']);
+const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link', 'hold', 'resume']);
 const platformOrigin = (m) => (PLATFORM_ORIGINS.includes(m?.origin) ? { origin: m.origin } : {});
 
 // A compaction summary row as the display carries it: the counts the marker
@@ -126,6 +127,8 @@ export const toDisplayMessages = (messages, limit = 50, where = {}) =>
           // The declared affect persists per take — the revelation outlives
           // the reload (Campaign 6).
           ...(typeof t.affect === 'string' && t.affect ? { affect: t.affect } : {}),
+          // A take the app's close cut short (turn-keep.js) — the desk offers CONTINUE on it.
+          ...(t.cutOff ? { cutOff: t.cutOff } : {}),
         }));
         const viewed = takes[entry.viewed - 1];
         return {

@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
 import { Fold } from '../fold/Fold.jsx';
+import { Sheet } from '../sheet/Sheet.jsx';
 import { People } from './People.jsx';
 import { useLeadEngine } from './use-lead-engine.js';
 import { LeadFactsSheet } from './LeadFactsSheet.jsx';
@@ -63,11 +64,8 @@ export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PA
                   <button type="button" className="sec-scan label-data" disabled={busy || !okTarget}
                     onClick={() => { suppress(target, reason); setTarget(''); }}>ADD</button>
                 </div>
-                {engine.suppressions.length ? (
-                  <ul className="cline-ws-src" aria-label="do not contact">
-                    {engine.suppressions.map((e) => <li key={`${e.kind}:${e.value}`} data-suppressed={e.value}>{e.value} — {e.reason}</li>)}
-                  </ul>
-                ) : null}
+                <Sheet label="do not contact" rows={engine.suppressions} rowKey={(e) => `${e.kind}:${e.value}`} rowAttrs={(e) => ({ 'data-suppressed': e.value })}
+                  columns={[{ head: 'ADDRESS OR DOMAIN', cell: (e) => e.value, exact: true }, { head: 'WHY', cell: (e) => SUPPRESS_REASONS.find((r) => r.value === e.reason)?.label ?? e.reason }, { head: 'ADDED BY', cell: (e) => (e.by ? String(e.by).toUpperCase() : null) }, { head: 'WHEN', cell: (e) => (e.at ? String(e.at).slice(0, 10) : null) }]} />
               </Fold>
             </>
           ) : null}

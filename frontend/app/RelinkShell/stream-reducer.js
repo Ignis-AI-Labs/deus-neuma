@@ -157,6 +157,10 @@ export const reducer = (state, action) => {
     case 'CITATION_HELD':
       return pushMessage(state, 'hold', action.text, [], action.at);
 
+    // CONTINUE on a reply the app's close cut short (portal-turn-adopt.js) — the platform's words open the turn that picks it up.
+    case 'CONTINUED':
+      return pushMessage(state, 'resume', action.text, [], action.at);
+
     // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':
     case 'QUEUE_CLEAR':

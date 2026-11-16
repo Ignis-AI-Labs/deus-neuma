@@ -6,9 +6,9 @@
 
 import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
+import { Sheet } from '../sheet/Sheet.jsx';
 import { holderName } from './company-line-view.js';
 
-const SHOWN = 5;
 
 /**
  * @param {{books: ?object, names: Record<string, string>, pick: string, busy: boolean,
@@ -43,17 +43,14 @@ export const BooksSection = ({ books, names, pick, busy, onPick, onSeat, onClear
                 </div>
               )}
               <p className="cline-co-line label-data">{b.yearToDate.entries} ENTRIES · {b.yearToDate.unmatched} UNMATCHED{b.voided ? ` · ${b.voided} VOIDED` : ''}</p>
-              <ul className="cline-ws-src">
-                {b.deadlines.filter((d) => !d.met).map((d) => (
-                  <li key={d.id} data-deadline-id={d.id}>DUE {d.due}: {d.what} — TO {d.authority}{d.needsCpa ? ' — NEEDS A LICENSED CPA' : ''}</li>
-                ))}
-              </ul>
+              <Sheet label="deadlines not yet met" rows={b.deadlines.filter((d) => !d.met)} rowKey={(d) => d.id} rowName={(d) => d.what} rowAttrs={(d) => ({ 'data-deadline-id': d.id })}
+                columns={[{ head: 'WHAT IS DUE', cell: (d) => d.what, title: (d) => d.what }, { head: 'DUE', cell: (d) => d.due }, { head: 'TO', cell: (d) => d.authority }, { head: 'NEEDS', cell: (d) => (d.needsCpa ? 'A LICENSED CPA' : null), tone: (d) => (d.needsCpa ? 'alert' : null) }]} />
             </div>
           ))}
           {books.unbooked.length === 0 ? <EmptyState title="EVERY RECEIPT IS BOOKED" /> : (
             <>
               <p className="cline-co-line label-data">{books.unbooked.length} RECEIPT{books.unbooked.length === 1 ? '' : 'S'} NOT YET BOOKED</p>
-              <ul className="cline-ws-src">{books.unbooked.slice(0, SHOWN).map((r) => <li key={`${r.kind}:${r.ref}`}>{r.label}</li>)}</ul>
+              <Sheet label="receipts not yet booked" rows={books.unbooked} rowKey={(r) => `${r.kind}:${r.ref}`} columns={[{ head: 'RECEIPT', cell: (r) => r.label, title: (r) => r.label }, { head: 'KIND', cell: (r) => String(r.kind).toUpperCase() }, { head: 'REFERENCE', cell: (r) => r.ref, exact: true }]} />
             </>
           )}
         </>

@@ -3,12 +3,14 @@
 // its source, and the operator's hands on it (Design note, 2026-11-15: […];
 // […]). One bar over the sheet: CHECK ALL, APPROVE
 // ALL, APPROVE CHECKED (the rest go back to the seat to fix), RETURN ALL with
-// what should change. Each fact: a tick, EDIT, DELETE, ASK the seat's holder.
+// what should change. Each company's facts are a sheet, one fact a line: a tick,
+// its words, its figure, its source, where it stands, EDIT, DELETE, ASK the holder.
 // No email reaches a lead before facts are approved, and every number in one
 // must stand on an approved fact. Pure rendering but for the drafts and ticks.
 
 import { useState } from 'react';
 import { Fold } from '../fold/Fold.jsx';
+import { Sheet } from '../sheet/Sheet.jsx';
 import { sheetState, factsByCompany, factAsk, editReady, startChecked, factStanding, checkedWords, reviewWords, sheetStats, groupStats } from './lead-facts-view.js';
 
 const SourceOf = ({ source }) => (/^https:\/\//.test(source)
@@ -17,40 +19,42 @@ const SourceOf = ({ source }) => (/^https:\/\//.test(source)
 
 const STANDING = Object.freeze({ approved: 'APPROVED', held: 'NOT APPROVED — TO FIX' });
 
-const Fact = ({ fact, sheet, busy, holder, standing, checked, onCheck, onChange, onHand }) => {
-  const [edit, setEdit] = useState(null); // {claim, source} while editing
-  const [sure, setSure] = useState(false);
-  if (edit) {
-    return (
-      <li className="cline-fact" data-fact={fact.n}>
-        <textarea className="cline-input cline-fact-edit" rows={3} maxLength={400} aria-label={`Fact ${fact.n}, the words`} disabled={busy} value={edit.claim} onChange={(e) => setEdit({ ...edit, claim: e.target.value })} />
-        <input className="cline-input" maxLength={300} aria-label={`Fact ${fact.n}, where it comes from`} disabled={busy} value={edit.source} onChange={(e) => setEdit({ ...edit, source: e.target.value })} />
-        <div className="cline-open">
-          <button type="button" className="sec-scan label-data" disabled={busy || !editReady(edit, fact)} aria-label={`SAVE fact ${fact.n}`}
-            onClick={() => { onChange(sheet, { n: fact.n, claim: edit.claim.trim(), source: edit.source.trim() }, `Fact ${fact.n} is changed. The sheet waits for your approval.`); setEdit(null); }}>SAVE</button>
-          <button type="button" className="sec-scan label-data" disabled={busy} onClick={() => setEdit(null)}>CANCEL</button>
-        </div>
-      </li>
-    );
-  }
+// One company's facts as a sheet (sheet/Sheet.jsx): one fact a line; its words read whole in their own column, and
+// its figure, its source, where it stands and the operator's hands each have a column of their own. EDIT turns that
+// row's words and source into boxes in place.
+const FactSheet = ({ group, sheet, facts, busy, holder, ticked, onCheck, onChange, onHand }) => {
+  const [edit, setEdit] = useState(null); // {n, claim, source} while one fact is being edited
+  const [sure, setSure] = useState(null); // the fact whose DELETE was pressed once
+  const editing = (fact) => edit?.n === fact.n;
+  const columns = [
+    { head: '#', cell: (fact) => fact.n },
+    ...(onCheck ? [{ head: 'OK', cell: (fact) => <input type="checkbox" className="cline-fact-tick" aria-label={`Approve fact ${fact.n}`} disabled={busy} checked={ticked.includes(fact.n)} onChange={() => onCheck(fact.n)} /> }] : []),
+    { head: 'WHAT MAY BE SAID', wrap: true, cell: (fact) => (editing(fact)
+      ? <textarea className="cline-input cline-fact-edit" rows={3} maxLength={400} aria-label={`Fact ${fact.n}, the words`} disabled={busy} value={edit.claim} onChange={(e) => setEdit({ ...edit, claim: e.target.value })} />
+      : <span className="cline-fact-claim">{fact.claim}</span>) },
+    { head: 'FIGURE', cell: (fact) => (fact.figure ? <span className="cline-fact-figure">{fact.figure.value} {fact.figure.unit}</span> : null) },
+    { head: 'SOURCE', exact: true, title: (fact) => fact.source, cell: (fact) => (editing(fact)
+      ? <input className="cline-input" maxLength={300} aria-label={`Fact ${fact.n}, where it comes from`} disabled={busy} value={edit.source} onChange={(e) => setEdit({ ...edit, source: e.target.value })} />
+      : <span className="cline-fact-source"><SourceOf source={fact.source} /></span>) },
+    { head: 'STANDS', tone: (fact) => ({ approved: 'on', held: 'alert' }[factStanding(facts, fact)] ?? null), cell: (fact) => STANDING[factStanding(facts, fact)] ?? null },
+    ...(onChange ? [{ head: 'CHANGE', cell: (fact) => (editing(fact) ? (
+      <span className="cline-fact-hands">
+        <button type="button" className="sec-scan cline-mini label-data" disabled={busy || !editReady(edit, fact)} aria-label={`SAVE fact ${fact.n}`}
+          onClick={() => { onChange(sheet, { n: fact.n, claim: edit.claim.trim(), source: edit.source.trim() }, `Fact ${fact.n} is changed. The sheet waits for your approval.`); setEdit(null); }}>SAVE</button>
+        <button type="button" className="sec-scan cline-mini label-data" disabled={busy} onClick={() => setEdit(null)}>CANCEL</button>
+      </span>
+    ) : (
+      <span className="cline-fact-hands">
+        <button type="button" className="sec-scan cline-mini label-data" disabled={busy} aria-label={`EDIT fact ${fact.n}`} onClick={() => setEdit({ n: fact.n, claim: fact.claim, source: fact.source })}>EDIT</button>
+        <button type="button" className="sec-scan cline-mini cline-danger label-data" disabled={busy} aria-label={`${sure === fact.n ? 'PRESS AGAIN TO DELETE' : 'DELETE'} fact ${fact.n}`}
+          onClick={() => { if (sure === fact.n) onChange(sheet, { n: fact.n, remove: true }, `Fact ${fact.n} is taken off. The sheet waits for your approval.`); setSure(sure === fact.n ? null : fact.n); }}>{sure === fact.n ? 'PRESS AGAIN TO DELETE' : 'DELETE'}</button>
+        {holder && onHand ? <button type="button" className="sec-scan cline-mini label-data" disabled={busy} aria-label={`ASK ${holder.name} about fact ${fact.n}`} title={`${holder.name}'s chat opens with the question drafted; you send it`} onClick={() => onHand(holder, factAsk(fact))}>ASK {holder.name.toUpperCase()}</button> : null}
+      </span>
+    )) }] : []),
+  ];
   return (
-    <li className={`cline-fact${standing ? ` is-${standing}` : checked ? ' is-checked' : ''}`} data-fact={fact.n} data-fact-standing={standing ?? ''}>
-      <div className="cline-fact-row">
-        {onCheck ? <input type="checkbox" className="cline-fact-tick" aria-label={`Approve fact ${fact.n}`} disabled={busy} checked={checked} onChange={() => onCheck(fact.n)} /> : null}
-        <p className="cline-fact-claim"><span className="cline-fact-n label-data">{fact.n}</span> {fact.claim}{fact.figure ? <span className="cline-fact-figure label-data"> [{fact.figure.value} {fact.figure.unit}]</span> : null}</p>
-      </div>
-      <div className="cline-fact-foot">
-        <p className="cline-fact-source">{standing ? <b className="cline-fact-standing label-data">{STANDING[standing]} · </b> : null}FROM <SourceOf source={fact.source} /></p>
-        {onChange ? (
-          <div className="cline-fact-hands">
-            <button type="button" className="sec-scan cline-mini label-data" disabled={busy} aria-label={`EDIT fact ${fact.n}`} onClick={() => setEdit({ claim: fact.claim, source: fact.source })}>EDIT</button>
-            <button type="button" className="sec-scan cline-mini cline-danger label-data" disabled={busy} aria-label={`${sure ? 'PRESS AGAIN TO DELETE' : 'DELETE'} fact ${fact.n}`}
-              onClick={() => { if (sure) onChange(sheet, { n: fact.n, remove: true }, `Fact ${fact.n} is taken off. The sheet waits for your approval.`); setSure(!sure); }}>{sure ? 'PRESS AGAIN TO DELETE' : 'DELETE'}</button>
-            {holder && onHand ? <button type="button" className="sec-scan cline-mini label-data" disabled={busy} aria-label={`ASK ${holder.name} about fact ${fact.n}`} title={`${holder.name}'s chat opens with the question drafted; you send it`} onClick={() => onHand(holder, factAsk(fact))}>ASK {holder.name.toUpperCase()}</button> : null}
-          </div>
-        ) : null}
-      </div>
-    </li>
+    <Sheet label={`facts about ${group.name}`} columns={columns} rows={group.facts} rowKey={(fact) => `${sheet.id}:${fact.n}`} rowName={(fact) => `fact ${fact.n}`}
+      rowAttrs={(fact) => ({ 'data-fact': fact.n, 'data-fact-standing': factStanding(facts, fact) ?? '' })} />
   );
 };
 
@@ -98,10 +102,7 @@ export const LeadFactsSheet = ({ facts, companies = [], busy, onReview, onChange
                     CHECK ALL OF {group.name.toUpperCase()}
                   </label>
                 ) : null}
-                <ul className="cline-fact-list">
-                  {group.facts.map((f) => <Fact key={`${sheet.id}:${f.n}`} fact={f} sheet={sheet} busy={busy} holder={holder} standing={factStanding(facts, f)}
-                    checked={ticked.includes(f.n)} onCheck={open ? toggle : null} onChange={onChange} onHand={onHand} />)}
-                </ul>
+                <FactSheet group={group} sheet={sheet} facts={facts} busy={busy} holder={holder} ticked={ticked} onCheck={open ? toggle : null} onChange={onChange} onHand={onHand} />
                 </Fold>
               </section>
             );

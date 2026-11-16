@@ -17,6 +17,8 @@ import { warmSitting } from '../services/sitting-warmup.js';
 import { invalidateSilo } from '../services/silo-mount-service.js';
 import { offerPending } from '../services/chat-watch.js';
 import { parkedApprovalsFor } from '../services/tool-approval.js';
+import { releaseTakenTurn } from '../services/turn-keep.js';
+import { adoptKeptTurn } from './portal-turn-adopt.js';
 
 const WATCH_OFFER_DELAY_MS = 1500;
 import {
@@ -45,6 +47,7 @@ export const portalResume = async (connection, message, { connectionId }) => {
     }));
     return true;
   }
+  releaseTakenTurn(connection); // a turn taken over from a closed desk runs on; this desk stops watching it
   await settleActiveTurn(connection);
   clearLaneBinding(connection); // A resume is a complete rebind, including a valid one.
   updateClientTimeZone(connection, message.timeZone);
@@ -168,6 +171,8 @@ export const portalResume = async (connection, message, { connectionId }) => {
       // operator who comes back can answer it (only the same wallet may —
       // resolveToolApproval). Without this a parked card had no surface at all.
       for (const frame of parkedApprovalsFor(connection.walletAddress, message.sessionId)) ws.send(JSON.stringify(frame));
+      // A turn still running here on a desk that closed: drawn so far, then live (portal-turn-adopt.js).
+      adoptKeptTurn(connection, neumaId, message.sessionId);
     }
 
     // The session's last recorded window anatomy replays with the bind —
@@ -198,6 +203,7 @@ export const portalResume = async (connection, message, { connectionId }) => {
 
 export const portalNewSession = async (connection, message, { connectionId }) => {
   const { ws } = connection;
+  releaseTakenTurn(connection); // a turn taken over from a closed desk runs on; this desk stops watching it
   await settleActiveTurn(connection);
   // Deliberately start a fresh chat — sever the bound session so the next
   // message mints a new one (_ensureSession). The past session is untouched.
@@ -220,6 +226,7 @@ export const portalNewSession = async (connection, message, { connectionId }) =>
 
 export const companionManifest = async (connection, message) => {
   const { ws } = connection;
+  releaseTakenTurn(connection); // a turn taken over from a closed desk runs on; this desk stops watching it
   await settleActiveTurn(connection);
   // A manifest is a new sitting (the desk resets its view to it): words held
   // for the one it replaces never run in it, even for the same being.

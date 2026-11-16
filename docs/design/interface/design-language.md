@@ -289,6 +289,38 @@ Checklist, per surface before it ships: can every number on this tab be read wit
 anything open that does not wait on the operator; is any record or count shown twice; is any stored value
 sitting in a box nobody asked to edit.
 
+## SHEET — a list of records is a sheet (Design note, 2026-11-16
+
+> […]
+
+FOLD says how a window's SECTIONS stand. SHEET says how the RECORDS inside a section stand. One component draws
+it (`frontend/app/RelinkShell/sheet/Sheet.jsx`); a list of like records that is not built from it does not ship.
+
+1. **One record, one line.** People, companies, deals, deadlines, entries: each is a row. Never a card per
+   record, never a sentence per record.
+2. **One fact, one column, the same columns for every row.** The eye runs down a column. A cell holds a value
+   (a name, an address, a date, a state in two or three words), never a sentence. An empty cell is a dash.
+3. **The first column names the row.** It is the row's header, and where a row has more to say it is the press
+   that opens it.
+4. **What does not fit a cell opens under the row.** A note, the reasons behind a score, a history. Closed until
+   pressed; one open at a time.
+5. **Narrowing lives above the sheet, in one line.** A search, and at most a few small controls with their
+   counts. Rows of filter chips are for the two or three views that change WHAT the sheet lists, nothing more.
+6. **Change in place.** A value the operator may change (what a lead is filed as) is changed in its own cell.
+7. **Colour means state.** A cell is plain unless it says something is confirmed or something is wrong.
+8. **A hundred rows a page**, and the sheet says where it stands (SHOWING 1–100 OF 3,385).
+9. **Nothing under the desk's 13px floor**, the column heads included. A head is quieter by colour, never by size.
+
+Built so far (2026-11-16): the leads sheet, an audience's companies, do-not-contact, open and won deals, the
+books' deadlines and unbooked receipts, and each company's facts on the facts sheet (the one sheet with a
+wrapping column: a fact's own words are read whole), and the campaigns a campaign works with. The mailbox tab
+holds settings, not a list. In the treasury: the flight check, the wallets, money out and the budgets. Still to
+convert: the treasury's invoices and cost entries (each row carries a form), the marketing replies board, and the
+lists inside the staff, legal and security bodies.
+
+Checklist, per list before it ships: is any row taller than one line; does any cell hold a sentence; do two rows
+show different facts in the same column; is a filter taking a row of its own that a small control could carry.
+
 ## SHOW, DON'T TELL — the next step, still SHINKEI
 
 Design note, 2026-10-24: *[…]* *[…]* *[…]*

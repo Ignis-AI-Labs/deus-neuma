@@ -289,8 +289,8 @@ describe('the sales facts — what a buyer may be told, and the check every emai
     expect(html).toContain('APPROVE THE LIST (1)');
     // Its companies are ONE list: a table, each company once with where it stands; a scored one opens to why.
     expect(html).toContain('data-fold="audience-companies:s-e4f50ba1"');
-    expect(html).toMatch(/<tr data-company="venice\.ai" data-company-standing="lead">/);
-    expect((html.match(/<tr data-company=/g) ?? []).length).toBe(2);
+    expect(html).toMatch(/<tr data-sheet-row="venice\.ai" data-company="venice\.ai" data-company-standing="lead">/);
+    expect((html.match(/<tr data-sheet-row=/g) ?? []).length).toBe(2);
     expect(html).not.toContain('COMPANIES FOUND, NOT YET LEADS');
     expect(html).toContain('THE PITCH — THE OFFER, WHO IT REACHES, WHAT MAKES A FIT');
     // The count tiles are the campaign's; the audience under it repeats none of them.

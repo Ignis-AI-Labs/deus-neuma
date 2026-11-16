@@ -7,6 +7,7 @@
 
 import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
+import { Sheet } from '../sheet/Sheet.jsx';
 import { holderName } from './company-line-view.js';
 
 const STAGES = Object.freeze(['qualified', 'proposed', 'won', 'lost']);
@@ -45,9 +46,8 @@ export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear
             ))}
           </div>
           {open.length === 0 ? <EmptyState title="NO OPEN DEAL" /> : (
-            <ul className="cline-ws-src" aria-label="open deals">
-              {open.map((d) => <li key={d.id} data-deal-id={d.id}>{d.buyer} — {d.stage.toUpperCase()}, {d.value.amount} {d.value.currency} — NEXT: {d.nextStep}</li>)}
-            </ul>
+            <Sheet label="open deals" rows={open} rowKey={(d) => d.id} rowName={(d) => d.buyer} rowAttrs={(d) => ({ 'data-deal-id': d.id })}
+              columns={[{ head: 'BUYER', cell: (d) => d.buyer }, { head: 'STAGE', cell: (d) => d.stage.toUpperCase() }, { head: 'VALUE', cell: (d) => `${d.value.amount} ${d.value.currency}` }, { head: 'NEXT STEP', cell: (d) => d.nextStep || null, title: (d) => d.nextStep }]} />
           )}
           <p className="cline-h label-data">DELIVERY — {sales.destination ? 'WHERE FINISHED WORK GOES' : 'NOT SET: NOTHING CAN BE DELIVERED UNTIL YOU CHOOSE WHERE'}</p>
           {sales.destination ? (
@@ -69,16 +69,12 @@ export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear
             </button>
           </div>
           {won.length ? (
-            <ul className="cline-ws-src" aria-label="won deals">
-              {won.map((d) => (
-                <li key={d.id} data-deal-id={d.id}>
-                  {d.buyer} — WON, {d.value.amount} {d.value.currency}
-                  {(sales.deliveries ?? []).filter((p) => p.dealId === d.id).map((p) => (
-                    <div key={p.id} data-delivery={p.id}>DELIVERED {p.name}: <a className="cline-link" href={p.link} target="_blank" rel="noreferrer noopener">{p.link}</a></div>
-                  ))}
-                </li>
-              ))}
-            </ul>
+            <Sheet label="won deals" rows={won} rowKey={(d) => d.id} rowName={(d) => d.buyer} rowAttrs={(d) => ({ 'data-deal-id': d.id })}
+              columns={[{ head: 'BUYER', cell: (d) => d.buyer }, { head: 'STAGE', cell: () => 'WON', tone: () => 'on' }, { head: 'VALUE', cell: (d) => `${d.value.amount} ${d.value.currency}` },
+                { head: 'DELIVERED', cell: (d) => {
+                  const sent = (sales.deliveries ?? []).filter((p) => p.dealId === d.id);
+                  return sent.length ? sent.map((p) => <span key={p.id} data-delivery={p.id}>{p.name}: <a className="cline-link" href={p.link} target="_blank" rel="noreferrer noopener">{p.link}</a> </span>) : null;
+                } }]} />
           ) : null}
         </>
       ) : null}

@@ -20,6 +20,7 @@ import { clearSessionRuntime } from './portal-connections.js';
 import { markTurnAsked } from '../services/turn-timing-probe.js';
 import { lineTurn } from '../services/turn-line.js';
 import { takePlatformFollowUp } from '../services/platform-follow-up.js';
+import { cutTakenTurn } from '../services/turn-keep.js';
 
 const log = createLogger('Portal');
 
@@ -41,8 +42,11 @@ export const settleActiveTurn = async (connection) => {
   // first and drains them after it.
   connection.drainEpoch = (connection.drainEpoch || 0) + 1;
   if (!connection.turnPromise) return;
-  if (connection.activeTurn) connection.activeTurn.abort();
-  else { connection.interruptRequested = true; connection.lineWait?.abort(); }
+  // A turn this desk took over from a closed one is cut where it runs (portal-turn-adopt.js).
+  if (!cutTakenTurn(connection)) {
+    if (connection.activeTurn) connection.activeTurn.abort();
+    else { connection.interruptRequested = true; connection.lineWait?.abort(); }
+  }
   // Abort-aware gates settle synchronously from the signal. These explicit
   // expirations are the fail-closed safety net for any gate that lost or never
   // received that signal; navigation must never wait out a 10-minute card.

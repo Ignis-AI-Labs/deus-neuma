@@ -10,7 +10,21 @@ import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
 import { uiSound } from '../../../services/ui-sound.js';
 import { getHouseCampaigns, linkCampaigns, unlinkCampaigns } from '../../../services/positions-client.js';
+import { Sheet } from '../sheet/Sheet.jsx';
 import { officeWords, linkChoices } from './campaign-links-view.js';
+
+// The campaigns one campaign works with, as a sheet (sheet/Sheet.jsx): one linked campaign a line.
+const LinkSheet = ({ campaign, busy, onUnlink }) => (
+  <Sheet label={`campaigns ${campaign.name} works with`} rows={campaign.links} rowKey={(l) => l.key} rowName={(l) => l.name} rowAttrs={(l) => ({ 'data-link-with': l.key })}
+    columns={[
+      { head: 'WORKS WITH', cell: (l) => l.name },
+      { head: 'POSITION', cell: (l) => officeWords(l.office) },
+      { head: 'STATE', cell: (l) => String(l.state).toUpperCase() },
+      { head: 'WHAT IT IS', cell: (l) => l.summary || null, title: (l) => l.summary, tone: () => 'dim' },
+      { head: 'NOTE', cell: (l) => l.note || null, title: (l) => l.note },
+      { head: 'CHANGE', cell: (l) => <button type="button" className="sec-scan cline-mini cline-danger label-data" disabled={busy} aria-label={`UNLINK ${campaign.name} from ${l.name}`} onClick={() => onUnlink(campaign, l)}>UNLINK</button> },
+    ]} />
+);
 
 const Row = ({ campaign, all, busy, onLink, onUnlink, onOpen = null }) => {
   const [pick, setPick] = useState('');
@@ -21,14 +35,7 @@ const Row = ({ campaign, all, busy, onLink, onUnlink, onOpen = null }) => {
       <p className="cline-move-t">{campaign.summary}</p>
       {onOpen ? <div className="cline-open"><button type="button" className="sec-scan label-data" disabled={busy} aria-label={`OPEN ${campaign.name} — its page, posts and results`} onClick={() => onOpen(campaign)}>OPEN {String(campaign.name).toUpperCase()}</button></div> : null}
       {campaign.links.length ? (
-        <ul className="cline-ws-src" aria-label={`campaigns ${campaign.name} works with`}>
-          {campaign.links.map((l) => (
-            <li key={l.key} data-link-with={l.key}>
-              WORKS WITH {officeWords(l.office)} · {l.name} ({String(l.state).toUpperCase()}) — {l.summary}{l.note ? ` — ${l.note}` : ''}{' '}
-              <button type="button" className="sec-scan cline-danger label-data" disabled={busy} aria-label={`UNLINK ${campaign.name} from ${l.name}`} onClick={() => onUnlink(campaign, l)}>UNLINK</button>
-            </li>
-          ))}
-        </ul>
+        <LinkSheet campaign={campaign} busy={busy} onUnlink={onUnlink} />
       ) : <p className="cline-move-t">WORKS WITH NO OTHER CAMPAIGN YET</p>}
       {choices.length ? (
         <div className="cline-open">
@@ -77,14 +84,7 @@ export const CampaignLinkLine = ({ campaignKey, links }) => {
       <p className="cline-aud-k label-data">WORKS WITH · {campaign.links.length}</p>
       {links.error ? <p className="sec-error" role="alert">{links.error}</p> : null}
       {campaign.links.length ? (
-        <ul className="cline-ws-src" aria-label={`campaigns ${campaign.name} works with`}>
-          {campaign.links.map((l) => (
-            <li key={l.key} data-link-with={l.key}>
-              {officeWords(l.office)} · {l.name} ({String(l.state).toUpperCase()}) — {l.summary}{l.note ? ` — ${l.note}` : ''}{' '}
-              <button type="button" className="sec-scan cline-mini cline-danger label-data" disabled={links.busy} aria-label={`UNLINK ${campaign.name} from ${l.name}`} onClick={() => links.unlink(campaign, l)}>UNLINK</button>
-            </li>
-          ))}
-        </ul>
+        <LinkSheet campaign={campaign} busy={links.busy} onUnlink={links.unlink} />
       ) : null}
       {choices.length ? (
         <div className="cline-open">

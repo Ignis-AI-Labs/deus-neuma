@@ -37,6 +37,8 @@ import {
   houseFoundPreflight, houseFoundSign, houseFoundConfirm,
 } from './portal-seal-handlers.js';
 import { birthLocalSealOffer, birthLocalSealSign } from './portal-local-seal-handlers.js';
+import { continueCutTurn } from './portal-turn-adopt.js';
+import { stopTakenTurn } from '../services/turn-keep.js';
 import { houseFoundLocalPreflight, houseFoundLocalSign } from './portal-house-local-handlers.js';
 import {
   councilOpen, councilSpeak, councilResumeFrame, councilListFrame,
@@ -192,7 +194,13 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       cancelIntentSweeps(connection);
       abortAudition(connection);
       if (connection.activeTurn) connection.activeTurn.abort();
-      else if (connection.turnPromise) { connection.interruptRequested = true; connection.lineWait?.abort(); }
+      // A turn this desk took over from a closed one is cut where it runs (portal-turn-adopt.js).
+      else if (!stopTakenTurn(connection) && connection.turnPromise) { connection.interruptRequested = true; connection.lineWait?.abort(); }
+      break;
+
+    // CONTINUE on a take the app's close cut short — the being picks it up where it stopped.
+    case 'consciousness:continue':
+      await continueCutTurn(connection, message);
       break;
 
     case 'tool:approval_response':

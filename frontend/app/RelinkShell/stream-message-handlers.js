@@ -103,8 +103,9 @@ export const createStreamHandlers = ({
   const onTool = (data) => {
     // A being's hands are audible: each family of act has its own voice, and
     // an act that did NOT happen says so (services/act-sound-map.js). Handed
-    // every frame — it decides for itself which ones warrant a cue.
-    soundAct(data);
+    // every frame — it decides for itself which ones warrant a cue. Not the
+    // catch-up of a turn this desk took over (turn-keep.js): those acts already sounded.
+    if (!data?.catchUp) soundAct(data);
     if (data.status === 'executing') { dispatchAfterSpeech(lifecycleAction('tool:usage', data)); return; }
 
     // A being that changed the operator's ground must be VISIBLE in the
@@ -338,6 +339,8 @@ export const createStreamHandlers = ({
     ['watch:fired', onWatchFired],
     ['chatlink:arrived', onChatLink],
     ['citation:held', onCitationHeld],
+    // CONTINUE on a cut reply: the platform's line that opens the turn picking it up (portal-turn-adopt.js).
+    ['turn:continued', (data) => { if (typeof data?.text === 'string' && data.text) dispatch({ type: 'CONTINUED', text: data.text, at: data.at ?? Date.now() }); }],
     // A /compact, drawn in the thread where it happened (compact-marker.js).
     ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
     // A shadow clone split, filed into its sub-channels on the turn's chip (clone-split.js).

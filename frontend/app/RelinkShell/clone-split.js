@@ -81,6 +81,7 @@ export const cloneStateWords = (clone) => {
   if (clone.state === 'waiting') return clone.position ? `WAITING · #${clone.position} IN LINE` : 'WAITING';
   if (clone.state === 'working') return clone.acting ? `WORKING · ${String(clone.acting).split('/').pop().toUpperCase()}` : 'WORKING';
   if (clone.state === 'failed') return 'DID NOT FINISH';
+  if (clone.state === 'cut') return 'CUT OFF WHEN THE APP CLOSED';
   return 'DONE';
 };
 
@@ -91,5 +92,7 @@ export const splitHeadline = (split) => {
   const working = clones.filter((c) => c.state === 'working').length;
   const head = `SHADOW CLONES · ${clones.length}`;
   if (split?.seconds != null) return `${head} · ${done} REPORTED · ${split.together} AT ONCE · ${split.seconds}S`;
+  // The app closed while the split worked (turn-keep.js): what finished, and where the rest stopped.
+  if (split?.cutOff) return `${head} · ${done} DONE · CUT OFF WHEN THE APP CLOSED`;
   return `${head} · ${working} WORKING · ${done} DONE`;
 };

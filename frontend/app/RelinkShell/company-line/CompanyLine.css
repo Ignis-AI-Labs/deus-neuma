@@ -146,11 +146,7 @@
 
 /* The sales facts sheet: one company, then its facts, each a readable line with its source and its own hands. */
 .cline-fact-group { margin-top: var(--space-4); }
-.cline-fact-company { margin: 0 0 var(--space-2); letter-spacing: 0.14em; color: var(--signal); display: flex; gap: var(--space-2); align-items: center; }
-.cline-fact-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
-.cline-fact { border-left: 2px solid var(--line); padding-left: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
 .cline-fact-claim { margin: 0; font-family: var(--font-voice); font-size: 14px; line-height: 1.5; color: var(--color-text-primary); overflow-wrap: anywhere; }
-.cline-fact-n { color: var(--color-text-tertiary); margin-right: var(--space-1); }
 .cline-fact-figure { color: var(--signal); }
 .cline-fact-source { margin: 0; font-size: var(--text-label); color: var(--color-text-tertiary); overflow-wrap: anywhere; }
 .cline-fact-edit { font-size: 14px; line-height: 1.5; }
@@ -162,14 +158,8 @@
 .cline-fact-bar .cline-input { flex: 1 1 12rem; width: auto; }
 .cline-fact-all { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-primary); }
 .cline-fact-tick { width: 16px; height: 16px; accent-color: var(--signal); flex: 0 0 auto; margin: 3px 0 0; }
-.cline-fact-row { display: flex; gap: var(--space-2); align-items: flex-start; }
-.cline-fact-foot { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; }
-.cline-fact-hands { display: flex; gap: var(--space-1); }
+.cline-fact-hands { display: inline-flex; gap: var(--space-1); }
 .cline-mini { padding: 2px var(--space-2); font-size: 11px; }
-.cline-fact.is-checked, .cline-fact.is-approved { border-left-color: var(--signal); }
-.cline-fact.is-held { border-left-color: var(--alert); }
-.cline-fact-standing { font-weight: 400; color: var(--color-text-secondary); }
-.cline-fact.is-held .cline-fact-standing { color: var(--alert); }
 
 /* One audience as marks: tiles for the pool, two columns of reading text, chips, ticked and crossed lists. */
 .cline-aud-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); }
@@ -206,15 +196,9 @@
 /* The people list (LEADS): one line of counts, one row of filters, one row per person. */
 .cline-ppl { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .cline-ppl-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
-.cline-ppl-filters { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: var(--space-2) 0; }
 .cline-ppl-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .cline-ppl-picks .is-alert { color: var(--alert); border-color: var(--alert-dim); }
 .cline-ppl-picks .is-on { color: var(--signal); border-color: var(--signal); }
-.cline-ppl-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr)); gap: var(--space-1) var(--space-3); align-items: center; border-left: 2px solid var(--line); padding-left: var(--space-3); min-width: 0; }
-.cline-ppl-row[data-contact-state="confirmed"] { border-left-color: var(--signal); }
-.cline-ppl-row[data-contact-state="bounced"] { border-left-color: var(--alert); }
-.cline-ppl-row .cline-chip { display: inline-block; margin: 1px 0; }
-.cline-ppl-note { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--color-text-secondary); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
 
 /* An audience's companies: bars for the counts, then a table, one company a row (AudienceCompanies.jsx). */
 .cline-bars-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
@@ -223,13 +207,5 @@
 .cline-bar-track { height: 4px; background: var(--line); }
 .cline-bar-fill { display: block; height: 100%; background: var(--signal); }
 .cline-bar-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
-.cline-table-wrap { overflow-x: auto; max-width: 100%; }
-.cline-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--color-text-primary); }
-.cline-table th, .cline-table td { text-align: left; padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
-.cline-table thead th { color: var(--color-text-secondary); font-size: 11px; }
-.cline-table tbody th { font-weight: 600; }
-.cline-table .cline-table-about { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; color: var(--color-text-secondary); }
-.cline-table td.is-alert { color: var(--alert); }
-.cline-table-open { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: inherit; cursor: pointer; text-align: left; }
-.cline-table-open:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
-.cline-table .cline-table-detail { white-space: normal; }
+
+.cline-ppl-tools .cline-input { flex: 2 1 14rem; }

@@ -114,8 +114,9 @@ export const toHistoryMessages = (messages, base, prefix) =>
     if (m.compacted === true) return historyCompactMessage(m, `${prefix}${base + k}`);
     const shared = {
       id: `${prefix}${base + k}`,
-      // The platform's own lines — a watch's report, a house wake's note, another chat's link, the citation law's hold — never the operator's bubble.
-      role: m.role === 'assistant' ? 'neuma' : ['watch', 'wake', 'link', 'hold'].includes(m.origin) ? m.origin : 'user',
+      // The platform's own lines — a watch's report, a house wake's note, another chat's link, the citation law's hold,
+      // CONTINUE on a cut reply — never the operator's bubble.
+      role: m.role === 'assistant' ? 'neuma' : ['watch', 'wake', 'link', 'hold', 'resume'].includes(m.origin) ? m.origin : 'user',
       streaming: false,
       isHistory: true,
       at: m.at ?? null,
@@ -130,6 +131,7 @@ export const toHistoryMessages = (messages, base, prefix) =>
         at: t.at ?? null,
         meta: t.affect ? { affect: t.affect } : null,
         segments: historySegments(t.content, t.tools, undefined, t.thoughts),
+        ...(t.cutOff ? { cutOff: t.cutOff } : {}), // the app's close cut this take (turn-keep.js): CONTINUE is offered
       }));
       const viewed = takes[m.takeIndex - 1] || takes[takes.length - 1];
       return {
@@ -164,7 +166,7 @@ export const withDisplayedAsk = (message, text) => ({
 
 export const pushMessage = (state, role, text, images, at, holdId = null, docs = []) => ({
   ...state,
-  thinking: role === 'user' || role === 'watch' || role === 'link' || role === 'hold', // a watch's report, a chat link and a held answer open a turn too
+  thinking: role === 'user' || role === 'watch' || role === 'link' || role === 'hold' || role === 'resume', // a watch's report, a chat link, a held answer and CONTINUE open a turn too
   seq: state.seq + 1,
   messages: [
     ...state.messages,

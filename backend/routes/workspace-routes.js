@@ -29,6 +29,7 @@ import { createLogger } from '../services/logger.js';
 import { assertPatchAllowed } from '../../core/identity/dna-protected.js';
 import { canonicalJson } from '../../core/shared/plain-data-canonical.js';
 import { stageOperatorChange, stagedReply, stageRefusalStatus } from '../services/sovereignty/operator-change.js';
+import { settleCutTurn } from '../services/turn-keep.js';
 
 const log = createLogger('Workspace');
 
@@ -225,6 +226,9 @@ router.get('/:id/sessions', async (req, res) => {
 
 router.get('/:id/sessions/:sessionId', async (req, res) => {
   try {
+    // A turn a quit or a crash cut in this chat lands first, as the take it was (turn-keep.js).
+    await settleCutTurn(req.params.id, req.params.sessionId)
+      .catch((err) => log.warn('a cut turn could not be landed before the read', { error: err.message }));
     const messages = await workspace.readSession(req.params.id, req.params.sessionId);
     // THE TAKES: the response carries the full append-only record (superseded
     // takes included — the desk needs every take locally to switch views

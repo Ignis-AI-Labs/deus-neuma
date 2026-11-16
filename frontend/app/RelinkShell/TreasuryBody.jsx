@@ -16,6 +16,7 @@ import { Select } from './Select.jsx';
 import { SpendCard } from './spend/SpendCard.jsx';
 import { CostMeter } from './CostMeter.jsx';
 import { InvoicesSection } from './InvoicesSection.jsx';
+import { Sheet } from './sheet/Sheet.jsx';
 import {
   markOf, ethLabel, walletName, limitLabel, custodyLabel, historyStatus, historyLoud, treasuryOverview, seatLine,
 } from './treasury-view.js';
@@ -97,46 +98,43 @@ export const TreasuryBody = ({
 
           <section className="tre-sec" data-treasury-section="flight">
             <p className="tre-h label-data">FLIGHT CHECK — READ {formatDateTime(board.readAt)}</p>
-            <ul className="tre-marks">
-              {board.marks.map((m) => (
-                <li key={m.id} className={`tre-mark ${markOf(m.state).cls}`}>
-                  <span className="tre-mark-w label-data">{markOf(m.state).word}</span>
-                  <span className="tre-mark-l label-data">{m.label}</span>
-                  <span className="tre-mark-t">{m.line}</span>
-                </li>
-              ))}
-            </ul>
+            <Sheet label="flight check" rows={board.marks} rowKey={(m) => m.id} rowName={(m) => m.label} rowAttrs={(m) => ({ className: `tre-mark ${markOf(m.state).cls}` })}
+              columns={[{ head: 'CHECK', cell: (m) => m.label }, { head: 'STATE', cell: (m) => markOf(m.state).word, tone: (m) => ({ ok: 'on', fail: 'alert', unread: 'dim' }[m.state] ?? null) }, { head: 'WHAT WAS READ', cell: (m) => m.line, wrap: true }]} />
           </section>
 
           <section className="tre-sec" data-treasury-section="wallets">
             <p className="tre-h label-data">WALLETS — BASE · ETHEREUM</p>
-            <ul className="tre-rows">
-              {board.wallets.map((w) => (
-                <li key={w.address || w.neumaId} className="tre-row">
-                  <span className="tre-row-who label-data">{walletName(w)}</span>
-                  <span className="spend-addr">{w.address || 'NO WALLET'}</span>
-                  <span className="tre-row-v label-data">{ethLabel(w.balances.base)} · {ethLabel(w.balances.ethereum, { configured: ethConfigured })}</span>
-                  <span className="tre-row-s label-data">{limitLabel(w)}{w.kind === 'being' ? ` · ${w.recipients.length} APPROVED RECIPIENT${w.recipients.length === 1 ? '' : 'S'} · KEY ${custodyLabel(w)}` : ''}</span>
-                </li>
-              ))}
-            </ul>
+            <Sheet label="wallets" rows={board.wallets} rowKey={(w) => w.address || w.neumaId} rowName={walletName}
+              columns={[
+                { head: 'WHOSE', cell: (w) => walletName(w) },
+                { head: 'ADDRESS', cell: (w) => w.address || 'NO WALLET', exact: true, title: (w) => w.address },
+                { head: 'BASE', cell: (w) => ethLabel(w.balances.base) },
+                { head: 'ETHEREUM', cell: (w) => ethLabel(w.balances.ethereum, { configured: ethConfigured }) },
+                { head: 'LIMIT', cell: (w) => limitLabel(w) },
+                { head: 'APPROVED RECIPIENTS', cell: (w) => (w.kind === 'being' ? w.recipients.length : null) },
+                { head: 'KEY', cell: (w) => (w.kind === 'being' ? custodyLabel(w) : null) },
+              ]} />
           </section>
 
           <section className="tre-sec" data-treasury-section="history">
             <p className="tre-h label-data">MONEY OUT — EVERY SPEND ASKED, AND WHAT BECAME OF IT</p>
             {board.history.length === 0 ? <EmptyState title="NO SPEND HAS BEEN ASKED YET" /> : (
-              <ul className="tre-rows">
-                {board.history.map((h) => (
-                  <li key={`${h.neumaId}:${h.id}`} className="tre-row">
-                    <span className={`tre-row-who label-data${historyLoud(h) ? ' is-loud' : ''}`}>{historyStatus(h)}</span>
-                    <span className="tre-row-v label-data">{h.amount} {h.asset} → {h.to}</span>
-                    <span className="tre-row-s label-data">{String(h.name || h.neumaId).toUpperCase()} · {formatDateTime(h.resolvedAt || h.requestedAt)}{h.txHash ? ` · TX ${h.txHash}` : ''}</span>
+              <Sheet label="money out" rows={board.history} rowKey={(h) => `${h.neumaId}:${h.id}`} rowName={(h) => `${h.amount} ${h.asset}`}
+                detail={(h) => (h.reason || h.note || h.failure || h.txHash ? (
+                  <>
                     {h.reason ? <q className="tre-row-q">{h.reason}</q> : null}
-                    {h.note ? <span className="tre-row-s label-data">YOUR NOTE: {h.note}</span> : null}
-                    {h.failure ? <span className="tre-row-s label-data is-loud">{h.failure}</span> : null}
-                  </li>
-                ))}
-              </ul>
+                    {h.note ? <span> · YOUR NOTE: {h.note}</span> : null}
+                    {h.failure ? <span className="is-alert"> · {h.failure}</span> : null}
+                    {h.txHash ? <span className="sheet-exact"> · TX {h.txHash}</span> : null}
+                  </>
+                ) : null)} detailLabel={() => 'why it was asked, your note, and the transaction'}
+                columns={[
+                  { head: 'AMOUNT', cell: (h) => `${h.amount} ${h.asset}` },
+                  { head: 'WHAT BECAME OF IT', cell: (h) => historyStatus(h), tone: (h) => (historyLoud(h) ? 'alert' : null) },
+                  { head: 'TO', cell: (h) => h.to, exact: true, title: (h) => h.to },
+                  { head: 'ASKED BY', cell: (h) => String(h.name || h.neumaId).toUpperCase() },
+                  { head: 'WHEN', cell: (h) => formatDateTime(h.resolvedAt || h.requestedAt) },
+                ]} />
             )}
           </section>
 
@@ -148,9 +146,8 @@ export const TreasuryBody = ({
               {board.moneyIn.unpriced ? ` · ${board.moneyIn.unpriced} UNPRICED` : ''}
             </p>
             <p className="tre-h label-data">BUDGETS — PLANNING NUMBERS; NOTHING SPENDS THEM</p>
-            {board.budgets.length === 0 ? <p className="tre-line label-data">NO CAMPAIGN SETS A BUDGET.</p> : board.budgets.map((b) => (
-              <p key={b.id} className="tre-line label-data">{b.name}: {b.money ?? '—'} MONEY · {b.hours ?? '—'} HOURS{b.note ? ` — ${b.note}` : ''}</p>
-            ))}
+            <Sheet label="budgets" rows={board.budgets} rowKey={(b) => b.id} rowName={(b) => b.name} empty={<p className="tre-line label-data">NO CAMPAIGN SETS A BUDGET.</p>}
+              columns={[{ head: 'CAMPAIGN', cell: (b) => b.name }, { head: 'MONEY', cell: (b) => b.money ?? null }, { head: 'HOURS', cell: (b) => b.hours ?? null }, { head: 'NOTE', cell: (b) => b.note || null, title: (b) => b.note }]} />
           </section>
 
           <InvoicesSection invoices={board.invoices} drafts={drafts} busy={costBusy} onDraft={onDraft}

@@ -11,6 +11,9 @@ import { Markdown } from './Markdown.jsx';
 import { cloneStateWords, splitHeadline } from './clone-split.js';
 import './CloneChannels.css';
 
+// What a clone's report is, by how it ended (a cut clone's is what it had said when the app closed).
+const REPORT_LABEL = Object.freeze({ failed: 'WHY IT STOPPED', cut: 'WHAT IT HAD SAID WHEN THE APP CLOSED' });
+
 export const CloneChannels = ({ split }) => {
   const [chosen, setChosen] = useState(null);
   const clones = split?.clones ?? [];
@@ -18,7 +21,7 @@ export const CloneChannels = ({ split }) => {
   // Until one is chosen, the channel on show is the first clone still working (else the first).
   const index = chosen ?? (clones.find((c) => c.state === 'working') ?? clones[0]).index;
   const clone = clones.find((c) => c.index === index) ?? clones[0];
-  const done = clone.state === 'done' || clone.state === 'failed';
+  const done = clone.state === 'done' || clone.state === 'failed' || clone.state === 'cut';
   return (
     <section className="clone-split" aria-label="shadow clones" data-split={split.splitId}>
       <p className="clone-split-head label-data">{splitHeadline(split)}</p>
@@ -42,7 +45,7 @@ export const CloneChannels = ({ split }) => {
         ) : null}
         {clone.report ? (
           <div className="clone-report">
-            <p className="label-data">{clone.state === 'failed' ? 'WHY IT STOPPED' : 'ITS REPORT'}</p>
+            <p className="label-data">{REPORT_LABEL[clone.state] ?? 'ITS REPORT'}</p>
             <Markdown text={clone.report} />
           </div>
         ) : null}

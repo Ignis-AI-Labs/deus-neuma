@@ -76,7 +76,7 @@ const keepInStream = (el) => {
   if (over > 0) stream.scrollTop += over + 8;
 };
 
-const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow, escTakesBack = false }) => {
+const MessageView = ({ message, onEdit, onRevise, onRetry, onContinue, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow, escTakesBack = false }) => {
   // THE EDIT, WHERE THE MESSAGE STANDS (Design note, 2026-07-28: […]). EDIT opens the editor AT the bubble; SAVE re-sends
   // the revised words FROM this point — the edit-fork, a new take, its own
   // chain forward ([…]) — and CANCEL restores. The composer is
@@ -270,6 +270,23 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
               </button>
             </span>
           ) : null}
+          {/* A take the app's close cut short (turn-keep.js): said so, with when — and on the chat's
+              last message, CONTINUE picks it up exactly where it stopped. */}
+          {message.role === 'neuma' && cutOffOf(message) ? (
+            <span className="stream-cut label-data">
+              <span className="stream-cut-tag">CUT OFF WHEN THE APP CLOSED{cutOffOf(message).at ? ` · ${formatClockStamp(cutOffOf(message).at)}` : ''}</span>
+              {onContinue ? (
+                <button
+                  type="button"
+                  className="stream-continue"
+                  title="Pick this reply up exactly where it stopped — what it already said and did stands"
+                  onClick={() => { uiSound('activate'); onContinue(message.turnId); }}
+                >
+                  CONTINUE
+                </button>
+              ) : null}
+            </span>
+          ) : null}
           <CopyWord text={speechText(message.segments)} />
           {editable ? (
             <button
@@ -291,6 +308,9 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
   );
 };
 
+// The viewed take's cut (the app closed before it settled — turn-keep.js), or null. Pure.
+const cutOffOf = (message) => (message.takes ? message.takes[message.takeIndex - 1]?.cutOff : message.cutOff) ?? null;
+
 // A WATCH the chat set, reporting — the platform's line, never the operator's
 // bubble (chat-watch.js): drawn as an event, and the being's answer follows.
 // A HOUSE WAKE's opening note (house-clock/wake-thought.js) is the same kind of
@@ -299,11 +319,13 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
 // a housemate's words, never the operator's bubble.
 // A HOLD is the citation law sending the CLO back to check its last answer
 // (legal/answer-hold.js): the platform's words, never the operator's.
+// PICKED UP is CONTINUE on a reply the app's close cut (portal-turn-adopt.js).
 const PLATFORM_LINES = Object.freeze({
   watch: Object.freeze({ tag: 'WATCH', head: /^\[A WATCH YOU SET[^\]]*\]\s*/ }),
   wake: Object.freeze({ tag: 'WAKE', head: /^\[A WAKE[^\]]*\]\s*/ }),
   link: Object.freeze({ tag: 'LINK', head: /^\[CHAT LINK[^\]]*\]\s*/ }),
   hold: Object.freeze({ tag: 'HELD', head: /^\[HELD BY THE CITATION LAW[^\]]*\]\s*/ }),
+  resume: Object.freeze({ tag: 'PICKED UP', head: /^\[THE APP CLOSED MID-REPLY[^\]]*\]\s*/ }),
 });
 const WatchLine = ({ message }) => (
   <div className="relink-watch-line" role="status">
@@ -322,7 +344,7 @@ const ThinkingIndicator = () => (
   </div>
 );
 
-export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onRevise, onRetry, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onQueueEdit, onQueueNow }) => {
+export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onRevise, onRetry, onContinue, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onQueueEdit, onQueueNow }) => {
   // Ctrl+scroll zooms the STREAM's text only (Ctrl+0 over it resets) —
   // per-surface, remembered, clamped legible-to-sane. Other surfaces may
   // opt in with their own key; the desk chrome never scales.
@@ -408,7 +430,7 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
           const i = start + k;
           return (
           <Fragment key={m.id}>
-            {m.role === 'compact' ? <CompactMarker marker={m} /> : <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} escTakesBack={Boolean(onQueueNow) && m.holdId != null && m.holdId === escHoldId} />}
+            {m.role === 'compact' ? <CompactMarker marker={m} /> : <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onContinue={i === messages.length - 1 ? onContinue : null} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} escTakesBack={Boolean(onQueueNow) && m.holdId != null && m.holdId === escHoldId} />}
             {i === lastHistoryIdx ? (
               <div className="relink-separator"><span>SESSION RESUMED</span></div>
             ) : null}

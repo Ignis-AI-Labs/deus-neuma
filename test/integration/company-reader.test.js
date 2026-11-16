@@ -13,7 +13,7 @@ import { describedAs, addressesOn, socialsOn, morePages, siteLine, readCompanySi
 import { readAudienceSites } from '../../backend/services/sales/site-reads.js';
 import { addCandidates, readCandidates } from '../../backend/services/sales/sales-store.js';
 import { foldContacts } from '../../backend/services/sales/contact-book.js';
-import { companyRows, contactShort, isDeadEnd, readCount, companiesLine, pageOf } from '../../frontend/app/RelinkShell/company-line/audience-companies-view.js';
+import { companyRows, contactShort, isDeadEnd, readCount, companiesLine } from '../../frontend/app/RelinkShell/company-line/audience-companies-view.js';
 
 const WALLET = '0x00000000000000000000000000000000000000c1';
 // "hello@harbor.example" as Cloudflare protects it: the key byte, then each character XOR the key.
@@ -121,7 +121,7 @@ describe('an audience\'s gathered companies are read once, kept, and shown', () 
     expect(rows[0].about).toBe(harbor.description);
     expect(readCount(rows)).toEqual({ read: 3, dead: 1, unread: 0, withAddress: 1 });
     expect(companiesLine(rows)).toEqual(['3 COMPANIES', '3 NOT SCORED YET', '2 WITH TRAFFIC', { text: '1 WITH NONE', tone: 'alert' }, '3 SITES READ · 1 WITH AN ADDRESS', { text: '1 DEAD ENDS', tone: 'alert' }]);
-    expect(pageOf(rows, { liveOnly: true }).rows.map((r) => r.domain)).toEqual(['harbor.example', 'bare.example']);
+    expect(rows.filter((r) => !isDeadEnd(r)).map((r) => r.domain)).toEqual(['harbor.example', 'bare.example']);
 
     // The contact book gains every address a company publishes, with the page it stands on.
     const book = foldContacts({ candidates: kept });

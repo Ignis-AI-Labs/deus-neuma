@@ -3,7 +3,8 @@
  * country, by size and by traffic, a hundred to a page.
  */
 import { describe, test, expect } from 'vitest';
-import { companyRows, breakdown, trafficCount, companiesLine, pageOf, trafficShort, standingWords, PAGE } from '../../frontend/app/RelinkShell/company-line/audience-companies-view.js';
+import { companyRows, breakdown, trafficCount, companiesLine, trafficShort, standingWords, isDeadEnd } from '../../frontend/app/RelinkShell/company-line/audience-companies-view.js';
+import { sheetPage, rangeWords, SHEET_PAGE } from '../../frontend/app/RelinkShell/sheet/sheet-view.js';
 
 const gathered = [
   { domain: 'coinbase.com', name: 'Coinbase', signal: '1001-5000 people', categories: ['financial services'], country: 'US', size: '1001-5000', trafficRank: 188 },
@@ -35,13 +36,19 @@ describe('an audience\'s companies', () => {
     expect([trafficShort(323181), trafficShort(null), standingWords('strong')[0]]).toEqual(['#323,181', 'NO TRAFFIC', 'STRONG MATCH']);
   });
 
-  test('a press keeps only the ones with traffic (and the ones never looked up); the table shows a hundred at a time', () => {
+  test('dead ends can be left out; a company never looked up is not one', () => {
     const rows = companyRows({ gathered, pool, leads });
-    expect(pageOf(rows, { liveOnly: true }).rows.map((r) => r.domain)).toEqual(['coinbase.com', 'wise.com', 'handread.example', 'old.example']);
-    const many = companyRows({ gathered: Array.from({ length: 250 }, (_, i) => ({ domain: `c${String(i).padStart(3, '0')}.example`, name: `C${String(i).padStart(3, '0')}`, signal: '', trafficRank: i + 1 })) });
-    expect(pageOf(many)).toMatchObject({ total: 250, page: 0, pages: 3, from: 1, to: PAGE });
-    expect(pageOf(many, { page: 2 })).toMatchObject({ from: 201, to: 250 });
-    expect(pageOf(many, { page: 99 }).page).toBe(2);
-    expect(pageOf([], {})).toMatchObject({ total: 0, from: 0, to: 0, pages: 1 });
+    expect(rows.filter((r) => !isDeadEnd(r)).map((r) => r.domain)).toEqual(['coinbase.com', 'wise.com', 'handread.example', 'old.example']);
+  });
+});
+
+describe('a sheet pages itself', () => {
+  test('a hundred rows a page, the last page short, a page past the end is the last', () => {
+    const many = Array.from({ length: 250 }, (_, i) => ({ i }));
+    expect(sheetPage(many)).toMatchObject({ total: 250, page: 0, pages: 3, from: 1, to: SHEET_PAGE });
+    expect(sheetPage(many, 2)).toMatchObject({ from: 201, to: 250 });
+    expect(sheetPage(many, 99).page).toBe(2);
+    expect(sheetPage([])).toMatchObject({ total: 0, from: 0, to: 0, pages: 1 });
+    expect(rangeWords(sheetPage(Array.from({ length: 3385 }, () => ({})), 0))).toBe('SHOWING 1–100 OF 3,385');
   });
 });

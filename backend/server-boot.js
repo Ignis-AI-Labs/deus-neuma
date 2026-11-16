@@ -32,6 +32,7 @@ import { getSubstrateProfile } from './services/substrate-detector.js';
 import { runPreflight, startSubstrateIdleMonitor } from './services/substrate-lifecycle.js';
 import { startHeartbeat, stopHeartbeat } from './services/heartbeat.js';
 import { gracefulShutdown } from './services/shutdown.js';
+import { settleCutTurns, keepTurnsNow } from './services/turn-keep.js';
 import { listenServer } from './services/server-listen.js';
 import { watchDeskParent } from './services/desk-parent-watch.js';
 import { getDataRoot, getVaultRoot } from './services/data-root.js';
@@ -318,6 +319,9 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopChatBridge = startGuarded('chat bridge', startChatBridge);
     // The Optio office's cadence — standing status checks on open charges.
     stopStatusSweep = startGuarded('status sweep', startStatusScheduler);
+    // A turn a quit or a crash cut short lands on its chat's record, as the take it was (turn-keep.js).
+    settleCutTurns().then((landed) => { if (landed) log.info('cut turns are back on the record', { landed }); })
+      .catch((err) => log.warn('cut turns were not swept at start', { err: err.message }));
     // The house clock — the house wakes itself for its own work, inside the
     // charter its operator approved (house-clock.js).
     stopHouseClock = startGuarded('house clock', startHouseClock);
@@ -393,7 +397,10 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
       sockets: [wss, terminalWss, dictateWss].filter(Boolean),
       stopHeartbeat,
       log,
-      exit: (code) => process.exit(code),
+      // Every running turn is written down before the process goes (turn-keep.js).
+      exit: (code) => {
+        Promise.race([keepTurnsNow(), new Promise((resolve) => { setTimeout(resolve, 1000); })]).finally(() => process.exit(code));
+      },
     });
   };
   process.on('SIGTERM', shutdown);

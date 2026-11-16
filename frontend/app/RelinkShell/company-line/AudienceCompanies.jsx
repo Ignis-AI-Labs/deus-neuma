@@ -5,7 +5,8 @@
 
 import { useState } from 'react';
 import { Fold } from '../fold/Fold.jsx';
-import { companyRows, breakdown, companiesLine, pageOf, standingWords, trafficShort, isDeadEnd, contactShort, readCount } from './audience-companies-view.js';
+import { Sheet } from '../sheet/Sheet.jsx';
+import { companyRows, breakdown, companiesLine, standingWords, trafficShort, isDeadEnd, contactShort, readCount } from './audience-companies-view.js';
 
 const Bars = ({ title, rows }) => (rows.length ? (
   <div className="cline-bars" role="group" aria-label={title.toLowerCase()}>
@@ -22,19 +23,29 @@ const Bars = ({ title, rows }) => (rows.length ? (
   </div>
 ) : null);
 
+const COLUMNS = Object.freeze([
+  { head: 'NAME', cell: (r) => r.name },
+  { head: 'SITE', cell: (r) => <a className="cline-link" href={r.site} target="_blank" rel="noreferrer noopener">{r.domain}</a>, exact: true },
+  { head: 'WHAT IT IS', cell: (r) => r.about || null, tone: () => 'dim', title: (r) => r.about },
+  { head: 'REACH', cell: (r) => contactShort(r), tone: (r) => (r.read && !r.read.alive ? 'alert' : null), title: (r) => r.read?.why ?? r.read?.emails.join(', ') ?? null, attrs: () => ({ 'data-company-reach': '' }) },
+  { head: 'GEO', cell: (r) => r.country },
+  { head: 'SIZE', cell: (r) => r.size },
+  { head: 'INDUSTRY', cell: (r) => r.industry },
+  { head: 'TRAFFIC', cell: (r) => (r.ranked ? trafficShort(r.rank) : null), tone: (r) => (r.ranked && !r.rank ? 'alert' : null) },
+  { head: 'STANDS', cell: (r) => `${standingWords(r.standing)[0]}${r.people ? ` · ${r.people}` : ''}`, tone: (r) => standingWords(r.standing)[1] },
+]);
+
 /**
  * @param {{segment: object, gathered: object[], pool: object[], leads: object[], detailOf?: (domain: string) => any, busy?: boolean, onRead?: ?Function}} props — onRead: have the next unread companies' own sites read — detailOf: what a
  *   scored company's row opens to (why it was scored so, who was read), so the table is the one list of them
  */
 export const AudienceCompanies = ({ segment, gathered = [], pool = [], leads = [], detailOf = () => null, busy = false, onRead = null }) => {
-  const [view, setView] = useState({ liveOnly: false, page: 0 });
-  const [open, setOpen] = useState(null);
+  const [liveOnly, setLiveOnly] = useState(false);
   const rows = companyRows({ gathered, pool, leads });
   if (!rows.length) return <p className="cline-move-t">NO COMPANY GATHERED FOR THIS AUDIENCE YET</p>;
   const counted = breakdown(rows);
   const dead = rows.filter(isDeadEnd).length;
   const sites = readCount(rows);
-  const shown = pageOf(rows, view);
   return (
     <Fold id={`audience-companies:${segment.id}`} level={2} title="COMPANIES" stats={companiesLine(rows)}>
       <div className="cline-aud-two" data-company-breakdown="">
@@ -42,43 +53,12 @@ export const AudienceCompanies = ({ segment, gathered = [], pool = [], leads = [
         <Bars title="COMPANY SIZE" rows={counted.size} />
       </div>
       <div className="cline-open">
-        <span className="cline-move-t" data-company-range="">SHOWING {shown.from.toLocaleString('en-US')}–{shown.to.toLocaleString('en-US')} OF {shown.total.toLocaleString('en-US')}</span>
         {onRead && sites.unread ? <button type="button" className="sec-scan label-data" disabled={busy} data-read-sites="" title="Reads each company's own site: whether it is alive, what it says it is, and the addresses it publishes. Up to 40 at a press, the most visited first" onClick={() => onRead(segment)}>READ THE SITES · {sites.unread.toLocaleString('en-US')} UNREAD</button> : null}
-        {dead ? <button type="button" className={`sec-scan cline-mini label-data${view.liveOnly ? ' is-on' : ''}`} aria-pressed={view.liveOnly} title="Leaves out companies whose site could not be read, and unread ones with no traffic at all" onClick={() => setView({ liveOnly: !view.liveOnly, page: 0 })}>HIDE DEAD ENDS · {dead.toLocaleString('en-US')}</button> : null}
-        {shown.pages > 1 ? (
-          <>
-            <button type="button" className="sec-scan cline-mini label-data" disabled={shown.page === 0} onClick={() => setView({ ...view, page: shown.page - 1 })}>PREVIOUS</button>
-            <button type="button" className="sec-scan cline-mini label-data" disabled={shown.page >= shown.pages - 1} onClick={() => setView({ ...view, page: shown.page + 1 })}>NEXT</button>
-          </>
-        ) : null}
+        {dead ? <button type="button" className={`sec-scan cline-mini label-data${liveOnly ? ' is-on' : ''}`} aria-pressed={liveOnly} title="Leaves out companies whose site could not be read, and unread ones with no traffic at all" onClick={() => setLiveOnly(!liveOnly)}>HIDE DEAD ENDS · {dead.toLocaleString('en-US')}</button> : null}
       </div>
-      <div className="cline-table-wrap">
-        <table className="cline-table" aria-label={`companies for ${segment.name}`}>
-          <thead><tr>{['NAME', 'SITE', 'WHAT IT IS', 'REACH', 'GEO', 'SIZE', 'INDUSTRY', 'TRAFFIC', 'STANDS'].map((h) => <th key={h} scope="col" className="label-data">{h}</th>)}</tr></thead>
-          <tbody>
-            {shown.rows.map((r) => {
-              const [words, tone] = standingWords(r.standing);
-              const detail = r.standing === 'gathered' ? null : detailOf(r.domain);
-              return [
-                <tr key={r.domain} data-company={r.domain} data-company-standing={r.standing}>
-                  <th scope="row">{detail
-                    ? <button type="button" className="cline-table-open" aria-expanded={open === r.domain} aria-label={`${r.name} — why it was scored so, and who was read`} onClick={() => setOpen(open === r.domain ? null : r.domain)}>{open === r.domain ? '▾' : '▸'} {r.name}</button>
-                    : r.name}</th>
-                  <td><a className="cline-link" href={r.site} target="_blank" rel="noreferrer noopener">{r.domain}</a></td>
-                  <td className="cline-table-about" title={r.about}>{r.about}</td>
-                  <td className={r.read && !r.read.alive ? 'is-alert' : ''} title={r.read?.why ?? r.read?.emails.join(', ') ?? ''} data-company-reach="">{contactShort(r)}</td>
-                  <td>{r.country ?? '—'}</td>
-                  <td>{r.size ?? '—'}</td>
-                  <td>{r.industry ?? '—'}</td>
-                  <td className={r.ranked && !r.rank ? 'is-alert' : ''}>{r.ranked ? trafficShort(r.rank) : '—'}</td>
-                  <td><span className={`cline-chip${tone ? ` is-${tone}` : ''}`}>{words}{r.people ? ` · ${r.people}` : ''}</span></td>
-                </tr>,
-                detail && open === r.domain ? <tr key={`${r.domain}:why`} data-company-detail={r.domain}><td colSpan={9} className="cline-table-detail">{detail}</td></tr> : null,
-              ];
-            })}
-          </tbody>
-        </table>
-      </div>
+      <Sheet label={`companies for ${segment.name}`} columns={COLUMNS} rows={liveOnly ? rows.filter((r) => !isDeadEnd(r)) : rows} rowKey={(r) => r.domain} rowName={(r) => r.name}
+        rowAttrs={(r) => ({ 'data-company': r.domain, 'data-company-standing': r.standing })}
+        detail={(r) => (r.standing === 'gathered' ? null : detailOf(r.domain))} detailLabel={() => 'why it was scored so, and who was read'} />
     </Fold>
   );
 };

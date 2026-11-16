@@ -121,7 +121,10 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     const grace = page.locator('[data-person]').filter({ hasText: 'Grace Hopper' });
     expect((await grace.locator('[data-upkeep="answer"]').textContent()).trim()).toBe('ANSWER OWED (0 H)');
     expect(await grace.locator('[data-lead-status]').textContent()).toBe('THEY WROTE');
-    expect(await grace.locator('[data-promised]').textContent()).toContain('PROMISED: two short written ideas on a field app');
+    expect(await grace.locator('[data-upkeep="answer"]').getAttribute('title')).toContain('PROMISED: two short written ideas on a field app');
+    // One person, one line: a sheet row with a cell for each fact.
+    expect(await page.locator('[data-sheet="people"] thead th').allTextContents()).toEqual(['NAME', 'COMPANY', 'TITLE', 'EMAIL OR REACH', 'PROOF', 'FILED AS', 'STANDS', 'FROM', 'DUE']);
+    expect(await grace.locator('[data-person-reach]').textContent()).toBe('grace@navy.example');
     expect(await page.locator('[data-people-stat]').first().textContent()).toMatch(/ACTIVE LEAD/);
     // The facts sheet waits for the operator: every fact with its source.
     expect(await page.locator('[data-facts-state]').textContent()).toBe('WAITS FOR YOUR APPROVAL');
@@ -131,8 +134,10 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     expect(await page.locator('[data-fold="facts:ignis"] > summary .fold-title').textContent()).toBe('IGNIS AI LABS');
     expect(await page.locator('[data-fold="facts:ignis"] > summary .fold-stat').allTextContents()).toEqual(['3 FACTS', '0 CHECKED']);
     expect(await page.locator('[data-fold="company:facts"]').getAttribute('open')).not.toBe(null);
-    expect(await page.locator('[data-fact="2"] .cline-fact-claim').textContent()).toBe('2 A session costs 250 US dollars an hour [250 USD]');
-    expect(await page.locator('[data-fact="2"] .cline-fact-source').textContent()).toBe('FROM https://ignislabs.ai/sessions');
+    expect(await page.locator('[data-fact="2"] .cline-fact-claim').textContent()).toBe('A session costs 250 US dollars an hour');
+    expect(await page.locator('[data-fact="2"] .cline-fact-figure').textContent()).toBe('250 USD');
+    expect(await page.locator('[data-sheet^="facts about"]').first().locator('thead th').allTextContents()).toEqual(['#', 'OK', 'WHAT MAY BE SAID', 'FIGURE', 'SOURCE', 'STANDS', 'CHANGE']);
+    expect(await page.locator('[data-fact="2"] .cline-fact-source').textContent()).toBe('https://ignislabs.ai/sessions');
     // One fact is rewritten in place: a new sheet stands on disk, still waiting, the figure and source kept.
     await page.getByRole('button', { name: 'EDIT fact 2' }).click();
     await page.getByLabel('Fact 2, the words').fill('A session costs 250 US dollars for one hour');

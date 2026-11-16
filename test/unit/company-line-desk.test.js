@@ -210,7 +210,8 @@ describe('SALES on the desk', () => {
     expect(html).toContain('SALES — MERCATOR · SOL');
     expect(html).toContain('WON · 300 USD + 0.1 ETH');
     expect(html).toContain('data-deal-id="d-0a0b0c0d"');
-    expect(html).toContain('Padstow harbour office — QUALIFIED, 120 USD — NEXT: Send the sample sheet');
+    // A list of records is a sheet: one deal a line, one fact a cell.
+    expect(html).toMatch(/<th scope="row">Padstow harbour office<\/th><td>QUALIFIED<\/td><td>120 USD<\/td><td title="Send the sample sheet">Send the sample sheet<\/td>/);
     expect(html).toContain('>UNSEAT<');
   });
 });
@@ -234,7 +235,7 @@ describe('THE BOOKS on the desk', () => {
     expect(html).toContain('THE BOOKS — LOGISTA · LEDGER');
     expect(html).toContain('USDC NET · IN 120 · OUT 0');
     expect(html).toContain('2 ENTRIES · 1 UNMATCHED · 1 VOIDED');
-    expect(html).toContain('DUE 2027-03-15: Federal return (Form 1065) — TO the IRS — NEEDS A LICENSED CPA');
+    expect(html).toMatch(/<th scope="row" title="Federal return \(Form 1065\)">Federal return \(Form 1065\)<\/th><td>2027-03-15<\/td><td>the IRS<\/td><td class="is-alert">A LICENSED CPA<\/td>/);
     expect(html).toContain('1 RECEIPT NOT YET BOOKED');
   });
 });

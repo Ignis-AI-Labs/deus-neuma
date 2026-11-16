@@ -60,6 +60,7 @@ import {
 } from './portal-turn-persist.js';
 import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead, wireContextSections } from './portal-turn-prompt.js';
 import { settleUnfinishedTurn } from './portal-turn-unfinished.js';
+import { keepTurn } from './turn-keep.js';
 import { refuseUnboundTurn, refuseRetryAttachments, takeTurnOrigin } from './portal-turn-guards.js';
 import { withShedSections } from './turn-envelope.js';
 import { compactBeforeTurn } from './context-overflow.js';
@@ -209,6 +210,7 @@ export const streamConsciousness = async (connection, message) => {
   // The point lands BEFORE the provider is asked (RETRY-ANYWHERE): every
   // check the turn must pass has passed, so a provider failure from here on
   // leaves a retryable point on disk — the ask never vanishes with the error.
+  await keepTurn(connection, { neumaId: companion?.neumaId, sessionId, take }); // kept as it goes: a close never loses it (turn-keep.js)
   if (!retryTurn) await _persistTurnPoint(connection, companion, sessionId, thought, images, docs, take, origin);
 
   // The operator may cut this turn short (consciousness:interrupt) — the
