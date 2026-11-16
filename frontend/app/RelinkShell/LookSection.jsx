@@ -8,7 +8,7 @@ import { uiSound } from '../../services/ui-sound.js';
 import { STOCK_LOOK, STOCK_FACES, isSameLook } from '../../utils/look-derive.js';
 import { HexField } from './HexField.jsx';
 import { TextSizeControl } from './TextSizeControl.jsx';
-import { STOCK_PRESETS } from '../../utils/look-presets.js';
+import { STOCK_PRESETS, PRESET_TONES } from '../../utils/look-presets.js';
 import {
   applyLook, getLook, setLookTheme, saveLookPreset, deleteLookPreset,
 } from '../../services/look.js';
@@ -220,11 +220,17 @@ export const LookSection = () => {
       <section className="settings-sec">
         <div className="label-data settings-h">{t('presets.heading')}</div>
         <p className="settings-note">{t('presets.note')}</p>
-        <ul className="settings-look-presets">
-          {STOCK_PRESETS.map((p) => (
-            <PresetRow key={p.id} preset={p} active={isSameLook(draft, p.theme)} onPick={pick} />
-          ))}
-        </ul>
+        {/* The shelf by kind: the dresses to work in for hours first (soft dark, soft light), then the deep and the bright. */}
+        {PRESET_TONES.map((tone) => (
+          <div key={tone} className="settings-look-group" data-look-tone={tone}>
+            <p className="settings-look-tone label-data">{t(`presets.tones.${tone}`)}</p>
+            <ul className="settings-look-presets" aria-label={t(`presets.tones.${tone}`)}>
+              {STOCK_PRESETS.filter((p) => p.tone === tone).map((p) => (
+                <PresetRow key={p.id} preset={p} active={isSameLook(draft, p.theme)} onPick={pick} />
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
       <section className="settings-sec">

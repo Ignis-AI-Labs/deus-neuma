@@ -42,6 +42,7 @@ export default Object.freeze({
   presets: Object.freeze({
     heading: 'プリセット',
     note: '工場出荷時の装い。ワンクリックで適用。',
+    tones: Object.freeze({ 'soft-dark': 'ソフトダーク — 目にやさしい', 'soft-light': 'ソフトライト — 目にやさしい', 'deep-dark': 'ディープダーク', 'bright-light': 'ブライトライト' }),
   }),
 
   yourPresets: Object.freeze({

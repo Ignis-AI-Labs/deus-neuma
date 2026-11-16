@@ -190,6 +190,8 @@ describe('GATHERING through the real stack (gnosis)', () => {
       if (req.query.api_key !== 'the-operators-key') return res.status(401).json({ errors: [{ details: 'No user found for the API key supplied' }] });
       discoverAsked.push(req.body);
       if (req.body.query) return res.json({ data: [], meta: { results: 1139, filters: { keywords: { match: 'any', include: ['defi', 'token'] } } } });
+      // Hunter's own industry filter: the chain teams themselves.
+      if (req.body.industry) return res.json({ data: [{ domain: 'sui.io', organization: 'Sui', emails_count: { personal: 32, generic: 3, total: 35 } }], meta: { results: 2212 } });
       const size = req.body.headcount?.[0];
       const rows = { '1-10': [{ domain: 'indexcoop.com', organization: 'Index Coop', emails_count: { personal: 21, generic: 10, total: 31 } }, { domain: 'limitless.exchange', organization: 'Limitless', emails_count: { personal: 3, generic: 1, total: 4 } }], '11-50': [{ domain: 'nmkr.io', organization: 'NMKR', emails_count: { personal: 0, generic: 4, total: 4 } }, { domain: 'not a domain', organization: 'Broken' }] }[size] ?? [];
       return res.json({ data: rows, meta: { results: rows.length } });
@@ -375,7 +377,7 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).every((h) => h.includes('type=personal') && /required_field=full_name(,|%2C)position/.test(h))).toBe(true);
 
     // HUNTER'S FREE COMPANY SEARCH: words in, companies out with how many people Hunter holds at each; no credit, no spending rule.
-    expect(await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'short' })).toMatchObject({ status: 'error', error: expect.stringMatching(/needs words: one plain sentence/) });
+    expect(await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'short' })).toMatchObject({ status: 'error', error: expect.stringMatching(/needs industries or keywords \(best\), or words: one plain sentence/) });
     const found = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'token projects on Base that need deeper liquidity', sizes: ['1-10', '11-50'] });
     expect(found.status, found.error).toBe('ok');
     // The words were read once by Hunter; its filters were then asked a size at a time, in the audience's own countries.
@@ -386,6 +388,20 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(found.content).toContain('Index Coop — indexcoop.com — 1-10 people · Hunter holds 21 named people there and 10 general addresses');
     expect(found.content).toContain('NMKR — nmkr.io — 11-50 people · Hunter holds no named person there, only 4 general addresses');
     expect(await spend()).toMatchObject({ spent: 4 });
+    // DISCOVER LOOKS FIRST, AIMED: Hunter's own industry and the being's keywords, never its guess at words; nothing kept.
+    expect(await act('merc', { type: 'sales/discover', segment: await segmentId(), industries: ['Blockchain'] })).toMatchObject({ status: 'error', error: expect.stringMatching(/"Blockchain" is not one of Hunter's industries — nearest: Blockchain Services/) });
+    const looked = discoverAsked.length;
+    const look = await act('merc', { type: 'sales/discover', segment: await segmentId(), industries: ['blockchain services'], keywords: ['defi', 'decentralized exchange'], exclude: ['casino'] });
+    expect(look.status, look.error).toBe('ok');
+    expect(discoverAsked.slice(looked)).toEqual([{ industry: { include: ['Blockchain Services'] }, keywords: { include: ['defi', 'decentralized exchange'], exclude: ['casino'], match: 'any' }, headquarters_location: expect.any(Object), limit: 15 }]);
+    expect(look.content).toMatch(/^Hunter, asked as industry: Blockchain Services · keywords \(any\): defi, decentralized exchange · excluding: casino: 2,212 companies match in the countries of ".+"\. Nothing was kept or spent\.\n- Sui — sui\.io — Hunter holds 32 named people there and 3 general addresses\n/);
+    expect((await readCandidates(me.address)).some((c) => c.domain === 'sui.io')).toBe(false);
+    // The gather with the same fields asks Hunter those filters, size by size: no reading of words.
+    const aimed = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', industries: ['Blockchain Services'], keywords: ['defi'], sizes: ['1-10'] });
+    expect(aimed.status, aimed.error).toBe('ok');
+    expect(discoverAsked.slice(looked + 1).every((b) => !b.query && b.industry.include[0] === 'Blockchain Services')).toBe(true);
+    expect(aimed.content).toContain('1 new candidate(s)');
+    expect(aimed.content).toContain('(asked as industry: Blockchain Services · keywords (any): defi)');
     // ONE NAMED PERSON'S ADDRESS (Hunter's finder): kept when Hunter saw it on a page or confirmed it exists; a guess is told as a guess and not kept.
     expect(await act('merc', { type: 'sales/find-address', domain: 'limitless.exchange', name: 'Ada' })).toMatchObject({ status: 'error', error: expect.stringMatching(/full name, first and last/) });
     expect(await act('merc', { type: 'sales/find-address', domain: 'stranger.example', name: 'Ada Lovelace' })).toMatchObject({ status: 'error', error: expect.stringMatching(/not a company you gathered or pooled/) });

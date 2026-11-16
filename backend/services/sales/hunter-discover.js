@@ -15,25 +15,80 @@
 // with its own first 100, which reaches several hundred companies on a free plan without paging.
 // Every company comes back with HOW MANY addresses Hunter holds for it, so a paid lookup
 // (lead-providers.js, one credit) is spent only where there is somebody to find.
-// The shaping is PURE; the gather is impure (network), never throws.
+//
+// DISCOVER IS THE FIRST STEP, AND IT IS AIMED (Design note, 2026-11-16, later: […]). For the Umbrae
+// audience, Hunter's assistant read the words as ANY of […], […], […], […]…, and the
+// gather brought back German gymnastics clubs, a valves supplier and a radio station. Asked with
+// Hunter's own industry filter instead ([…], from the list Hunter publishes at
+// hunter.io/files/industries.json, kept here as hunter-industries.json), the same search answered
+// Cardano Foundation, Sui, Gnosis, Starknet Foundation, Monad Foundation. So: the being may give
+// its own filters — industries (Hunter's names, checked here, a wrong one answered with the
+// nearest), keywords (phrases, any or all), exclude — and then Hunter's guess is not used at all;
+// and DISCOVER LOOKS FIRST (previewDiscover, sales/discover): how Hunter reads the search, how many
+// match, the first companies — free, nothing kept — before a gather fills the pool.
+// The shaping is PURE; the calls are impure (network), never throw.
 
 import process from 'node:process';
 import { HUNTER_URL } from './lead-providers.js';
 import { SIZES } from './company-index.js';
+import INDUSTRIES from './hunter-industries.json' with { type: 'json' };
 
 export const DISCOVER_MAX = 500;
 const PER_CALL = 100;
+const SAMPLE = 15; // what a look shows
 const PACE_MS = 1300; // Hunter allows 50 Discover calls a minute
 const urlOf = () => process.env.NEUMA_LEAD_SOURCE_HUNTER || HUNTER_URL;
 const HOST = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/;
 
-/** pure — the filters one Discover call is asked with: Hunter's own reading of the words, narrowed to the audience's countries and one or more sizes. */
-export const discoverFilters = ({ filters = {}, countries = [], sizes = [], industries = [] } = {}) => ({
+export const HUNTER_INDUSTRIES = Object.freeze([...INDUSTRIES]);
+const INDUSTRY_OF = new Map(HUNTER_INDUSTRIES.map((name) => [name.toLowerCase(), name]));
+const wordsOf = (text) => String(text).toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 2);
+
+/** pure — Hunter's own name for an industry (any case), or null. */
+export const hunterIndustry = (name) => INDUSTRY_OF.get(String(name ?? '').trim().toLowerCase()) ?? null;
+
+/** pure — Hunter's industry names sharing the most words with a name it does not know (at most 5). */
+export const nearestIndustries = (name) => {
+  const asked = wordsOf(name);
+  return HUNTER_INDUSTRIES.map((n) => [n, wordsOf(n).filter((w) => asked.some((a) => w.startsWith(a) || a.startsWith(w))).length])
+    .filter(([, shared]) => shared > 0).sort((a, b) => b[1] - a[1] || a[0].length - b[0].length).slice(0, 5).map(([n]) => n);
+};
+
+/** pure — why these industries cannot be asked of Hunter, with the names it would take instead; null when they all can. */
+export const industryRefusal = (names = []) => {
+  const unknown = names.filter((n) => !hunterIndustry(n));
+  if (!unknown.length) return null;
+  return unknown.map((n) => {
+    const near = nearestIndustries(n);
+    return `"${n}" is not one of Hunter's industries${near.length ? ` — nearest: ${near.join('; ')}` : ''}`;
+  }).join('. ');
+};
+
+/** pure — the being's own filters (industries, keywords any/all, exclude), or null when it gave none and Hunter's reading of its words is to be used. */
+export const ownFilters = ({ industries = [], keywords = [], exclude = [], match = 'any' } = {}) => {
+  if (!industries.length && !keywords.length) return null;
+  return {
+    ...(industries.length ? { industry: { include: industries.map(hunterIndustry).filter(Boolean) } } : {}),
+    ...(keywords.length || exclude.length ? { keywords: {
+      ...(keywords.length ? { include: keywords } : {}), ...(exclude.length ? { exclude } : {}), match: match === 'all' ? 'all' : 'any',
+    } } : {}),
+  };
+};
+
+/** pure — the filters one Discover call is asked with: the being's own or Hunter's reading, narrowed to the audience's countries and one or more sizes. */
+export const discoverFilters = ({ filters = {}, countries = [], sizes = [] } = {}) => ({
   ...filters,
   ...(countries.length ? { headquarters_location: { include: countries.map((c) => ({ country: String(c).toUpperCase() })) } } : {}),
   ...(sizes.length ? { headcount: sizes } : {}),
-  ...(industries.length ? { industry: { include: industries } } : {}),
 });
+
+/** pure — a search in words the being can read back: what was asked of Hunter. */
+export const filtersWords = (filters = {}) => [
+  filters.industry?.include?.length ? `industry: ${filters.industry.include.join(' or ')}` : null,
+  filters.keywords?.include?.length ? `keywords (${filters.keywords.match ?? 'all'}): ${filters.keywords.include.join(', ')}` : null,
+  filters.keywords?.exclude?.length ? `excluding: ${filters.keywords.exclude.join(', ')}` : null,
+  filters.headcount?.length ? `sizes: ${filters.headcount.join(', ')}` : null,
+].filter(Boolean).join(' · ') || 'no filter';
 
 /** pure — how many addresses Hunter holds for a company, in words. */
 export const heldWords = (n) => (n.personal ? `Hunter holds ${n.personal} named ${n.personal === 1 ? 'person' : 'people'} there${n.generic ? ` and ${n.generic} general address${n.generic === 1 ? '' : 'es'}` : ''}`
@@ -63,6 +118,16 @@ const discover = async (body, { apiKey, signal }) => {
   throw new Error({ 401: 'Hunter refused the key — check it in SETTINGS, API, Lead data', 429: 'Hunter is busy (its limit of calls a minute) — gather again in a minute' }[res.status] ?? `Hunter answered ${res.status}${said ? `: ${said}` : ''}`);
 };
 
+// impure — what a search asks Hunter: the being's own filters as they are, or else its words in
+// Hunter's own reading (one free call; its assistant answers with the filters it understood).
+const searchOf = async (query, { apiKey, signal, onProgress = () => {} }) => {
+  const own = ownFilters(query);
+  if (own) return { filters: own, matched: 0, read: false };
+  onProgress('asking Hunter what your words mean as a search');
+  const answer = await discover({ query: String(query.words).slice(0, 300), limit: 1 }, { apiKey, signal });
+  return { filters: answer?.meta?.filters ?? {}, matched: Number(answer?.meta?.results) || 0, read: true };
+};
+
 /**
  * Gather up to `count` companies the house has not seen from Hunter's free company search. impure. Never throws.
  * @param {{count?: number, known?: {domains: Set<string>}, segment?: object, query?: {words?: string, industries?: string[], sizes?: string[], countries?: string[]},
@@ -78,11 +143,9 @@ export const gatherHunterDiscover = async ({ count = PER_CALL, known = { domains
     if (!apiKey) return { candidates, looked, stopped: 'no Hunter key is attached — the operator adds one in SETTINGS, API, Lead data (a free Hunter account is enough: this search spends no credits)' };
     const badSize = (query.sizes ?? []).find((s) => !SIZES.includes(s));
     if (badSize) return { candidates, looked, stopped: `"${badSize}" is not a size — sizes are: ${SIZES.join(', ')}` };
-    // The words once, in Hunter's own reading (free): its assistant answers with the filters it understood.
-    onProgress('asking Hunter what your words mean as a search');
-    const read = await discover({ query: String(query.words).slice(0, 300), limit: 1 }, { apiKey, signal });
-    const filters = read?.meta?.filters ?? {};
-    matched = Number(read?.meta?.results) || 0;
+    const search = await searchOf(query, { apiKey, signal, onProgress });
+    const { filters } = search;
+    matched = search.matched;
     const countries = query.countries?.length ? query.countries : segment?.countries ?? [];
     const take = (answer, size) => {
       for (const row of companiesOfDiscover(answer, size)) {
@@ -94,13 +157,32 @@ export const gatherHunterDiscover = async ({ count = PER_CALL, known = { domains
     for (const size of query.sizes?.length ? query.sizes : SIZES) {
       if (candidates.length >= want) break;
       await wait(paceMs, signal);
-      const page = await discover({ ...discoverFilters({ filters, countries, sizes: [size], industries: query.industries ?? [] }), limit: PER_CALL }, { apiKey, signal });
+      const page = await discover({ ...discoverFilters({ filters, countries, sizes: [size] }), limit: PER_CALL }, { apiKey, signal });
       take(page, size);
       onProgress(`${candidates.length} of ${want} found — size ${size} searched (${(Number(page?.meta?.results) || 0).toLocaleString('en-US')} match there)`);
     }
-    return { candidates, looked, matched, stopped: null };
+    return { candidates, looked, matched, asked: filtersWords(filters), stopped: null };
   } catch (err) {
     return { candidates, looked, matched, stopped: err.message };
+  }
+};
+
+/**
+ * DISCOVER LOOKS FIRST: one free call showing what a search would bring — how it was asked of Hunter,
+ * how many companies match in the audience's countries, and the first of them — nothing kept. impure.
+ * Never throws.
+ * @returns {Promise<{ok: true, asked: string, read: boolean, matched: number, sample: object[]}|{ok: false, reason: string}>}
+ */
+export const previewDiscover = async ({ query = {}, segment = null, apiKey, signal } = {}) => {
+  try {
+    if (!apiKey) return { ok: false, reason: 'no Hunter key is attached — the operator adds one in SETTINGS, API, Lead data (a free Hunter account is enough: this search spends no credits)' };
+    const search = await searchOf(query, { apiKey, signal });
+    const countries = query.countries?.length ? query.countries : segment?.countries ?? [];
+    const asked = discoverFilters({ filters: search.filters, countries, sizes: query.sizes ?? [] });
+    const page = await discover({ ...asked, limit: SAMPLE }, { apiKey, signal });
+    return { ok: true, asked: filtersWords(asked), read: search.read, matched: Number(page?.meta?.results) || 0, sample: companiesOfDiscover(page) };
+  } catch (err) {
+    return { ok: false, reason: err.message };
   }
 };
 
