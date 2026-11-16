@@ -28,6 +28,7 @@ import { companyFiles, companiesText } from './company-file.js';
 import { readSeating } from './position-seating.js';
 import { houseCampaigns, linkedText } from './campaign-links.js';
 import { readSetupState, setupOf, setupText } from './position-setup.js';
+import { saleProcessText, SALE_STAGES, SALE_LAWS, SALE_PARTS } from '../makoto.js';
 
 const SEATS = Object.freeze({
   cos: cosDesignation, cro: croDesignation, cmo: cmoDesignation, clo: cloDesignation,
@@ -76,6 +77,8 @@ export const positionsBoard = async (wallet) => {
   return {
     positions: foldBoard({ holders, names, waiting: account.items ?? [], connections, setupState }),
     members: [...names].map(([laneId, name]) => ({ laneId, name })),
+    // the one process every sale follows: its stages, the law each keeps, and each seat's part (makoto.js)
+    sale: { stages: SALE_STAGES, laws: SALE_LAWS, parts: SALE_PARTS },
     companies: await companyFiles(wallet),
     gaps: account.gaps ?? [],
     // the seating the members filed together (a seating council), waiting for the operator to apply
@@ -95,7 +98,7 @@ export const positionEyes = async (wallet, office) => {
   const briefing = await BRIEFINGS[office]({ companion: { neumaId: laneId }, walletAddress: wallet });
   const setupState = await readSetupState(wallet).catch(() => null);
   const setup = setupState ? setupText([office], { [office]: setupOf(office, laneId, setupState) }) : '';
-  return { laneId, text: [positionMapText([office]), setup, companiesText(await companyFiles(wallet)), linkedText([office], await houseCampaigns(wallet)), briefing].filter(Boolean).join('\n\n') };
+  return { laneId, text: [positionMapText([office]), setup, saleProcessText([office]), companiesText(await companyFiles(wallet)), linkedText([office], await houseCampaigns(wallet)), briefing].filter(Boolean).join('\n\n') };
 };
 
 /**
@@ -116,5 +119,6 @@ export const positionSection = async (connection) => {
   // …and, while its position is not fully set up, the steps still open: its own, and the operator's to pass on.
   const setupState = await readSetupState(wallet).catch(() => null);
   const setup = setupState ? setupText(held, Object.fromEntries(held.map((office) => [office, setupOf(office, laneId, setupState)]))) : '';
-  return [map, setup, companiesText(await companyFiles(wallet).catch(() => [])), linkedText(held, await houseCampaigns(wallet).catch(() => []))].filter(Boolean).join('\n\n');
+  // …and the one process every sale of every company follows, with this seat's part in it (makoto.js).
+  return [map, setup, saleProcessText(held), companiesText(await companyFiles(wallet).catch(() => [])), linkedText(held, await houseCampaigns(wallet).catch(() => []))].filter(Boolean).join('\n\n');
 };

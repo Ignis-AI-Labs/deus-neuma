@@ -73,3 +73,12 @@ export const titleSeat = (member, positions) => {
     words: held ? `HOLDS THE ${position.seat} SEAT` : `TITLE ONLY — THE ${position.seat} SEAT IS ${position.holder ? `HELD BY ${String(position.holder.name).toUpperCase()}` : 'EMPTY'}`,
   };
 };
+
+/** Does this seat work this stage of the sale? */
+export const stageIsMine = (stage, office) => (stage?.seats ?? []).includes(office);
+
+/** The sale's line on one position's hub: how many stages, and which this seat works. */
+export const saleLine = (sale, office) => {
+  const mine = (sale?.stages ?? []).filter((s) => stageIsMine(s, office)).map((s) => s.n);
+  return [`${sale.stages.length} STAGES`, mine.length ? { text: `THIS SEAT WORKS ${mine.join(', ')}`, tone: 'on' } : 'THIS SEAT GUARDS EVERY STAGE'];
+};

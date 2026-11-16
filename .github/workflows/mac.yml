@@ -44,6 +44,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # the npm that wrote package-lock.json - see ci.yml
+      - run: npm install -g npm@11.8.0
       - run: npm ci
       - name: the desk (vite)
         run: npm run build

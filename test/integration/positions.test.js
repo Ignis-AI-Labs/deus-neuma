@@ -104,6 +104,9 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     expect(merc).toContain('## THE HOUSE\'S COMPANIES');
     // …and, while its position is not set up, the steps still open, the operator's in words to pass on.
     expect(merc).toContain('## SETTING UP YOUR POSITION');
+    // …and the one process every sale follows, with its own stages marked.
+    expect(merc).toContain('## THE SALE — one process for every company of this house');
+    expect(merc).toContain('Your part: carry each buyer through stages 2 to 7 yourself.');
     expect(merc).toContain('- Connect the mailbox the house sends from. POSITIONS, CHIEF REVENUE OFFICER, MAILBOX');
     expect(merc).toMatch(/Umbrae \[umbrae\]: site NOT SET/);
     expect(merc).toMatch(/MISSING: its business model: [^;]+; its site address \(the operator sets it in MARKETING, BRAND, SITE & CODE\); facts a buyer may be told/);

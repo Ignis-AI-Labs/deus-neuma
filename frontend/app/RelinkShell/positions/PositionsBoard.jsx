@@ -126,6 +126,7 @@ export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk
           onDoor={(door) => { uiSound('open'); onDoor(door); }}
           onHand={(member, prompt) => { uiSound('open'); onHand(member, prompt); }}
           onChanged={load}
+          sale={board.sale ?? null}
         />
       </div>
     </div>

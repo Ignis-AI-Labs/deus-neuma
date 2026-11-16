@@ -8,6 +8,7 @@ import { Select } from '../Select.jsx';
 import { DeskTabs } from '../DeskTabs.jsx';
 import { KIND_LABEL, waitedLabel } from '../waiting/waiting-view.js';
 import { hubTabs, seatOptions, stepWords, helpAsk } from './positions-view.js';
+import { SaleProcess } from './SaleProcess.jsx';
 
 const Waiting = ({ items, now, onOpen }) => (items.length ? (
   <section className="pos-wait" aria-label="waiting on you for this position">
@@ -92,7 +93,7 @@ const Eyes = ({ position, eyes }) => {
  *   Panel?: Function}} props — Panel renders one function in place; without it the function's sentence stands
  */
 export const PositionHub = ({ position, members, names, tab, now, busy, pick, confirmClear, eyes,
-  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onDoor = () => {}, onHand = () => {}, onChanged = () => {}, Panel = null }) => {
+  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onDoor = () => {}, onHand = () => {}, onChanged = () => {}, Panel = null, sale = null }) => {
   const fn = position.functions.find((f) => f.id === tab) ?? null;
   // The control's name carries the words it shows (a spoken command must match what is seen).
   const placeholder = position.holder ? 'hand it to another member' : 'choose who holds it';
@@ -116,6 +117,7 @@ export const PositionHub = ({ position, members, names, tab, now, busy, pick, co
         </div>
       </header>
       <Waiting items={position.waiting} now={now} onOpen={onOpenWaiting} />
+      {sale ? <div className="pos-sale-wrap"><SaleProcess sale={sale} position={position} onDoor={onDoor} /></div> : null}
       <DeskTabs items={hubTabs(position)} value={tab} onChange={onTab} label={`${position.seat} functions`}
         className="pos-tabs" tabClassName="pos-tab label-data" panelClassName="pos-panel">
         {fn && Panel ? <Panel office={position.office} fn={fn} names={names} holder={position.holder} onHand={onHand} onChanged={onChanged} onDoor={onDoor} /> : null}
