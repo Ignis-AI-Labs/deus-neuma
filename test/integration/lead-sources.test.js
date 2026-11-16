@@ -391,6 +391,12 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(found.content).toContain('Index Coop — indexcoop.com — 1-10 people · 31 addresses at Hunter (21 named people, 10 general)');
     expect(found.content).toContain('NMKR — nmkr.io — 11-50 people · 4 addresses at Hunter (no named person, 4 general)');
     expect(found.content.indexOf('Index Coop')).toBeLessThan(found.content.indexOf('NMKR')); // the most addresses first
+    // THE POOL, SEEN WHOLE: the seat filters every gathered company down, with what is known about each (free, no card).
+    const browsed = await act('merc', { type: 'sales/candidates', segment: await segmentId(), source: 'hunter-discover', minPeople: 1 });
+    expect(browsed.status, browsed.error).toBe('ok');
+    expect(browsed.content).toMatch(/^The pool of this audience: \d+ companies — \d+ waiting to be scored, \d+ with addresses at Hunter/);
+    expect(browsed.content).toContain('Index Coop — indexcoop.com — 1-10 people — 31 addresses at Hunter (21 named people, 10 general)');
+    expect(browsed.content).not.toContain('NMKR');
     expect(await spend()).toMatchObject({ spent: 4 });
     // DISCOVER LOOKS FIRST, AIMED: Hunter's own industry and the being's keywords, never its guess at words; nothing kept.
     expect(await act('merc', { type: 'sales/discover', segment: await segmentId(), industries: ['Blockchain'] })).toMatchObject({ status: 'error', error: expect.stringMatching(/"Blockchain" is not one of Hunter's industries — nearest: Blockchain Services/) });

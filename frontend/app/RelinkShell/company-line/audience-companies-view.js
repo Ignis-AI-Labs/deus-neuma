@@ -18,16 +18,19 @@ export const companyRows = ({ gathered = [], pool = [], leads = [] } = {}) => {
   const by = new Map();
   for (const c of gathered) {
     by.set(c.domain, { domain: c.domain, name: c.name, about: c.description || c.signal || '', country: c.country ?? null, size: c.size ?? null, industry: c.categories?.[0] ?? null, founded: c.founded ?? null, rank: c.trafficRank ?? null, ranked: 'trafficRank' in c, standing: 'gathered', people: 0, site: typeof c.site === 'string' ? c.site : `https://${c.domain}`,
+      // what Hunter holds there (hunter-discover.js): the count its own screen shows, and how many are named people
+      addresses: c.hunterEmails ? (Number(c.hunterEmails.total) || (Number(c.hunterEmails.personal) || 0) + (Number(c.hunterEmails.generic) || 0)) : null, named: c.hunterEmails ? Number(c.hunterEmails.personal) || 0 : null,
       // what its own site said when it was read (company-reader.js): null until then
       read: c.siteRead ? { alive: Boolean(c.siteRead.alive), blocked: Boolean(c.siteRead.blocked), why: c.siteRead.why ?? null, emails: (c.siteRead.emails ?? []).map((e) => e.email), socials: c.siteRead.socials ?? {}, movedTo: c.siteRead.movedTo ?? null } : null });
   }
   const scored = (p, standing) => {
-    const prior = by.get(p.domain) ?? { domain: p.domain, name: p.name, about: '', country: null, size: null, industry: null, founded: null, rank: null, ranked: false, site: `https://${p.domain}`, read: null };
+    const prior = by.get(p.domain) ?? { domain: p.domain, name: p.name, about: '', country: null, size: null, industry: null, founded: null, rank: null, ranked: false, site: `https://${p.domain}`, read: null, addresses: null, named: null };
     by.set(p.domain, { ...prior, name: p.name || prior.name, country: p.country && p.country !== 'unknown' ? p.country : prior.country, standing, people: p.people?.length ?? 0 });
   };
   for (const p of pool) scored(p, p.match === 3 ? 'strong' : p.match === 2 ? 'weak' : 'none');
   for (const p of leads) scored(p, 'lead');
-  return [...by.values()].sort((a, b) => ORDER.indexOf(a.standing) - ORDER.indexOf(b.standing) || Number(!a.rank) - Number(!b.rank) || (a.rank ?? 0) - (b.rank ?? 0) || a.name.localeCompare(b.name));
+  // Within a standing: the most addresses at Hunter first (Hunter's own screen order), then the most visited.
+  return [...by.values()].sort((a, b) => ORDER.indexOf(a.standing) - ORDER.indexOf(b.standing) || (b.addresses ?? 0) - (a.addresses ?? 0) || Number(!a.rank) - Number(!b.rank) || (a.rank ?? 0) - (b.rank ?? 0) || a.name.localeCompare(b.name));
 };
 
 const tally = (rows, keyOf) => {
@@ -51,6 +54,13 @@ export const trafficCount = (rows) => {
   const ranked = rows.filter((r) => r.ranked);
   return { checked: ranked.length, live: ranked.filter((r) => r.rank).length, quiet: ranked.filter((r) => !r.rank).length };
 };
+
+/** What Hunter holds at a company, short: its address count and how many are named people (null when Hunter was not asked). */
+export const hunterShort = (r) => (r.addresses === null || r.addresses === undefined ? null
+  : r.addresses ? `${r.addresses.toLocaleString('en-US')}${r.named ? ` · ${r.named.toLocaleString('en-US')} NAMED` : ' · NONE NAMED'}` : 'NONE');
+
+/** A company Hunter holds named people at: worth a lookup. */
+export const hasPeople = (r) => (r.named ?? 0) > 0;
 
 /** A company nobody should spend a minute on: its site could not be read, or it has no traffic at all. */
 export const isDeadEnd = (r) => (r.read ? !r.read.alive : false) || (r.ranked && !r.rank && !r.read);
@@ -82,6 +92,7 @@ export const companiesLine = (rows) => {
     n('gathered') ? `${n('gathered').toLocaleString('en-US')} NOT SCORED YET` : null,
     n('strong') ? { text: `${n('strong')} STRONG`, tone: 'on' } : null,
     n('lead') ? { text: `${n('lead')} ON THE LEAD LIST`, tone: 'on' } : null,
+    rows.some((r) => r.addresses !== null) ? `${rows.filter(hasPeople).length.toLocaleString('en-US')} WITH NAMED PEOPLE AT HUNTER` : null,
     t.checked ? `${t.live.toLocaleString('en-US')} WITH TRAFFIC` : null,
     t.quiet ? { text: `${t.quiet.toLocaleString('en-US')} WITH NONE`, tone: 'alert' } : null,
     sites.read ? `${sites.read.toLocaleString('en-US')} SITES READ · ${sites.withAddress.toLocaleString('en-US')} WITH AN ADDRESS` : null,

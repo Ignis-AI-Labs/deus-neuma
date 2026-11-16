@@ -60,6 +60,9 @@ const sourceLine = (leads) => {
 
 const mean = (p) => p.fit.reduce((n, s) => n + s.score, 0) / (p.fit.length || 1);
 
+// pure — gathered companies, the most addresses Hunter holds first (the rest in gathered order).
+const mostAddressesFirst = (rows) => [...rows].sort((a, b) => (Number(b.hunterEmails?.total) || 0) - (Number(a.hunterEmails?.total) || 0));
+
 // pure — one line per segment: its state and its pool by match.
 const segmentLines = (segments, prospects) => segments.filter((s) => s.state !== 'retired').slice(-LIST_CAP).map((s) => {
   const mine = prospects.filter((p) => p.segmentId === s.id);
@@ -92,7 +95,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     ...(outbox ? [outboxText(outbox)] : []),
     ...(board.campaigns.length ? ['Your campaigns (sales/campaign opens, edits, archives or deletes one; file each audience under the one it serves, campaign: its id; campaigns/link ties one to a marketing campaign):', ...board.campaigns.map(campaignLine), ...(board.loose.length ? [`Audiences under no campaign: ${board.loose.map((s) => s.name).join('; ')}`] : [])] : ['No campaign is open: open one with sales/campaign (name, company, goal) before filing audiences, so each push is counted on its own.']),
     ...(segments.length ? ['Segments:', ...segmentLines(segments, prospects)] : ['No segments yet: start by filing the first one.']),
-    ...(waiting.length ? [`Candidates gathered, waiting for your score (${waiting.length}; sales/prospect for the ones that fit, sales/contacts for their people):`, ...waiting.slice(0, LIST_CAP).map((c) => `- [${c.id}] ${candidateLine(c)}`)] : []),
+    ...(waiting.length ? [`Candidates gathered, waiting for your score (${waiting.length}; the ${Math.min(LIST_CAP, waiting.length)} with the most addresses at Hunter below — sales/candidates shows and filters them ALL; sales/prospect for the ones that fit, sales/contacts for their people):`, ...mostAddressesFirst(waiting).slice(0, LIST_CAP).map((c) => `- [${c.id}] ${candidateLine(c)}`)] : []),
     ...(ready.length ? ['Ready for the ledger (approved segment, not yet contacted):', ...ready.map((p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]}, ${p.people.length} person(s) read`)] : []),
     ...(due.length
       ? [`Upkeep due (${due.length}):`, ...due.slice(0, LIST_CAP * 2).map((d) => `- ${d.kind.toUpperCase()} [${d.leadId.slice(0, 8)}] ${d.name}${d.kind === 'answer' ? `, waiting ${d.hours} h${d.promised ? `, you promised: "${d.promised}"` : ''}` : (d.days ? `, ${d.days} days` : '')}${d.with ? ` (same as [${d.with.slice(0, 8)}])` : ''} — ${UPKEEP_ASK[d.kind]}${d.next ? `: ${d.next.name}, ${d.next.role} — ${d.next.email} (at ${d.domain}; found on ${d.next.sourceUrl ?? 'the lookup'})` : ''}`)]
