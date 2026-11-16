@@ -155,8 +155,6 @@
 .cline-fact-source { margin: 0; font-size: var(--text-label); color: var(--color-text-tertiary); overflow-wrap: anywhere; }
 .cline-fact-edit { font-size: 14px; line-height: 1.5; }
 
-/* The monthly cap is a short number, not a sentence. */
-[data-paid-lead] .cline-open .cline-input { flex: 0 0 8rem; }
 
 /* The facts sheet's one bar, the tick on each fact, and each fact's own small hands. */
 .cline-fact-bar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); margin-top: var(--space-2); border: 1px solid var(--line-hover); background: var(--color-void); position: sticky; top: 0; z-index: 3; box-shadow: 0 8px 12px var(--color-void); }
@@ -205,3 +203,10 @@
 .cline-lead-who, .cline-lead-state { margin: 0; font-size: 14px; overflow-wrap: anywhere; color: var(--color-text-primary); }
 .cline-lead-last { color: var(--color-text-secondary); font-size: 13px; }
 .cline-chip.is-alert { border-color: var(--alert); color: var(--alert); }
+
+/* The contact book: one person a row — who and what they do, the address and how sure it is, where they stand. */
+.cline-person { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100
+/* The contact book: one person a row — who and what they do, the address and how sure it is, where they stand. */
+.cline-person { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr)); gap: var(--space-1) var(--space-3); align-items: center; border-left: 2px solid var(--line); padding-left: var(--space-3); min-width: 0; }
+.cline-person[data-contact-state="confirmed"] { border-left-color: var(--signal); }
+.cline-person[data-contact-state="bounced"] { border-left-color: var(--alert); }

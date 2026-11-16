@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
 import { announceWaitingChanged } from '../waiting/waiting-changed.js';
-import { getLeadEngine, setSegmentState, suppressContact, approveSegmentList, reviewSalesFacts, openSalesCampaign, moveSalesCampaign, setAudienceCampaign, setLeadSpend, changeSalesFact, setLeadKind } from '../../../services/revenue-client.js';
+import { getLeadEngine, setSegmentState, suppressContact, approveSegmentList, reviewSalesFacts, openSalesCampaign, moveSalesCampaign, setAudienceCampaign, changeSalesFact, setLeadKind } from '../../../services/revenue-client.js';
 
 export const useLeadEngine = () => {
   const [engine, setEngine] = useState(null);
@@ -51,7 +51,6 @@ export const useLeadEngine = () => {
     moveCampaign: (campaign, change, said) => press(() => moveSalesCampaign(campaign.id, change), said),
     changeFact: (sheet, change, said) => press(() => changeSalesFact(sheet.id, change), said),
     refileLead: (lead, kind) => press(() => setLeadKind(lead.id, kind), `${lead.name || lead.contact} is now filed under ${kind}.`),
-    setSpend: (mode, cap) => press(() => setLeadSpend(mode, cap), `Paid lead data: ${{ ask: 'the seat asks you first', 'free-first': 'free first', 'paid-first': 'paid from the start' }[mode]}, at most ${cap} credit(s) a month.`),
     putAudience: (segment, campaign) => press(() => setAudienceCampaign(segment.id, campaign.id), `"${segment.name}" now serves "${campaign.name}".`),
     suppress: (target, reason) => press(() => suppressContact(target.trim(), reason), `${target.trim()} is on the do-not-contact list.`),
   };

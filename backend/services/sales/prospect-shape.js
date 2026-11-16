@@ -64,7 +64,9 @@ const peopleOf = (people) => {
     ...(clean(p?.role, 120).length < 2 ? [`people[${i}].role`] : []),
     ...(!isHttps(p?.sourceUrl) ? [`people[${i}].sourceUrl: the https page you read them on`] : []),
   ]);
-  return { problems, people: list.map((p) => Object.freeze({ name: clean(p.name, 120), role: clean(p.role, 120), sourceUrl: String(p.sourceUrl) })) };
+  // An address published with the person (on that same page) is kept with them: the contact book grows from it.
+  const emailOf = (p) => (/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(String(p?.email ?? '').trim()) ? String(p.email).trim().toLowerCase() : null);
+  return { problems, people: list.map((p) => Object.freeze({ name: clean(p.name, 120), role: clean(p.role, 120), sourceUrl: String(p.sourceUrl), ...(emailOf(p) ? { email: emailOf(p) } : {}) })) };
 };
 
 /**

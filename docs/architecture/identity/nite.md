@@ -13,8 +13,11 @@ bet, and it is why the forge was retired on 2026-08-24
 > **This file is generated against real imports, not memory.**
 > `node scripts/map-nite.mjs` prints the live map.
 > `node scripts/map-nite.mjs --check` fails if this document has drifted from it.
-> Re-measured 2026-11-15: **303 files**, 54,104 lines, **22 engine**,
-> **5 retired**. The engine and the retired forge did not move; the 7 new
+> Re-measured 2026-11-16: **305 files**, 54,210 lines, **22 engine**,
+> **5 retired**. The engine and the retired forge did not move; the 2 new files are the
+> liquidity wallet's nonce and notional domains (`core/workspace/lp-nonce-domain.js`,
+> `lp-notional-domain.js`), reached through the workspace. On 2026-11-15 it read 303 files,
+> 54,104 lines, 22 engine, 5 retired; the 7 new
 > files are serving and record helpers reached through ring 2: the stall
 > guard, the reply meter and token throughput behind the provider, the
 > drafter and the managed engine's record behind serving, the memory plan,

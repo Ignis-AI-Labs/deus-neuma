@@ -10,6 +10,7 @@ import { EmptyState } from '../empty-state.jsx';
 import { uiSound } from '../../../services/ui-sound.js';
 import { getPositions, getPositionEyes } from '../../../services/positions-client.js';
 import { setConnection } from '../../../services/connections-client.js';
+import { setLeadSpend } from '../../../services/revenue-client.js';
 import { requestWaitingJump } from '../waiting/waiting-jump.js';
 import { onWaitingChanged } from '../waiting/waiting-changed.js';
 import { seatPosition, clearPosition } from './position-seats.js';
@@ -122,7 +123,8 @@ export const PositionsBoard = ({ waitingCount = 0, refreshWaiting = null, onTalk
           onClear={() => move(() => clearPosition(position.office))}
           onTalk={() => { uiSound('open'); onTalk(holderId); }}
           onOpenWaiting={(item) => { uiSound('open'); requestWaitingJump(item); }}
-          onSwitch={(c) => move(() => setConnection(c.id, !c.on))}
+          onSwitch={(c) => move(() => (c.kind === 'spend' ? setLeadSpend(c.on ? 'off' : 'on', c.cap) : setConnection(c.id, !c.on)))}
+          onLimit={(c, cap) => move(() => setLeadSpend(c.on ? 'on' : 'off', cap))}
           onDoor={(door) => { uiSound('open'); onDoor(door); }}
           onHand={(member, prompt) => { uiSound('open'); onHand(member, prompt); }}
           onChanged={load}

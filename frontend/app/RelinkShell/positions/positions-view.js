@@ -4,12 +4,12 @@
 // title, COS · OPTIO, who holds it, how many decisions wait); the chosen position's hub on
 // the right. SHINKEI: every count is the length of the list it opens.
 
-/** The tabs of one position's hub: its functions, then SWITCHES when it has any, then THEIR EYES. */
+/** The tabs of one position's hub: its functions, then SETTINGS (what it may be switched on or off to use) when it has any, then THEIR EYES. */
 export const hubTabs = (position) => [
   // SETUP leads while a needed step is open; once all are done it stays, last, for the optional ones.
   ...(position.setup && position.setup.done < position.setup.total ? [{ id: '_setup', label: `SETUP · ${position.setup.done}/${position.setup.total}` }] : []),
   ...position.functions.map((f) => ({ id: f.id, label: f.label })),
-  ...(position.connections.length ? [{ id: '_switches', label: `SWITCHES · ${position.connections.filter((c) => c.on).length}/${position.connections.length}` }] : []),
+  ...(position.connections.length ? [{ id: '_switches', label: `SETTINGS · ${position.connections.filter((c) => c.on).length}/${position.connections.length}` }] : []),
   { id: '_eyes', label: 'THEIR EYES' },
   ...(position.setup && position.setup.done >= position.setup.total ? [{ id: '_setup', label: 'SETUP · DONE' }] : []),
 ];
@@ -82,3 +82,6 @@ export const saleLine = (sale, office) => {
   const mine = (sale?.stages ?? []).filter((s) => stageIsMine(s, office)).map((s) => s.n);
   return [`${sale.stages.length} STAGES`, mine.length ? { text: `THIS SEAT WORKS ${mine.join(', ')}`, tone: 'on' } : 'THIS SEAT GUARDS EVERY STAGE'];
 };
+
+/** Is the limit the operator typed a whole number the house accepts? */
+export const capOk = (text) => /^\d{1,6}$/.test(String(text).trim());

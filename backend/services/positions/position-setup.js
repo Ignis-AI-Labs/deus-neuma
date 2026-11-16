@@ -29,8 +29,7 @@ import { positionOf } from './position-map.js';
 //                        (askLabel: the words on that press, when the plain ASK <holder> says too little)
 const step = (id, who, label, done, how, way = {}) => Object.freeze({ id, who, label, done: done === true, how, optional: way.optional === true, go: way.go ?? null, door: way.door ?? null, link: way.link ?? null, ask: way.ask ?? null, askLabel: way.askLabel ?? null });
 const MAILBOX = Object.freeze({ tab: 'mailbox', label: 'MAILBOX' });
-const SWITCHES = Object.freeze({ tab: '_switches', label: 'SWITCHES' });
-const LEADS = Object.freeze({ tab: 'leads', label: 'LEADS' });
+const SWITCHES = Object.freeze({ tab: '_switches', label: 'SETTINGS' });
 // pure — the door to the first company still missing its site.
 const siteDoor = (s) => ({ kind: 'brand', companyId: s.companiesNoSite?.[0]?.id ?? null, section: 'sources', label: 'SITE & CODE' });
 
@@ -54,8 +53,8 @@ const STEPS = Object.freeze({
       { link: { url: 'https://myaccount.google.com/apppasswords', label: '1 · GET A GOOGLE APP PASSWORD' }, go: { ...MAILBOX, label: '2 · ENTER IT IN MAILBOX' } }),
     step('holder', 'operator', 'Give the mailbox to the member who holds this seat', s.mailboxHeld,
       'POSITIONS, CHIEF REVENUE OFFICER, MAILBOX: in "choose the holder" pick the member who holds the CHIEF REVENUE OFFICER seat and press BIND. Until then nobody may send.', { go: MAILBOX }),
-    step('mail-watch', 'operator', 'Turn on the mailbox watch, so a reply wakes the seat', s.mailWatch, 'POSITIONS, CHIEF REVENUE OFFICER, SWITCHES: turn HOUSE MAILBOX WATCH on.', { go: SWITCHES }),
-    step('lead-sources', 'operator', 'Turn on lead sources, so companies can be gathered in bulk', s.leadSources, 'POSITIONS, CHIEF REVENUE OFFICER, SWITCHES: turn LEAD SOURCES on.', { go: SWITCHES }),
+    step('mail-watch', 'operator', 'Turn on the mailbox watch, so a reply wakes the seat', s.mailWatch, 'POSITIONS, CHIEF REVENUE OFFICER, SETTINGS: turn HOUSE MAILBOX WATCH on.', { go: SWITCHES }),
+    step('lead-sources', 'operator', 'Turn on lead sources, so companies can be gathered in bulk', s.leadSources, 'POSITIONS, CHIEF REVENUE OFFICER, SETTINGS: turn LEAD SOURCES on.', { go: SWITCHES }),
     step('site', 'operator', 'Give each company you sell its site address', s.companiesWithoutSite.length === 0,
       `MARKETING, BRAND, SITE & CODE: add the site address${s.companiesWithoutSite.length ? ` for ${s.companiesWithoutSite.join(', ')}` : ''}. The seat reads the site to write true facts.`, { door: siteDoor(s) }),
     modelStep(s, 'SALES'),
@@ -70,8 +69,8 @@ const STEPS = Object.freeze({
     step('provider', 'operator', 'Attach a contact-data provider', s.provider,
       'First sign up at hunter.io and copy your API key (hunter.io/api-keys). Then paste it into the Hunter row under SETTINGS, API, Service keys, Lead data, and press save. Tomba and Apollo keys go in the same group, each with its own link. Without one the seat reads each address on the company\'s own pages.',
       { optional: true, link: { url: 'https://hunter.io/api-keys', label: '1 · GET THE KEY AT HUNTER' }, door: { kind: 'service', serviceId: 'hunter', label: '2 · PASTE IT HERE' } }),
-    step('paid-rule', 'operator', 'Say when paid lead data may be spent', s.spendChosen,
-      'POSITIONS, CHIEF REVENUE OFFICER, LEADS, under PAID LEAD DATA: choose ASK ME FIRST, FREE FIRST or PAID FROM THE START, and set the most credits a month. Until you choose, nothing paid runs and the seat asks you first.', { optional: true, go: LEADS }),
+    step('paid-rule', 'operator', 'Turn paid lead data on, or leave it off', s.spendChosen,
+      'POSITIONS, CHIEF REVENUE OFFICER, SETTINGS: PAID LEAD DATA is one switch. ON lets the seat pay for a lookup when a company\'s own pages give no address, up to the monthly limit beside it. OFF spends nothing.', { optional: true, go: SWITCHES }),
   ],
   cmo: (s) => [
     step('account', 'operator', 'Connect at least one account to post from', s.accounts > 0,

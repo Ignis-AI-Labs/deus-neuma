@@ -123,7 +123,7 @@ describe('setting up a position', () => {
     expect(stepWords(seat)).toBe('DONE — Seat a member as CHIEF REVENUE OFFICER');
     expect(stepWords(mailbox)).toBe('YOURS — Connect the mailbox the house sends from');
     expect(stepWords(setupOf('cro', 'merc', bare).steps.find((s) => s.id === 'facts'))).toBe('THE SEAT\'S — File what a buyer may be told');
-    expect(setupOf('cro', 'merc', ready).steps.slice(-2).map(stepWords)).toEqual(['OPTIONAL — Attach a contact-data provider', 'OPTIONAL — Say when paid lead data may be spent']);
+    expect(setupOf('cro', 'merc', ready).steps.slice(-2).map(stepWords)).toEqual(['OPTIONAL — Attach a contact-data provider', 'OPTIONAL — Turn paid lead data on, or leave it off']);
     const position = (state) => foldBoard({ holders: { cos: null, cro: 'merc', cmo: null, clo: null, cso: null, cfo: null, cao: null }, names: new Map([['merc', 'Sol']]), waiting: [], connections: [], setupState: state }).find((p) => p.office === 'cro');
     expect(hubTabs(position(bare))[0]).toEqual({ id: '_setup', label: 'SETUP · 1/12' });
     expect(pickTab(position(bare), undefined)).toBe('_setup');
@@ -164,7 +164,7 @@ describe('setting up a position', () => {
     expect(html.indexOf('1 · GET A GOOGLE APP PASSWORD')).toBeGreaterThan(0);
     expect(html.indexOf('1 · GET A GOOGLE APP PASSWORD')).toBeLessThan(html.indexOf('2 · ENTER IT IN MAILBOX'));
     expect(html.indexOf('1 · GET THE KEY AT HUNTER')).toBeLessThan(html.indexOf('2 · PASTE IT HERE'));
-    expect(html).toContain('GO TO SWITCHES');
+    expect(html).toContain('GO TO SETTINGS');
     expect(html).toContain('href="https://myaccount.google.com/apppasswords"');
     expect(html).toContain('OPEN SITE &amp; CODE');
     expect(html).toContain('HAND TO SOL');
@@ -302,7 +302,7 @@ describe('the positions board and window', () => {
     expect(pickPosition([], 'cro')).toBe(null);
     const sales = positions.find((p) => p.office === 'cro');
     expect(hubTabs(sales).map((t) => t.id)).toEqual(['model', 'campaigns', 'leads', 'deals', 'mailbox', '_switches', '_eyes']);
-    expect(hubTabs(sales).find((t) => t.id === '_switches').label).toBe('SWITCHES · 0/2');
+    expect(hubTabs(sales).find((t) => t.id === '_switches').label).toBe('SETTINGS · 0/2');
     expect(hubTabs(positions.find((p) => p.office === 'clo')).map((t) => t.id)).toEqual(['legal', '_eyes']);
     expect(pickTab(sales, 'mailbox')).toBe('mailbox');
     expect(pickTab(sales, 'legal')).toBe('model');
@@ -325,7 +325,7 @@ describe('the positions board and window', () => {
     expect(switches).toContain('APPROVAL');
     expect(switches).toContain('1H');
     expect(switches).toContain('House mailbox watch');
-    expect(switches).toMatch(/aria-pressed="false"[^>]*>OFF</);
+    expect(switches).toMatch(/aria-pressed="false" aria-label="OFF — House mailbox watch"[^>]*>OFF</);
     expect(switches).toContain('UNSEAT');
     const eyes = render('cro', '_eyes', { eyes: { laneId: 'merc', text: '## YOUR POSITION\nSALES (Mercator)' } });
     expect(eyes).toContain('This is what Sol reads at the top of every turn, word for word.');

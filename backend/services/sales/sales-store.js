@@ -179,6 +179,9 @@ export const noteContacts = (wallet, domain, source, people, by, spent = 1) => s
 /** Every paid lookup on record: which provider, for which company, what it spent and when (lead-spend.js counts the month). */
 export const readContactLookups = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts').map((e) => ({ domain: e.domain, source: e.source, spent: e.spent, found: (e.people ?? []).length, at: e.at }));
 
+/** The people each lookup returned, with the company's domain and the provider (the contact book reads them). */
+export const readContactPeople = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts').map((e) => ({ domain: e.domain, source: e.source, people: e.people ?? [], at: e.at }));
+
 // ── CAMPAIGNS — the operator's pushes, each holding the audiences that serve it (campaign-shape.js).
 
 /** The house's sales campaigns, oldest first. */

@@ -78,7 +78,7 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     const sales = positions.find((p) => p.office === 'cro');
     expect(sales.holder.laneId).toBe('merc');
     expect(sales.functions.map((f) => f.id)).toEqual(['model', 'campaigns', 'leads', 'deals', 'mailbox']);
-    expect(sales.connections).toMatchObject([{ id: 'mail-watch', name: 'House mailbox watch', on: false }, { id: 'lead-sources', name: 'Lead sources', on: false }]);
+    expect(sales.connections).toMatchObject([{ id: 'mail-watch', name: 'House mailbox watch', on: false }, { id: 'lead-sources', name: 'Lead sources', on: false }, { id: 'paid-lead-data', kind: 'spend', name: 'Paid lead data', on: false, cap: 100, spent: 0 }]);
     expect(positions.find((p) => p.office === 'cao').holder.laneId).toBe('books');
     expect(positions.find((p) => p.office === 'cmo').holder).toBe(null);
     // What the seat still needs is measured from the house itself: the seat is filled, nothing else is yet.

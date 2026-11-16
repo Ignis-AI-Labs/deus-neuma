@@ -172,3 +172,8 @@
 .pos-sale-does { margin: 0; font-family: var(--font-voice); font-size: 14px; line-height: 1.45; color: var(--color-text-primary); }
 .pos-sale-proof { margin: 0; color: var(--color-text-tertiary); }
 .pos-sale-wrap { padding: 0 var(--space-4); }
+
+/* A setting that spends: its limit sits on the row under the switch, the number a short box. */
+.pos-switch-limit { grid-column: 1 / 3; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); }
+.pos-switch-cap { width: 6rem; background: var(--color-glass-light); border: 1px solid var(--line); color: var(--color-text-primary); font-family: var(--font-data); font-size: 14px; padding: var(--space-1) var(--space-2); }
+.pos-switch-cap:focus { outline: none; border-color: var(--line-hover); }

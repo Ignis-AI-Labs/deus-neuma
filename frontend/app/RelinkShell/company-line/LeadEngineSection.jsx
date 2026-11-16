@@ -10,10 +10,9 @@
 import { useState } from 'react';
 import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
-import { PaidLeadData } from './PaidLeadData.jsx';
-import { spendStats } from './paid-lead-view.js';
 import { Fold } from '../fold/Fold.jsx';
 import { LeadList } from './LeadList.jsx';
+import { ContactBook } from './ContactBook.jsx';
 import { useLeadEngine } from './use-lead-engine.js';
 import { LeadFactsSheet } from './LeadFactsSheet.jsx';
 import { LeadAudienceCard } from './LeadAudienceCard.jsx';
@@ -22,17 +21,17 @@ import { UPKEEP_WORDS, upkeepAge, SUPPRESS_REASONS, segmentRows, suppressTargetO
 const SHOWN_DUE = 12;
 
 // Each part stands where its data belongs (Design note, 2026-11-16: […]; […]): 'facts' on a
-// position's COMPANY tab; 'leads' (what is due on the lead list, do-not-contact, paid data: the things that
+// position's COMPANY tab; 'leads' (the lead list, the contact book, what is due, do-not-contact: the things that
 // belong to no one campaign) on LEADS. In the POSITIONS window an audience stands UNDER ITS CAMPAIGN
 // (SalesCampaigns.jsx), with its companies and its leads; 'audiences' here is the old COMPANY LINE
 // window's flat list, which still shows all three parts.
-const HEADS = Object.freeze({ facts: 'THE FACTS — WHAT A BUYER MAY BE TOLD', audiences: 'AUDIENCES — WHO EACH CAMPAIGN REACHES, AND THE OFFER', leads: 'THE LEAD LIST — WHAT IS DUE, WHO IS NEVER WRITTEN TO, AND WHAT MAY BE SPENT' });
+const HEADS = Object.freeze({ facts: 'THE FACTS — WHAT A BUYER MAY BE TOLD', audiences: 'AUDIENCES — WHO EACH CAMPAIGN REACHES, AND THE OFFER', leads: 'LEADS — THE LEAD LIST, THE CONTACT BOOK, WHAT IS DUE, AND WHO IS NEVER WRITTEN TO' });
 const ALL_PARTS = Object.freeze(['facts', 'audiences', 'leads']);
 
 /** @param {{holder?: ?{laneId: string, name: string}, onHand?: Function, parts?: string[]}} props - the seat's holder and the door to their chat, where the screen has them; parts: which of 'facts', 'audiences', 'leads' this screen carries */
 export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PARTS }) => {
   const has = (part) => parts.includes(part);
-  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress, setSpend, changeFact, refileLead } = useLeadEngine();
+  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress, changeFact, refileLead } = useLeadEngine();
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('asked');
   const rows = segmentRows(engine);
@@ -57,11 +56,7 @@ export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PA
           {has('leads') ? (
             <>
               <LeadList leads={engine.leads ?? []} kinds={engine.leadKinds ?? []} busy={busy} onKind={refileLead} holder={holder} onHand={onHand} />
-              {engine.spend ? (
-                <Fold id="leads:paid" title="PAID LEAD DATA" waits={!engine.spend.rule.chosen && engine.spend.attached.length > 0} stats={spendStats(engine.spend)}>
-                  <PaidLeadData key={`${engine.spend.rule.mode}:${engine.spend.rule.cap}`} spend={engine.spend} busy={busy} onSet={setSpend} />
-                </Fold>
-              ) : null}
+              <ContactBook contacts={engine.contacts ?? []} stats={engine.contactStats ?? null} />
               <Fold id="leads:upkeep" title="LEAD LIST UPKEEP" waits={due.length > 0} stats={[due.length ? { text: `${due.length} DUE`, tone: 'alert' } : { text: 'NOTHING DUE', tone: 'on' }, `${(engine?.candidates ?? []).length} GATHERED · ${waiting} WAITING TO BE SCORED`]}>
                 <p className="cline-move-t" data-candidates="">GATHERED FROM LEAD SOURCES: {(engine?.candidates ?? []).length} — {waiting} WAITING FOR THE SALES SEAT TO SCORE</p>
                 {due.length ? (

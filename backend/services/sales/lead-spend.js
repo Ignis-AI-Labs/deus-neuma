@@ -21,22 +21,25 @@ import { PEOPLE_PROVIDERS } from './lead-providers.js';
 
 const serialize = createWriteChain();
 const FILE = 'lead-spend.jsonl';
-export const SPEND_MODES = Object.freeze(['ask', 'free-first', 'paid-first']);
+// ON or OFF, and a limit (Design note, 2026-11-16: […]). A rule written before this (ask, free-first, paid-first) reads as off, on, on.
+export const SPEND_MODES = Object.freeze(['off', 'on']);
+const LEGACY = Object.freeze({ ask: 'off', 'free-first': 'on', 'paid-first': 'on' });
+const modeOf = (mode) => (SPEND_MODES.includes(mode) ? mode : LEGACY[mode] ?? null);
 export const DEFAULT_CAP = 100;
 export const CAP_MAX = 100000;
 
-/** pure — the rule that stands: the last one set; `ask` with the default cap until the operator chooses. */
+/** pure — the rule that stands: the last one set; OFF with the default limit until the operator turns it on. */
 export const foldSpend = (events) => {
-  const last = events.filter((e) => e?.type === 'rule' && SPEND_MODES.includes(e.mode)).at(-1);
-  return last ? { mode: last.mode, cap: last.cap, chosen: true, at: last.at } : { mode: 'ask', cap: DEFAULT_CAP, chosen: false, at: null };
+  const last = events.filter((e) => e?.type === 'rule' && modeOf(e.mode)).at(-1);
+  return last ? { mode: modeOf(last.mode), on: modeOf(last.mode) === 'on', cap: last.cap, chosen: true, at: last.at } : { mode: 'off', on: false, cap: DEFAULT_CAP, chosen: false, at: null };
 };
 
 /** pure — a rule from what the operator sent; throws in words. */
 export const makeRule = ({ mode, cap }) => {
-  if (!SPEND_MODES.includes(mode)) throw new Error(`mode is one of: ${SPEND_MODES.join(', ')}`);
+  if (!modeOf(mode)) throw new Error(`mode is one of: ${SPEND_MODES.join(', ')}`);
   const n = Number(cap);
   if (!Number.isInteger(n) || n < 0 || n > CAP_MAX) throw new Error(`cap: a whole number of credits a month, 0 to ${CAP_MAX}`);
-  return { mode, cap: n };
+  return { mode: modeOf(mode), cap: n };
 };
 
 /** pure — the credits spent in the calendar month of `now` (UTC), from the lookups on record. */
@@ -45,25 +48,33 @@ export const spentThisMonth = (lookups, now) => {
   return lookups.filter((l) => String(l.at ?? '').startsWith(month)).reduce((n, l) => n + (Number.isFinite(l.spent) ? l.spent : 1), 0);
 };
 
+const WHERE = 'POSITIONS, CHIEF REVENUE OFFICER, SETTINGS';
+
 /**
- * pure — may this lookup run? null when it may; else the reason, in words the
- * seat passes to its operator.
- * @param {{rule: object, spent: number, cost: number, scored: boolean, providers: string[]}} at
- *   cost: the most this lookup may spend · scored: the seat has scored this company from its own pages
+ * pure — may this lookup run? null when it may; else the reason, in words the seat passes to its operator.
+ * @param {{rule: object, spent: number, cost: number}} at - cost: the most this lookup may spend
  */
-export const spendRefusal = ({ rule, spent, cost, scored, providers }) => {
-  if (rule.mode === 'ask') return `paid lead data is not allowed yet. Ask your operator now, in plain words: "${providers.join(' and ')} can give me the people at each company, and each lookup spends your credits there. Do you want me to use it from the start, or only for a company whose own pages gave me no address?" They choose in POSITIONS, CHIEF REVENUE OFFICER, LEADS, under PAID LEAD DATA. Until then read each address on the company's own pages`;
-  if (rule.mode === 'free-first' && !scored) return 'your operator chose FREE FIRST: read this company\'s own pages (team, about, contact) and score it with sales/prospect first; a paid lookup is for a company you have scored whose own pages gave no address';
-  if (spent + cost > rule.cap) return `this month's cap is ${rule.cap} credit(s) and ${spent} are spent; this lookup may spend ${cost}. Tell your operator; they raise the cap in POSITIONS, CHIEF REVENUE OFFICER, LEADS, under PAID LEAD DATA. Until then read each address on the company's own pages`;
+export const spendRefusal = ({ rule, spent, cost }) => {
+  if (!rule.on) return `PAID LEAD DATA is off. Your operator turns it on in ${WHERE}. Until then read each address on the company's own pages`;
+  if (spent + cost > rule.cap) return `this month's limit is ${rule.cap} credit(s) and ${spent} are spent; this lookup may spend ${cost}. Tell your operator; they raise the limit in ${WHERE}. Until then read each address on the company's own pages`;
   return null;
 };
 
-/** pure — the rule as the seat reads it. */
+/** pure — the setting as the seat reads it. */
 export const spendLine = ({ rule, spent, attached }) => {
   if (!attached.length) return 'PAID LEAD DATA: no provider is attached. Read each address on the company\'s own pages.';
-  const how = { ask: 'NOT ALLOWED YET. Ask your operator whether you may use it, and whether from the start or only after the free ways', 'free-first': 'FREE FIRST. Read and score each company from its own pages; use sales/contacts only for a scored company whose pages gave no address', 'paid-first': 'ALLOWED FROM THE START for any company you gathered' }[rule.mode];
-  return `PAID LEAD DATA (${attached.join(', ')} attached; it spends your operator's credits): ${how}. Spent this month: ${spent} of ${rule.cap} credit(s).`;
+  return `PAID LEAD DATA (${attached.join(', ')} attached; it spends your operator's credits): ${rule.on ? `ON. It is one of the ways you may find a person's address. Use what is free first (the company's own pages); pay for a lookup when those give none` : 'OFF. Do not ask for it; read each address on the company\'s own pages'}. Spent this month: ${spent} of ${rule.cap} credit(s).`;
 };
+
+/**
+ * pure — the setting as a row of the position's SETTINGS tab, beside its connection switches.
+ * @param {{rule: object, spent: number, attached: string[]}} state
+ */
+export const spendSwitch = ({ rule, spent, attached }) => ({
+  id: 'paid-lead-data', kind: 'spend', on: rule.on, cap: rule.cap, spent, attached,
+  name: `Paid lead data${attached.length ? ` (${attached.map((a) => a[0].toUpperCase() + a.slice(1)).join(', ')})` : ''}`,
+  whileOff: attached.length ? 'your sales seat reads each address on the company\'s own pages and spends none of your credits' : 'no provider key is attached yet; add one in Settings, API, Lead data',
+});
 
 /** impure — the rule of one house. */
 export const readSpend = async (wallet) => foldSpend((await readJsonLines(officeFile(wallet, 'revenue', FILE))).records);

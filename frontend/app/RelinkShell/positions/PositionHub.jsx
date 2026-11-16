@@ -4,10 +4,11 @@
 // top-of-turn reading). Pure rendering: the IO lives in PositionsApp.jsx, and
 // a function's own screen arrives as `Panel` (position-panels.jsx).
 
+import { useState } from 'react';
 import { Select } from '../Select.jsx';
 import { DeskTabs } from '../DeskTabs.jsx';
 import { KIND_LABEL, waitedLabel } from '../waiting/waiting-view.js';
-import { hubTabs, seatOptions, stepWords, helpAsk } from './positions-view.js';
+import { hubTabs, seatOptions, stepWords, helpAsk, capOk } from './positions-view.js';
 import { SaleProcess } from './SaleProcess.jsx';
 
 const Waiting = ({ items, now, onOpen }) => (items.length ? (
@@ -27,14 +28,30 @@ const Waiting = ({ items, now, onOpen }) => (items.length ? (
   </section>
 ) : null);
 
-const Switches = ({ position, busy, onSwitch }) => (
-  <ul className="pos-switches" aria-label="connections this position needs">
+// A setting that spends (paid lead data): the same ON/OFF, and beside it the one boundary it has, the most
+// credits a month, with what the month has used. Nothing else to choose.
+const Limit = ({ c, busy, onLimit }) => {
+  const [cap, setCap] = useState(String(c.cap));
+  return (
+    <div className="pos-switch-limit" data-switch-limit={c.id}>
+      <span className="label-data">USED {c.spent} OF</span>
+      <input className="pos-switch-cap" inputMode="numeric" aria-label={`${c.name}: the most credits a month`} disabled={busy} value={cap} onChange={(e) => setCap(e.target.value)} />
+      <span className="label-data">CREDITS THIS MONTH</span>
+      <button type="button" className="sec-scan label-data" disabled={busy || !capOk(cap) || Number(cap) === c.cap} aria-label={`SET LIMIT for ${c.name}`} onClick={() => onLimit(c, Number(cap))}>SET LIMIT</button>
+    </div>
+  );
+};
+
+// SETTINGS: everything this position may be switched on or off to use. On, it uses it; off, it does not.
+const Switches = ({ position, busy, onSwitch, onLimit }) => (
+  <ul className="pos-switches" aria-label="what this position may use">
     {position.connections.map((c) => (
-      <li key={c.id} className="pos-switch">
+      <li key={c.id} className="pos-switch" data-switch={c.id}>
         <span className="pos-switch-name">{c.name}</span>
-        <button type="button" className={`sec-scan label-data${c.on ? ' is-on' : ''}`} aria-pressed={c.on} disabled={busy} onClick={() => onSwitch(c)}>
+        <button type="button" className={`sec-scan label-data${c.on ? ' is-on' : ''}`} aria-pressed={c.on} aria-label={`${c.on ? 'ON' : 'OFF'} — ${c.name}`} disabled={busy} onClick={() => onSwitch(c)}>
           {c.on ? 'ON' : 'OFF'}
         </button>
+        {c.kind === 'spend' ? <Limit key={c.cap} c={c} busy={busy} onLimit={onLimit} /> : null}
         {!c.on && c.whileOff ? <p className="pos-covers">While it is off: {c.whileOff}.</p> : null}
       </li>
     ))}
@@ -93,7 +110,7 @@ const Eyes = ({ position, eyes }) => {
  *   Panel?: Function}} props — Panel renders one function in place; without it the function's sentence stands
  */
 export const PositionHub = ({ position, members, names, tab, now, busy, pick, confirmClear, eyes,
-  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onDoor = () => {}, onHand = () => {}, onChanged = () => {}, Panel = null, sale = null }) => {
+  onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onLimit = () => {}, onDoor = () => {}, onHand = () => {}, onChanged = () => {}, Panel = null, sale = null }) => {
   const fn = position.functions.find((f) => f.id === tab) ?? null;
   // The control's name carries the words it shows (a spoken command must match what is seen).
   const placeholder = position.holder ? 'hand it to another member' : 'choose who holds it';
@@ -122,7 +139,7 @@ export const PositionHub = ({ position, members, names, tab, now, busy, pick, co
         className="pos-tabs" tabClassName="pos-tab label-data" panelClassName="pos-panel">
         {fn && Panel ? <Panel office={position.office} fn={fn} names={names} holder={position.holder} onHand={onHand} onChanged={onChanged} onDoor={onDoor} /> : null}
         {fn && !Panel ? <p className="pos-covers">{fn.what}</p> : null}
-        {tab === '_switches' ? <Switches position={position} busy={busy} onSwitch={onSwitch} /> : null}
+        {tab === '_switches' ? <Switches position={position} busy={busy} onSwitch={onSwitch} onLimit={onLimit} /> : null}
         {tab === '_eyes' ? <Eyes position={position} eyes={eyes} /> : null}
         {tab === '_setup' && position.setup ? <Setup position={position} busy={busy} onGo={onTab} onDoor={onDoor} onHand={onHand} /> : null}
       </DeskTabs>

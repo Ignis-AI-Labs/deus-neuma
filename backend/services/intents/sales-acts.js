@@ -79,7 +79,7 @@ const salesSegmentIntent = Object.freeze({
 const salesProspectIntent = Object.freeze({
   name: 'sales/prospect',
   policyTool: 'sales.prospect',
-  fieldsForPrompt: '{segment, companies: [{domain, name, description?, country (ISO code, e.g. "US"), size?, scores: [{criterion, score, reasoning}], people?: [{name, role, sourceUrl}], source}]}',
+  fieldsForPrompt: '{segment, companies: [{domain, name, description?, country (ISO code, e.g. "US"), size?, scores: [{criterion, score, reasoning}], people?: [{name, role, sourceUrl, email?}], source}]}',
   descriptionForPrompt: `THE LEAD ENGINE. File companies you found for a segment (up to ${BATCH_MAX} at a time). Read each company's own pages first. Score EVERY sign of fit the segment lists 0–5, and any sign of non-fit that applies, each with the reason you read; source is the https page where you found the company; people are the ones you read on its own pages, with that page. A company already in the pool or on the do-not-contact list is refused.`,
   availableFor,
   validate: async (payload, { connection }) => {

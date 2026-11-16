@@ -31,6 +31,7 @@ describe('a record or place named in a member\'s words is a door', () => {
     expect(recordDoor('POSITIONS → SALES → COMPANY')).toMatchObject({ office: 'cro', tab: 'model', words: 'Open POSITIONS, CHIEF REVENUE OFFICER, COMPANY' });
     expect(recordDoor('POSITIONS > MARKETING')).toMatchObject({ office: 'cmo', tab: null });
     expect(recordDoor('POSITIONS -> TREASURY -> SWITCHES')).toMatchObject({ office: 'cfo', tab: '_switches' });
+    expect(recordDoor('POSITIONS, CHIEF REVENUE OFFICER, SETTINGS')).toMatchObject({ office: 'cro', tab: '_switches' });
     // The seat's own name, as members are now told to write it — and its short form and title.
     expect(recordDoor('POSITIONS → CHIEF REVENUE OFFICER → LEADS')).toMatchObject({ office: 'cro', tab: 'leads', words: 'Open POSITIONS, CHIEF REVENUE OFFICER, LEADS' });
     expect(recordDoor('POSITIONS → COS')).toMatchObject({ office: 'cos', words: 'Open POSITIONS, CHIEF OF STAFF' });

@@ -21,7 +21,7 @@ import { readSegments, readProspects, readCandidates, addCandidates, noteContact
 import { readSpend, spentThisMonth, spendRefusal, attachedProviders } from '../sales/lead-spend.js';
 
 const officerRefusal = { ok: false, status: 'denied', reason: 'the lead engine is the Mercator office\'s — only the seated Mercator files to it (house/post reaches them; the operator seats the office)' };
-const offRefusal = { ok: false, status: 'denied', reason: 'the LEAD SOURCES connection is off — the operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SWITCHES; until then find companies by reading the web yourself' };
+const offRefusal = { ok: false, status: 'denied', reason: 'the LEAD SOURCES connection is off — the operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS; until then find companies by reading the web yourself' };
 const invalid = (reason) => ({ ok: false, status: 'invalid', reason });
 const seated = async (connection) => (await officeContext(connection).catch(() => null)) || null;
 const availableFor = async ({ connection }) => ((await seated(connection)) && isConnectionOn('lead-sources') ? {} : null);
@@ -59,7 +59,7 @@ const salesContactsIntent = Object.freeze({
   name: 'sales/contacts',
   policyTool: 'sales.contacts',
   fieldsForPrompt: `{domain, source?: ${PEOPLE_SOURCES.map(([id]) => `"${id}"`).join(' | ')}}`,
-  descriptionForPrompt: `THE LEAD ENGINE. The people at one company you gathered or pooled, each with their address and where it comes from, from a contact-data provider your operator attached (${PEOPLE_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}). IT SPENDS YOUR OPERATOR'S CREDITS, so it runs only as your briefing's PAID LEAD DATA line allows; when that line says it is not allowed yet, ask your operator before anything else. source: which attached provider to ask (left out: the cheapest attached; when one holds nobody, try the next). Use a returned address in sales/lead with its page as emailSource. With no provider attached, read the address on the company's own pages.`,
+  descriptionForPrompt: `THE LEAD ENGINE. The people at one company you gathered or pooled, each with their address and where it comes from, from a contact-data provider your operator attached (${PEOPLE_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}). IT SPENDS YOUR OPERATOR'S CREDITS, so it runs only while your briefing's PAID LEAD DATA line says ON, and within the month's limit. Use what is free first. source: which attached provider to ask (left out: the cheapest attached; when one holds nobody, try the next). Use a returned address in sales/lead with its page as emailSource. With no provider attached, read the address on the company's own pages.`,
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -76,7 +76,7 @@ const salesContactsIntent = Object.freeze({
     if (!attached) return invalid(`source: one of the providers your operator attached (${all.map((a) => a.id).join(', ')})`);
     // Money: nothing paid runs until the operator has said when it may, and never past the month's cap.
     const [rule, lookups] = await Promise.all([readSpend(context.wallet), readContactLookups(context.wallet)]);
-    const refusal = spendRefusal({ rule, spent: spentThisMonth(lookups, Date.now()), cost: attached.source.cost, scored, providers: all.map((a) => a.id) });
+    const refusal = spendRefusal({ rule, spent: spentThisMonth(lookups, Date.now()), cost: attached.source.cost });
     if (refusal) return { ok: false, status: 'denied', reason: refusal };
     return { ok: true, value: { context, domain, attached } };
   },

@@ -23,6 +23,7 @@ import { caoDesignation } from '../../backend/services/accounts/cao-designation.
 import { isConnectionOn } from '../../backend/services/connections/connection-switches.js';
 import { readCampaigns } from '../../backend/services/sales/sales-store.js';
 import { readModels } from '../../backend/services/positions/business-model.js';
+import { readSpend } from '../../backend/services/sales/lead-spend.js';
 import { houseSeatingIntent } from '../../backend/services/intents/house-seating.js';
 import { readSeating } from '../../backend/services/positions/position-seating.js';
 
@@ -108,7 +109,7 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const hub = page.locator('[data-position="cro"]');
     await hub.waitFor();
     expect(await hub.locator('.pos-holder').textContent()).toBe('HELD BY MERC');
-    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/12', 'COMPANY', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SWITCHES · 0/2', 'THEIR EYES']);
+    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/12', 'COMPANY', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SETTINGS · 0/3', 'THEIR EYES']);
     // SETUP leads while the seat is not ready: each step says who does it, and an open one says exactly how.
     const setup = hub.locator('[data-setup-step]');
     expect(await setup.count()).toBe(14);
@@ -173,17 +174,34 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     await hub.getByRole('tab', { name: 'LEADS' }).click();
     await hub.locator('[data-lead-engine="leads"]').waitFor({ timeout: 60000 });
     expect(await hub.locator('[data-facts-sheet], [data-business-model], [data-sales-campaigns], [data-segment-id]').count()).toBe(0);
-    expect(await hub.locator('[data-paid-lead], [data-suppress-form]').count()).toBe(2);
+    // A setting is not a lead: paid lead data stands on SETTINGS as one switch, never here.
+    await hub.locator('[data-fold="leads:list"]').waitFor({ timeout: 60000 });
+    expect(await hub.locator('[data-switch-limit], [data-paid-lead]').count()).toBe(0);
+    expect(await hub.locator('[data-suppress-form], [data-fold="leads:list"], [data-fold="leads:contacts"]').count()).toBe(3);
 
     await hub.getByRole('tab', { name: 'DEALS' }).click();
     await hub.locator('[data-sales]').waitFor();
     expect(await hub.locator('[data-sales]').getByRole('button', { name: 'SEAT' }).count()).toBe(0);
 
-    await hub.getByRole('tab', { name: /SWITCHES/ }).click();
+    // SETTINGS: everything the position may be switched on or off to use, each one ON/OFF. Paid lead data is one of
+    // them, with its monthly limit beside it, and nothing else to choose.
+    await hub.getByRole('tab', { name: /SETTINGS/ }).click();
+    expect(await hub.locator('[data-switch]').evaluateAll((rows) => rows.map((r) => r.dataset.switch))).toEqual(['mail-watch', 'lead-sources', 'paid-lead-data']);
     expect(isConnectionOn('mail-watch')).toBe(false);
-    await hub.getByRole('button', { name: 'OFF', exact: true }).first().click(); // exact: "OFF" is also inside OFFICER
-    await hub.getByRole('tab', { name: 'SWITCHES · 1/2' }).waitFor();
+    await hub.getByRole('button', { name: 'OFF — House mailbox watch' }).click();
+    await hub.getByRole('tab', { name: 'SETTINGS · 1/3' }).waitFor();
     expect(isConnectionOn('mail-watch')).toBe(true);
+    const paid = hub.locator('[data-switch="paid-lead-data"]');
+    expect(await paid.locator('.pos-switch-name').textContent()).toBe('Paid lead data');
+    expect(await paid.locator('[data-switch-limit]').textContent()).toBe('USED 0 OFCREDITS THIS MONTHSET LIMIT');
+    await paid.getByRole('button', { name: 'OFF — Paid lead data' }).click();
+    await hub.getByRole('tab', { name: 'SETTINGS · 2/3' }).waitFor();
+    expect(await readSpend(auth.address)).toMatchObject({ mode: 'on', on: true, cap: 100, chosen: true });
+    await paid.getByLabel('Paid lead data: the most credits a month').fill('250');
+    await paid.getByRole('button', { name: 'SET LIMIT for Paid lead data' }).click();
+    await paid.locator('[data-switch-limit]').filter({ hasText: 'USED 0 OF' }).waitFor();
+    await expect.poll(async () => (await readSpend(auth.address)).cap).toBe(250);
+    expect((await readSpend(auth.address)).on).toBe(true);
 
     await hub.getByRole('tab', { name: 'THEIR EYES' }).click();
     const eyes = hub.locator('.pos-eyes');

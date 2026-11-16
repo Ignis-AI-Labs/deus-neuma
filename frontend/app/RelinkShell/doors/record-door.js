@@ -17,7 +17,7 @@ const OFFICES = Object.freeze({
   MANAGEMENT: 'cos', SALES: 'cro', MARKETING: 'cmo', LAW: 'clo', SECURITY: 'cso', TREASURY: 'cfo', BOOKS: 'cao',
 });
 const SEAT_OF = Object.freeze({ cos: 'CHIEF OF STAFF', cro: 'CHIEF REVENUE OFFICER', cmo: 'CHIEF MARKETING OFFICER', clo: 'CHIEF LEGAL OFFICER', cso: 'CHIEF SECURITY OFFICER', cfo: 'CHIEF FINANCIAL OFFICER', cao: 'CHIEF ACCOUNTING OFFICER' });
-const TABS = Object.freeze({ COMPANY: 'model', 'BUSINESS MODEL': 'model', CAMPAIGNS: 'campaigns', LEADS: 'leads', DEALS: 'deals', MAILBOX: 'mailbox', SWITCHES: '_switches', SETUP: '_setup', 'THEIR EYES': '_eyes' });
+const TABS = Object.freeze({ COMPANY: 'model', 'BUSINESS MODEL': 'model', CAMPAIGNS: 'campaigns', LEADS: 'leads', DEALS: 'deals', MAILBOX: 'mailbox', SETTINGS: '_switches', SWITCHES: '_switches', SETUP: '_setup', 'THEIR EYES': '_eyes' });
 const STEP = '\\s*(?:→|->|>|,|/)\\s*';
 const PLACE = new RegExp(`POSITIONS${STEP}(${Object.keys(OFFICES).join('|')})(?:${STEP}(${Object.keys(TABS).join('|')}))?`, 'i');
 // The lead engine's own ids: an audience, a scored company, a facts sheet, a sales campaign.

@@ -23,8 +23,8 @@ import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-
 import { readCandidates } from '../../backend/services/sales/sales-store.js';
 import { tokensOfPools, candidateOf, protocolsOnBase, peopleOfHunter, candidateLine, LEAD_SOURCES } from '../../backend/services/sales/lead-sources.js';
 import { peopleOfTomba, apolloToReveal, personOfApollo } from '../../backend/services/sales/lead-providers.js';
-import { foldSpend, makeRule, spentThisMonth, spendRefusal, spendLine } from '../../backend/services/sales/lead-spend.js';
-import { SPEND_CHOICES, attachedWords, spentWords, capOk } from '../../frontend/app/RelinkShell/company-line/paid-lead-view.js';
+import { foldSpend, makeRule, spentThisMonth, spendRefusal, spendLine, spendSwitch } from '../../backend/services/sales/lead-spend.js';
+import { capOk } from '../../frontend/app/RelinkShell/positions/positions-view.js';
 import { getService } from '../../backend/services/provider-registry.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { campaignStoreFor } from '../../backend/services/marketing/campaign-store.js';
@@ -88,29 +88,28 @@ describe('paid lead data: the providers and the rule on spending (pure)', () => 
     expect(personOfApollo({})).toBe(null);
   });
 
-  test('nothing paid runs until the operator chooses; free first waits for a scored company; the cap holds the month', () => {
-    expect(foldSpend([])).toEqual({ mode: 'ask', cap: 100, chosen: false, at: null });
-    expect(foldSpend([{ type: 'rule', mode: 'paid-first', cap: 50, at: 't1' }, { type: 'rule', mode: 'free-first', cap: 20, at: 't2' }])).toEqual({ mode: 'free-first', cap: 20, chosen: true, at: 't2' });
-    expect(() => makeRule({ mode: 'always', cap: 5 })).toThrow(/mode is one of: ask, free-first, paid-first/);
-    expect(() => makeRule({ mode: 'ask', cap: 1.5 })).toThrow(/a whole number of credits a month/);
+  test('one switch: off spends nothing, on spends up to the month\'s limit; an older three-way rule reads as off or on', () => {
+    expect(foldSpend([])).toEqual({ mode: 'off', on: false, cap: 100, chosen: false, at: null });
+    expect(foldSpend([{ type: 'rule', mode: 'on', cap: 50, at: 't1' }, { type: 'rule', mode: 'off', cap: 20, at: 't2' }])).toEqual({ mode: 'off', on: false, cap: 20, chosen: true, at: 't2' });
+    // Rules written before the switch was one switch still stand: ask is off, the two paid ones are on.
+    expect(['ask', 'free-first', 'paid-first'].map((mode) => foldSpend([{ type: 'rule', mode, cap: 5, at: 't' }]).on)).toEqual([false, true, true]);
+    expect(makeRule({ mode: 'on', cap: '250' })).toEqual({ mode: 'on', cap: 250 });
+    expect(() => makeRule({ mode: 'always', cap: 5 })).toThrow(/mode is one of: off, on/);
+    expect(() => makeRule({ mode: 'on', cap: 1.5 })).toThrow(/a whole number of credits a month/);
     const lookups = [{ at: '2026-11-02T10:00:00.000Z', spent: 2 }, { at: '2026-11-14T10:00:00.000Z' }, { at: '2026-10-30T10:00:00.000Z', spent: 9 }];
     expect(spentThisMonth(lookups, Date.parse('2026-11-15T00:00:00Z'))).toBe(3);
-    const at = (extra) => spendRefusal({ rule: { mode: 'paid-first', cap: 10 }, spent: 3, cost: 1, scored: false, providers: ['hunter'], ...extra });
+    const at = (extra) => spendRefusal({ rule: { on: true, cap: 10 }, spent: 3, cost: 1, ...extra });
     expect(at({})).toBe(null);
-    expect(at({ rule: { mode: 'ask', cap: 10 } })).toMatch(/^paid lead data is not allowed yet\. Ask your operator now[\s\S]*hunter can give me the people at each company[\s\S]*PAID LEAD DATA/);
-    expect(at({ rule: { mode: 'free-first', cap: 10 } })).toMatch(/FREE FIRST: read this company's own pages/);
-    expect(at({ rule: { mode: 'free-first', cap: 10 }, scored: true })).toBe(null);
-    expect(at({ spent: 8, cost: 5 })).toMatch(/this month's cap is 10 credit\(s\) and 8 are spent; this lookup may spend 5/);
-    expect(spendLine({ rule: { mode: 'ask', cap: 100 }, spent: 0, attached: [] })).toMatch(/no provider is attached/);
-    expect(spendLine({ rule: { mode: 'free-first', cap: 100 }, spent: 4, attached: ['hunter', 'apollo'] })).toBe('PAID LEAD DATA (hunter, apollo attached; it spends your operator\'s credits): FREE FIRST. Read and score each company from its own pages; use sales/contacts only for a scored company whose pages gave no address. Spent this month: 4 of 100 credit(s).');
+    expect(at({ rule: { on: false, cap: 10 } })).toBe('PAID LEAD DATA is off. Your operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS. Until then read each address on the company\'s own pages');
+    expect(at({ spent: 8, cost: 5 })).toMatch(/this month's limit is 10 credit\(s\) and 8 are spent; this lookup may spend 5/);
+    expect(spendLine({ rule: { on: false, cap: 100 }, spent: 0, attached: [] })).toMatch(/no provider is attached/);
+    expect(spendLine({ rule: { on: true, cap: 100 }, spent: 4, attached: ['hunter', 'apollo'] })).toBe('PAID LEAD DATA (hunter, apollo attached; it spends your operator\'s credits): ON. It is one of the ways you may find a person\'s address. Use what is free first (the company\'s own pages); pay for a lookup when those give none. Spent this month: 4 of 100 credit(s).');
+    expect(spendLine({ rule: { on: false, cap: 100 }, spent: 0, attached: ['hunter'] })).toContain('OFF. Do not ask for it');
   });
 
-  test('the leads screen words the choice, what is attached and what the month has spent', () => {
-    expect(SPEND_CHOICES.map((c) => [c.mode, c.label])).toEqual([['ask', 'ASK ME FIRST'], ['free-first', 'FREE FIRST'], ['paid-first', 'PAID FROM THE START']]);
-    expect(attachedWords({ attached: [] })).toMatch(/^NO PROVIDER ATTACHED — ADD A KEY IN SETTINGS, API, LEAD DATA/);
-    expect(attachedWords({ attached: ['hunter', 'tomba'] })).toBe('ATTACHED: HUNTER · TOMBA');
-    expect(spentWords({ spent: 4, rule: { cap: 100, chosen: true } })).toBe('SPENT THIS MONTH: 4 OF 100 CREDITS');
-    expect(spentWords({ spent: 0, rule: { cap: 100, chosen: false } })).toMatch(/YOU HAVE NOT CHOSEN YET, SO NOTHING PAID RUNS$/);
+  test('on the position\'s SETTINGS it is one row: its name, on or off, its limit and what the month has used', () => {
+    expect(spendSwitch({ rule: { on: true, cap: 250 }, spent: 4, attached: ['hunter', 'tomba'] })).toEqual({ id: 'paid-lead-data', kind: 'spend', on: true, cap: 250, spent: 4, attached: ['hunter', 'tomba'], name: 'Paid lead data (Hunter, Tomba)', whileOff: 'your sales seat reads each address on the company\'s own pages and spends none of your credits' });
+    expect(spendSwitch({ rule: { on: false, cap: 100 }, spent: 0, attached: [] })).toMatchObject({ name: 'Paid lead data', on: false, whileOff: 'no provider key is attached yet; add one in Settings, API, Lead data' });
     expect([capOk('250'), capOk('2.5'), capOk(''), capOk('-1')]).toEqual([true, false, false, false]);
   });
 });
@@ -300,19 +299,17 @@ describe('GATHERING through the real stack (gnosis)', () => {
     const spend = async () => (await request(app).get('/api/v1/revenue/lead-engine').use(as)).body.spend;
     const rule = (mode, cap) => request(app).post('/api/v1/revenue/lead-engine/spend').use(as).send({ mode, cap });
     expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/no contact-data provider is attached/) });
-    expect(await spend()).toMatchObject({ rule: { mode: 'ask', cap: 100, chosen: false }, spent: 0, attached: [], modes: ['ask', 'free-first', 'paid-first'] });
+    expect(await spend()).toMatchObject({ rule: { mode: 'off', on: false, cap: 100, chosen: false }, spent: 0, attached: [], modes: ['off', 'on'] });
     process.env.HUNTER_API_KEY = 'the-operators-key';
     expect(await act('merc', { type: 'sales/contacts', domain: 'stranger.example' })).toMatchObject({ status: 'error', error: expect.stringMatching(/not a company you gathered or pooled/) });
-    // A key alone spends nothing: until the operator chooses, the seat is told to ask them, in words.
-    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/paid lead data is not allowed yet\. Ask your operator now/) });
-    expect(await mercatorBriefingSection(conn('merc'))).toContain('PAID LEAD DATA (hunter attached; it spends your operator\'s credits): NOT ALLOWED YET.');
-    // FREE FIRST: a company the seat has not scored from its own pages is not paid for.
-    expect((await rule('sometimes', 3)).status).toBe(400);
-    expect((await rule('free-first', 3)).body.rule).toMatchObject({ mode: 'free-first', cap: 3, chosen: true });
-    expect(await act('merc', { type: 'sales/contacts', domain: 'syntetika.io' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/FREE FIRST: read this company's own pages/) });
+    // A key alone spends nothing: the switch is off until the operator turns it on, and the seat is told so.
+    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/PAID LEAD DATA is off\. Your operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS/) });
+    expect(await mercatorBriefingSection(conn('merc'))).toContain('PAID LEAD DATA (hunter attached; it spends your operator\'s credits): OFF.');
     expect(hits.some((h) => /^\/(hunter|tomba|apollo)\//.test(h))).toBe(false);
-    // PAID FROM THE START: the cheapest attached provider answers; an address with no page is never offered.
-    expect((await rule('paid-first', 3)).status).toBe(200);
+    expect((await rule('sometimes', 3)).status).toBe(400);
+    // ON: the cheapest attached provider answers, for any company gathered; an address with no page is never offered.
+    expect((await rule('on', 3)).body.rule).toMatchObject({ mode: 'on', on: true, cap: 3, chosen: true });
+    expect(await mercatorBriefingSection(conn('merc'))).toContain('): ON. It is one of the ways you may find a person\'s address.');
     const people = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' });
     expect(people.status).toBe('ok');
     expect(people.content).toContain('People at limitless.exchange (hunter, 1 credit(s) spent):');
@@ -326,9 +323,9 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(tomba.content).toContain('- 0. Roberto Diaz, Founder — roberto@olivetree.example — found on https://olivetree.example/about');
     expect(tomba.content).not.toContain('nopage@');
     // The month's cap holds: Apollo may spend 5, 2 are spent, the cap is 3.
-    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'apollo' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/this month's cap is 3 credit\(s\) and 2 are spent; this lookup may spend 5/) });
+    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'apollo' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/this month's limit is 3 credit\(s\) and 2 are spent; this lookup may spend 5/) });
     expect(hits.some((h) => h.startsWith('/apollo/'))).toBe(false);
-    expect((await rule('paid-first', 10)).status).toBe(200);
+    expect((await rule('on', 10)).status).toBe(200);
     const apollo = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'apollo' });
     expect(apollo.content).toContain('People at limitless.exchange (apollo, 2 credit(s) spent):');
     expect(apollo.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange — verified by apollo; their profile: https://www.linkedin.com/in/dima-h');
@@ -336,8 +333,11 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(apollo.content).not.toContain('apollo-key');
     expect((await act('merc', { type: 'sales/contacts', domain: 'yo.xyz' })).content).toMatch(/hunter holds nobody at yo\.xyz/);
     // The operator reads what the month spent, counted from the lookups themselves.
-    expect(await spend()).toMatchObject({ rule: { mode: 'paid-first', cap: 10 }, spent: 5, attached: ['hunter', 'tomba', 'apollo'] });
+    expect(await spend()).toMatchObject({ rule: { mode: 'on', cap: 10 }, spent: 5, attached: ['hunter', 'tomba', 'apollo'] });
     expect((await spend()).lookups[0]).toMatchObject({ domain: 'yo.xyz', source: 'hunter', spent: 1, found: 0 });
-    expect((await request(app).post('/api/v1/revenue/lead-engine/spend').send({ mode: 'ask', cap: 1 })).status).toBe(401);
+    expect((await request(app).post('/api/v1/revenue/lead-engine/spend').send({ mode: 'on', cap: 1 })).status).toBe(401);
+    // Off again: nothing more is spent.
+    expect((await rule('off', 10)).body.rule).toMatchObject({ mode: 'off', on: false });
+    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/PAID LEAD DATA is off/) });
   });
 });

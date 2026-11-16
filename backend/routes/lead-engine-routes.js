@@ -11,13 +11,14 @@
  */
 
 import express from 'express';
-import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
+import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readContactPeople, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign } from '../services/sales/sales-store.js';
 import { makeSuppression, suppressionMatcher } from '../services/sales/suppress-shape.js';
 import { upkeepDue } from '../services/sales/lead-upkeep.js';
 import { makeCampaign, campaignBoard } from '../services/sales/campaign-shape.js';
 import { listCompanies } from '../services/marketing/companies.js';
 import { leadLedgerFor, LEAD_KINDS, kindOf, sourceOf } from '../services/leads/lead-ledger.js';
 import { spendState, setSpend, SPEND_MODES } from '../services/sales/lead-spend.js';
+import { foldContacts, contactStats } from '../services/sales/contact-book.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('LeadEngine');
@@ -36,7 +37,9 @@ router.get('/', async (req, res) => {
     const spend = { ...(await spendState(wallet)), modes: SPEND_MODES };
     // The lead list itself, each lead under what it is to the house (a buyer, an applicant, a partner, …).
     const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null }));
-    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, leads: list, leadKinds: LEAD_KINDS, ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
+    // The contact book: every person the house knows, one record each, read from the records above.
+    const contacts = foldContacts({ leads, prospects, lookups: await readContactPeople(wallet), suppressions, segments, candidates });
+    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
   } catch (error) {
     log.error('Lead engine read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the lead engine' });
