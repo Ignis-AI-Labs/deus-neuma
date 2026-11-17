@@ -6,7 +6,7 @@
 // Only the long […] folds. The operator's APPROVE / PAUSE / RETIRE and
 // APPROVE THE LIST stand in the head and under the tiles. Pure rendering.
 
-import { MATCH_WORDS, STATE_WORDS, LIST_WORDS, segmentMoves } from './lead-engine-view.js';
+import { MATCH_WORDS, STATE_WORDS, LIST_WORDS, segmentMoves, roadSteps } from './lead-engine-view.js';
 import { AudienceCompanies } from './AudienceCompanies.jsx';
 import { poolTiles, chipsOf, poolWords, audienceWaits } from './lead-audience-view.js';
 
@@ -50,6 +50,22 @@ const Moves = ({ s, busy, onMove }) => (
       <button key={m.state} type="button" className={`sec-scan label-data${m.state === 'retired' ? ' cline-danger' : ''}`} disabled={busy}
         aria-label={`${m.label} ${s.name}`} onClick={() => onMove(s, m.state)}>{m.label}</button>
     ))}
+  </div>
+);
+
+// THE PIPELINE, drawn: the seven steps every audience walks, each with its count; the next one marked,
+// and the one that is the operator's (APPROVE) marked when it waits on them.
+const Road = ({ road }) => (
+  <div className="cline-road" data-pipeline="">
+    <ol className="cline-road-steps" aria-label="the pipeline, step by step">
+      {roadSteps(road).map((step, i) => (
+        <li key={step.id} className={`cline-road-step${step.next ? ' is-next' : ''}${step.you ? ' is-you' : ''}`} data-step={step.id} aria-current={step.next ? 'step' : undefined}>
+          <span className="cline-road-n label-data">{i + 1} {step.label}</span>
+          <span className="cline-road-w">{step.words}</span>
+        </li>
+      ))}
+    </ol>
+    {road.next ? <p className="cline-road-next label-data" data-pipeline-next="">NEXT · {road.next.words}</p> : null}
   </div>
 );
 
@@ -99,6 +115,7 @@ export const LeadAudienceCard = ({ row, busy, onMove, onList, onRead = null, mod
             <span className="cline-aud-count label-data" data-pool-counts="">{poolWords(pool, counts)}</span>
           </summary>
           <div className="cline-aud-in">
+            {row.road ? <Road road={row.road} /> : null}
             <Moves s={s} busy={busy} onMove={onMove} />
             <ListApproval s={s} listable={listable} busy={busy} onList={onList} />
             {/* The one list of this audience's companies; a scored one opens to why, and who was read. */}

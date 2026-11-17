@@ -185,6 +185,14 @@ export const addCandidates = (wallet, segmentId, rows, by) => serialize(async ()
   return added;
 });
 
+/** Keep one search run for an audience (the pipeline's DISCOVER step, lead-pipeline.js): where, how it was asked, what it found. */
+export const noteSearch = (wallet, { segmentId, source, asked, matched, gathered, by }) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'searched', segmentId, source, asked: String(asked ?? '').slice(0, 400), matched: Number(matched) || 0, gathered: Number(gathered) || 0, by, at: new Date().toISOString() }));
+
+/** Every search run, oldest first: { segmentId, source, asked, matched, gathered, at }. */
+export const readSearches = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'searched')
+  .map((e) => ({ segmentId: e.segmentId, source: e.source, asked: e.asked, matched: e.matched, gathered: e.gathered, at: e.at }));
+
 /** Keep what a contact-data provider returned for a company (the people, each with the page its address was found on). */
 export const noteContacts = (wallet, domain, source, people, by, spent = 1) => serialize(() =>
   appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain, source, people, spent, by, at: new Date().toISOString() }));

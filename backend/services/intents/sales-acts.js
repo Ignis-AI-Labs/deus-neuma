@@ -21,7 +21,7 @@ import { officeContext } from './revenue-acts.js';
 import { makeSegment } from '../sales/segment-shape.js';
 import { makeProspect, MATCH_WORDS, countryOfAddress } from '../sales/prospect-shape.js';
 import { makeSuppression, normalizeEmail, suppressionMatcher } from '../sales/suppress-shape.js';
-import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts, readCampaigns, addProspectPerson } from '../sales/sales-store.js';
+import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts, readCampaigns, addProspectPerson, readCandidates } from '../sales/sales-store.js';
 import { makeSalesSheet, SALES_DISCLOSURE } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { listCompanies } from '../marketing/companies.js';
@@ -104,6 +104,11 @@ const salesProspectIntent = Object.freeze({
       }
     });
     if (problems.length) return invalid(problems.join(' | '));
+    // THE PIPELINE: a company gathered from a list is scored only once its own site was read and found alive
+    // (lead-pipeline.js) — research reads a real, live company. One found by hand is scored on its own page.
+    const gathered = new Map((await readCandidates(context.wallet)).filter((c) => c.segmentId === segment.id).map((c) => [c.domain, c]));
+    const unverified = prospects.filter((p) => { const c = gathered.get(p.domain); return c && !c.siteRead?.alive; });
+    if (unverified.length) return invalid(`THE PIPELINE: verify before you research — ${unverified.map((p) => { const c = gathered.get(p.domain); return `${p.domain} (${c.siteRead ? 'its site is dead: it is out of the pipeline' : 'its site was never read'})`; }).join(', ')}. Read the sites with sales/read-sites, then score the live ones.`);
     return { ok: true, value: { context, segment, prospects } };
   },
   summarize: (payload) => `${Array.isArray(payload?.companies) ? payload.companies.length : 0} prospect(s) for ${payload?.segment ?? '?'}`,

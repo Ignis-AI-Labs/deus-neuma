@@ -3,6 +3,8 @@
 // every upkeep item, and which presses the operator has on a segment.
 // PURE.
 
+import { audiencePipeline } from '../../../../backend/services/sales/lead-pipeline.js';
+
 export const MATCH_WORDS = Object.freeze({ 1: 'NO MATCH', 2: 'WEAK MATCH', 3: 'STRONG MATCH' });
 
 export const STATE_WORDS = Object.freeze({
@@ -46,6 +48,8 @@ const meanFit = (p) => p.fit.reduce((n, s) => n + s.score, 0) / (p.fit.length ||
 export const segmentRows = (engine) => {
   const prospects = engine?.prospects ?? [];
   const candidates = engine?.candidates ?? [];
+  // THE PIPELINE (lead-pipeline.js, the same function the sales seat's briefing reads): where each company stands.
+  const held = new Map((engine?.pulled ?? []).map((domain) => [domain, [{ domain }]]));
   return [...(engine?.segments ?? [])].filter((s) => s.state !== 'retired').reverse().map((segment) => {
     const mine = prospects.filter((p) => p.segmentId === segment.id);
     const pool = mine.filter((p) => p.stage === 'found').sort((a, b) => b.match - a.match || meanFit(b) - meanFit(a));
@@ -62,8 +66,23 @@ export const segmentRows = (engine) => {
       // press did not, so a row Founder could not act on never cleared).
       listable: segment.state === 'approved' ? mine.filter((p) => p.match >= 2 && p.stage !== 'dropped' && !p.listApproved).length : 0,
       counts: { strong: pool.filter((p) => p.match === 3).length, weak: pool.filter((p) => p.match === 2).length, none: pool.filter((p) => p.match === 1).length, onLedger: mine.filter((p) => p.stage === 'promoted').length },
+      road: audiencePipeline({ segment, candidates: candidates.filter((c) => c.segmentId === segment.id), prospects: mine, leads: engine?.leads ?? [], searches: (engine?.searches ?? []).filter((x) => x.segmentId === segment.id), held }),
     };
   });
+};
+
+/** The road of an audience as the desk draws it: each step's count and words, and which step is next. Pure. */
+export const roadSteps = ({ steps, next }) => {
+  const n = (v) => Number(v).toLocaleString('en-US');
+  return [
+    { id: 'discover', label: 'DISCOVER', words: `${n(steps.discover.gathered)} FOUND · ${steps.discover.searches} SEARCH${steps.discover.searches === 1 ? '' : 'ES'}` },
+    { id: 'verify', label: 'VERIFY', words: `${n(steps.verify.alive)} ALIVE · ${n(steps.verify.dead)} DEAD · ${n(steps.verify.unread)} UNREAD` },
+    { id: 'research', label: 'RESEARCH', words: `${steps.research.strong} STRONG · ${steps.research.weak} WEAK · ${steps.research.none} NO FIT · ${n(steps.research.toScore)} TO SCORE` },
+    { id: 'contacts', label: 'CONTACTS', words: `PEOPLE AT ${steps.contacts.withPeople} OF ${steps.contacts.fits} FITS` },
+    { id: 'leads', label: 'LEADS', words: `${steps.leads.leads} ON THE LIST${steps.leads.toFile ? ` · ${steps.leads.toFile} TO FILE` : ''}` },
+    { id: 'approve', label: 'APPROVE', words: steps.approve.waiting ? `${steps.approve.waiting} WAIT FOR YOU` : 'NOTHING WAITING', you: steps.approve.waiting > 0 },
+    { id: 'outreach', label: 'OUTREACH', words: `${steps.outreach.written} WRITTEN · ${steps.outreach.replied} REPLIED${steps.outreach.unwritten ? ` · ${steps.outreach.unwritten} TO WRITE` : ''}` },
+  ].map((s) => ({ ...s, next: next?.id === s.id }));
 };
 
 /** The operator's presses on a segment in this state, in order. */

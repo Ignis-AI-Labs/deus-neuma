@@ -11,7 +11,7 @@
  */
 
 import express from 'express';
-import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readContactPeople, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign, readAddressChecks } from '../services/sales/sales-store.js';
+import { readSegments, readProspects, readSuppressions, setSegmentState, addSuppression, approveList, readSalesFacts, reviewSalesFacts, editSalesFact, readCandidates, readContactPeople, readCampaigns, openCampaign, closeCampaign, moveCampaign, setSegmentCampaign, readAddressChecks, readSearches } from '../services/sales/sales-store.js';
 import { makeSuppression, suppressionMatcher } from '../services/sales/suppress-shape.js';
 import { upkeepDue } from '../services/sales/lead-upkeep.js';
 import { peopleByCompany } from '../services/sales/top-first.js';
@@ -47,7 +47,10 @@ router.get('/', async (req, res) => {
     // The contact book: every person the house knows, one record each, read from the records above.
     const contacts = foldContacts({ leads, prospects, lookups, suppressions, segments, candidates, checks: await readAddressChecks(wallet) });
     const outbox = await readOutbox(wallet);
-    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, outbox: { review: outbox.review, drafts: outbox.drafts.slice(0, 200) }, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
+    // THE PIPELINE on the desk (lead-pipeline.js): each audience's searches, and the companies people were pulled at.
+    const searches = await readSearches(wallet);
+    const pulled = [...peopleByCompany(lookups).keys()];
+    res.json({ segments, prospects, suppressions, upkeep, facts, candidates, spend, searches, pulled, outbox: { review: outbox.review, drafts: outbox.drafts.slice(0, 200) }, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
   } catch (error) {
     log.error('Lead engine read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the lead engine' });

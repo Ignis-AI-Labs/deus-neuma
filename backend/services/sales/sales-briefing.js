@@ -4,7 +4,7 @@
 // Mercator office briefing (revenue-briefing.js) carries it under its own.
 // impure (store reads); the text is pure.
 
-import { readSegments, readProspects, readSuppressions, readSalesFacts, readCandidates, readCampaigns, readContactPeople } from './sales-store.js';
+import { readSegments, readProspects, readSuppressions, readSalesFacts, readCandidates, readCampaigns, readContactPeople, readSearches } from './sales-store.js';
 import { campaignBoard, campaignLine } from './campaign-shape.js';
 import { candidateLine } from './lead-sources.js';
 import { SALES_DISCLOSURE } from './sales-facts.js';
@@ -17,6 +17,7 @@ import { outboxText, readOutbox } from './email-outbox.js';
 import { LEAD_KINDS, UNSORTED, kindOf, sourceOf } from '../leads/lead-ledger.js';
 import { foldContacts, contactLine } from './contact-book.js';
 import { peopleByCompany, TOP_FIRST_RULE } from './top-first.js';
+import { audiencePipeline, pipelineLine, PIPELINE_RULE } from './lead-pipeline.js';
 
 const LIST_CAP = 8;
 const HOW = 'How: read the house\'s own site and its competitors\', then file an audience with sales/segment (the operator approves each pitch). For a segment, gather companies in bulk with sales/gather when the LEAD SOURCES switch is on, or search the web for companies that fit; read each one\'s own pages, and file them with sales/prospect, every sign of fit scored with why. From an APPROVED segment, put a weak or strong match on the ledger with sales/lead, using an address you read on a real page. Write with email/send: the mailbox records each email on the lead itself, and a reply marks it replied. Anyone who asks to be left alone goes on sales/suppress at once.';
@@ -76,7 +77,7 @@ const segmentLines = (segments, prospects) => segments.filter((s) => s.state !==
  * pure — the section text.
  * @param {{segments: object[], prospects: object[], leads: object[], suppressions: object[], now: number}} state
  */
-export const leadEngineText = ({ segments, prospects, leads, suppressions, facts = null, candidates = [], campaigns = [], spend = null, lookups = [], outbox = null, now }) => {
+export const leadEngineText = ({ segments, prospects, leads, suppressions, facts = null, candidates = [], campaigns = [], spend = null, lookups = [], outbox = null, searches = [], now }) => {
   const board = campaignBoard({ campaigns: campaigns.filter((c) => c.state === 'open'), segments, candidates, prospects, leads });
   const waiting = candidates.filter((c) => c.state === 'waiting');
   const approved = new Set(segments.filter((s) => s.state === 'approved').map((s) => s.id));
@@ -84,9 +85,16 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
     .filter((p) => p.stage === 'found' && p.match >= 2 && approved.has(p.segmentId))
     .sort((a, b) => b.match - a.match || mean(b) - mean(a))
     .slice(0, LIST_CAP);
-  const due = upkeepDue({ leads, now, suppressed: suppressionMatcher(suppressions).email, held: peopleByCompany(lookups) });
+  const held = peopleByCompany(lookups);
+  const due = upkeepDue({ leads, now, suppressed: suppressionMatcher(suppressions).email, held });
+  const roads = segments.filter((s) => ['approved', 'draft'].includes(s.state)).map((segment) => audiencePipeline({
+    segment, candidates: candidates.filter((c) => c.segmentId === segment.id), prospects: prospects.filter((p) => p.segmentId === segment.id),
+    leads, searches: searches.filter((x) => x.segmentId === segment.id), held,
+  }));
   return [
     '## LEAD ENGINE — find them, score them, keep the ledger clean',
+    PIPELINE_RULE,
+    ...(roads.length ? ['Each audience on the road (work its NEXT step):', ...roads.map((r) => `- ${pipelineLine(r)}`)] : []),
     HOW,
     TOP_FIRST_RULE,
     FIRST_EMAIL,
@@ -108,6 +116,6 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
 
 /** The section for the house at `wallet`, with its ledger already read. impure. */
 export const leadEngineSection = async (wallet, leads) => {
-  const [segments, prospects, suppressions, facts, candidates, campaigns, lookups] = await Promise.all([readSegments(wallet), readProspects(wallet), readSuppressions(wallet), readSalesFacts(wallet), readCandidates(wallet), readCampaigns(wallet), readContactPeople(wallet)]);
-  return leadEngineText({ segments, prospects, leads, suppressions, facts, candidates, campaigns, lookups, spend: await spendState(wallet).catch(() => null), outbox: await readOutbox(wallet).catch(() => null), now: Date.now() });
+  const [segments, prospects, suppressions, facts, candidates, campaigns, lookups, searches] = await Promise.all([readSegments(wallet), readProspects(wallet), readSuppressions(wallet), readSalesFacts(wallet), readCandidates(wallet), readCampaigns(wallet), readContactPeople(wallet), readSearches(wallet)]);
+  return leadEngineText({ segments, prospects, leads, suppressions, facts, candidates, campaigns, lookups, searches, spend: await spendState(wallet).catch(() => null), outbox: await readOutbox(wallet).catch(() => null), now: Date.now() });
 };

@@ -20,7 +20,7 @@ import { fullAuth } from '../helpers/audit-auth.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import revenueRouter from '../../backend/routes/revenue-routes.js';
 import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-briefing.js';
-import { readCandidates } from '../../backend/services/sales/sales-store.js';
+import { readCandidates, noteSites, readSearches } from '../../backend/services/sales/sales-store.js';
 import { tokensOfPools, candidateOf, protocolsOnBase, peopleOfHunter, candidateLine, LEAD_SOURCES } from '../../backend/services/sales/lead-sources.js';
 import { peopleOfTomba, apolloToReveal, personOfApollo } from '../../backend/services/sales/lead-providers.js';
 import { foldSpend, makeRule, spentThisMonth, spendRefusal, spendLine, spendSwitch } from '../../backend/services/sales/lead-spend.js';
@@ -285,8 +285,14 @@ describe('GATHERING through the real stack (gnosis)', () => {
   }, 120000);
 
   test('scoring a candidate makes it a prospect; it then stands as scored, never gathered twice', async () => {
-    const scored = await act('merc', { type: 'sales/prospect', segment: await segmentId(), companies: [{ domain: 'limitless.exchange', name: 'Limitless', source: 'https://www.geckoterminal.com/base/tokens/0xaaa', country: 'US',
-      scores: [{ criterion: 'Has a token live on Base', score: 5, reasoning: 'LMTS trades on Base, deepest pool on Aerodrome' }], people: [] }] });
+    const filing = (domain, name) => ({ type: 'sales/prospect', segment: undefined, companies: [{ domain, name, source: `https://${domain}`, country: 'US',
+      scores: [{ criterion: 'Has a token live on Base', score: 5, reasoning: 'its token trades on Base' }], people: [] }] });
+    const limitless = { ...filing('limitless.exchange', 'Limitless'), segment: await segmentId() };
+    limitless.companies[0].source = 'https://www.geckoterminal.com/base/tokens/0xaaa';
+    // THE PIPELINE: a gathered company is researched and scored only once its own site was read and found alive.
+    expect(await act('merc', limitless)).toMatchObject({ status: 'error', error: expect.stringMatching(/^THE PIPELINE: verify before you research — limitless\.exchange \(its site was never read\)/) });
+    await noteSites(me.address, [{ domain: 'limitless.exchange', site: { alive: true, description: 'Prediction markets on Base', emails: [], socials: {} } }], 'merc');
+    const scored = await act('merc', limitless);
     expect(scored.status).toBe('ok');
     expect((await readCandidates(me.address)).find((c) => c.domain === 'limitless.exchange').state).toBe('scored');
     expect(await mercatorBriefingSection(conn('merc'))).toMatch(/waiting for your score \(2;/);
@@ -331,6 +337,12 @@ describe('GATHERING through the real stack (gnosis)', () => {
   });
 
   test('people come only from the operator\'s own key, and only once the operator has said paid data may be spent', async () => {
+    // A company walked to a fit the pipeline's way: its site read alive, then scored.
+    const fitOf = async (domain) => {
+      await noteSites(me.address, [{ domain, site: { alive: true, description: 'A token team on Base', emails: [], socials: {} } }], 'merc');
+      const filed = await act('merc', { type: 'sales/prospect', segment: await segmentId(), companies: [{ domain, name: domain, source: `https://${domain}`, country: 'US', scores: [{ criterion: 'Has a token live on Base', score: 4, reasoning: 'its token trades on Base' }], people: [] }] });
+      expect(filed.status, filed.error).toBe('ok');
+    };
     const spend = async () => (await request(app).get('/api/v1/revenue/lead-engine').use(as)).body.spend;
     const rule = (mode, cap) => request(app).post('/api/v1/revenue/lead-engine/spend').use(as).send({ mode, cap });
     expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/no contact-data provider is attached/) });
@@ -372,6 +384,9 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(apollo.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange — verified by apollo; their profile: https://www.linkedin.com/in/dima-h');
     expect(apollo.content).not.toContain('ann@limitless.exchange');
     expect(apollo.content).not.toContain('apollo-key');
+    // THE PIPELINE: people are pulled only at a company scored as a fit — verified, researched, scored.
+    expect(await act('merc', { type: 'sales/contacts', domain: 'yo.xyz' })).toMatchObject({ status: 'error', error: expect.stringMatching(/^THE PIPELINE: people are pulled only at a company scored as a fit — "yo\.xyz" is not/) });
+    await fitOf('yo.xyz');
     expect((await act('merc', { type: 'sales/contacts', domain: 'yo.xyz' })).content).toMatch(/hunter holds nobody at yo\.xyz/);
     // The operator reads what the month spent, counted from the lookups themselves.
     // A company where Hunter holds nobody with a name and a role costs no credit: Hunter counts only a search that returns something.
@@ -380,7 +395,7 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).every((h) => h.includes('type=personal') && /required_field=full_name(,|%2C)position/.test(h))).toBe(true);
 
     // HUNTER'S FREE COMPANY SEARCH: words in, companies out with how many people Hunter holds at each; no credit, no spending rule.
-    expect(await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'short' })).toMatchObject({ status: 'error', error: expect.stringMatching(/needs industries or keywords \(best\), or words: one plain sentence/) });
+    expect(await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'short' })).toMatchObject({ status: 'error', error: expect.stringMatching(/words are one plain sentence saying what kind of company you are after/) });
     const found = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', words: 'token projects on Base that need deeper liquidity', sizes: ['1-10', '11-50'] });
     expect(found.status, found.error).toBe('ok');
     // THE WIDE NET: the words read once by Hunter; then the search as Hunter ranks it, then each size, in the audience's own countries.
@@ -391,6 +406,8 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(found.content).toContain('Index Coop — indexcoop.com — 1-10 people · 31 addresses at Hunter (21 named people, 10 general)');
     expect(found.content).toContain('NMKR — nmkr.io — 11-50 people · 4 addresses at Hunter (no named person, 4 general)');
     expect(found.content.indexOf('Index Coop')).toBeLessThan(found.content.indexOf('NMKR')); // the most addresses first
+    // THE PIPELINE'S FIRST STEP, on record: this audience's own search.
+    expect((await readSearches(me.address)).at(-1)).toMatchObject({ segmentId: await segmentId(), source: 'hunter-discover', asked: expect.stringContaining('keywords (any): defi, token'), matched: 1139, gathered: 2 });
     // THE POOL, SEEN WHOLE: the seat filters every gathered company down, with what is known about each (free, no card).
     const browsed = await act('merc', { type: 'sales/candidates', segment: await segmentId(), source: 'hunter-discover', minPeople: 1 });
     expect(browsed.status, browsed.error).toBe('ok');
@@ -403,13 +420,16 @@ describe('GATHERING through the real stack (gnosis)', () => {
     const looked = discoverAsked.length;
     const look = await act('merc', { type: 'sales/discover', segment: await segmentId(), industries: ['blockchain services'], keywords: ['defi', 'decentralized exchange'], exclude: ['casino'] });
     expect(look.status, look.error).toBe('ok');
-    expect(discoverAsked.slice(looked)).toEqual([{ industry: { include: ['Blockchain Services'] }, keywords: { include: ['defi', 'decentralized exchange'], exclude: ['casino'], match: 'any' }, headquarters_location: expect.any(Object), limit: 15 }]);
-    expect(look.content).toMatch(/^Hunter, asked as industry: Blockchain Services · keywords \(any\): defi, decentralized exchange · excluding: casino: 2,212 companies match in the countries of ".+"\. Nothing was kept or spent\.\n- Sui — sui\.io — 35 addresses at Hunter \(32 named people, 3 general\)\n/);
+    // EVERY SEARCH OF AN AUDIENCE starts from Hunter's assistant reading its own signs of fit (one AI search); the seat's aim stands over it.
+    expect(discoverAsked.slice(looked)).toEqual([{ query: 'Has a token live on Base', limit: 1 }, { industry: { include: ['Blockchain Services'] }, keywords: { include: ['defi', 'decentralized exchange'], exclude: ['casino'], match: 'any' }, headquarters_location: expect.any(Object), limit: 15 }]);
+    expect(look.content).toMatch(/^Hunter, asked as industry: Blockchain Services · keywords \(any\): defi, decentralized exchange · excluding: casino \(its assistant's reading of the audience's signs of fit, sharpened by your keywords and industries\): 2,212 companies match in the countries of ".+"\. Nothing was kept or spent\.\n- Sui — sui\.io — 35 addresses at Hunter \(32 named people, 3 general\)\n/);
     expect((await readCandidates(me.address)).some((c) => c.domain === 'sui.io')).toBe(false);
     // The gather with the same fields asks Hunter those filters, size by size: no reading of words.
     const aimed = await act('merc', { type: 'sales/gather', segment: await segmentId(), source: 'hunter-discover', industries: ['Blockchain Services'], keywords: ['defi'], sizes: ['1-10'] });
     expect(aimed.status, aimed.error).toBe('ok');
-    expect(discoverAsked.slice(looked + 1).every((b) => !b.query && b.industry.include[0] === 'Blockchain Services')).toBe(true);
+    const aimedCalls = discoverAsked.slice(looked + 2);
+    expect(aimedCalls[0]).toEqual({ query: 'Has a token live on Base', limit: 1 });
+    expect(aimedCalls.slice(1).every((b) => !b.query && b.industry.include[0] === 'Blockchain Services')).toBe(true);
     expect(aimed.content).toContain('1 new candidate(s)');
     expect(aimed.content).toContain('(asked as industry: Blockchain Services · keywords (any): defi)');
     // ONE NAMED PERSON'S ADDRESS (Hunter's finder): kept when Hunter saw it on a page or confirmed it exists; a guess is told as a guess and not kept.
@@ -439,6 +459,7 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect([mayWrite('valid'), mayWrite('invalid'), mayWrite('disposable'), mayWrite('unknown'), checkWords('webmail')]).toEqual([true, false, false, true, 'is a personal mailbox, which Hunter does not confirm']);
 
     // …and a paid lookup is refused, unspent, where Hunter already said it holds nobody to write to.
+    await fitOf('nmkr.io');
     const calls = hits.filter((h) => h.startsWith('/hunter/domain-search')).length;
     expect(await act('merc', { type: 'sales/contacts', domain: 'nmkr.io' })).toMatchObject({ status: 'denied', error: expect.stringMatching(/Hunter already said it holds no named person at nmkr\.io \(4 general addresses\) — no credit was spent/) });
     expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).length).toBe(calls);

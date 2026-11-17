@@ -25,7 +25,7 @@ import { topFirst } from '../sales/top-first.js';
 import { readAudienceSites } from '../sales/site-reads.js';
 import { READ_MAX, siteLine } from '../sales/company-reader.js';
 import { SIZES, trafficOf, trafficLoaded, trafficWords } from '../sales/company-index.js';
-import { readSegments, readProspects, readCandidates, addCandidates, noteContacts, readContactLookups } from '../sales/sales-store.js';
+import { readSegments, readProspects, readCandidates, addCandidates, noteContacts, readContactLookups, noteSearch } from '../sales/sales-store.js';
 import { readSpend, spentThisMonth, spendRefusal, attachedProviders } from '../sales/lead-spend.js';
 
 const SHOWN_GATHERED = 40;
@@ -47,8 +47,9 @@ const queryOf = (payload) => ({
   match: payload?.match === 'all' ? 'all' : 'any', foundedFrom: parseInt(payload?.foundedFrom, 10) || null, live: payload?.live === true,
 });
 // pure — why a Hunter search cannot be asked as given: nothing to search for, or industries Hunter does not have.
+// Left without words, the search reads the audience's own signs of fit (hunter-discover.js audienceWords).
 const discoverRefusal = (query) => {
-  if (query.words.trim().length < 8 && !query.industries.length && !query.keywords.length) return 'a Hunter search needs industries or keywords (best), or words: one plain sentence saying what kind of company you are after';
+  if (query.words.trim() && query.words.trim().length < 8 && !query.industries.length && !query.keywords.length) return 'words are one plain sentence saying what kind of company you are after (or leave them out: the audience\'s own signs of fit are read), and keywords and industries aim it';
   return industryRefusal(query.industries);
 };
 const PEOPLE_SOURCES = Object.entries(LEAD_SOURCES).filter(([, s]) => s.kind === 'people');
@@ -87,6 +88,9 @@ const salesGatherIntent = Object.freeze({
     const ranks = trafficLoaded() ? trafficOf(found.candidates.filter((c) => !('trafficRank' in c)).map((c) => c.domain)) : null;
     const rows = ranks ? found.candidates.map((c) => ('trafficRank' in c ? c : { ...c, trafficRank: ranks.get(c.domain) ?? null, signal: `${c.signal} · ${trafficWords(ranks.get(c.domain) ?? null)}` })) : found.candidates;
     const added = await addCandidates(context.wallet, segment.id, rows, context.laneId);
+    // THE PIPELINE'S FIRST STEP, on record: this audience's own search (lead-pipeline.js).
+    await noteSearch(context.wallet, { segmentId: segment.id, source: sourceId, asked: found.asked ?? [query.words, ...query.keywords, ...query.industries].filter(Boolean).join(', '), matched: found.matched, gathered: added.length, by: context.laneId })
+      .catch(() => {});
     if (!added.length) return { ok: false, reason: `Nothing new was gathered from ${sourceId}${found.stopped ? `: ${found.stopped}` : ' — the house already holds every company it returned'}.` };
     return { ok: true, detail: [`${added.length} new candidate(s) for "${segment.name}" from ${sourceId}${found.asked ? ` (asked as ${found.asked})` : ''}${found.stopped ? ` (it stopped early: ${found.stopped})` : ''}:`, ...added.slice(0, SHOWN_GATHERED).map((c) => `- [${c.id}] ${candidateLine(c)}`), ...(added.length > SHOWN_GATHERED ? [`… and ${added.length - SHOWN_GATHERED} more, all in your briefing and on the campaign's screen.`] : []), 'Read the ones that could fit, then score them with sales/prospect (source: the candidate\'s own page).'].join('\n') };
   },
@@ -118,7 +122,7 @@ const salesDiscoverIntent = Object.freeze({
     const look = await previewDiscover({ query, segment, apiKey, signal });
     if (!look.ok) return { ok: false, reason: `Hunter could not be asked: ${look.reason}.` };
     return { ok: true, detail: [
-      `Hunter, asked as ${look.asked}${look.read ? ' (its reading of your words — aim it with industries and keywords)' : ''}: ${look.matched.toLocaleString('en-US')} compan${look.matched === 1 ? 'y matches' : 'ies match'} in the countries of "${segment.name}". Nothing was kept or spent.`,
+      `Hunter, asked as ${look.asked} (its assistant's reading of ${query.words.trim() ? 'your words' : 'the audience\'s signs of fit'}${query.keywords.length || query.industries.length ? ', sharpened by your keywords and industries' : ' — sharpen it with keywords and industries'}): ${look.matched.toLocaleString('en-US')} compan${look.matched === 1 ? 'y matches' : 'ies match'} in the countries of "${segment.name}". Nothing was kept or spent.`,
       ...look.sample.map((c) => `- ${c.name} — ${c.domain}${c.size ? ` — ${c.size} people` : ''} — ${heldWords(c.hunterEmails)}`),
       look.sample.length ? 'Are these the audience? Then sales/gather, source hunter-discover, with the same fields. If not, sharpen (industries, keywords, exclude) and look again.' : 'Nothing matches: loosen the search (fewer keywords, match any, another industry) and look again.',
     ].join('\n') };
@@ -145,6 +149,9 @@ const salesContactsIntent = Object.freeze({
     const [candidates, prospects] = await Promise.all([readCandidates(context.wallet), readProspects(context.wallet)]);
     const strangers = asked.filter((d) => !candidates.some((c) => c.domain === d) && !prospects.some((p) => p.domain === d));
     if (strangers.length) return invalid(`${strangers.map((d) => `"${d}"`).join(', ')} ${strangers.length === 1 ? 'is not a company' : 'are not companies'} you gathered or pooled — contacts are looked up only for the house's own candidates`);
+    // THE PIPELINE: people come after the research — only at a company scored as a fit (lead-pipeline.js).
+    const unfit = asked.filter((d) => !prospects.some((p) => p.domain === d && p.match >= 2 && p.stage !== 'dropped'));
+    if (unfit.length) return invalid(`THE PIPELINE: people are pulled only at a company scored as a fit — ${unfit.map((d) => `"${d}"`).join(', ')} ${unfit.length === 1 ? 'is' : 'are'} not (read its site with sales/read-sites, research it, score it with sales/prospect; a weak or strong match comes here)`);
     // Hunter already said (for free) where it holds nobody with a name: those cost nothing and are not asked.
     const byHunter = !payload?.source || payload.source === 'hunter';
     const empty = byHunter ? asked.filter((d) => { const held = candidates.find((c) => c.domain === d)?.hunterEmails; return held && !held.personal; }) : [];

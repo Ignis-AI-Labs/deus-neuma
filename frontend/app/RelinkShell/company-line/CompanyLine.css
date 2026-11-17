@@ -186,6 +186,17 @@
 .cline-aud-count { color: var(--color-text-secondary); }
 .cline-chip.is-on { border-color: var(--signal); color: var(--signal); }
 .cline-aud-in { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) 0 var(--space-3); }
+/* THE PIPELINE (lead-pipeline.js): the seven steps in a row, each with its count; the next step lit, the operator's own step marked. */
+.cline-road { display: flex; flex-direction: column; gap: var(--space-2); }
+.cline-road-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border: 1px solid var(--line); }
+.cline-road-step { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); border-right: 1px solid var(--line); color: var(--color-text-secondary); }
+.cline-road-step:last-child { border-right: 0; }
+.cline-road-n { font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-road-w { font-size: 13px; letter-spacing: 0.04em; }
+.cline-road-step.is-next { background: var(--color-glass-light); color: var(--color-text-primary); box-shadow: inset 0 -2px 0 var(--signal); }
+.cline-road-step.is-next .cline-road-n { color: var(--signal); }
+.cline-road-step.is-you .cline-road-w { color: var(--alert); }
+.cline-road-next { margin: 0; font-size: 13px; letter-spacing: 0.08em; color: var(--signal); }
 
 /* A row of people: who, how to reach them, what they are, where they stand. */
 .cline-lead-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }

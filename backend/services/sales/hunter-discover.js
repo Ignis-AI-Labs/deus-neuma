@@ -135,14 +135,22 @@ const discover = async (body, { apiKey, signal }) => {
   throw new Error({ 401: 'Hunter refused the key — check it in SETTINGS, API, Lead data', 429: 'Hunter is busy (its limit of calls a minute) — gather again in a minute' }[res.status] ?? `Hunter answered ${res.status}${said ? `: ${said}` : ''}`);
 };
 
-// impure — what a search asks Hunter: the being's own filters as they are, or else its words in
-// Hunter's own reading (one free call; its assistant answers with the filters it understood).
-const searchOf = async (query, { apiKey, signal, onProgress = () => {} }) => {
+/** pure — an audience in words Hunter's assistant can read as a search: what makes a company fit it. */
+export const audienceWords = (segment) => String((segment?.positiveCriteria?.length ? segment.positiveCriteria.join('; ') : segment?.offer) || segment?.name || '').slice(0, 300);
+
+// impure — what a search asks Hunter. EVERY search of an audience starts from Hunter's own assistant
+// reading it (Design note, 2026-11-16: […]):
+// the seat's words, else the audience's own signs of fit, read once (free, and counted on the
+// operator's key as an AI search). The seat's own aim — keywords, industries, exclusions — then
+// stands over that reading where it gave one; Hunter's reading fills the rest.
+const searchOf = async (query, { segment = null, apiKey, signal, onProgress = () => {} }) => {
   const own = ownFilters(query);
-  if (own) return { filters: own, matched: 0, read: false };
-  onProgress('asking Hunter what your words mean as a search');
-  const answer = await discover({ query: String(query.words).slice(0, 300), limit: 1 }, { apiKey, signal });
-  return { filters: answer?.meta?.filters ?? {}, matched: Number(answer?.meta?.results) || 0, read: true };
+  const words = (String(query.words ?? '').trim() || audienceWords(segment)).slice(0, 300);
+  if (!words) return { filters: own ?? {}, matched: 0, read: false };
+  onProgress('asking Hunter what this audience means as a search');
+  const answer = await discover({ query: words, limit: 1 }, { apiKey, signal });
+  const reading = answer?.meta?.filters ?? {};
+  return { filters: own ? { ...reading, ...own } : reading, matched: Number(answer?.meta?.results) || 0, read: true, words };
 };
 
 /**
@@ -160,7 +168,7 @@ export const gatherHunterDiscover = async ({ count = DISCOVER_MAX, known = { dom
     if (!apiKey) return { candidates, looked, stopped: 'no Hunter key is attached — the operator adds one in SETTINGS, API, Lead data (a free Hunter account is enough: this search spends no credits)' };
     const badSize = (query.sizes ?? []).find((s) => !SIZES.includes(s));
     if (badSize) return { candidates, looked, stopped: `"${badSize}" is not a size — sizes are: ${SIZES.join(', ')}` };
-    const search = await searchOf(query, { apiKey, signal, onProgress });
+    const search = await searchOf(query, { segment, apiKey, signal, onProgress });
     const { filters } = search;
     matched = search.matched;
     const countries = query.countries?.length ? query.countries : segment?.countries ?? [];
@@ -205,7 +213,7 @@ export const gatherHunterDiscover = async ({ count = DISCOVER_MAX, known = { dom
 export const previewDiscover = async ({ query = {}, segment = null, apiKey, signal } = {}) => {
   try {
     if (!apiKey) return { ok: false, reason: 'no Hunter key is attached — the operator adds one in SETTINGS, API, Lead data (a free Hunter account is enough: this search spends no credits)' };
-    const search = await searchOf(query, { apiKey, signal });
+    const search = await searchOf(query, { segment, apiKey, signal });
     const countries = query.countries?.length ? query.countries : segment?.countries ?? [];
     const asked = discoverFilters({ filters: search.filters, countries, sizes: query.sizes ?? [] });
     const page = await discover({ ...asked, limit: SAMPLE }, { apiKey, signal });
