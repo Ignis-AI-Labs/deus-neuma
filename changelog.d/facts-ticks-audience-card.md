@@ -1,3 +1,0 @@
-Changed
-- The sales facts sheet has a tick box on every fact and one bar at the top: CHECK ALL, APPROVE ALL, APPROVE CHECKED and RETURN ALL. Tick the facts that are right and press APPROVE CHECKED: those stand, and the rest go back to your sales member to fix, who reads which ones and why. Facts you approved before start ticked when the sheet comes back. Each fact's EDIT, DELETE and ASK buttons are smaller and sit beside its source.
-- Each audience on the leads screen reads at a glance instead of as paragraphs: the company counts as tiles, the offer and the problem side by side, who to reach and which countries as chips, the signs of a fit as a ticked list and the signs of a poor fit as a crossed list. Nothing was removed; only the long "why them" folds.

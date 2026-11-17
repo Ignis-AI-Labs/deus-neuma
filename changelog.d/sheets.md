@@ -1,2 +1,0 @@
-### Changed
-- Lists of records now read as sheets, drawn by one shared component: one record a line, one fact a column, the same columns on every row, with anything longer opening under its row on a press and a hundred rows to a page. Moved onto it so far: the leads sheet, an audience's companies, the do-not-contact list, open and won deals, and the books' deadlines and unbooked receipts (which now show all of them, where five were shown before).

@@ -1,3 +1,0 @@
-Changed
-- Each SALES tab now holds only its own data. COMPANY (was BUSINESS MODEL) holds what is true of each company: its business model, then the facts a buyer may be told, with their approval. CAMPAIGNS holds each campaign and the audiences that serve it: the offer, who it reaches, and its approval. LEADS holds only leads: the companies found for each audience, the list approval, what is due on the lead list, do-not-contact, and paid lead data. The COMPANY tab on MANAGEMENT and MARKETING shows the same business model and facts.
-- The setup steps and the buttons in a member's messages point to the new homes: approving facts opens COMPANY, approving an audience opens CAMPAIGNS.

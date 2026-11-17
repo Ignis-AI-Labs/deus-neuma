@@ -1,2 +1,0 @@
-### Added
-- Official company registers are held on this machine. `node scripts/load-company-index.mjs --fetch uk-companies` and `--fetch lei` load UK Companies House's free company data and the global LEI register (GLEIF, CC0) into a registry index. Any member can ask it with `registry/lookup`, by name or by number: each answer gives the register, the company's number, standing, legal form, registered address, formation date and the address of its public record. Not found is said as "not in the registers held here", never as "does not exist".

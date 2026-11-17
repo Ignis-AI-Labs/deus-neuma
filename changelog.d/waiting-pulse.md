@@ -1,2 +1,0 @@
-### Fixed
-- A decision taken through one door no longer stays listed as waiting in another window. Approving posts and replies in the post queue left them under WAITING ON YOU in the POSITIONS window for minutes, because each window re-read on its own timer. The backend now sends one signal to every open window of the house whenever the operator changes anything or a member's act settles, and the waiting account, the POSITIONS board and the sales screens read again at once.

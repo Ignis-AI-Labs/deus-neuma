@@ -1,2 +1,0 @@
-Added
-- The desk now keeps an eye on the computer's memory. An image engine (ComfyUI) that was started outside the desk and has sat idle for two hours shuts itself down, and you get a card saying so. Old temporary folders that nothing has touched for a day are moved out of memory into a holding folder on disk, which is cleared a week later. If memory still runs low after that, one card an hour names the biggest programs using it. Your own apps and the model you're using are never closed.

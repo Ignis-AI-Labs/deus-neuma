@@ -1,3 +1,0 @@
-Changed
-- Hunter's free company search now casts a wide net. One gather pulls the same list Hunter's own screen shows, in the same order with the same address counts. It then searches each company size, and each of the audience's countries by size; on the free plan every one of those searches returns its own first 100. That adds up to as many as 3,000 companies, every company once, the most addresses first. Before, it searched the smallest companies first and stopped at the 25 the sales seat asked for.
-- Each gathered company shows the address count Hunter's screen shows, for example "7,574 addresses at Hunter (7,512 named people, 62 general)". Narrowing down happens after the gather: read the sites, then score.

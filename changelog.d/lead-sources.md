@@ -1,4 +1,0 @@
-Added
-- Your sales seat can now gather companies in bulk from public lists instead of finding them one page at a time. Two free sources need no account: the DeFi teams that live on Base (from DefiLlama, about 200 of them in one read) and the tokens trading on Base (from GeckoTerminal, about 50 an hour). Each gathered company arrives with its site, its X account and what the list says about it, and waits for the seat to score it. Nobody is emailed until you approve the audience and its list.
-- You can attach a contact-data provider with your own key (Hunter, under Settings, API, Service keys). The seat can then ask for the people at a gathered company. It is given only a person with a name, a role and the page their address was found on, never a guessed address, and your key is never shown to it.
-- A new LEAD SOURCES switch under POSITIONS, SALES, SWITCHES. It is off until you turn it on; while it is off nothing is gathered and no list is asked.

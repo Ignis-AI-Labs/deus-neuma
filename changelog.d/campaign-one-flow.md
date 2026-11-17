@@ -1,3 +1,0 @@
-Changed
-- A sales campaign is now one flow in one card. Under its numbers, each audience that serves it is a single line (its state and its counts); press it to open its approvals, the leads it produced, the companies found for it, and its pitch. An audience that waits on you stands open. The campaigns of other positions it works with are in the same card. The separate list of audience cards and the separate "working together" list are gone from SALES, so nothing about a campaign is shown twice.
-- LEADS now holds only what belongs to no single campaign: what is due on the lead list, the do-not-contact list, and paid lead data.

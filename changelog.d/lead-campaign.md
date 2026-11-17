@@ -1,2 +1,0 @@
-### Added
-- The leads sheet says which campaign each lead is tied to. A CAMPAIGN column names it (hover gives the audience that found the lead and the company it is sold for), a control beside the search narrows the sheet to one campaign, the search matches campaign and audience names, and the spreadsheet carries campaign and audience columns. A lead whose audience sits under no campaign says NO CAMPAIGN in the alert colour; one that wrote in or was added by hand shows a dash.

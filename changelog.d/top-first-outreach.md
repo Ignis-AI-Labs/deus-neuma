@@ -1,4 +1,0 @@
-Changed
-- The sales seat writes to the top first. When it looks up the people at a company, it now asks Hunter for that company's decision makers first, at the same one credit, and lists them in order: the founder or chief executive first, then the rest of the chiefs, then the heads of partnerships, business development, growth, listings and treasury, then everyone else. Its briefing tells it to write to the founder or CEO whatever the company's size.
-- It can pull up to ten companies in one lookup, one credit for each company that has somebody. Companies that Hunter's free search already said hold nobody are skipped without spending anything.
-- A top person who doesn't answer after three emails no longer closes the company. The upkeep names the next person up at that company, by name, role and address, on the sales seat's list and on your people sheet. It never names someone already on your list or on the do-not-contact list.

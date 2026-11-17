@@ -1,8 +1,0 @@
-Changed
-- The lead pipeline is now gather, filter, verify, score, then contacts, leads, approve, outreach. A new FILTER step narrows a wide pool to the most reasonable prospects before a single site is read. The sales seat keeps the likely ones on a shortlist and passes over the rest with a reason, judging from what Hunter holds there, company size and the company's name and description. Verifying reads only the shortlist, most addresses first, and every company found alive is scored straight after, so verified companies no longer sit unscored.
-- Your READ THE SITES press reads the shortlist first, then the rest.
-
-Added
-- The sales seat can see exactly what's at any step of the pipeline, by id (sales/pipeline): the companies still to filter, the shortlist still to read, the companies to score, the fits with nobody to write to yet, the fits ready to file with their top person, what's waiting for your approval, and the leads still to write. It also lists every email it has staged: what's waiting for your review, what you sent back and why, and what has gone out. Before, it could only see counts and the first 8 staged emails, so it lost track of which leads already had an email waiting.
-- An email staged for your review now counts as written for that lead, and both the briefing and your desk show it as "for your review" instead of "to write".
-- The sales seat reads every email it staged whole: subject, the full text, the promise, and where it stands, 10 to a page, or any one email by its id. Lists from the lead acts are no longer quietly cut short at a character limit. They are paged, and say where the next page starts.

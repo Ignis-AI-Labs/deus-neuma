@@ -1,2 +1,0 @@
-### Changed
-- POSITIONS, CHIEF REVENUE OFFICER, LEADS is a plain sheet: one person a line, one fact a column (name, company, title, email or other reach, how sure the address is, filed as, where it stands, where it came from, what is due). The long note on a person opens under their row on a press and no longer sits on every row. Kind and source narrow the sheet from two small controls beside the search.

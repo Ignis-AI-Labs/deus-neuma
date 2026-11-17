@@ -1,2 +1,0 @@
-Added
-- One mailbox can now send as several addresses. In the mailbox settings, the new Send As field lists the account's other addresses, each for one of your companies (for example: umbrae = sales@umbrae.io, deus-neuma = hello@deusneuma.ai). An email to a company's lead leaves from that company's address by itself, and replies still arrive in the same one inbox. The approval card shows which address an email leaves from, and an address the mailbox does not list is refused before you are asked.

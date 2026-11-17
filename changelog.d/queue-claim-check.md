@@ -1,2 +1,0 @@
-Fixed
-- A being can no longer tell you it changed your queued posts when it didn't. If a reply says posts were staged or edited but nothing in that turn actually touched the queue, the chat shows NOT DONE and the being is sent straight back with the posts as they really stand, by id, to edit them in place. If the second try still changes nothing, the chat says STILL NOT DONE, so the old copy waiting for your approval is never mistaken for the new one.

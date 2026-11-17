@@ -1,5 +1,0 @@
-Added
-- A reply is no longer lost when the app closes in the middle of it. While a being answers, its words, its actions, its thoughts and any shadow clones' work are saved to disk as they happen, encrypted, at most a second behind.
-- Close the window while a being is still working and the work goes on. Open the chat again and the reply so far appears at once, then keeps arriving live. STOP still works from the reopened window, and anything you send waits until the reply finishes.
-- If the app quits, crashes or loses power in the middle of a reply, the reply is back in the chat the next time it opens. It sits exactly where it stopped: the words as far as they got, the actions that finished, and the actions that were still running, marked as cut off. Shadow clones that were still working show what they had said.
-- A reply cut off this way says CUT OFF WHEN THE APP CLOSED, with the time. On the chat's last message a CONTINUE button picks it up from where it stopped. The being sees its own cut-off reply and is told not to repeat itself or redo actions that already ran.
