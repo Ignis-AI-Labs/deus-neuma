@@ -5,7 +5,8 @@
  */
 import { describe, test, expect } from 'vitest';
 import { makeSegment, foldSegments, judgeState } from '../../backend/services/sales/segment-shape.js';
-import { makeProspect, normalizeDomain, matchLevel, foldProspects, poolRefusal, countryOfAddress } from '../../backend/services/sales/prospect-shape.js';
+import { makeProspect, normalizeDomain, matchLevel, foldProspects, poolRefusal, countryOfAddress, listable } from '../../backend/services/sales/prospect-shape.js';
+import { salesWaitingRows } from '../../backend/services/sales/sales-waiting.js';
 import { makeSuppression, suppressionMatcher } from '../../backend/services/sales/suppress-shape.js';
 import { upkeepDue, MAX_TOUCHES } from '../../backend/services/sales/lead-upkeep.js';
 import { isBounce, bouncedAddresses, asksToStop } from '../../backend/services/sales/reply-rules.js';
@@ -286,7 +287,15 @@ describe('the sales facts — what a buyer may be told, and the check every emai
     const html = renderToStaticMarkup(createElement(LeadAudienceCard, { row, busy: false, onMove: () => {}, onList: () => {}, mode: 'nested' }));
     expect(html).toMatch(/^<li class="cline-aud is-nested" data-segment-id="s-e4f50ba1" data-segment-state="approved"><details open=""><summary class="cline-aud-sum">/);
     expect(html).toContain('AUDIENCE · Base token teams');
-    expect(html).toContain('APPROVE THE LIST (1)');
+    // The press covers what WAITING ON YOU counts: the one to judge AND the one already on the lead list.
+    expect(html).toContain('APPROVE THE LIST (2)');
+    expect(row.listable).toBe(listable([found, lead], segment.id).length);
+    const [waits] = salesWaitingRows({ facts: null, segments: [segment], prospects: [found, lead], models: new Map(), companies: [] }, new Map());
+    expect(waits.title).toBe('2 companies found for "Base token teams" wait for your list approval');
+    // Approved, the list leaves both: no row, no press.
+    const listed = [found, lead].map((p) => ({ ...p, listApproved: true }));
+    expect(segmentRows({ segments: [segment], prospects: listed })[0].listable).toBe(0);
+    expect(salesWaitingRows({ facts: null, segments: [segment], prospects: listed, models: new Map(), companies: [] }, new Map())).toEqual([]);
     // Its companies are ONE list: a table, each company once with where it stands; a scored one opens to why.
     expect(html).toContain('data-fold="audience-companies:s-e4f50ba1"');
     expect(html).toMatch(/<tr data-sheet-row="venice\.ai" data-company="venice\.ai" data-company-standing="lead">/);

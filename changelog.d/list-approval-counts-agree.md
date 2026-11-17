@@ -1,0 +1,2 @@
+Fixed
+- "N companies found for … wait for your list approval" items in WAITING ON YOU no longer get stuck. They counted companies the sales seat had already put on your lead list, but the campaigns screen only offered APPROVE THE LIST for companies still being judged. For leads already on your list there was nothing to press, so the item never cleared. The press now counts exactly what WAITING ON YOU counts, so APPROVE THE LIST appears with the same number, and pressing it clears the item.

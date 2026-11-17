@@ -56,7 +56,11 @@ export const segmentRows = (engine) => {
       gathered: candidates.filter((c) => c.segmentId === segment.id),
       // the companies of this audience already on the lead list, each with the people read for it
       leads: mine.filter((p) => p.stage === 'promoted'),
-      listable: segment.state === 'approved' ? pool.filter((p) => p.match >= 2 && !p.listApproved).length : 0,
+      // What APPROVE THE LIST would cover — the server's own rule (prospect-shape.js listable), so this press and the
+      // WAITING ON YOU row always count the same companies: a weak or strong match not dropped and not yet on an
+      // approved list, whether still to judge or already on the lead list (2026-11-16: the rows counted leads the
+      // press did not, so a row Founder could not act on never cleared).
+      listable: segment.state === 'approved' ? mine.filter((p) => p.match >= 2 && p.stage !== 'dropped' && !p.listApproved).length : 0,
       counts: { strong: pool.filter((p) => p.match === 3).length, weak: pool.filter((p) => p.match === 2).length, none: pool.filter((p) => p.match === 1).length, onLedger: mine.filter((p) => p.stage === 'promoted').length },
     };
   });
