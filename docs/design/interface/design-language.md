@@ -289,6 +289,29 @@ Checklist, per surface before it ships: can every number on this tab be read wit
 anything open that does not wait on the operator; is any record or count shown twice; is any stored value
 sitting in a box nobody asked to edit.
 
+## SURFACES — parts are told apart by tone (Design note, 2026-11-17
+
+Founder, of the POSITIONS window: […]
+
+Hairlines alone do not part a screen. A window has FOUR steps of fill and ONE heavier line, each a token that
+every dress derives (`tokens.css`, `look-derive.js`), so a custom look keeps them by construction:
+
+| Token | What wears it |
+| --- | --- |
+| `--surface-sunk` | a rail or a well: a step below the window |
+| `--surface-raised` | a card: one section, one stage, one tile's parent |
+| `--surface-band` | a head: a table's, an open section's own line, the chosen row, a tile on a card |
+| `--surface-stripe` | every other row of a table |
+| `--line-strong` | between sections, under a table's head, beside a rail |
+
+1. A section that stands beside its siblings is a CARD (`--surface-raised`, a hairline edge, a gap before the next); its name sits on a ruled line.
+2. A table's head is a BAND, its rows alternate, the row under the pointer lifts (`sheet/Sheet.css`).
+3. A rail is SUNK and parts from the body with the heavier line; the chosen row is a band.
+4. A fill never carries meaning by itself: state is still said in words and in the signal and alert colours.
+5. Never a fifth step invented in one stylesheet. If a screen needs one, it is added here first.
+
+The fills are the ink at low strength, so they lighten a dark dress and darken a light one.
+
 ## SHEET — a list of records is a sheet (Design note, 2026-11-16
 
 > […]

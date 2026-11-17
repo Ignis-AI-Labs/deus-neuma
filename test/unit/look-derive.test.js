@@ -136,3 +136,26 @@ describe('look-derive.js', () => {
     expect(isValidLook('#000000')).toBe(false);
   });
 });
+
+describe('the surface ladder', () => {
+  const css = readFileSync(new URL('../../frontend/styles/tokens.css', import.meta.url), 'utf8');
+  const stockOf = (name) => css.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1].trim();
+  const STEPS = ['--line-strong', '--surface-sunk', '--surface-raised', '--surface-band', '--surface-stripe'];
+
+  test('the stock look derives exactly the steps the stylesheet states', () => {
+    const vars = deriveLookVars(STOCK_LOOK);
+    for (const step of STEPS) expect(vars[step], step).toBe(stockOf(step));
+  });
+
+  test('every step is a var a dress sets, so changing dress never leaves one behind', () => {
+    for (const step of STEPS) expect(LOOK_VAR_NAMES).toContain(step);
+  });
+
+  test('the fills come from the ink, so they lighten a dark dress and darken a light one; a sunk rail is the ground', () => {
+    const light = deriveLookVars({ ground: '#ABA597', panel: '#B4AEA0', ink: '#1E1B15', trim: '#7A3B20', line: '#6A6050' });
+    expect(light['--surface-raised']).toBe('rgba(30, 27, 21, 0.06)');
+    expect(light['--surface-band']).toBe('rgba(30, 27, 21, 0.11)');
+    expect(light['--surface-sunk']).toBe('rgba(171, 165, 151, 0.6)');
+    expect(light['--line-strong']).toBe('rgba(106, 96, 80, 0.38)');
+  });
+});

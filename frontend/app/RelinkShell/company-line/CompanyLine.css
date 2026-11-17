@@ -26,7 +26,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: var(--color-glass-light);
+  background: var(--surface-band);
   border: 1px solid var(--line);
   padding: var(--space-2) var(--space-3);
 }
@@ -40,15 +40,22 @@
 .cline-tile-l { font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-secondary); }
 .cline-tiles-flat { padding: var(--space-2) 0; border-bottom: none; }
 
+/* A section is a card: its own fill and edge, a gap before the next, and its name on a ruled line. */
 .cline-sec {
+  margin: var(--space-3) var(--space-4) 0;
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  list-style: none;
 }
+.cline-sec:last-child { margin-bottom: var(--space-4); }
 .cline-h {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line-strong);
   font-size: var(--text-label);
   letter-spacing: 0.16em;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
 }
 
 .cline-move { margin-bottom: var(--space-2); background: var(--line); padding: 1px; }
@@ -65,7 +72,7 @@
 .cline-input {
   width: 100%;
   box-sizing: border-box;
-  background: var(--color-glass-light);
+  background: var(--color-input-fill);
   border: 1px solid var(--line);
   color: var(--color-text-primary);
   font-family: var(--font-voice);
@@ -170,7 +177,7 @@
 .cline-aud-text { margin: 0; font-family: var(--font-voice); font-size: 14px; line-height: 1.5; color: var(--color-text-primary); overflow-wrap: anywhere; }
 .cline-aud-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
 .cline-aud-chips .cline-aud-k { margin: 0; min-width: 7rem; }
-.cline-chip { border: 1px solid var(--line); padding: 2px var(--space-2); font-size: 13px; color: var(--color-text-primary); background: var(--color-glass-light); }
+.cline-chip { border: 1px solid var(--line); padding: 2px var(--space-2); font-size: 13px; color: var(--color-text-primary); background: var(--surface-band); }
 .cline-aud-signs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .cline-aud-signs li { display: flex; gap: var(--space-2); font-family: var(--font-voice); font-size: 14px; line-height: 1.45; color: var(--color-text-primary); }
 .cline-aud-mark { flex: 0 0 auto; color: var(--signal); }

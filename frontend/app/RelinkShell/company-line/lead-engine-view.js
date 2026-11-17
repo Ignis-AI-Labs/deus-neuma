@@ -66,7 +66,7 @@ export const segmentRows = (engine) => {
       // press did not, so a row Founder could not act on never cleared).
       listable: segment.state === 'approved' ? mine.filter((p) => p.match >= 2 && p.stage !== 'dropped' && !p.listApproved).length : 0,
       counts: { strong: pool.filter((p) => p.match === 3).length, weak: pool.filter((p) => p.match === 2).length, none: pool.filter((p) => p.match === 1).length, onLedger: mine.filter((p) => p.stage === 'promoted').length },
-      road: audiencePipeline({ segment, candidates: candidates.filter((c) => c.segmentId === segment.id), prospects: mine, leads: engine?.leads ?? [], searches: (engine?.searches ?? []).filter((x) => x.segmentId === segment.id), held }),
+      road: audiencePipeline({ segment, candidates: candidates.filter((c) => c.segmentId === segment.id), prospects: mine, leads: engine?.leads ?? [], searches: (engine?.searches ?? []).filter((x) => x.segmentId === segment.id), held, drafts: engine?.outbox?.drafts ?? [] }),
     };
   });
 };
@@ -75,13 +75,14 @@ export const segmentRows = (engine) => {
 export const roadSteps = ({ steps, next }) => {
   const n = (v) => Number(v).toLocaleString('en-US');
   return [
-    { id: 'discover', label: 'DISCOVER', words: `${n(steps.discover.gathered)} FOUND · ${steps.discover.searches} SEARCH${steps.discover.searches === 1 ? '' : 'ES'}` },
-    { id: 'verify', label: 'VERIFY', words: `${n(steps.verify.alive)} ALIVE · ${n(steps.verify.dead)} DEAD · ${n(steps.verify.unread)} UNREAD` },
-    { id: 'research', label: 'RESEARCH', words: `${steps.research.strong} STRONG · ${steps.research.weak} WEAK · ${steps.research.none} NO FIT · ${n(steps.research.toScore)} TO SCORE` },
+    { id: 'discover', label: 'GATHER', words: `${n(steps.discover.gathered)} FOUND · ${steps.discover.searches} SEARCH${steps.discover.searches === 1 ? '' : 'ES'}` },
+    { id: 'filter', label: 'FILTER', words: `${n(steps.filter.kept)} SHORTLISTED · ${n(steps.filter.passed)} PASSED · ${n(steps.filter.unsorted)} TO FILTER` },
+    { id: 'verify', label: 'VERIFY', words: `${n(steps.verify.alive)} ALIVE · ${n(steps.verify.dead)} DEAD · ${n(steps.verify.unread)} TO READ` },
+    { id: 'score', label: 'SCORE', words: `${steps.score.strong} STRONG · ${steps.score.weak} WEAK · ${steps.score.none} NO FIT · ${n(steps.score.toScore)} TO SCORE` },
     { id: 'contacts', label: 'CONTACTS', words: `PEOPLE AT ${steps.contacts.withPeople} OF ${steps.contacts.fits} FITS` },
     { id: 'leads', label: 'LEADS', words: `${steps.leads.leads} ON THE LIST${steps.leads.toFile ? ` · ${steps.leads.toFile} TO FILE` : ''}` },
     { id: 'approve', label: 'APPROVE', words: steps.approve.waiting ? `${steps.approve.waiting} WAIT FOR YOU` : 'NOTHING WAITING', you: steps.approve.waiting > 0 },
-    { id: 'outreach', label: 'OUTREACH', words: `${steps.outreach.written} WRITTEN · ${steps.outreach.replied} REPLIED${steps.outreach.unwritten ? ` · ${steps.outreach.unwritten} TO WRITE` : ''}` },
+    { id: 'outreach', label: 'OUTREACH', words: `${steps.outreach.written} SENT · ${steps.outreach.replied} REPLIED${steps.outreach.staged ? ` · ${steps.outreach.staged} FOR YOUR REVIEW` : ''}${steps.outreach.unwritten ? ` · ${steps.outreach.unwritten} TO WRITE` : ''}`, you: steps.outreach.staged > 0 },
   ].map((s) => ({ ...s, next: next?.id === s.id }));
 };
 

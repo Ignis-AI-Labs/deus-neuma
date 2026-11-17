@@ -48,7 +48,7 @@ describe('the seat sees the whole pool and filters it down', () => {
   });
 
   it('the whole pool counted, and each company with everything known about it on one line', () => {
-    expect(poolCounts(pool, held)).toEqual({ all: 5, waiting: 4, withAddresses: 5, withPeople: 4, read: 2, dead: 1, pulled: 1 });
+    expect(poolCounts(pool, held)).toEqual({ all: 5, waiting: 4, withAddresses: 5, withPeople: 4, read: 2, dead: 1, pulled: 1, kept: 0, passed: 0 });
     expect(poolLine(pool[1], held)).toBe('[c2] Sui — sui.io — 51-200 people — 35 addresses at Hunter (32 named people, 3 general) — traffic #12,000 — site ALIVE: "The layer 1 for builders", publishes hello@sui.io — 2 pulled — top: Ari, Co-Founder & CEO (ari@sui.io)');
     expect(poolLine(pool[2], held)).toBe('[c3] Quiet DAO — quiet.xyz — 1-10 people — 4 addresses at Hunter (no named person, 4 general) — NO SITE (no answer)');
     expect(poolLine(pool[3], held)).toContain('— site not read yet — SCORED');

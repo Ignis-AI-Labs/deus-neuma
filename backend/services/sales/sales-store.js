@@ -152,12 +152,16 @@ export const readCandidates = async (wallet) => {
   const all = await events(wallet, CANDIDATES);
   // What the company's own site said when it was last read (company-reader.js): its words fill an empty description.
   const sites = new Map(all.filter((e) => e?.type === 'site' && e.domain && e.site).map((e) => [e.domain, e.site]));
+  // THE FILTER (lead-pipeline.js): kept on the shortlist, or passed over, per audience — the latest word stands.
+  const sorted = new Map();
+  for (const e of all) if (e?.type === 'shortlist' && Array.isArray(e.domains)) for (const d of e.domains) sorted.set(`${e.segmentId}\u0000${d}`, { verdict: e.verdict, why: e.why ?? null });
   return all.filter((e) => e?.type === 'gathered' && e.candidate?.domain)
     .map((e) => {
       const site = sites.get(e.candidate.domain) ?? null;
       // Kept as `siteRead`: `site` is the company's own web address, which every list source already sets
       // (2026-11-16: both under one name made every company with an address look already read).
-      return { ...e.candidate, ...(site ? { siteRead: site, description: e.candidate.description || site.description || '' } : {}), id: e.id, segmentId: e.segmentId, gatheredAt: e.at, state: scored.has(e.candidate.domain) ? 'scored' : 'waiting' };
+      const shortlist = sorted.get(`${e.segmentId}\u0000${e.candidate.domain}`) ?? null;
+      return { ...e.candidate, ...(site ? { siteRead: site, description: e.candidate.description || site.description || '' } : {}), ...(shortlist ? { shortlist: shortlist.verdict, shortlistWhy: shortlist.why } : {}), id: e.id, segmentId: e.segmentId, gatheredAt: e.at, state: scored.has(e.candidate.domain) ? 'scored' : 'waiting' };
     });
 };
 
@@ -184,6 +188,10 @@ export const addCandidates = (wallet, segmentId, rows, by) => serialize(async ()
   }
   return added;
 });
+
+/** The pipeline's FILTER: these companies of an audience are kept on its shortlist, or passed over, with why. */
+export const noteShortlist = (wallet, { segmentId, domains, verdict, why, by }) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'shortlist', segmentId, domains, verdict: verdict === 'passed' ? 'passed' : 'kept', why: String(why ?? '').slice(0, 300), by, at: new Date().toISOString() }));
 
 /** Keep one search run for an audience (the pipeline's DISCOVER step, lead-pipeline.js): where, how it was asked, what it found. */
 export const noteSearch = (wallet, { segmentId, source, asked, matched, gathered, by }) => serialize(() =>

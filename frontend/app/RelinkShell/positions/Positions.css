@@ -16,7 +16,8 @@
 .pos-rail {
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--line);
+  border-right: 1px solid var(--line-strong);
+  background: var(--surface-sunk);
   overflow-y: auto;
 }
 .pos-h {
@@ -40,7 +41,7 @@
   transition: color var(--snap), border-color var(--snap), background var(--snap);
 }
 .pos-row:hover { color: var(--color-text-primary); }
-.pos-row.is-on { border-left-color: var(--signal); background: var(--color-glass-light); color: var(--color-text-primary); }
+.pos-row.is-on { border-left-color: var(--signal); background: var(--surface-band); color: var(--color-text-primary); }
 .pos-light { width: 8px; height: 8px; border-radius: 50%; background: var(--signal); }
 .pos-row.is-empty .pos-light { background: transparent; border: 1px solid var(--alert); }
 .pos-row-name { font-size: var(--text-md, 15px); letter-spacing: 0.1em; }
@@ -92,7 +93,7 @@
 .pos-wait-title { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pos-wait-age { color: var(--color-text-tertiary); }
 
-.pos-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-3) var(--space-4) 0; border-bottom: 1px solid var(--line); }
+.pos-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-3) var(--space-4) 0; border-bottom: 1px solid var(--line-strong); }
 .pos-tab {
   background: transparent;
   border: 1px solid transparent;
@@ -104,7 +105,7 @@
   transition: color var(--snap), border-color var(--snap);
 }
 .pos-tab:hover { color: var(--color-text-primary); }
-.pos-tab.is-on { color: var(--signal); border-color: var(--line); }
+.pos-tab.is-on { color: var(--signal); border-color: var(--line-strong); background: var(--surface-raised); }
 .pos-panel { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .pos-panel > .pos-covers, .pos-door, .pos-switches { padding: var(--space-4); }
 .pos-door { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
@@ -143,7 +144,7 @@
 }
 
 /* SEATING YOUR HOUSE (SeatingStrip.jsx): the two ways side by side, or the seating the members filed */
-.pos-seating { border-bottom: 1px solid var(--line, rgba(255,255,255,0.08)); padding: 0.6rem 0.9rem; display: grid; gap: 0.45rem; }
+.pos-seating { background: var(--surface-raised); border-bottom: 1px solid var(--line-strong); padding: 0.6rem 0.9rem; display: grid; gap: 0.45rem; }
 .pos-seating-ways { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.9rem; align-items: start; }
 .pos-seating-way { margin: 0; font-size: 0.82rem; line-height: 1.4; }
 .pos-seating-way b { display: block; margin-bottom: 0.15rem; }
@@ -164,7 +165,7 @@
 
 /* THE SALE: seven stages in order, as a rail of tiles; the ones this seat works are lit. */
 .pos-sale { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); gap: var(--space-2); }
-.pos-sale-stage { border: 1px solid var(--line); background: var(--color-glass-light); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.pos-sale-stage { border: 1px solid var(--line); background: var(--surface-raised); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
 .pos-sale-stage.is-mine { border-color: var(--signal-dim); }
 .pos-sale-h { margin: 0; letter-spacing: 0.12em; color: var(--color-text-primary); }
 .pos-sale-n { color: var(--signal); margin-right: var(--space-1); }

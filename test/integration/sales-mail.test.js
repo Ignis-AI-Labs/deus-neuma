@@ -318,6 +318,14 @@ describe('REVIEW FIRST — the seat stages, the operator reads, and only then do
     expect((await ledger.load()).find((l) => l.contact === 'otto@outbox.example').status).toBe('cold');
     const [draft] = (await readOutbox(POSITION_HOUSE)).drafts;
     expect(draft).toMatchObject({ to: ['otto@outbox.example'], subject: 'Your build', text: GOOD, promise: PROMISE, by: LANE, state: 'waiting', edited: false });
+    // THE SEAT READS EVERY EMAIL IT STAGED, WHOLE (Design note, 2026-11-17: […]).
+    filed += 1;
+    await fsp.writeFile(path.join(workspace.pathFor(LANE), 'intents', `read-${filed}.json`), JSON.stringify({ type: 'sales/pipeline', step: 'outbox' }));
+    const [read] = await sweepIntents(rig().connection, { mode: 'ask', lanePolicy: null, emit: () => {} });
+    expect(read.status, read.error).toBe('ok');
+    expect(read.content).toContain(`- [${draft.id}] to otto@outbox.example — WAITING for your operator\n  Subject: Your build\n`);
+    for (const line of GOOD.split('\n')) expect(read.content).toContain(`  | ${line}`);
+    expect(read.content).toContain(`  Promise kept on the lead: ${PROMISE}`);
     // One email a person at a time.
     expect((await stage({ to: 'otto@outbox.example', subject: 'Again', text: GOOD })).receipt.error).toMatch(/already waits for your operator \("Your build"\)/);
     // It stands where every other decision stands, and the seat is told what waits.

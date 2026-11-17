@@ -53,7 +53,7 @@ const Moves = ({ s, busy, onMove }) => (
   </div>
 );
 
-// THE PIPELINE, drawn: the seven steps every audience walks, each with its count; the next one marked,
+// THE PIPELINE, drawn: the eight steps every audience walks, each with its count; the next one marked,
 // and the one that is the operator's (APPROVE) marked when it waits on them.
 const Road = ({ road }) => (
   <div className="cline-road" data-pipeline="">

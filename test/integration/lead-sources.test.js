@@ -414,6 +414,13 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(browsed.content).toMatch(/^The pool of this audience: \d+ companies — \d+ waiting to be scored, \d+ with addresses at Hunter/);
     expect(browsed.content).toContain('Index Coop — indexcoop.com — 1-10 people — 31 addresses at Hunter (21 named people, 10 general)');
     expect(browsed.content).not.toContain('NMKR');
+    // THE FILTER: the reasonable kept on the shortlist, the rest passed over with why; verify reads only the shortlist.
+    expect((await act('merc', { type: 'sales/shortlist', segment: await segmentId(), minPeople: 1, why: 'Hunter holds named people there' })).content).toMatch(/^1 company of ".+" kept on the shortlist: Hunter holds named people there\.\n- Index Coop — indexcoop\.com/);
+    expect((await act('merc', { type: 'sales/shortlist', segment: await segmentId(), domains: ['nmkr.io'], pass: true, why: 'nobody named to write to' })).content).toMatch(/^1 company of ".+" passed over/);
+    const verifyStep = await act('merc', { type: 'sales/pipeline', segment: await segmentId(), step: 'verify' });
+    expect(verifyStep.content).toMatch(/step VERIFY: read each shortlisted company's own site\.\n- \[[^\]]+\] Index Coop — indexcoop\.com .* — SHORTLISTED\nShown 1–1 of 1\./);
+    expect((await act('merc', { type: 'sales/pipeline' })).content).toMatch(/2 FILTER 1 shortlisted, 1 passed over/);
+    expect((await act('merc', { type: 'sales/pipeline', step: 'outbox' })).content).toMatch(/^Every email you staged \(0 waiting, 0 returned, 0 sent\), each whole, newest first:\nNothing stands here\./);
     expect(await spend()).toMatchObject({ spent: 4 });
     // DISCOVER LOOKS FIRST, AIMED: Hunter's own industry and the being's keywords, never its guess at words; nothing kept.
     expect(await act('merc', { type: 'sales/discover', segment: await segmentId(), industries: ['Blockchain'] })).toMatchObject({ status: 'error', error: expect.stringMatching(/"Blockchain" is not one of Hunter's industries — nearest: Blockchain Services/) });

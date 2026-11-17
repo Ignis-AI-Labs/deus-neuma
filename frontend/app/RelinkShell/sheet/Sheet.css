@@ -1,9 +1,13 @@
 /* Sheet — a list of records as a table: one record a line, one fact a column (design-language.md § SHEET). */
 .sheet { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-.sheet-wrap { overflow-x: auto; max-width: 100%; }
+.sheet-wrap { overflow-x: auto; max-width: 100%; border: 1px solid var(--line); }
 .sheet-table { width: 100%; border-collapse: collapse; font-size: 13px; color: var(--color-text-primary); }
 .sheet-table th, .sheet-table td { text-align: left; padding: var(--space-1) var(--space-2); border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; }
-.sheet-table thead th { color: var(--color-text-secondary); font-size: 13px; font-weight: 400; }
+/* The head is a band, the rows alternate, the row under the pointer lifts: a table parts from what surrounds it by tone. */
+.sheet-table thead th { color: var(--color-text-primary); font-size: 13px; font-weight: 400; letter-spacing: 0.06em; background: var(--surface-band); border-bottom-color: var(--line-strong); padding-block: var(--space-2); }
+.sheet-table tbody tr:nth-child(even) > * { background: var(--surface-stripe); }
+.sheet-table tbody tr:hover > * { background: var(--color-glass-hover); }
+.sheet-table tbody tr:last-child > * { border-bottom: 0; }
 .sheet-table tbody th { font-weight: 600; }
 .sheet-table .sheet-exact { font-family: var(--font-mono, ui-monospace, monospace); font-size: 13px; }
 .sheet-table .sheet-wrapped { white-space: normal; max-width: none; min-width: 16rem; overflow-wrap: anywhere; }

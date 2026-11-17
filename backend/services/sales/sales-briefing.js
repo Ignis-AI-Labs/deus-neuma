@@ -89,7 +89,7 @@ export const leadEngineText = ({ segments, prospects, leads, suppressions, facts
   const due = upkeepDue({ leads, now, suppressed: suppressionMatcher(suppressions).email, held });
   const roads = segments.filter((s) => ['approved', 'draft'].includes(s.state)).map((segment) => audiencePipeline({
     segment, candidates: candidates.filter((c) => c.segmentId === segment.id), prospects: prospects.filter((p) => p.segmentId === segment.id),
-    leads, searches: searches.filter((x) => x.segmentId === segment.id), held,
+    leads, searches: searches.filter((x) => x.segmentId === segment.id), held, drafts: outbox?.drafts ?? [],
   }));
   return [
     '## LEAD ENGINE — find them, score them, keep the ledger clean',

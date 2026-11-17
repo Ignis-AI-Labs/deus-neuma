@@ -190,7 +190,7 @@ const salesContactsIntent = Object.freeze({
       ...blocks,
       ...(empty.length ? [`Not asked (Hunter holds no named person there, no credit spent): ${empty.join(', ')}.`] : []),
       'Write to the top person first: file them under people in sales/prospect, then sales/lead with the address and the page above as emailSource. If they never answer, the upkeep names the next one at the company.',
-    ].join('\n').slice(0, 9000) };
+    ].join('\n') };
   },
 });
 
@@ -198,7 +198,7 @@ const salesReadSitesIntent = Object.freeze({
   name: 'sales/read-sites',
   policyTool: 'sales.read-sites',
   fieldsForPrompt: `{segment, count?}`,
-  descriptionForPrompt: `THE LEAD ENGINE. Read the own sites of an audience's gathered companies in bulk (count: 1 to ${READ_MAX}; the next ones not yet read, most visited first). For each: whether the site is ALIVE, what the company says it is, the addresses it publishes with the page each stands on, and its own social links. A company with NO SITE is a dead end: do not score it. Do this after a gather and before scoring, so you score from what each company says about itself; open a company's pages yourself only where this leaves a question.`,
+  descriptionForPrompt: `THE LEAD ENGINE, STEP 3 — VERIFY. Read the own sites of an audience's SHORTLISTED companies in bulk (count: 1 to ${READ_MAX}; the next shortlisted ones not yet read, the most addresses first — shortlist with sales/shortlist first). For each: whether the site is ALIVE, what the company says it is, the addresses it publishes with the page each stands on, and its own social links. A company with NO SITE is a dead end: do not score it. Do this after a gather and before scoring, so you score from what each company says about itself; open a company's pages yourself only where this leaves a question.`,
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -210,10 +210,10 @@ const salesReadSitesIntent = Object.freeze({
   },
   summarize: (payload) => `read the sites of companies gathered for audience ${payload?.segment ?? '?'}`,
   execute: async ({ context, segment, count }, { signal, emit } = {}) => {
-    const done = await readAudienceSites(context.wallet, segment.id, { count, by: context.laneId, signal, onProgress: saying(emit, 'sales.read-sites', 'reading sites') });
+    const done = await readAudienceSites(context.wallet, segment.id, { count, by: context.laneId, signal, shortlistOnly: true, onProgress: saying(emit, 'sales.read-sites', 'reading sites') });
     if (!done.ok) return { ok: false, reason: done.reason };
     const dead = done.read.filter((r) => !r.site.alive).length;
-    return { ok: true, detail: [`${done.read.length} site(s) read for "${segment.name}": ${done.read.length - dead} alive, ${dead} with no site. ${done.left} gathered compan${done.left === 1 ? 'y is' : 'ies are'} still unread.`, ...done.read.map((r) => `- ${siteLine(r.domain, r.site)}`)].join('\n').slice(0, 9000) };
+    return { ok: true, detail: [`${done.read.length} site(s) read for "${segment.name}": ${done.read.length - dead} alive, ${dead} with no site. ${done.left} shortlisted compan${done.left === 1 ? 'y is' : 'ies are'} still unread.`, ...done.read.map((r) => `- ${siteLine(r.domain, r.site)}`), done.read.length > dead ? `NEXT — SCORE the ${done.read.length - dead} alive now: research each against the signs of fit and file it with sales/prospect (every sign scored, with the reason you read). A verified company is never left unscored.` : 'None was alive: filter the next most reasonable ones (sales/shortlist).'].join('\n') };
   },
 });
 

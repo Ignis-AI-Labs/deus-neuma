@@ -14,6 +14,7 @@ export const POOL_PAGE_MAX = 100;
 const SORTS = Object.freeze(['addresses', 'people', 'traffic', 'newest']);
 const SITES = Object.freeze(['any', 'unread', 'alive', 'dead']);
 const STATES = Object.freeze(['waiting', 'scored', 'all']);
+const SHORTLISTS = Object.freeze(['any', 'kept', 'passed', 'unsorted']);
 
 const total = (c) => Number(c.hunterEmails?.total) || (Number(c.hunterEmails?.personal) || 0) + (Number(c.hunterEmails?.generic) || 0);
 const named = (c) => Number(c.hunterEmails?.personal) || 0;
@@ -33,6 +34,7 @@ export const poolFilter = (raw = {}) => ({
   site: SITES.includes(raw.site) ? raw.site : 'any',
   pulled: raw.pulled === true || raw.pulled === false ? raw.pulled : null,
   source: String(raw.source ?? '').trim() || null,
+  shortlist: SHORTLISTS.includes(raw.shortlist) ? raw.shortlist : 'any',
   sort: SORTS.includes(raw.sort) ? raw.sort : 'addresses',
   offset: Math.max(0, parseInt(raw.offset, 10) || 0),
   limit: Math.min(Math.max(parseInt(raw.limit, 10) || POOL_PAGE, 1), POOL_PAGE_MAX),
@@ -53,7 +55,8 @@ export const filterPool = (candidates, f, held = new Map()) => {
     && (!words || `${c.name} ${c.domain} ${c.description ?? ''} ${c.siteRead?.description ?? ''} ${(c.categories ?? []).join(' ')}`.toLowerCase().includes(words))
     && (f.site === 'any' || siteOf(c) === f.site)
     && (f.pulled === null || held.has(c.domain) === f.pulled)
-    && (!f.source || c.source === f.source));
+    && (!f.source || c.source === f.source)
+    && (f.shortlist === 'any' || (c.shortlist ?? 'unsorted') === f.shortlist));
   const by = {
     addresses: (a, b) => total(b) - total(a),
     people: (a, b) => named(b) - named(a) || total(b) - total(a),
@@ -73,6 +76,8 @@ export const poolCounts = (candidates, held = new Map()) => ({
   read: candidates.filter((c) => c.siteRead).length,
   dead: candidates.filter((c) => c.siteRead && !c.siteRead.alive).length,
   pulled: candidates.filter((c) => held.has(c.domain)).length,
+  kept: candidates.filter((c) => c.shortlist === 'kept').length,
+  passed: candidates.filter((c) => c.shortlist === 'passed').length,
 });
 
 /** One company with everything the house knows about it, on one line. Pure. */
@@ -88,6 +93,7 @@ export const poolLine = (c, held = new Map()) => {
     'trafficRank' in c ? (c.trafficRank ? `traffic #${Number(c.trafficRank).toLocaleString('en-US')}` : 'NO TRAFFIC') : null,
     site,
     people.length ? `${people.length} pulled — top: ${people[0].name}, ${people[0].role} (${people[0].email})` : null,
+    c.shortlist === 'kept' ? 'SHORTLISTED' : c.shortlist === 'passed' ? `PASSED OVER${c.shortlistWhy ? ` (${c.shortlistWhy})` : ''}` : null,
     c.state === 'scored' ? 'SCORED' : null,
   ].filter(Boolean).join(' — ');
 };

@@ -76,7 +76,7 @@ export const outboxText = ({ review, drafts }) => {
     review
       ? 'REVIEW FIRST is ON: your operator reads every email to a lead before it goes. Write each one and stage it with sales/draft-email; email/send to a lead is refused. Staging is not sending: say "staged for your review", never "sent".'
       : 'REVIEW FIRST is off: an email to a lead on an approved list goes by itself within the sales cover; you may still stage one with sales/draft-email when you want your operator to read it first.',
-    waiting.length ? `Staged and waiting for your operator: ${waiting.length} (${waiting.slice(0, 8).map((d) => d.to.join(', ')).join('; ')}). Do not stage a second email to someone who has one waiting.` : null,
+    waiting.length ? `Staged and waiting for your operator: ${waiting.length} (${waiting.slice(0, 8).map((d) => d.to.join(', ')).join('; ')}${waiting.length > 8 ? `; and ${waiting.length - 8} more` : ''}) — sales/pipeline {step: "outbox"} lists every one, whole. Do not stage a second email to someone who has one waiting.` : null,
     ...back.map((d) => `RETURNED by your operator — to ${d.to.join(', ')}, "${d.subject}": ${String(d.note || 'no note').replace(/[.!?]+$/, '')}. Rewrite it and stage it again.`),
   ].filter(Boolean).join('\n');
 };
