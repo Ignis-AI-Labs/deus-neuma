@@ -65,6 +65,32 @@ describe('the CLONE family files each clone under its own sub-channel', () => {
   });
 });
 
+describe('a split in the background outlives its turn', () => {
+  it('its frames reach the chip where it stands after the turn settled, and the end says how it went', () => {
+    let state = reducer(initialState, { type: 'TOOL_RESULT', data: { tool: CLONE_TOOL, status: 'executing', summary: 'splitting into 2 shadow clones' } });
+    state = cloneHandlers.CLONE(state, { frame: frames[0] });
+    state = reducer(state, { type: 'TOOL_RESULT', data: { tool: CLONE_TOOL, status: 'ok', summary: '2 shadow clones working in the background', split: {
+      splitId: SPLIT, background: true, together: null, seconds: null, record: null,
+      clones: [{ index: 1, title: 'Base DeFi teams', task: 'Gather DeFi teams on Base', state: 'waiting', sessionId: null, report: null, acts: [] }, { index: 2, title: 'AI infra funds', task: 'Gather AI infra funds', state: 'waiting', sessionId: null, report: null, acts: [] }],
+    } } });
+    state = reducer(state, { type: 'COMPLETE', metadata: null });
+    const chip = () => state.messages.at(-1).segments.find((s) => s.label === CLONE_TOOL);
+    expect(state.messages.at(-1).streaming).toBe(false);
+    expect(splitHeadline(chip().split)).toBe('SHADOW CLONES · 2 · 0 WORKING · 0 DONE · IN THE BACKGROUND — THEY REPORT BACK HERE');
+    // The chat went on: the operator spoke, and the clones still work and finish under the settled chip.
+    state = reducer(state, { type: 'USER_SENT', text: 'meanwhile, draft the post', at: 1 });
+    for (const frame of frames.slice(1)) state = cloneHandlers.CLONE(state, { frame });
+    const settledChip = () => state.messages.find((m) => m.segments?.some((s) => s.split?.splitId === SPLIT)).segments.find((s) => s.label === CLONE_TOOL);
+    expect(splitHeadline(settledChip().split)).toBe('SHADOW CLONES · 2 · 1 WORKING · 0 DONE · IN THE BACKGROUND — THEY REPORT BACK HERE');
+    state = cloneHandlers.CLONE(state, { frame: { type: 'clone:end', splitId: SPLIT, clone: { index: 1, state: 'done', report: 'Filed 9.', acts: [], sessionId: 's-1' } } });
+    state = cloneHandlers.CLONE(state, { frame: { type: 'clone:end', splitId: SPLIT, clone: { index: 2, state: 'done', report: 'Filed 6.', acts: [], sessionId: 's-2' } } });
+    state = cloneHandlers.CLONE(state, { frame: { type: 'clone:done', splitId: SPLIT, together: 2, seconds: 52, record: 'clones/y.md' } });
+    expect(splitHeadline(settledChip().split)).toBe('SHADOW CLONES · 2 · 2 REPORTED · 2 AT ONCE · 52S');
+    // A frame of a split nobody has on screen goes nowhere.
+    expect(cloneHandlers.CLONE(state, { frame: { type: 'clone:text', splitId: 'other', index: 1, chunk: 'x' } })).toBe(state);
+  });
+});
+
 describe('a reopened chat draws the sub-channels again from its record', () => {
   it('the persisted chip carries every clone\'s report and acts, and the tabs draw them', () => {
     const record = { role: 'assistant', content: 'Here is what my clones found.', tools: [{

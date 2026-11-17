@@ -1,0 +1,4 @@
+Changed
+- Shadow clones split from your chat now work in the background. The being hands out the tasks and carries straight on with you, so you can keep talking and it can keep working. When the last clone finishes, the chat gets a new turn with every clone's report, and the being tells you what they found and picks up what they left. Before, the being sat waiting until every clone was done.
+- The clones' sub-channels keep updating under the message where they were split, even after that reply has ended, and show "IN THE BACKGROUND — THEY REPORT BACK HERE" until they're done. If the chat is closed when they finish, their report waits for you and arrives when you next open the chat. If the app closes while they're working, the chat is told they were cut off.
+- A split made during a member's own scheduled work (a wake or a team part) still waits for its clones. That work is the turn itself, and there's no chat to report back to.

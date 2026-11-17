@@ -6,7 +6,7 @@
 export const CLONE_TOOL = 'team/shadow_clone';
 /** A clone's live words, at most — the newest kept; the whole report arrives with its end. */
 export const CLONE_TEXT_MAX = 24_000;
-export const CLONE_FRAMES = Object.freeze(['clone:split', 'clone:state', 'clone:text', 'clone:tool', 'clone:end']);
+export const CLONE_FRAMES = Object.freeze(['clone:split', 'clone:state', 'clone:text', 'clone:tool', 'clone:end', 'clone:done']);
 
 const freshClone = (c) => ({
   index: c.index, title: c.title, task: c.task ?? '', state: 'waiting', position: null,
@@ -19,6 +19,8 @@ export const applyCloneFrame = (split, frame) => {
     return { splitId: frame.splitId, clones: (frame.clones ?? []).map(freshClone), together: null, seconds: null, record: null };
   }
   if (!split || split.splitId !== frame?.splitId) return null;
+  // The whole split finished (a split in the background says so on its own): how many worked at once, how long, the record.
+  if (frame.type === 'clone:done') return { ...split, together: frame.together ?? split.together, seconds: frame.seconds ?? split.seconds, record: frame.record ?? split.record };
   const clones = split.clones.map((c) => {
     if (c.index !== (frame.index ?? frame.clone?.index)) return c;
     switch (frame.type) {

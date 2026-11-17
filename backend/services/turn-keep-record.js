@@ -61,7 +61,7 @@ export const foldFrame = (kept, frame) => {
       return { ...kept, acting: actingAfter(kept.acting, frame), frames: withFrame(kept.frames, frame) };
     case 'tool:detail':
       return { ...kept, frames: withFrame(kept.frames, frame) };
-    case 'clone:split': case 'clone:state': case 'clone:text': case 'clone:tool': case 'clone:end': {
+    case 'clone:split': case 'clone:state': case 'clone:text': case 'clone:tool': case 'clone:end': case 'clone:done': {
       const split = applyCloneFrame(kept.split, frame);
       return split ? { ...kept, split } : kept;
     }

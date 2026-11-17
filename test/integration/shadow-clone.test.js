@@ -20,7 +20,7 @@ const PARTS = ['alpha', 'beta', 'gamma'];
 
 describe('a being splits into shadow clones of itself — real turns, at once, reports back', () => {
   let provider, httpServer, wss, serverWs, client, frames, prevRealm, saved, arena;
-  let handleShadowClone, cloneTasksOf, platformToolsFor, setRealmRoot, setWorkspacesRoot, neumaWorkspace;
+  let handleShadowClone, cloneTasksOf, splitSettled, pendingFor, watchThought, platformToolsFor, setRealmRoot, setWorkspacesRoot, neumaWorkspace;
 
   beforeAll(async () => {
     const root = await createTempDir('shadow-clone');
@@ -63,7 +63,9 @@ describe('a being splits into shadow clones of itself — real turns, at once, r
     });
     const { setConfig } = await import('../../backend/services/llm-provider.js');
     setConfig({ provider: 'lm-studio', endpoint: provider.endpoint, model: 'test-model', apiKey: '' });
-    ({ handleShadowClone, cloneTasksOf } = await import('../../backend/services/shadow-clone.js'));
+    ({ handleShadowClone, cloneTasksOf, splitSettled } = await import('../../backend/services/shadow-clone.js'));
+    ({ pendingFor } = await import('../../backend/services/chat-watch.js'));
+    ({ watchThought } = await import('../../backend/routes/portal-watch-delivery.js'));
     ({ platformToolsFor } = await import('../../backend/services/portal-tool-catalog.js'));
 
     httpServer = createServer();
@@ -92,12 +94,51 @@ describe('a being splits into shadow clones of itself — real turns, at once, r
     toolMode: 'auto', _grantedWriteRoots: [arena], ...over,
   });
 
-  test('three clones work at once, with the original\'s reach, and every report comes back', async () => {
+  const SPLIT_ARGS = () => ({
+    tasks: PARTS.map((p) => ({ title: `write ${p}.md`, task: `Write ${p}.md in the arena (${arena}), then report.` })),
+    shared: 'The arena is the folder your operator granted you.',
+  });
+
+  test('from the operator\'s chat they work in the background: the call returns at once, the reports come back as a turn', async () => {
+    const from = frames.length;
     const before = await fs.readdir(path.join(neumaWorkspace.pathFor(BEING), 'sessions')).catch(() => []);
-    const result = await handleShadowClone(original(), {
-      tasks: PARTS.map((p) => ({ title: `write ${p}.md`, task: `Write ${p}.md in the arena (${arena}), then report.` })),
-      shared: 'The arena is the folder your operator granted you.',
-    });
+    const result = await handleShadowClone(original({ sessionId: 'chat-with-operator' }), SPLIT_ARGS());
+    expect(result.status, result.error).toBe('ok');
+    // The original is free at once: told they work in the background and to carry on, not to wait.
+    expect(result.content).toMatch(/^Your 3 shadow clones are working in the background: 1\. write alpha\.md; 2\. write beta\.md; 3\. write gamma\.md\. Carry on with your operator — do not wait for them/);
+    expect(result.content).toContain('this chat is given a new turn with every report');
+    const chips = () => frames.slice(from).filter((f) => f.type === 'tool:usage' && f.tool === 'team/shadow_clone');
+    for (let i = 0; i < 100 && chips().length < 2; i += 1) await new Promise((r) => { setTimeout(r, 20); }); // the socket delivers in its own time
+    const chip = chips();
+    expect(chip.map((f) => f.status)).toEqual(['executing', 'ok']);
+    expect(chip[1].summary).toBe('3 shadow clones working in the background — they report back in this chat when done');
+    expect(chip[1].split).toMatchObject({ background: true, seconds: null });
+    const split = frames.slice(from).find((f) => f.type === 'clone:split');
+    expect(chip[1].split.splitId).toBe(split.splitId);
+    // Nothing of their work has happened yet when the call returns.
+    expect(frames.slice(from).some((f) => f.type === 'clone:end')).toBe(false);
+
+    // …then they finish on their own, and the chat is told: a watch fired with every report, kept for the chat.
+    await splitSettled(split.splitId);
+    for (const part of PARTS) {
+      expect(await fs.readFile(path.join(arena, `${part}.md`), 'utf8')).toBe(`${part.toUpperCase()} WRITTEN BY A CLONE`);
+    }
+    const done = frames.slice(from).find((f) => f.type === 'clone:done');
+    expect(done).toMatchObject({ splitId: split.splitId, together: 3, record: expect.stringMatching(/^clones\//) });
+    const [watch] = await pendingFor({ wallet: WALLET, laneId: BEING, sessionId: 'chat-with-operator' });
+    expect(watch).toMatchObject({ kind: 'clones', ref: split.splitId, label: '3 shadow clones' });
+    expect(watch.report).toMatch(/^3 clone\(s\) reported in \d+s \(3 at once at most\)/);
+    for (const part of PARTS) expect(watch.report).toContain(`I wrote ${part}.md in the arena.`);
+    expect(watchThought(watch)).toMatch(/^\[A WATCH YOU SET — the platform reporting, not your operator\] Word from your 3 shadow clones working in the background: 3 clone\(s\) reported/);
+    const after = await fs.readdir(path.join(neumaWorkspace.pathFor(BEING), 'sessions'));
+    expect(after.length - before.length).toBe(3);
+  }, 60000);
+
+  test('from a wake or a team part, three clones work at once with the original\'s reach, and every report comes back in the call', async () => {
+    const { withLease } = await import('../../backend/services/substrate-lease.js');
+    const before = await fs.readdir(path.join(neumaWorkspace.pathFor(BEING), 'sessions')).catch(() => []);
+    frames.length = 0;
+    const result = await withLease({ kind: 'member', label: 'a wake of Kaito', neumaId: BEING }, () => handleShadowClone(original(), SPLIT_ARGS()));
     expect(result.status, result.error).toBe('ok');
 
     // Each clone's own hands: its file is on disk, in the folder granted to the ORIGINAL.
@@ -110,9 +151,9 @@ describe('a being splits into shadow clones of itself — real turns, at once, r
     // Each clone sat in a sitting of its own, in the being's own lane; the whole record is kept.
     const after = await fs.readdir(path.join(neumaWorkspace.pathFor(BEING), 'sessions'));
     expect(after.length - before.length).toBe(3);
-    const records = await fs.readdir(path.join(neumaWorkspace.pathFor(BEING), 'clones'));
-    expect(records).toHaveLength(1);
-    const record = await fs.readFile(path.join(neumaWorkspace.pathFor(BEING), 'clones', records[0]), 'utf8');
+    const records = (await fs.readdir(path.join(neumaWorkspace.pathFor(BEING), 'clones'))).sort();
+    expect(records).toHaveLength(2); // the background split's record, then this one's
+    const record = await fs.readFile(path.join(neumaWorkspace.pathFor(BEING), 'clones', records.at(-1)), 'utf8');
     for (const part of PARTS) expect(record).toContain(`## Clone ${PARTS.indexOf(part) + 1}: write ${part}.md`);
     // The operator saw the split and its end.
     const chips = frames.filter((f) => f.type === 'tool:usage' && f.tool === 'team/shadow_clone');

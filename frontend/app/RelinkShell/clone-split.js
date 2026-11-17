@@ -21,10 +21,26 @@ const splitChipIndex = (segments) => {
   return -1;
 };
 
+// pure — a settled message whose chip holds this split (a split in the background outlives its turn), or -1.
+const settledSplitAt = (messages, splitId) => messages.findLastIndex((m) => !m.streaming
+  && (m.segments ?? []).some((s) => s.kind === 'tool' && s.split?.splitId === splitId));
+
+// pure — the split's frame applied to the chip of a settled message (and to its viewed take, which the view folds from).
+const intoSettled = (state, at, frame) => {
+  const apply = (segments) => segments.map((s) => (s.kind === 'tool' && s.split?.splitId === frame.splitId ? { ...s, split: applyCloneFrame(s.split, frame) ?? s.split } : s));
+  const messages = state.messages.slice();
+  const m = messages[at];
+  messages[at] = { ...m, segments: apply(m.segments), ...(m.takes ? { takes: m.takes.map((t, k) => (k === m.takeIndex - 1 ? { ...t, segments: apply(t.segments) } : t)) } : {}) };
+  return { ...state, messages };
+};
+
 /** The stream reducer's CLONE family (stream-reducer.js delegates by action type). */
 export const cloneHandlers = Object.freeze({
   CLONE: (state, { frame }) => {
-    // Only into a reply that is still being written: a frame with no turn on screen has nowhere to go.
+    // Clones working in the background report long after their turn settled: their chip is found where it stands.
+    const settled = frame?.type === 'clone:split' ? -1 : settledSplitAt(state.messages, frame?.splitId);
+    if (settled !== -1) return intoSettled(state, settled, frame);
+    // Otherwise only into a reply that is still being written: a frame with no turn on screen has nowhere to go.
     if (!state.messages.some((m) => m.streaming)) return state;
     return mapStreamingSegments(state, (segments) => {
       const i = splitChipIndex(segments);
@@ -54,6 +70,8 @@ export const splitHeadline = (split) => {
   const working = clones.filter((c) => c.state === 'working').length;
   const head = `SHADOW CLONES · ${clones.length}`;
   if (split?.seconds != null) return `${head} · ${done} REPORTED · ${split.together} AT ONCE · ${split.seconds}S`;
+  // Sent to work in the background: the chat went on; the reports come back as a turn of their own.
+  if (split?.background) return `${head} · ${working} WORKING · ${done} DONE · IN THE BACKGROUND — THEY REPORT BACK HERE`;
   // The app closed while the split worked (turn-keep.js): what finished, and where the rest stopped.
   if (split?.cutOff) return `${head} · ${done} DONE · CUT OFF WHEN THE APP CLOSED`;
   return `${head} · ${working} WORKING · ${done} DONE`;
