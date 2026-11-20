@@ -6,7 +6,7 @@
 import { describe, test, expect } from 'vitest';
 import { makeCampaign, foldCampaigns, openRefusal, judgeMove, campaignBoard, campaignLine } from '../../backend/services/sales/campaign-shape.js';
 import { makeSegment, foldSegments } from '../../backend/services/sales/segment-shape.js';
-import { funnelOf, channelWords } from '../../frontend/app/RelinkShell/company-line/sales-campaign-view.js';
+import { channelWords } from '../../frontend/app/RelinkShell/company-line/sales-campaign-view.js';
 
 const NOW = '2026-11-15T09:00:00.000Z';
 const base = { name: 'Base token teams', company: 'umbrae', offer: 'A pool on a venue whose fees go to whoever supplies it', customerProblem: 'Their liquidity sits in one pool', targetRole: 'Founder', targetGeography: 'United States', countries: ['US'], positiveCriteria: ['Has a token on Base'], why: 'A second venue with a better split', by: 'merc', now: NOW };
@@ -86,11 +86,8 @@ describe('the numbers are counted, by campaign and by channel', () => {
     expect(campaignLine(board[0])).toBe('- [k-users] User acquisition (for umbrae, open) — goal: Pools opened — 1 audience(s), 3 gathered, 4 scored, 3 on the lead list, 3 written, 2 replied, 1 qualified, 1 won, 1 lost');
   });
 
-  test('the tab words exactly those counts, in order; WON reads loud only when there is one', () => {
-    const [users, fund] = campaignBoard({ campaigns, segments, candidates, prospects, leads }).campaigns;
-    expect(funnelOf(users).map((s) => [s.label, s.n])).toEqual([['GATHERED', 3], ['SCORED', 4], ['LEADS', 3], ['WRITTEN', 3], ['REPLIED', 2], ['QUALIFIED', 1], ['WON', 1]]);
-    expect(funnelOf(users).at(-1).loud).toBe(true);
-    expect(funnelOf(fund).at(-1).loud).toBe(false);
+  test('the sheet words what each channel brought in', () => {
+    const [users] = campaignBoard({ campaigns, segments, candidates, prospects, leads }).campaigns;
     expect(channelWords(users.channels[0])).toBe('EMAIL — 2 LEADS · 2 WRITTEN · 1 REPLIED · 1 QUALIFIED · 1 WON · 0 LOST');
     expect(channelWords(users.channels[1])).toBe('X — 1 LEAD · 1 WRITTEN · 1 REPLIED · 0 QUALIFIED · 0 WON · 1 LOST');
   });

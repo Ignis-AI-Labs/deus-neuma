@@ -4,8 +4,11 @@
 // smtp-tls-kit.js does), speaking the IMAP the house's reader speaks: LOGIN,
 // EXAMINE INBOX, UID SEARCH ALL, UID FETCH (envelopes, or a whole message),
 // LOGOUT, and the label verbs (CAPABILITY, SELECT INBOX, LIST, CREATE, UID STORE
-// ±X-GM-LABELS, UID COPY). deliver() puts new mail in the box; logins counts
-// every session; state.gmail says whether the server offers Gmail's labels.
+// ±X-GM-LABELS, UID COPY), and Gmail's All Mail: archive() takes a message out
+// of the inbox, where it no longer answers to its number; in All Mail (EXAMINE
+// it, UID SEARCH FROM … SINCE …) every message has a number of its own, as on
+// Gmail. deliver() puts new mail in the box; logins counts every session;
+// state.gmail says whether the server offers Gmail's labels.
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -15,12 +18,18 @@ import { execFileSync } from 'child_process';
 
 const line = (socket, text) => socket.write(`${text}\r\n`);
 const raw = (m) => [`From: ${m.from}`, `To: ${m.to ?? 'house@tidewater.example'}`, `Subject: ${m.subject}`, `Date: ${m.date ?? new Date().toUTCString()}`,
-  `Message-ID: <${m.uid}@test>`, '', m.body ?? ''].join('\r\n');
+  `Message-ID: <${m.uid}@test>`, ...(m.inReplyTo ? [`In-Reply-To: ${m.inReplyTo}`] : []), ...(m.contentType ? [`Content-Type: ${m.contentType}`] : []), '', m.body ?? ''].join('\r\n');
 const headers = (m) => `${raw(m).split('\r\n\r\n')[0]}\r\n\r\n`;
+const ALL_MAIL = '[Gmail]/All Mail';
+const ALL_MAIL_OFFSET = 5000;
+// What the open folder holds, with each message's number there: the inbox, less what was archived; All Mail, everything.
+const viewOf = (box, folder) => (folder === ALL_MAIL ? box.map((m) => ({ m, uid: m.uid + ALL_MAIL_OFFSET })) : box.filter((m) => !m.archived).map((m) => ({ m, uid: m.uid })));
+const imapDay = (d) => Date.parse(d.replace(/-/g, ' '));
 
 // One session, answered as the reader expects.
 const session = (socket, box, state) => {
   let buffer = '';
+  let folder = 'INBOX';
   line(socket, '* OK IMAP4rev1 test ready');
   socket.on('data', (chunk) => {
     buffer += chunk.toString('utf8');
@@ -33,7 +42,7 @@ const session = (socket, box, state) => {
       if (/^LOGIN /i.test(verb)) { state.logins += 1; line(socket, `${tag} OK logged in`); }
       else if (/^CAPABILITY/i.test(verb)) { line(socket, `* CAPABILITY IMAP4rev1${state.gmail ? ' X-GM-EXT-1' : ''}`); line(socket, `${tag} OK capability done`); }
       else if (/^SELECT INBOX/i.test(verb)) { state.selects += 1; line(socket, `* ${box.length} EXISTS`); line(socket, `${tag} OK [READ-WRITE] selected`); }
-      else if (/^LIST /i.test(verb)) { line(socket, '* LIST (\\HasNoChildren) "/" "INBOX"'); for (const name of state.folders) line(socket, `* LIST (\\HasNoChildren) "/" "${name}"`); line(socket, `${tag} OK list done`); }
+      else if (/^LIST /i.test(verb)) { line(socket, '* LIST (\\HasNoChildren) "/" "INBOX"'); line(socket, `* LIST (\\HasNoChildren \\All) "/" "${ALL_MAIL}"`); for (const name of state.folders) line(socket, `* LIST (\\HasNoChildren) "/" "${name}"`); line(socket, `${tag} OK list done`); }
       else if (/^CREATE /i.test(verb)) { const name = JSON.parse(verb.slice(7)); if (state.folders.includes(name)) line(socket, `${tag} NO [ALREADYEXISTS] folder exists`); else { state.folders.push(name); line(socket, `${tag} OK created`); } }
       else if (/^UID STORE \d+ [+-]X-GM-LABELS /i.test(verb)) {
         const [, uid, sign, item] = /^UID STORE (\d+) ([+-])X-GM-LABELS \((.+)\)$/i.exec(verb);
@@ -42,14 +51,19 @@ const session = (socket, box, state) => {
         line(socket, `${tag} OK store done`);
       } else if (/^UID COPY /i.test(verb)) { const [, uid, to] = /^UID COPY (\d+) (.+)$/i.exec(verb); state.copies.push([Number(uid), JSON.parse(to)]); line(socket, `${tag} OK copy done`); }
       else if (/^UID FETCH \d+ \(FLAGS\)$/i.test(verb)) { const m = box.find((x) => x.uid === Number(verb.split(' ')[2])); if (m) line(socket, `* ${box.indexOf(m) + 1} FETCH (UID ${m.uid} FLAGS ())`); line(socket, `${tag} OK fetch done`); }
-      else if (/^EXAMINE INBOX/i.test(verb)) { line(socket, `* ${box.length} EXISTS`); line(socket, `${tag} OK [READ-ONLY] examined`); }
-      else if (/^UID SEARCH ALL/i.test(verb)) { line(socket, `* SEARCH ${box.map((m) => m.uid).join(' ')}`.trim()); line(socket, `${tag} OK search done`); }
-      else if (/^UID FETCH /i.test(verb)) {
+      else if (/^EXAMINE /i.test(verb)) { folder = /^EXAMINE INBOX/i.test(verb) ? 'INBOX' : JSON.parse(verb.slice(8)); line(socket, `* ${viewOf(box, folder).length} EXISTS`); line(socket, `${tag} OK [READ-ONLY] examined`); }
+      else if (/^UID SEARCH ALL/i.test(verb)) { line(socket, `* SEARCH ${viewOf(box, folder).map((v) => v.uid).join(' ')}`.trim()); line(socket, `${tag} OK search done`); }
+      else if (/^UID SEARCH FROM /i.test(verb)) {
+        const [, who, since] = /^UID SEARCH FROM (".*?") SINCE (\S+)$/i.exec(verb);
+        const hits = viewOf(box, folder).filter(({ m }) => m.from.toLowerCase().includes(JSON.parse(who).toLowerCase()) && Date.parse(m.date ?? m.at) >= imapDay(since));
+        line(socket, `* SEARCH ${hits.map((v) => v.uid).join(' ')}`.trim()); line(socket, `${tag} OK search done`);
+      } else if (/^UID FETCH /i.test(verb)) {
         const uids = verb.split(' ')[2].split(',').map(Number);
         const whole = /BODY\.PEEK\[\]/i.test(verb);
-        for (const m of box.filter((x) => uids.includes(x.uid))) {
+        const view = viewOf(box, folder);
+        for (const { m, uid } of view.filter((v) => uids.includes(v.uid))) {
           const payload = whole ? raw(m) : headers(m);
-          socket.write(`* ${box.indexOf(m) + 1} FETCH (UID ${m.uid} FLAGS () BODY[${whole ? '' : 'HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID)'}] {${Buffer.byteLength(payload)}}\r\n${payload})\r\n`);
+          socket.write(`* ${view.findIndex((v) => v.m === m) + 1} FETCH (UID ${uid} FLAGS () BODY[${whole ? '' : 'HEADER.FIELDS (FROM TO SUBJECT DATE MESSAGE-ID)'}] {${Buffer.byteLength(payload)}}\r\n${payload})\r\n`);
         }
         line(socket, `${tag} OK fetch done`);
       } else if (/^LOGOUT/i.test(verb)) { line(socket, '* BYE'); line(socket, `${tag} OK bye`); socket.end(); }
@@ -62,7 +76,7 @@ const session = (socket, box, state) => {
 
 /**
  * @param {string} dir - an empty tmp directory for the certificate
- * @returns {Promise<{port: number, deliver: (m: {from: string, subject: string, body?: string}) => number,
+ * @returns {Promise<{port: number, deliver: (m: {from: string, subject: string, body?: string, inReplyTo?: string}) => number,
  *   state: {logins: number}, close: () => Promise<void>}>}
  */
 export const startTlsImap = async (dir) => {
@@ -83,9 +97,11 @@ export const startTlsImap = async (dir) => {
     box,
     deliver: (m) => {
       const uid = (box.at(-1)?.uid ?? 100) + 1;
-      box.push({ ...m, uid });
+      box.push({ ...m, uid, at: new Date().toUTCString() });
       return uid;
     },
+    /** Take a message out of the inbox (Gmail's archive): its inbox number now answers nothing; All Mail still holds it. */
+    archive: (uid) => { box.find((m) => m.uid === uid).archived = true; },
     close: () => new Promise((resolve) => server.close(() => { tls.setDefaultCACertificates(before); resolve(); })),
   };
 };

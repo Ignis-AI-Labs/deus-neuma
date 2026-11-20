@@ -150,7 +150,7 @@ export const createSessionsDomain = ({ locks }) => Object.freeze({
         if (dek) {
           try { messages.push(parseAndDecrypt(line, { key: dek })); continue; } catch { /* the global chain next */ }
         }
-        messages.push(parseAndDecrypt(line));
+        messages.push(await this._openOlder(line, sessionPath));
       } catch {
         undecodable.push(line);
       }

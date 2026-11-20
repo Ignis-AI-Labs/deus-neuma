@@ -13,6 +13,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { createLogger } from '../logger.js';
+import { containedFile, writeContainedFile } from '../no-follow-write.js';
 
 const log = createLogger('OpinionJournal');
 
@@ -51,12 +52,12 @@ export const journalOpinion = async ({ entry, verdict }) => {
       return null;
     }
     const dir = path.join(laneDir, 'legal', 'opinions');
-    await fs.mkdir(dir, { recursive: true });
     const at = entry.assessedAt || new Date().toISOString();
-    const file = path.join(dir, opinionNameFor(entry, at));
+    const name = opinionNameFor(entry, at);
+    const file = await containedFile(laneDir, dir, name);
     const exists = await fs.access(file).then(() => true, () => false);
     const heading = `# Opinion — ${entry.externalId}: ${entry.title}\n\n`;
-    await fs.appendFile(file, `${exists ? '\n' : heading}${sectionFor(entry, verdict, at)}`, 'utf8');
+    await writeContainedFile({ root: laneDir, directory: dir, name, body: `${exists ? '\n' : heading}${sectionFor(entry, verdict, at)}`, append: true });
     return file;
   } catch (err) {
     log.warn('opinion note failed — the verdict stands', { id: entry?.id, error: err.message });

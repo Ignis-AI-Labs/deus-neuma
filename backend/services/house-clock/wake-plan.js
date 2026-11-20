@@ -36,6 +36,7 @@ import { readCharter } from './charter-store.js';
 import { clockDir } from './wake-ledger.js';
 import { signalWake } from './wake-signal.js';
 import { readProgrammes, openOf, standingOf } from '../programmes/programme-store.js';
+import { listRuns } from '../team-run-store.js';
 import { teamRoster } from '../team-workers.js';
 import { escalate, CHARTER_CHANGED } from './wake-approvals.js';
 import { houseGround, pathsInGround } from './optio-review.js';
@@ -45,6 +46,11 @@ const log = createLogger('HouseClock.Plan');
 const PLAN_ID = /^plan-[a-f0-9]{12}$/;
 
 const planFile = (wallet, id) => path.join(clockDir(wallet), 'plans', `${id}.json`);
+
+const ungroupedStanding = (runs, lead, cap) => {
+  const n = runs.filter((r) => r.lead === lead).length;
+  return { id: null, name: 'runs outside an open programme', goal: '', n, of: cap, left: Math.max(0, cap - n) };
+};
 
 /**
  * Where a wake's plan goes. Pure.
@@ -57,7 +63,7 @@ export const planRouting = ({ charter, lead, officer, steps, strayWorkspace = nu
   if (!charter) return { to: 'operator', why: CHARTER_CHANGED };
   const d = charter.delegation;
   if (!d.teamPlans) return { to: 'operator', why: 'the charter does not delegate team plans to the Optio' };
-  // A programme's next run: inside its own count and the charter's, or the operator's to allow.
+  // The next run: inside the open programme's count (or the lead's real run history without one) and the charter's, or the operator's to allow.
   if (programme && programme.left < 1) return { to: 'operator', why: `the programme "${programme.name}" has run its ${programme.of} runs` };
   if (programme && programme.n >= (d.maxProgrammeRuns ?? 3)) return { to: 'operator', why: `the programme "${programme.name}" has run ${programme.n} runs — the charter delegates at most ${d.maxProgrammeRuns ?? 3}` };
   if (!officer) return { to: 'operator', why: 'no Optio is seated to approve it' };
@@ -103,8 +109,11 @@ export const wakePlanRoute = (wake) => async (_connection, req) => {
   const charter = ['active', 'paused'].includes(charterStanding(written)) ? written : null;
   const root = req.workspace?.root ?? null;
   const inGround = !root || await pathsInGround([root], await houseGround(wake.wallet, wake.seat));
-  const open = openOf(await readProgrammes(wake.wallet).catch(() => []), wake.seat);
-  const route = planRouting({ charter, lead: wake.seat, officer, steps: req.steps, strayWorkspace: inGround ? null : root, programme: open ? standingOf(open) : null });
+  const programmes = await readProgrammes(wake.wallet).catch(() => []);
+  const open = openOf(programmes, wake.seat);
+  const cap = charter?.delegation?.maxProgrammeRuns ?? 3;
+  const programme = open ? standingOf(open) : ungroupedStanding(await listRuns(wake.wallet).catch(() => []), wake.seat, cap);
+  const route = planRouting({ charter, lead: wake.seat, officer, steps: req.steps, strayWorkspace: inGround ? null : root, programme });
   const label = req.name ? `"${req.name}"` : 'you submitted';
   const id = `plan-${randomBytes(6).toString('hex')}`;
   const record = {

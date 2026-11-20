@@ -9,12 +9,20 @@
 // agrees to a promise without saying a number). The claims check's open hits
 // on the answer count too, so the company's MAY BE ASSERTED list is honoured.
 //
+// A link or an attachment in the answer is awareness as well (audit P6-71):
+// an answer drawn from hostile text could carry a phishing address or a file
+// from an open folder onto the house's account with no card. A link to the
+// house's OWN site (own-hosts.js: the site on the brand kit of the company the
+// account speaks for) may go out; every other link waits. A house that has
+// recorded no site has no own host, so there EVERY link waits.
+//
 // Like the reply categories it is an honest heuristic: it can send a careful
 // answer to the operator that did not need them, and it cannot see a claim
 // it has no word for. That is why the seat may raise any answer to
 // awareness itself — never lower one. Pure.
 
 import { openHits } from '../claims-check.js';
+import { onOwnHost } from './own-hosts.js';
 
 // The reply categories (reply-candidates.js) that always ask, in the
 // operator's words. 'support' is a question — easy unless the answer says
@@ -35,18 +43,25 @@ const MIGRATION = /\b(?:migrat\w*|snapshots?|bridg(?:e|es|ed|ing)|relaunch\w*|re
 // Read on the answer alone: what the house would be promising.
 const PROMISE = /\b(?:we(?:'|’)ll|we will|we(?:'|’)re going to|we are going to|it(?:'|’)ll|it will|you(?:'|’)ll (?:get|see|have|earn)|you will (?:get|see|have|earn)|soon|coming (?:next|up|this|in)|upcoming|shortly|next step|tomorrow|tonight|(?:this|next) (?:week|month|quarter|year|update|release|phase)|by (?:the )?end of|q[1-4]|guarantee\w*|promis\w*|risk[- ]free|no risk|can(?:'|’)?t lose|(?:is|are|stays?|totally|completely|100%) safe)\b/gi;
 
+// Read on the answer alone: an address a reader could follow. A scheme, a
+// www. host, or a bare host under a letters-only ending ("evil.example/x").
+const LINK = /\b(?:[a-z][a-z0-9+.-]*:\/\/|www\.)[^\s<>"']+|\b(?:[a-z0-9-]+\.)+[a-z]{2,24}(?:\/[^\s<>"']*)?/gi;
+
 const wordsOf = (re, text) => [...new Set([...String(text || '').matchAll(re)].map((m) => m[0].trim().toLowerCase()))];
 
 /**
  * The tier of one answer. Pure.
  * @param {{answering?: string, category?: string, text?: string,
- *   hits?: Array<{label: string, match: string, approved: boolean}>, raised?: boolean}} reply
+ *   hits?: Array<{label: string, match: string, approved: boolean}>, raised?: boolean, media?: number,
+ *   ownHosts?: string[]}} reply
  *   answering — what the person said; category — its reply category;
  *   text — the CMO's answer; hits — the claims check over the answer;
- *   raised — the CMO asked for the operator's eyes itself
+ *   raised — the CMO asked for the operator's eyes itself;
+ *   media — how many files the answer attaches;
+ *   ownHosts — the house's own hosts (own-hosts.js): a link on one does not wait
  * @returns {{tier: 'easy'|'awareness', reasons: Array<{kind: string, words: string[]}>}}
  */
-export const replyTier = ({ answering = '', category = 'ordinary', text = '', hits = [], raised = false } = {}) => {
+export const replyTier = ({ answering = '', category = 'ordinary', text = '', hits = [], raised = false, media = 0, ownHosts = [] } = {}) => {
   const reasons = [];
   if (raised) reasons.push({ kind: 'raised', words: [] });
   if (CATEGORY_WORDS[category]) reasons.push({ kind: 'category', words: [CATEGORY_WORDS[category]] });
@@ -56,6 +71,9 @@ export const replyTier = ({ answering = '', category = 'ordinary', text = '', hi
   if (migration.length) reasons.push({ kind: 'migration', words: migration });
   const promise = wordsOf(PROMISE, text);
   if (promise.length) reasons.push({ kind: 'promise', words: promise });
+  const links = wordsOf(LINK, text).filter((link) => !onOwnHost(link, ownHosts));
+  if (links.length) reasons.push({ kind: 'link', words: links });
+  if (media > 0) reasons.push({ kind: 'media', words: [`${media} attached`] });
   const claims = openHits(hits).map((h) => `${h.label}: ${h.match}`);
   if (claims.length) reasons.push({ kind: 'claim', words: claims });
   return { tier: reasons.length ? 'awareness' : 'easy', reasons };
@@ -67,6 +85,8 @@ const REASON_WORDS = Object.freeze({
   money: (words) => `money (${words.join(', ')})`,
   migration: (words) => `migration (${words.join(', ')})`,
   promise: (words) => `a promise (${words.join(', ')})`,
+  link: (words) => `a link (${words.join(', ')})`,
+  media: (words) => `an attachment (${words[0]})`,
   claim: (words) => `a claim to check (${words.join('; ')})`,
 });
 
@@ -79,5 +99,5 @@ export const tierWords = ({ reasons = [] } = {}) => reasons.map((r) => REASON_WO
  * @param {object} entry - a queue entry
  */
 export const withReplyTier = (entry) => (entry?.kind === 'reply' && entry.status === 'draft'
-  ? { ...entry, tier: replyTier({ answering: entry.reply?.toTextPreview, category: entry.reply?.category, text: entry.text, hits: entry.legal?.hits }) }
+  ? { ...entry, tier: replyTier({ answering: entry.reply?.toTextPreview, category: entry.reply?.category, text: entry.text, hits: entry.legal?.hits, media: entry.media?.length || 0 }) }
   : entry);

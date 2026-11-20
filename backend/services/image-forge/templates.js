@@ -459,6 +459,8 @@ export const PACK_NODE_CLASSES = Object.freeze([
   'ImageScaleToTotalPixels', 'GetImageSize',
   // The controlled Z-Image lane: the DiT ControlNet is a MODEL PATCH.
   'ModelPatchLoader', 'QwenImageDiffsynthControlnet', 'Canny',
+  // The Illustrious character lane (pipelines-illustrious.js): clip skip and the hires pass's model upscale.
+  'CLIPSetLastLayer', 'UpscaleModelLoader', 'ImageUpscaleWithModel',
 ]);
 
 /**

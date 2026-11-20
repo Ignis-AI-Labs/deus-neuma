@@ -5,10 +5,12 @@
  * {code: 0, data: {routerAddress, data, transactionValue, amountOut}}), the
  * swap call built with the router's own ABI. Modes play a KyberSwap that
  * misbehaves, so the signing rule's refusals are proven against an answer it
- * did not write: 'pays-thief', 'fee', 'other-router', 'low-floor', 'down'.
+ * did not write: payment/fee/router/floor changes, wrong executor/source/flag,
+ * approval-target and simple-mode variants, plus 'down'.
  */
 import process from 'node:process';
 import http from 'node:http';
+import { URL } from 'node:url';
 import { Interface } from 'ethers';
 import { KYBER_ROUTER, KYBER_ABI } from '../../core/wallet/aggregator-policy.js';
 
@@ -37,11 +39,16 @@ export const startKyberStandIn = async ({ amountOut = 1000n } = {}) => {
       const bps = BigInt(body.slippageTolerance);
       const min = state.mode === 'low-floor' ? 1n : (BigInt(s.amountOut) * (10000n - bps)) / 10000n;
       const desc = {
-        srcToken: s.tokenIn, dstToken: s.tokenOut, srcReceivers: [EXECUTOR], srcAmounts: [BigInt(s.amountIn)],
+        srcToken: s.tokenIn, dstToken: s.tokenOut,
+        srcReceivers: [state.mode === 'wrong-src-receiver' ? THIEF : EXECUTOR],
+        srcAmounts: [BigInt(s.amountIn) - (state.mode === 'wrong-src-amount' ? 1n : 0n)],
         feeReceivers: state.mode === 'fee' ? [THIEF] : [], feeAmounts: state.mode === 'fee' ? [1n] : [],
-        dstReceiver: state.mode === 'pays-thief' ? THIEF : body.recipient, amount: BigInt(s.amountIn), minReturnAmount: min, flags: 0n, permit: '0x',
+        dstReceiver: state.mode === 'pays-thief' ? THIEF : body.recipient, amount: BigInt(s.amountIn), minReturnAmount: min,
+        flags: state.mode === 'flag-0x200' ? 0x200n : 0n, permit: '0x',
       };
-      const data = KYBER.encodeFunctionData('swap', [{ callTarget: EXECUTOR, approveTarget: '0x0000000000000000000000000000000000000000', targetData: '0x', desc, clientData: '0x' }]);
+      const data = state.mode === 'simple-mode'
+        ? KYBER.encodeFunctionData('swapSimpleMode', [EXECUTOR, desc, '0x', '0x'])
+        : KYBER.encodeFunctionData('swap', [{ callTarget: state.mode === 'wrong-executor' ? THIEF : EXECUTOR, approveTarget: state.mode === 'approve-target' ? THIEF : '0x0000000000000000000000000000000000000000', targetData: '0x', desc, clientData: '0x' }]);
       return { status: 200, body: { code: 0, message: 'successfully', data: {
         routerAddress: state.mode === 'other-router' ? THIEF : KYBER_ROUTER, data, transactionValue: '0', amountOut: s.amountOut,
       } } };

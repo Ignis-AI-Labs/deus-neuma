@@ -26,7 +26,7 @@ export const companyFile = (company, { facts, segments, campaigns, models = new 
   return {
     id: company.id, name: company.name, parent: company.parentId, site: company.site?.url ?? null,
     links: company.site?.links ?? [], repos: (company.repos ?? []).length, legal: company.legalEntity?.name ?? null,
-    model: model?.approved ?? null, modelProposal: model?.proposal ? { model: model.proposal, by: model.by, at: model.at } : null, modelReturned: model?.returned ?? null,
+    model: model?.approved ?? null, modelProposal: model?.proposal ? { id: model.proposalId, model: model.proposal, by: model.by, at: model.at } : null, modelReturned: model?.returned ?? null,
     facts: approved, factsWaiting: waiting,
     audiences: audiences.map((s) => ({ id: s.id, name: s.name, state: s.state })),
     campaigns: mine.map((c) => ({ id: c.id, name: c.name ?? c.title ?? c.id, goal: c.goal ?? null })),

@@ -27,7 +27,7 @@
 }
 .aura-open:hover .aura-open-hint,
 .aura-open:focus-visible .aura-open-hint { opacity: 1; }
-.aura-open:focus-visible { outline: 1px solid var(--signal); outline-offset: 3px; }
+.aura-open:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 
 /* THE VIEWER — the aura enlarged, on the void, above everything. */
 .aura-viewer {

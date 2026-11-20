@@ -365,6 +365,9 @@ export const comfySupervisorStatus = async (cfg) => {
     pid: inst?.pid ?? null,
     startedAt: inst?.startedAt ?? null,
     readySince: inst?.readySince ?? null,
+    // The idle clock's own stamps, so a reader can say when the engine will unload and stop by itself.
+    lastActivityAt: inst?.lastActivityAt ?? null,
+    lastFreeAt: inst?.lastFreeAt ?? null,
     logPath: inst?.logPath ?? null,
     // The VRAM ceiling the engine launched under; null for an adopted engine
     // (a stranger's launch line is judged for safety, not re-capped).
@@ -374,6 +377,9 @@ export const comfySupervisorStatus = async (cfg) => {
     lastError,
   };
 };
+
+/** The pid of the engine this supervisor launched or adopted, or null. Pure read of the supervisor's own state. */
+export const supervisedEnginePid = () => inst?.pid ?? null;
 
 /**
  * Backend shutdown: clear the reaper and stop an OWNED engine so a clean

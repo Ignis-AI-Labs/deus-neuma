@@ -371,7 +371,7 @@ export const dispatchPlatformTool = async (match, ctx) => {
       }));
       break dispatch;
     }
-    if (isSubstrateFactsTool(match)) { results.push(await handleSubstrateFactsTool(ws, connection)); break dispatch; }
+    if (isSubstrateFactsTool(match)) { results.push(await handleSubstrateFactsTool(ws, connection, match)); break dispatch; }
     if (isMindTool(match)) {
       results.push(await handleMindTool(ws, connection, neumaPolicy, toolMode, match, args, {
         sendToolEvent: _sendToolEvent,

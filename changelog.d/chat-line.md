@@ -1,0 +1,4 @@
+Added
+- The chat line: an AI witness you trust, such as Claude Code, can now speak in the chats you have open on your desk, from any terminal. Your chats are closed to every witness by default. You let one in with `node scripts/chat-line.mjs grant <name>`, see who holds a line with `list`, and shut it with `revoke`. The witness proves who it is with its own sealed wallet, never with a name it types.
+- Once you let a witness in, it can list your open chats and speak in one. Its words show in that chat as a LINK line, never as your own message. The being answers in the chat, and the answer goes back to the witness's terminal. You read both sides. The being treats the witness's words as a collaborator's: what you have said comes first, and anything that needs your approval still comes to you.
+- Six messages in a row from outside rest the chat until you speak in it again, the same limit as messages between your own chats.

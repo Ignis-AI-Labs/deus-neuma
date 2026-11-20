@@ -130,7 +130,7 @@ router.post(
         // this on the rig; 60s was killing exactly the finals whose words the
         // operator had spoken the longest (2026-08-28 cut-out report).
         signal: AbortSignal.timeout(180_000),
-      });
+      }, STT_ENGINE);
       const body = await upstream.json();
       if (!upstream.ok) {
         log.error('sidecar transcription failed', { status: upstream.status, detail: body.detail });

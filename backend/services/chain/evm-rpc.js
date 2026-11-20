@@ -35,6 +35,9 @@ export const HARD_LOG_RANGE_CAP = 10_000;
 export const LOG_RESULT_CAP = 1_000;
 /** At most this many Transfer events one holder reconstruction walks. */
 export const HOLDER_EVENT_CAP = 50_000;
+export const DEFAULT_HOLDER_RECENT_BLOCKS = 2_000;
+export const DEFAULT_HOLDER_REQUEST_CAP = 8;
+export const HARD_HOLDER_REQUEST_CAP = 1_000;
 
 // Minimal ERC-20 surface, spoken as raw calldata selectors; balanceOf1155 is
 // the ERC-1155 two-arg twin so multi-token contracts (the house's own Phase
@@ -385,39 +388,62 @@ const applyTransfer = (balances, from, to, value) => {
 };
 
 /**
- * Holder reconstruction, bounded: chunked log walks over the Transfer-family
- * topics (ERC-20, ERC-721 as count semantics, ERC-1155 TransferSingle/Batch
- * summed over all ids), from fromBlock (default 0 — pass the deployment
- * block, or balances are relative to the window) to the latest block. The
- * walk stops with `truncated: true` when the event cap bites, so a partial
- * set is always labelled partial.
+ * Holder reconstruction over a recent, bounded window. Explicit older walks
+ * stop at a request/event cap with a continuation cursor and may be cancelled.
  */
-export const tokenHolders = async (chain, token, { fromBlock, chunkSize } = {}) => {
+export const tokenHolders = async (chain, token, {
+  fromBlock, chunkSize, signal, recentBlocks = DEFAULT_HOLDER_RECENT_BLOCKS, maxRequests = DEFAULT_HOLDER_REQUEST_CAP,
+} = {}) => {
   if (!ethers.isAddress(token)) return fail('CHAIN_BAD_PARAMS', `token is not an EVM address: ${String(token)}`);
-  const start = fromBlock === undefined || fromBlock === null ? 0 : parseBlockNumber(fromBlock);
-  if (start === null) return fail('CHAIN_BAD_PARAMS', 'fromBlock must be a block number');
+  const requestedStart = fromBlock === undefined || fromBlock === null ? null : parseBlockNumber(fromBlock);
+  if (requestedStart === null && fromBlock !== undefined && fromBlock !== null) return fail('CHAIN_BAD_PARAMS', 'fromBlock must be a block number');
   let chunk = chunkSize === undefined || chunkSize === null ? DEFAULT_LOG_RANGE_CAP : parseBlockNumber(chunkSize);
   if (chunk === null || chunk < 1) return fail('CHAIN_BAD_PARAMS', 'chunkSize must be a positive block count');
   if (chunk > HARD_LOG_RANGE_CAP) chunk = HARD_LOG_RANGE_CAP;
+  let requestCap = parseBlockNumber(maxRequests);
+  if (requestCap === null || requestCap < 1) return fail('CHAIN_BAD_PARAMS', 'maxRequests must be a positive request count');
+  if (requestCap > HARD_HOLDER_REQUEST_CAP) requestCap = HARD_HOLDER_REQUEST_CAP;
+  const recent = parseBlockNumber(recentBlocks);
+  if (recent === null || recent < 1) return fail('CHAIN_BAD_PARAMS', 'recentBlocks must be a positive block count');
+  if (signal?.aborted) return fail('CHAIN_ABORTED', 'holder reconstruction was cancelled');
   const gate = await providerOrFail(chain);
   if (gate.error) return gate.error;
   try {
     const latest = await gate.provider.getBlockNumber();
+    if (signal?.aborted) return fail('CHAIN_ABORTED', 'holder reconstruction was cancelled');
+    const start = requestedStart ?? Math.max(0, latest - recent + 1);
     const balances = new Map();
     let events = 0;
+    let requests = 0;
     let truncated = false;
+    let truncationReason = null;
+    let nextFromBlock = null;
     for (let from = start; from <= latest && !truncated; from += chunk) {
+      if (signal?.aborted) return fail('CHAIN_ABORTED', 'holder reconstruction was cancelled');
+      if (requests >= requestCap) {
+        truncated = true;
+        truncationReason = 'request-cap';
+        nextFromBlock = from;
+        break;
+      }
       const to = Math.min(from + chunk - 1, latest);
       let logs;
       try {
+        requests += 1;
         logs = await gate.provider.getLogs({
           address: token, topics: [[TRANSFER_20, TRANSFER_SINGLE, TRANSFER_BATCH]], fromBlock: from, toBlock: to,
         });
       } catch (err) {
         return fail('CHAIN_RPC', `log walk failed in window ${from}–${to}: ${redactRpcUrl(err.message)}`);
       }
+      if (signal?.aborted) return fail('CHAIN_ABORTED', 'holder reconstruction was cancelled');
       events += logs.length;
-      if (events > HOLDER_EVENT_CAP) { truncated = true; break; }
+      if (events > HOLDER_EVENT_CAP) {
+        truncated = true;
+        truncationReason = 'event-cap';
+        nextFromBlock = from;
+        break;
+      }
       for (const l of logs) {
         const t0 = l.topics[0];
         if (t0 === TRANSFER_SINGLE) {
@@ -443,10 +469,12 @@ export const tokenHolders = async (chain, token, { fromBlock, chunkSize } = {}) 
     }
     return ok({
       ...basePayload(gate.entry), token: ethers.getAddress(token),
-      fromBlock: start, toBlock: latest, chunkSize: chunk,
-      events, truncated, holderCount: Object.keys(holders).length, holders, totalHeld: totalHeld.toString(),
+      fromBlock: start, toBlock: latest, chunkSize: chunk, requests,
+      events, truncated, truncationReason, nextFromBlock,
+      holderCount: Object.keys(holders).length, holders, totalHeld: totalHeld.toString(),
     });
   } catch (err) {
+    if (signal?.aborted) return fail('CHAIN_ABORTED', 'holder reconstruction was cancelled');
     return fail('CHAIN_RPC', redactRpcUrl(err.message));
   }
 };

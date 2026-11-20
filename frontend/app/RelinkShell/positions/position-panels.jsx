@@ -11,6 +11,7 @@ import { securityApp } from '../SecurityApp.jsx';
 import { treasuryApp } from '../TreasuryApp.jsx';
 import { LeadEngineSection } from '../company-line/LeadEngineSection.jsx';
 import { SalesCampaigns } from '../company-line/SalesCampaigns.jsx';
+import { LeadImport } from '../company-line/LeadImport.jsx';
 import { CampaignLinks } from './CampaignLinks.jsx';
 import { BusinessModel } from './BusinessModel.jsx';
 import { SalesSection } from '../company-line/SalesSection.jsx';
@@ -100,7 +101,8 @@ const PANELS = Object.freeze({
   'cro.campaigns': () => <div className="cline"><SalesCampaigns /></div>,
   // Each marketing campaign once: what it is, what it works with, and one press onto its own page in MARKETING.
   'cmo.campaigns': ({ onDoor }) => <div className="cline"><CampaignLinks office="cmo" onOpen={onDoor ? (c) => onDoor({ kind: 'marketing', campaignId: c.id }) : null} /></div>,
-  'cro.leads': ({ holder, onHand }) => <div className="cline"><LeadEngineSection parts={['leads']} holder={holder} onHand={onHand} /></div>, 'cro.deals': Deals, 'cro.mailbox': Mailbox,
+  // ALL PEOPLE on the sales hub: everyone the house knows and the do-not-contact list; the outbox is the EMAILS stage.
+  'cro.leads': ({ holder, onHand }) => <div className="cline"><LeadImport /><LeadEngineSection parts={['people']} holder={holder} onHand={onHand} /></div>, 'cro.deals': Deals, 'cro.mailbox': Mailbox,
   'cmo.marketing': door(MARKETING_WINDOW), 'cmo.gallery': door('gallery'),
   'clo.legal': body(legalApp), 'cso.security': body(securityApp),
   'cfo.treasury': body(treasuryApp), 'cfo.wallet': door('wallet'),

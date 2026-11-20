@@ -11,7 +11,7 @@ import http from 'node:http';
 import net from 'node:net';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { SIDECAR_CALLER_HEADER, callerToken, sidecarFetch, verifySidecar } from '../../backend/services/voice/sidecar-trust.js';
+import { SIDECAR_CALLER_HEADER, callerToken, engineKey, sidecarFetch, verifySidecar } from '../../backend/services/voice/sidecar-trust.js';
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const SHARED = path.join(REPO, 'voice-engines', '_shared');
@@ -68,7 +68,7 @@ class Clock:
 uvicorn.run(_Guard(ok, Clock()), host="127.0.0.1", port=${port}, log_level="warning")`;
   const env = { ...process.env };
   delete env.NEUMA_SIDECAR_KEY;
-  const child = spawn(CSM_PY, ['-c', script], { stdio: ['ignore', 'ignore', 'pipe'], env: key ? { ...env, NEUMA_SIDECAR_KEY: key } : env });
+  const child = spawn(CSM_PY, ['-c', script], { stdio: ['ignore', 'ignore', 'pipe'], env: key ? { ...env, NEUMA_SIDECAR_KEY: engineKey(key, 'csm').toString('hex'), NEUMA_SIDECAR_ENGINE: 'csm' } : env });
   for (let i = 0; i < 100; i += 1) {
     try { await fetch(`${base}/health`); return { child, base }; } catch { await new Promise((r) => setTimeout(r, 100)); }
   }
@@ -92,7 +92,7 @@ describe.skipIf(!existsSync(CSM_PY))('the real speak_app front door on a real so
   });
 
   test('the backend\'s call is served; a page\'s POST, an img-style GET and a rebound Host are refused, token or not', async () => {
-    const token = { [SIDECAR_CALLER_HEADER]: callerToken(key) };
+    const token = { [SIDECAR_CALLER_HEADER]: callerToken(key, 'csm') };
     expect(await post(keyed.base, '/speak', token)).toBe(200);
     expect(await post(keyed.base, '/speak', { ...token, origin: 'https://evil.example', 'content-type': 'text/plain' })).toBe(403);
     expect(await post(keyed.base, '/shutdown', { ...token, 'sec-fetch-site': 'cross-site' })).toBe(403);
@@ -102,20 +102,20 @@ describe.skipIf(!existsSync(CSM_PY))('the real speak_app front door on a real so
   test('another local program — no token, or a token from another key — is refused', async () => {
     expect(await post(keyed.base, '/speak')).toBe(403);
     expect(await post(keyed.base, '/shutdown')).toBe(403);
-    expect(await post(keyed.base, '/speak', { [SIDECAR_CALLER_HEADER]: callerToken('f'.repeat(64)) })).toBe(403);
+    expect(await post(keyed.base, '/speak', { [SIDECAR_CALLER_HEADER]: callerToken('f'.repeat(64), 'csm') })).toBe(403);
   });
 
   test('the backend\'s own sidecar-trust: the keyed sidecar proves itself and its real call path is served', async () => {
-    expect(await verifySidecar(keyed.base)).toBe(true);
-    const res = await sidecarFetch(`${keyed.base}/speak`, { method: 'POST', body: '{}' });
+    expect(await verifySidecar(keyed.base, 'csm')).toBe(true);
+    const res = await sidecarFetch(`${keyed.base}/speak`, { method: 'POST', body: '{}' }, 'csm');
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('spoken');
   });
 
   test('a sidecar started without the key answers /health and nothing else, and proves nothing', async () => {
     expect((await fetch(`${keyless.base}/health`)).status).toBe(200);
-    expect(await post(keyless.base, '/speak', { [SIDECAR_CALLER_HEADER]: callerToken(key) })).toBe(403);
-    expect(await verifySidecar(keyless.base)).toBe(false);
-    await expect(sidecarFetch(`${keyless.base}/speak`, { method: 'POST', body: '{}' })).rejects.toThrow(/could not prove/);
+    expect(await post(keyless.base, '/speak', { [SIDECAR_CALLER_HEADER]: callerToken(key, 'csm') })).toBe(403);
+    expect(await verifySidecar(keyless.base, 'csm')).toBe(false);
+    await expect(sidecarFetch(`${keyless.base}/speak`, { method: 'POST', body: '{}' }, 'csm')).rejects.toThrow(/could not prove/);
   });
 });

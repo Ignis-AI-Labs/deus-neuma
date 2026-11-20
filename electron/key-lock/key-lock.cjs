@@ -11,7 +11,7 @@
 // leave the keys unreadable.
 
 const fs = require('node:fs');
-const path = require('node:path');
+const { writeFileAtomic } = require('./atomic-file.cjs');
 const core = require('./key-lock-core.cjs');
 
 const WEAK_BACKENDS = Object.freeze(new Set(['basic_text', 'unknown', 'none', '']));
@@ -24,34 +24,25 @@ const isStrong = (backend) => !WEAK_BACKENDS.has(String(backend || ''));
 
 // impure (fs) — the parsed file, null when absent. A file that is there but
 // unreadable or not JSON THROWS: treating it as missing would mint new keys over it.
+// A record that is gone while its copy (`<file>.bak`, written with every record) is there is read
+// from the copy: a deleted key file is not a fresh install.
 const readStored = (file) => {
-  let text;
-  try {
-    text = fs.readFileSync(file, 'utf8');
-  } catch (err) {
-    if (err.code === 'ENOENT') return null;
-    throw err;
+  for (const candidate of [file, `${file}.bak`]) {
+    let text;
+    try {
+      text = fs.readFileSync(candidate, 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT') continue;
+      throw err;
+    }
+    return JSON.parse(text);
   }
-  return JSON.parse(text);
+  return null;
 };
 
-// impure (fs) — tmp + fsync + rename, owner-only, then the folder synced
+// impure (fs) — verified atomic replacement, with the same verified backup copy
 const writeAtomic = (file, record) => {
-  const dir = path.dirname(file);
-  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-  const tmp = `${file}.${process.pid}.tmp`;
-  const fd = fs.openSync(tmp, 'w', 0o600);
-  try {
-    fs.writeSync(fd, JSON.stringify(record, null, 2));
-    fs.fsyncSync(fd);
-  } finally {
-    fs.closeSync(fd);
-  }
-  fs.renameSync(tmp, file);
-  if (process.platform !== 'win32') {
-    const dfd = fs.openSync(dir, 'r');
-    try { fs.fsyncSync(dfd); } finally { fs.closeSync(dfd); }
-  }
+  writeFileAtomic(file, JSON.stringify(record, null, 2), { backup: true });
 };
 
 // pure — two key sets are the same keys
@@ -86,9 +77,10 @@ const lockUnderNewKit = (keys, seal, now) => {
  *  - locked + the keychain does not  → `needs-recovery` (a reset or changed keychain, another computer)
  *  - plain or missing + a real keychain → locked now (a fresh install gets new keys) → `unlocked`, kit pending
  *  - plain or missing + no real keychain → `no-keychain`: the caller keeps the plain file, honestly
- * @param {{file: string, seal: object, now?: string}} opts
+ *  - missing, and `holdsData()` says a master already sealed data here → `key-missing`: no key is made
+ * @param {{file: string, seal: object, now?: string, holdsData?: () => boolean}} opts
  */
-const openKeyLock = ({ file, seal, now = new Date().toISOString() }) => {
+const openKeyLock = ({ file, seal, now = new Date().toISOString(), holdsData = () => false }) => {
   const stored = readStored(file);
   const kind = core.classify(stored);
   const backend = seal.backend();
@@ -101,6 +93,7 @@ const openKeyLock = ({ file, seal, now = new Date().toISOString() }) => {
       return { state: 'needs-recovery', backend: stored.device.backend, keychainNow: backend };
     }
   }
+  if (kind === 'missing' && holdsData()) return { state: 'key-missing', backend };
   if (!isStrong(backend)) return { state: 'no-keychain', backend };
   const keys = kind === 'plain' ? core.validKeys(stored) : core.freshKeys();
   writeAtomic(file, lockUnderNewKit(keys, seal, now));

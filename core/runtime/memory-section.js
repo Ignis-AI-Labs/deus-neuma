@@ -182,9 +182,12 @@ export const recentConversationMessages = (recent, totalChars = RECENT_TOTAL_CHA
   let oldest = recent.length;
   for (let index = recent.length - 1; index >= 0; index -= 1) {
     const msg = recent[index];
-    const operator = msg.role === 'user';
+    const operator = msg.role === 'user' && !msg.origin;
+    const origin = !operator && msg.role === 'user' && typeof msg.origin === 'string'
+      ? `PLATFORM ${msg.origin.replace(/[^a-z0-9_-]/gi, '').slice(0, 24).toUpperCase()} — NOT THE OPERATOR: `
+      : '';
     const safeContent = sanitizeMemoryForPrompt(
-      msg.content,
+      `${origin}${msg.content ?? ''}`,
       operator ? operatorCap : ownCap,
     );
     if (!safeContent) continue;

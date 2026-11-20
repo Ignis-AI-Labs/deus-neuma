@@ -10,7 +10,8 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { runPlatformHand } from '../../backend/services/platform-hands.js';
 import { guardedWriteFile } from '../../backend/services/write-file-guard.js';
 import { restoreLatest, CorruptSnapshotError } from '../../backend/services/edit-undo-restore.js';
-import { UNDO_SUBDIR, DELETE_SNAPSHOT_MAX_BYTES } from '../../backend/services/edit-undo.js';
+import { UNDO_SUBDIR, DELETE_SNAPSHOT_MAX_BYTES, contentSha256 } from '../../backend/services/edit-undo.js';
+import { checkPathAccess } from '../../backend/services/sandbox-path-policy.js';
 
 const CLI = new URL('../../bin/neuma', import.meta.url).pathname;
 
@@ -189,5 +190,57 @@ describe('undo — a created file can be taken away again', () => {
     const target = path.join(loose, 'note.txt');
     expect((await guardedWriteFile({ path: target, content: 'a note\n' })).ok).toBe(true);
     expect(await exists(path.join(loose, '.neuma'))).toBe(false);
+  });
+});
+
+
+describe('undo — planted records cannot cross the project boundary', () => {
+  const plant = async (project, record) => {
+    const dir = path.join(project, UNDO_SUBDIR);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, '99999999999999.json'), JSON.stringify(record));
+  };
+
+  test('a future record cannot write attacker content outside the project', async () => {
+    const project = await createProject('undo-outside-write');
+    const outside = await createTempDir('undo-outside-write-target');
+    const target = path.join(outside, 'owner.txt');
+    await fs.writeFile(target, 'original\n');
+    await plant(project, { path: target, preEditContent: 'attacker\n', appliedAt: 99999999999999 });
+
+    expect(() => restoreLatest(project)).toThrow(/escapes the project root/);
+    expect(await fs.readFile(target, 'utf8')).toBe('original\n');
+  });
+
+  test('a future create record cannot delete a known outside file', async () => {
+    const project = await createProject('undo-outside-delete');
+    const outside = await createTempDir('undo-outside-delete-target');
+    const target = path.join(outside, 'known.txt');
+    await fs.writeFile(target, 'known bytes\n');
+    await plant(project, {
+      path: target, kind: 'create', createdSha256: contentSha256(Buffer.from('known bytes\n')), appliedAt: 99999999999999,
+    });
+
+    expect(() => restoreLatest(project)).toThrow(/escapes the project root/);
+    expect(await fs.readFile(target, 'utf8')).toBe('known bytes\n');
+  });
+
+  test('a symlinked parent cannot carry a new restore outside the project', async () => {
+    const project = await createProject('undo-parent-link');
+    const outside = await createTempDir('undo-parent-link-target');
+    await fs.symlink(outside, path.join(project, 'jump'));
+    const target = path.join(project, 'jump', 'new.txt');
+    await plant(project, { path: target, preEditContent: 'must not land\n', appliedAt: 99999999999999 });
+
+    expect(() => restoreLatest(project)).toThrow(/escapes the project root/);
+    expect(await exists(path.join(outside, 'new.txt'))).toBe(false);
+  });
+
+  test('the real path policy denies being access to undo metadata', async () => {
+    const project = await createProject('undo-metadata-wall');
+    const record = path.join(project, UNDO_SUBDIR, '99999999999999.json');
+    const verdict = checkPathAccess(record, [project], { requireRoot: true });
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.deniedPattern).toBe('.neuma/edit-undo/');
   });
 });

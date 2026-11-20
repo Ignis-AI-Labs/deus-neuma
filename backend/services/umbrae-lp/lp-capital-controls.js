@@ -74,7 +74,7 @@ const assetMicro = async ({ token, amount, decimals }) => {
 };
 
 // impure — independently price and durably reserve all assets in one capital action.
-export const reserveCapitalAssets = async (neumaId, assets) => {
+export const reserveCapitalAssets = async (neumaId, assets, { maxActionUsd = null } = {}) => {
   const allowed = await assertLpNotPaused(neumaId);
   if (!allowed.ok) return allowed;
   try {
@@ -83,8 +83,9 @@ export const reserveCapitalAssets = async (neumaId, assets) => {
     const micro = parts.reduce((sum, value) => sum + value, 0);
     if (!Number.isSafeInteger(micro)) return { ok: false, reason: 'The capital amount is invalid.' };
     const controls = await readLpCapitalControls(neumaId);
-    if (micro > Math.round(controls.maxActionUsd * 1e6)) {
-      return { ok: false, reason: `This action moves about $${dollars(micro)}, over the $${controls.maxActionUsd.toFixed(2)} per-action capital limit.` };
+    const actionCap = maxActionUsd === null ? controls.maxActionUsd : Math.min(controls.maxActionUsd, maxActionUsd);
+    if (micro > Math.round(actionCap * 1e6)) {
+      return { ok: false, reason: `This action moves about $${dollars(micro)}, over the $${actionCap.toFixed(2)} per-action capital limit.` };
     }
     const day = new Date().toISOString().slice(0, 10);
     const reserved = await neumaWorkspace.consumeLpNotional(neumaId, {

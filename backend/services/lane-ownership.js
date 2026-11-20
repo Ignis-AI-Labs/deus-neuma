@@ -1,5 +1,7 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { verifyBirthGenesisIntegrity } from './seal-bundle.js';
+import { verifyLocalSeal } from '../../core/identity/local-seal.js';
 
 const outcome = (ok, reason = null, error = null) => Object.freeze({ ok, reason, error });
 
@@ -89,15 +91,25 @@ const sealedWallet = async (laneRoot) => {
     if (err.code === 'ENOENT') return null;
     throw err;
   }
-  const wallet = JSON.parse(raw)?.record?.witnessWallet;
+  const seal = JSON.parse(raw);
+  if (!verifyBirthGenesisIntegrity(seal?.record, seal?.genesisHash).ok) throw new Error('genesis seal integrity failed');
+  let local;
+  try {
+    local = JSON.parse(await fs.readFile(path.join(laneRoot, 'identity', 'local-seal.json'), 'utf8'));
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+  if (!verifyLocalSeal(local, seal).complete) throw new Error('local genesis seal is incomplete or invalid');
+  const wallet = seal.record.witnessWallet;
   if (typeof wallet !== 'string' || !wallet.trim()) throw new Error('genesis seal names no operator wallet');
   return wallet.toLowerCase();
 };
 
 /**
  * Claim an inhabited, unclaimed lane — deliberately, never on a read. A lane
- * belongs to the wallet its genesis seal names; a lane with no seal is adopted
- * only by the install owner (the caller has checked that and says so with
+ * belongs to the wallet its verified two-party local seal names; a lane with no
+ * complete seal is adopted only by the install owner (the caller has checked that and says so with
  * `adopt`). The `wx` write means two claims racing cannot both land.
  *
  * @param {{ workspace: object, neumaId: string, wallet: string, adopt?: boolean }} input

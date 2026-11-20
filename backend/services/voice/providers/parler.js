@@ -92,7 +92,7 @@ export const parlerAdapter = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal,
-    });
+    }, 'parler');
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');

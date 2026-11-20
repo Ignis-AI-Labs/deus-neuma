@@ -12,7 +12,7 @@ import { requireAuth } from '../services/auth.js';
 import { listCompanies, readCompany, readLine } from '../services/company-line/company-store.js';
 import { readRaise, applyRaise, judgeStatus } from '../services/raise/raise-store.js';
 import { judgeSign, judgeReview, judgeCloseInvestor } from '../services/raise/raise-shape.js';
-import { readReceipts, putExtra } from '../services/money-in/money-in-store.js';
+import { readExternalReceipts, putExtra } from '../services/money-in/money-in-store.js';
 import { addressOfAnotherHouse } from '../services/money-in/watch-set.js';
 import { checkOutboundSecrets } from '../services/security/outbound-secrets.js';
 import { createLogger } from '../services/logger.js';
@@ -64,7 +64,7 @@ router.post('/:id/sign', operatorAct('sign the mandate', async (body, now, walle
 // The close: the papers signed, accreditation verified where the route asks
 // it, and the money landed where the mandate says (judgeCloseInvestor).
 router.post('/:id/close-investor', operatorAct('close the investor', async (body, now, wallet) => {
-  const receipt = body.receipt ? (await readReceipts(wallet)).find((r) => r.key === body.receipt) ?? null : null;
+  const receipt = body.receipt ? (await readExternalReceipts(wallet)).find((r) => r.key === body.receipt) ?? null : null;
   return (state) => judgeCloseInvestor(state, { investorId: body.investorId, signedPapers: body.signedPapers, accreditedVerified: body.accreditedVerified, receipt, reference: body.reference, now });
 }));
 router.post('/:id/status', operatorAct('move the mandate', (body, now) => judgeStatus(body.type, body.note, now)));

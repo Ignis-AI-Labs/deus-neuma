@@ -7,7 +7,8 @@
 //   2. the house's own founding records (workspaces/house-founding.<net>.<wallet>.json)
 //      whose head is this operator — their Neuma-kind members, so a founded
 //      member is watched even when its lane is not on this machine;
-//   3. the receive addresses the operator declares (extras.json).
+//   3. each being's public LP creation-audit address and agent-vault addresses;
+//   4. the receive addresses the operator declares (extras.json).
 //
 // NO KEY FILE IS EVER OPENED. A lane that has no soul anchor yet (an
 // unsealed being) has its address only inside keys/ — so it is NOT watched,
@@ -21,6 +22,7 @@
 // impure (fs reads).
 
 import fs from 'fs';
+import path from 'path';
 import { ethers } from 'ethers';
 import { neumaWorkspace, isWitnessLane } from '../../../core/index.js';
 import { soulAddressOf } from '../house-titles.js';
@@ -28,6 +30,7 @@ import { readExtras } from './money-in-store.js';
 import { servedHouses } from '../house-served.js';
 import { readOperatorRecords } from '../house-founding-record.js';
 import { getRealmRoot } from '../user-realm.js';
+import { readAgentVault } from '../agent-vault/vault-store.js';
 
 const KIND_NEUMA = 1;
 
@@ -35,6 +38,23 @@ const lower = (a) => String(a || '').toLowerCase();
 
 // impure — the founding records whose Witness seat is this house's operator.
 const foundingRecordsOf = async (house) => (await readOperatorRecords(house)).map((f) => f.record);
+
+// Public address evidence only: the creation audit and vault config, never keys/.
+const publicLpAddresses = async (neumaId) => {
+  const out = [];
+  const vault = await readAgentVault(neumaId).catch(() => null);
+  if (vault) out.push({ address: vault.agent, source: 'agent-vault-agent' }, { address: vault.safe, source: 'agent-vault-safe' });
+  const audit = await fs.promises.readFile(path.join(neumaWorkspace._path(neumaId), 'audit', 'audit.jsonl'), 'utf8').catch(() => '');
+  for (const line of audit.split('\n').filter(Boolean)) {
+    try {
+      const entry = JSON.parse(line);
+      if (entry.action === 'LP_WALLET_CREATED' && ethers.isAddress(entry.details?.address)) {
+        out.push({ address: entry.details.address, source: 'lp-wallet-audit' });
+      }
+    } catch { /* an incomplete audit line is not address evidence */ }
+  }
+  return out;
+};
 
 /**
  * Every house this backend serves — the operator wallets that own a being on
@@ -64,10 +84,13 @@ export const houseWatchSet = async (house) => {
     const soul = await soulAddressOf(neumaId);
     if (!soul) {
       unwatched.push(Object.freeze({ member: neumaId, reason: 'no public soul anchor yet — its address lives only in its key files, which this watch never opens' }));
-      continue;
+    } else {
+      laneByAddress.set(lower(soul), neumaId);
+      add({ address: soul, member: neumaId, label: typeof owner?.name === 'string' ? owner.name : neumaId, source: 'soul-anchor' });
     }
-    laneByAddress.set(lower(soul), neumaId);
-    add({ address: soul, member: neumaId, label: typeof owner?.name === 'string' ? owner.name : neumaId, source: 'soul-anchor' });
+    for (const lp of await publicLpAddresses(neumaId)) {
+      add({ ...lp, member: neumaId, label: typeof owner?.name === 'string' ? owner.name : neumaId });
+    }
   }
   for (const record of await foundingRecordsOf(house)) {
     for (const m of record.members) {

@@ -31,7 +31,8 @@ test('desk tabs navigate by keyboard with window-local panels and truthful map f
     app.use(vite.middlewares);
     browser = await chromium.launch({ args: ['--disable-gpu'] });
     const page = await browser.newPage(); const errors = [];
-    page.on('pageerror', error => errors.push(error.message));
+    // The dev server's own reload socket is switched off for this fixture (hmr port 1); its client saying so is not the desk's.
+    page.on('pageerror', error => { if (error.message !== 'WebSocket closed without opened.') errors.push(error.message); });
     await page.addInitScript(([token, dir]) => {
       sessionStorage.setItem('authToken', token);
       window.__FOCUS_FOLDER = dir;
@@ -52,12 +53,12 @@ test('desk tabs navigate by keyboard with window-local panels and truthful map f
     await page.keyboard.press('End'); await expect(councils).toBeFocused();
     await page.keyboard.press('Tab'); await expect(first.getByRole('tabpanel')).toBeFocused();
     const context = page.locator('#context-map');
-    await context.getByRole('tab', { name: 'COMPOSITION' }).focus();
+    await context.getByRole('tab', { name: 'WINDOW · THIS TURN' }).focus();
     await page.keyboard.press('End');
-    await expect(context.getByRole('tab', { name: 'FIELD' })).toBeFocused();
-    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('FIELD');
+    await expect(context.getByRole('tab', { name: 'MEMORY · EVERYTHING KEPT' })).toBeFocused();
+    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('MEMORY · EVERYTHING KEPT');
     await page.keyboard.press('Home');
-    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('COMPOSITION');
+    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('WINDOW · THIS TURN');
     const relations = await page.locator('[role="tab"]').evaluateAll(tabs => tabs.map(tab => {
       const panel = document.getElementById(tab.getAttribute('aria-controls'));
       return Boolean(panel && panel.getAttribute('aria-labelledby') === tab.id);

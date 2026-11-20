@@ -19,7 +19,7 @@ import net from 'node:net';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { takeOverPort, findListener, isBackendArgv, listeningInodes, netstatListener } = require('../../electron/backend-takeover.cjs');
+const { takeOverPort, findListener, describe: describeProcess, isBackendArgv, isBackendCommandLine, listeningInodes, netstatListener } = require('../../electron/backend-takeover.cjs');
 
 const SERVER = `
 const http = require('node:http');
@@ -78,12 +78,27 @@ describe('the readers (pure)', () => {
     expect(netstatListener(netstat, 47317)).toBe(5120);
     expect(netstatListener(netstat, 47318)).toBeNull();
   });
+  it('recognizes only a complete Windows backend script argument', () => {
+    expect(isBackendCommandLine('"C:\\Program Files\\Deus Neuma\\resources\\app\\backend\\server.js" --flag')).toBe(true);
+    expect(isBackendCommandLine('C:\\Neuma\\resources\\app\\backend\\server.js --flag')).toBe(true);
+    expect(isBackendCommandLine('C:\\Neuma\\resources\\app\\backend\\server.js.evil')).toBe(false);
+    expect(isBackendCommandLine('C:\\Neuma\\resources\\app\\backend\\server.js.backup --flag')).toBe(false);
+    expect(isBackendCommandLine('C:\\Neuma\\resources\\app\\not-backend\\server.js')).toBe(false);
+  });
 });
 
 describe.runIf(process.platform === 'linux')('takeOverPort on real processes', () => {
   it('finds the real process that listens on a port', async () => {
     const { child, port } = await listener('resources/app/backend/server.js');
     expect(await findListener(port)).toBe(child.pid);
+  });
+
+  it('recognizes an explicitly marked utility backend even though its entry is absent from argv', async () => {
+    const { child } = await listener('somebody/else/server.js', {
+      NEUMA_BACKEND_PROCESS: 'utility',
+      NEUMA_DESK_PID: String(process.pid),
+    });
+    expect(await describeProcess(child.pid)).toEqual({ deskPid: process.pid });
   });
 
   it('STOPS a leftover backend whose desk is gone, and the port is free after', async () => {
@@ -98,6 +113,12 @@ describe.runIf(process.platform === 'linux')('takeOverPort on real processes', (
   it('NEVER touches a backend whose desk is still alive', async () => {
     const { child, port } = await listener('resources/app/backend/server.js', { NEUMA_DESK_PID: String(process.pid) });
     expect(await takeOverPort(port, { isFree })).toEqual({ outcome: 'desk-alive', pid: child.pid });
+    expect(alive(child.pid)).toBe(true);
+  });
+
+  it('NEVER touches a headless backend with no recorded desk', async () => {
+    const { child, port } = await listener('resources/app/backend/server.js');
+    expect(await takeOverPort(port, { isFree })).toEqual({ outcome: 'not-ours', pid: child.pid });
     expect(alive(child.pid)).toBe(true);
   });
 

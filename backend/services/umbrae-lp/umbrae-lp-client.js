@@ -18,6 +18,7 @@
 
 import { permittedFeedUrl } from '../platform-feed/platform-feed-read.js';
 import { isConnectionOn } from '../connections/connection-switches.js';
+import { testEndpoint } from '../test-endpoint-door.js';
 
 export const UMBRAE_LP_CONNECTION = 'umbrae-liquidity';
 
@@ -54,7 +55,7 @@ export const UMBRAE_LP_OPS = Object.freeze(Object.keys(OPS));
 // The origin, read PER CALL (the platform-feed env-door doctrine): a test
 // points the real client at a real loopback server; production never sets it.
 // www, not the bare host: the bare host redirects, and no redirect is followed.
-const lpOrigin = () => (process.env.NEUMA_UMBRAE_LP_ORIGIN || 'https://www.umbrae.io').replace(/\/+$/, '');
+const lpOrigin = () => testEndpoint(process.env, 'NEUMA_UMBRAE_LP_ORIGIN', 'https://www.umbrae.io').replace(/\/+$/, '');
 
 const refused = (error, extra = {}) => ({ ok: false, error, ...extra });
 

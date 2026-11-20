@@ -178,8 +178,14 @@ test('RE-OPEN: coming back does not re-download the bytes', async ({ page }) => 
     })).json();
     const first = (list.items || []).find((i) => i.kind === 'image');
     if (!first) return null;
+    const issued = await fetch('/api/v1/desk-tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ method: 'GET', path: '/api/v1/gallery/file', query: { rootId: first.rootId, rel: first.rel } }),
+    });
+    const { ticket } = await issued.json();
     const url = `/api/v1/gallery/file?rootId=${encodeURIComponent(first.rootId)}`
-      + `&rel=${encodeURIComponent(first.rel)}&token=${encodeURIComponent(token)}`;
+      + `&rel=${encodeURIComponent(first.rel)}&ticket=${ticket}`;
     const one = await fetch(url);
     const etag = one.headers.get('etag');
     const two = await fetch(url, { headers: { 'If-None-Match': etag } });

@@ -152,6 +152,15 @@ describe('YOUR HANDS on the desk', () => {
     expect(html).toContain('NEVER TYPE A SECRET HERE');
   });
 
+  test('an unsafe stored URL remains text and never becomes an href', () => {
+    const hostile = { ...item, where: 'javascript:alert(1)' };
+    const b = boardOf(toChoose.slice(0, 1));
+    const html = render({ ...b, companies: [lineView(COMPANY, foldLine(toChoose.slice(0, 1)), HOLDERS, [hostile])] });
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toContain('<span>javascript:alert(1)</span>');
+    expect(html).toContain('DO IT AT');
+  });
+
   test('a HANDS row is named and lands on its ask', () => {
     const row = { kind: 'hands', where: { app: 'companyline', companyId: COMPANY.id, handsId: item.id } };
     expect(KIND_LABEL[row.kind]).toBe('YOUR HANDS');

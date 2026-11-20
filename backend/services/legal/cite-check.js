@@ -18,6 +18,7 @@
 import { fetchWebPage } from '../web-fetch.js';
 import { journalWebCall } from '../web-being-tools.js';
 import { webSettings } from '../web-settings.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { squeeze, quoteSegments, holdsInOrder, locate } from './citation-record.js';
 
 const PARALLEL = 4;
@@ -120,7 +121,10 @@ const readAll = async (reads, connection) => {
   const out = new Map();
   for (let i = 0; i < reads.length; i += PARALLEL) {
     await Promise.all(reads.slice(i, i + PARALLEL).map(async ({ key, url, pages }) => {
-      const page = await fetchWebPage(url, { pdf: { pages: pages || null } }).catch((err) => ({ ok: false, error: err.message }));
+      const page = await fetchWebPage(url, {
+        pdf: { pages: pages || null },
+        screenTarget: (target) => checkOutboundSecrets('the legal citation source', [target], 'nothing was fetched'),
+      }).catch((err) => ({ ok: false, error: err.message }));
       await journalWebCall(connection, 'legal/legal_cite_check', url.slice(0, 200), page.ok ? 'ok' : 'error');
       out.set(key, page);
     }));

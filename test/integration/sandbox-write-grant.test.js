@@ -128,23 +128,23 @@ describe('sandbox write-scope grant — granted project folder, walls still hold
 
   test('a granted ANCESTOR of the lane does NOT exempt own-lane writes from the budget', async () => {
     // The witness grants a folder (base) that CONTAINS the lane — own-lane
-    // writes must still meter, or the 10-cap silently evaporates.
+    // writes must still meter, or the write limit (ten a message by default) silently evaporates.
     const connection = { companion: { neumaId: 'neuma-a' }, _writeOps: 0, _grantedWriteRoots: [base] };
     const call = createSandboxedCallTool(mcpService, connection, workspace);
     for (let i = 0; i < 10; i++) {
       await call(SERVER, 'write_file', { path: path.join(lane, 'sessions', `anc${i}.txt`), content: `${i}` });
     }
     await expect(call(SERVER, 'write_file', { path: path.join(lane, 'sessions', 'anc10.txt'), content: '10' }))
-      .rejects.toThrow(/limit reached/);
+      .rejects.toThrow(/write limit stopped this write/);
   });
 
-  test('own-lane writes STILL meter against the 10-cap — the 11th is refused', async () => {
+  test('own-lane writes STILL meter against the write limit (ten a message by default) — the 11th is refused', async () => {
     const call = granted(); // grant is irrelevant to lane writes
     for (let i = 0; i < 10; i++) {
       await call(SERVER, 'write_file', { path: path.join(lane, 'sessions', `s${i}.txt`), content: `${i}` });
     }
     await expect(call(SERVER, 'write_file', { path: path.join(lane, 'sessions', 's10.txt'), content: '10' }))
-      .rejects.toThrow(/limit reached/);
+      .rejects.toThrow(/write limit stopped this write/);
   });
 
   test('move INTO the granted folder from the lane is allowed (both ends in a write root)', async () => {

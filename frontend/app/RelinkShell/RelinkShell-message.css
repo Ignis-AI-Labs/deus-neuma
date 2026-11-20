@@ -142,6 +142,10 @@
   color: var(--color-text-primary);
 }
 
+/* Dictating into the edit (InlineEdit.jsx): the field says it listens, and the line beside SAVE says so in words. */
+.relink-inline-edit.is-listening .relink-inline-edit-field { border-color: var(--signal); }
+.relink-inline-mic { margin-right: auto; font-family: var(--font-data); font-size: 9px; letter-spacing: 0.16em; color: var(--signal); }
+
 /* A turn the witness cut short — honest in the meta line */
 .relink-interrupted {
   color: var(--color-text-tertiary);

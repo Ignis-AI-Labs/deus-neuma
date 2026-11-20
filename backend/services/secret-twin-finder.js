@@ -17,13 +17,14 @@
  */
 import { execFile } from 'child_process';
 import fs from 'fs/promises';
+import { probeEnvironment } from './agent-terminal-environment.js';
 
 const FIND_TIMEOUT_MS = 120_000;
 const MAX_BUFFER = 64 * 1024 * 1024;
 
 // impure — find's NUL-separated paths; rejects with find's own complaint.
 const runFind = (args) => new Promise((resolve, reject) => {
-  execFile('find', args, { encoding: 'utf8', timeout: FIND_TIMEOUT_MS, maxBuffer: MAX_BUFFER }, (error, out, err) => {
+  execFile('find', args, { encoding: 'utf8', timeout: FIND_TIMEOUT_MS, maxBuffer: MAX_BUFFER, env: probeEnvironment() }, (error, out, err) => {
     if (error) reject(new Error(`the hard-link search could not finish (${String(err || error.message).trim().split('\n')[0]})`, { cause: error }));
     else resolve(out.split('\0').filter(Boolean));
   });

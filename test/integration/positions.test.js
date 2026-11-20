@@ -134,11 +134,25 @@ describe('THE POSITIONS BOARD through the real stack (gnosis)', () => {
     const step = (await board()).positions.find((p) => p.office === 'cro').setup.steps.find((s) => s.id === 'model');
     expect(step).toMatchObject({ done: false, label: 'Approve the business model filed for Umbrae' });
     expect(await positionSection(conn('merc'))).toContain('an approved business model (one waits for the operator in POSITIONS, COMPANY)');
-    // Returned with a note, it is gone; filed again and approved, it stands and the step is done.
-    expect((await request(app).post('/api/v1/positions/companies/umbrae/model/return').use(as).send({ note: 'say who decides' })).body.companies.find((c) => c.id === 'umbrae')).toMatchObject({ model: null, modelProposal: null, modelReturned: 'say who decides' });
-    expect((await request(app).post('/api/v1/positions/companies/umbrae/model/approve').use(as)).status).toBe(409);
+    // Returned by its own id, it is gone. A replacement cannot be settled by the first card's stale id or a missing one.
+    const firstWaiting = (await request(app).get('/api/v1/positions/companies').use(as)).body.companies.find((c) => c.id === 'umbrae');
+    const firstId = firstWaiting.modelProposal.id;
+    expect(firstId).toMatch(/^filed-\d+$/);
+    expect((await request(app).post('/api/v1/positions/companies/umbrae/model/return').use(as).send({ note: 'say who decides', proposalId: firstId })).body.companies.find((c) => c.id === 'umbrae')).toMatchObject({ model: null, modelProposal: null, modelReturned: 'say who decides' });
+    expect((await request(app).post('/api/v1/positions/companies/umbrae/model/approve').use(as).send({ proposalId: firstId })).status).toBe(409);
     await companyModelIntent.execute(judged.value);
-    const approved = (await request(app).post('/api/v1/positions/companies/umbrae/model/approve').use(as)).body;
+    const current = (await request(app).get('/api/v1/positions/companies').use(as)).body.companies.find((c) => c.id === 'umbrae');
+    const currentId = current.modelProposal.id;
+    expect(currentId).not.toBe(firstId);
+    for (const proposalId of [undefined, firstId, 'filed-999999']) {
+      const refused = await request(app).post('/api/v1/positions/companies/umbrae/model/approve').use(as).send({ proposalId });
+      expect(refused.status).toBe(409);
+      expect(refused.body.error).toMatch(/no business model waits|no longer waiting/);
+      const still = (await request(app).get('/api/v1/positions/companies').use(as)).body.companies.find((c) => c.id === 'umbrae');
+      expect(still.modelProposal.id).toBe(currentId);
+      expect(still.model).toBe(null);
+    }
+    const approved = (await request(app).post('/api/v1/positions/companies/umbrae/model/approve').use(as).send({ proposalId: currentId })).body;
     expect(approved.companies.find((c) => c.id === 'umbrae')).toMatchObject({ model: MODEL, modelProposal: null });
     expect((await board()).positions.find((p) => p.office === 'cro').setup.steps.find((s) => s.id === 'model').done).toBe(true);
     const merc = await positionSection(conn('merc'));

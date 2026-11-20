@@ -6,10 +6,10 @@
 // Idempotent BY CONSTRUCTION: every write rides the wx flag, so a re-seat
 // never clobbers a file the being or the operator has edited.
 
-import fs from 'fs/promises';
 import path from 'path';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { createLogger } from '../logger.js';
+import { containedDirectory, writeContainedFile } from '../no-follow-write.js';
 
 const log = createLogger('CloScaffold');
 
@@ -215,9 +215,9 @@ answer it.)
 `;
 
 // wx + EEXIST-tolerant: author only what is absent — never overwrite an edit.
-const seedFile = async (file, content) => {
+const seedFile = async (root, directory, name, content) => {
   try {
-    await fs.writeFile(file, content, { flag: 'wx' });
+    await writeContainedFile({ root, directory, name, body: content, exclusive: true });
     return true;
   } catch (err) {
     if (err.code === 'EEXIST') return false;
@@ -233,11 +233,12 @@ const seedFile = async (file, content) => {
  */
 export const scaffoldCloWorkspace = async (laneId) => {
   await neumaWorkspace.create(laneId);
-  const dir = path.join(neumaWorkspace.pathFor(laneId), 'legal');
-  await fs.mkdir(path.join(dir, 'opinions'), { recursive: true });
+  const root = neumaWorkspace.pathFor(laneId);
+  const dir = path.join(root, 'legal');
+  await containedDirectory(root, path.join(dir, 'opinions'));
   const seeded = [];
-  if (await seedFile(path.join(dir, 'charter.md'), CHARTER)) seeded.push('charter.md');
-  if (await seedFile(path.join(dir, 'register.md'), REGISTER)) seeded.push('register.md');
+  if (await seedFile(root, dir, 'charter.md', CHARTER)) seeded.push('charter.md');
+  if (await seedFile(root, dir, 'register.md', REGISTER)) seeded.push('register.md');
   log.info('CLO office scaffolded', { laneId, seeded });
   return { laneId, dir, seeded };
 };

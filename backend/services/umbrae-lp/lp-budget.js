@@ -9,11 +9,15 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
+import { createLogger } from '../logger.js';
+
+const log = createLogger('LpBudget');
 
 /** The largest budget the platform will record, in dollars. A typo past this is refused. */
 export const MAX_BUDGET_USD = 1_000_000;
 /** How long a waiting deposit stays answerable. Prices move; an old ask is asked again. */
 export const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
+export const MAX_PENDING_DEPOSITS = 25;
 
 const budgetFile = (neumaId) => path.join(neumaWorkspace._path(neumaId), 'config', 'lp-budget.json');
 const pendingFile = (neumaId) => path.join(neumaWorkspace._path(neumaId), 'config', 'lp-pending.json');
@@ -29,15 +33,27 @@ const readRecord = async (file) => {
 };
 
 /**
- * The budget the operator set for this house member, in dollars; null when
- * none was set (with none, deposits run under the transaction policy). impure.
+ * The budget the operator set for this house member, in dollars; null only when
+ * no record was ever written (with none, deposits run under the transaction
+ * policy). A record that is there and cannot be trusted or read — plain text
+ * where the platform writes only encrypted envelopes, torn, undecryptable, or
+ * not a budget — reads as $0, so every deposit waits for the operator (P6-13:
+ * an unreadable cap was once no cap). impure.
  *
  * @param {string} neumaId
  * @returns {Promise<number|null>}
  */
 export const readLpBudget = async (neumaId) => {
-  const usd = (await readRecord(budgetFile(neumaId)))?.budgetUsd;
-  return Number.isFinite(usd) && usd >= 0 ? usd : null;
+  let record;
+  try {
+    record = await neumaWorkspace._readTrustedJSON(budgetFile(neumaId));
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    log.warn('LP budget record is unreadable; every deposit waits for the operator', { neumaId, code: err.code ?? err.name });
+    return 0;
+  }
+  const usd = record?.budgetUsd;
+  return typeof usd === 'number' && Number.isFinite(usd) && usd >= 0 ? usd : 0;
 };
 
 /**
@@ -78,8 +94,12 @@ const updatePending = (neumaId, change) => {
  * @returns {Promise<Readonly<{id: string, action: object, depositUsd: string, reason: string, askedAt: string}>>}
  */
 export const addPendingDeposit = async (neumaId, { action, depositUsd, reason }) => {
-  const request = Object.freeze({ id: crypto.randomUUID(), action, depositUsd, reason, askedAt: new Date().toISOString() });
-  await updatePending(neumaId, (live) => ({ requests: [...live, request], result: null }));
+  const askedAt = new Date().toISOString();
+  const request = Object.freeze({ id: crypto.randomUUID(), action, depositUsd, priceSnapshot: { depositUsd, at: askedAt }, reason, askedAt });
+  await updatePending(neumaId, (live) => {
+    if (live.length >= MAX_PENDING_DEPOSITS) throw new Error('Too many deposits are waiting for an operator answer.');
+    return { requests: [...live, request], result: null };
+  });
   await neumaWorkspace.audit(neumaId, 'LP_DEPOSIT_WAITING', { id: request.id, depositUsd });
   return request;
 };

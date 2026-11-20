@@ -72,6 +72,21 @@ export const isConfigured = (key, env = process.env) => {
   return Boolean(c && c.rpcUrl(env) !== '');
 };
 
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+/** Is this node address safe to believe? https, or a node on this computer:
+ *  plain http across a network lets anyone on the path answer as the chain
+ *  (audit P6-43). Pure. */
+export const isSecureRpcUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'wss:'
+      || ((parsed.protocol === 'http:' || parsed.protocol === 'ws:') && LOOPBACK_HOSTS.has(parsed.hostname));
+  } catch {
+    return false;
+  }
+};
+
 // Verified providers, keyed by key+URL so an env repoint never rides a stale
 // endpoint; `logged` arms the log-once guard per (kind, chain, URL).
 const providers = new Map();
@@ -123,6 +138,10 @@ export const providerFor = async (key, env = process.env) => {
   const cacheKey = `${key}\n${url}`;
   const cached = providers.get(cacheKey);
   if (cached) return cached;
+  if (!isSecureRpcUrl(url)) {
+    logOnce(`insecure:${cacheKey}`, 'error', `chain-registry: the ${key} node address is plain http to another computer — refusing it; save an https address (reads use the public node where the chain has one)`);
+    return floorProvider(key, { failedUrl: url, env });
+  }
 
   let network;
   try {

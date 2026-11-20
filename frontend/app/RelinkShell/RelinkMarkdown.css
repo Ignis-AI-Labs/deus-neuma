@@ -212,4 +212,4 @@ body.mod-open .relink-md code.relink-md-path:hover {
 .relink-md button.relink-md-door code::after { content: ' ↗'; }
 .relink-md button.relink-md-door:hover code,
 .relink-md button.relink-md-door:focus-visible code { border-color: var(--signal); }
-.relink-md button.relink-md-door:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+.relink-md button.relink-md-door:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }

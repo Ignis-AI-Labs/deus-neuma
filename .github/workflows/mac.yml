@@ -39,8 +39,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
           cache: npm
@@ -84,16 +84,12 @@ jobs:
             if [ -z "${!v}" ]; then unset "$v"; fi
           done
           npx electron-builder --mac dmg zip --${{ matrix.arch }} --publish never
-      - name: every binary in the bundle loads on this chip
-        run: node scripts/check-mac-artifacts.mjs ${{ steps.apple.outputs.signed == 'true' && '--require-signed' || '' }}
+      - name: every binary and source byte matches; Apple accepts the app
+        run: node scripts/check-mac-artifacts.mjs ${{ steps.apple.outputs.signed == 'true' && '--require-signed' || '' }} --attest release/content-${{ matrix.arch }}.json --signing-out release/signing-${{ matrix.arch }}.txt
       - name: forget the Apple key file
         if: always()
         run: rm -f "$RUNNER_TEMP/apple-api-key.p8"
-      # The ship step reads this: off a Mac it cannot tell an Apple signature from the ad-hoc seal
-      # electron-builder puts on every arm64 app, so the build says which one it made.
-      - name: say whether Apple signed it
-        run: echo "${{ steps.apple.outputs.signed == 'true' && 'apple-signed-notarized' || 'unsigned' }}" > release/signing-${{ matrix.arch }}.txt
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: mac-${{ matrix.arch }}
           path: |
@@ -101,6 +97,7 @@ jobs:
             release/*.zip
             release/*.blockmap
             release/latest-mac.yml
+            release/content-${{ matrix.arch }}.json
             release/signing-${{ matrix.arch }}.txt
           if-no-files-found: error
           retention-days: 30

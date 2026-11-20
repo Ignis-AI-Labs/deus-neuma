@@ -31,6 +31,9 @@ import { lastServingFit, saveServingShare, servingFitStatus } from '../services/
 import { refitServing } from '../services/serving-refit.js';
 import { activeLaunchConfig } from '../services/supervisor-launch-config.js';
 import { readMachineThermals } from '../services/machine-thermals.js';
+import { readMachineHolders } from '../services/machine-holders.js';
+import { readEngineLens } from '../services/image-forge/engine-lens.js';
+import { resolveComfyConfig, supervisedEnginePid } from '../services/image-forge/comfyui-supervisor.js';
 import { createLogger } from '../services/logger.js';
 
 const router = Router();
@@ -292,6 +295,30 @@ router.get('/machine', async (req, res) => {
   } catch (error) {
     log.error('Machine read', { error: error.message });
     res.status(500).json({ error: 'Failed to read the machine' });
+  }
+});
+
+// WHO HOLDS WHAT — the graphics card, system memory and every CPU core, each holder named by what it is
+// (machine-holders.js). The same map a being reads with machine_map. One read shared by every open window:
+// it samples the cores for a third of a second and walks the process table.
+const readHolders = createSharedSnapshot(() => readMachineHolders({ enginePid: supervisedEnginePid() }), 3000);
+router.get('/holders', async (req, res) => {
+  try {
+    res.json(await readHolders());
+  } catch (error) {
+    log.error('Holders read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read what holds the machine' });
+  }
+});
+
+// THE IMAGE ENGINE, whole — up or down, what its models hold on the card, which it last loaded, its queue and
+// its idle clock (image-forge/engine-lens.js). The same lens a being reads with forge_status.
+router.get('/image-engine', async (req, res) => {
+  try {
+    res.json(await readEngineLens(resolveComfyConfig(process.env)));
+  } catch (error) {
+    log.error('Image engine read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the image engine' });
   }
 });
 

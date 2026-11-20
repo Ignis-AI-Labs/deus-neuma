@@ -11,10 +11,47 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { replyTier, tierWords, withReplyTier } from '../../backend/services/marketing/mandate/reply-tier.js';
 import { claimHits } from '../../backend/services/marketing/claims-check.js';
+import { hostOfLink } from '../../backend/services/marketing/mandate/own-hosts.js';
 import { tierMarks, ReplyTierMark } from '../../frontend/app/RelinkShell/ReplyTierMark.jsx';
 
 const tierOf = (answering, text, extra = {}) => replyTier({ answering, text, hits: claimHits(text), ...extra });
 const kinds = (t) => t.reasons.map((r) => r.kind);
+
+describe('links and attachments (audit P6-71)', () => {
+  test('a link in the answer waits, in every spelling; a plain sentence with dots does not', () => {
+    for (const text of ['Start here: https://evil.example/claim', 'see www.evil.example', 'It is all at evil.example/claim', 'go to neuma-app.io']) {
+      expect(kinds(tierOf('where do I start?', text)), text).toContain('link');
+    }
+    expect(tierOf('where do I start?', 'Start here: https://evil.example/claim').reasons).toEqual([{ kind: 'link', words: ['https://evil.example/claim'] }]);
+    expect(tierOf('where do I start?', 'Open the desk. Then pick a folder... e.g. your notes, v0.1.2 works.').tier).toBe('easy');
+    // The person's own link does not make a warm answer wait: only the house's words are sent.
+    expect(tierOf('loved https://my.example/post', 'Thank you for reading it.').tier).toBe('easy');
+  });
+
+  test('a link to the house\'s own site goes; a look-alike, another scheme, a port or a login in the address still waits (default, 2026-11-19)', () => {
+    const own = { ownHosts: ['tidewater.example'] };
+    for (const text of ['The guide is at https://tidewater.example/docs.', 'see www.tidewater.example', 'It is all at docs.tidewater.example/start', 'go to Tidewater.example']) {
+      expect(tierOf('where do I start?', text, own), text).toEqual({ tier: 'easy', reasons: [] });
+    }
+    for (const text of ['https://tidewater.example.evil.example/docs', 'https://tidewater.example@evil.example/docs', 'https://eviltidewater.example', 'ftp://tidewater.example/file',
+      'https://tidewater.example:8443/x', 'https://tidewater.example\\@evil.example', 'https://tidewater.example/docs and https://evil.example/claim']) {
+      expect(kinds(tierOf('where do I start?', text, own)), text).toEqual(['link']);
+    }
+    // A house that recorded no site has no own host: every link waits.
+    expect(kinds(tierOf('where do I start?', 'https://tidewater.example/docs'))).toEqual(['link']);
+    expect(hostOfLink('https://WWW.Tidewater.example/a')).toBe('tidewater.example');
+    expect(hostOfLink('javascript://tidewater.example/%0aalert(1)')).toBeNull();
+  });
+
+  test('an attached file waits, and the desk draft reads its media too', () => {
+    const t = tierOf('nice work', 'Thank you.', { media: 1 });
+    expect(t).toEqual({ tier: 'awareness', reasons: [{ kind: 'media', words: ['1 attached'] }] });
+    expect(tierWords(t)).toBe('an attachment (1 attached)');
+    const draft = { kind: 'reply', status: 'draft', text: 'Thank you.', reply: { toTextPreview: 'nice work' }, media: [{ path: '/a.png', alt: '' }] };
+    expect(kinds(withReplyTier(draft).tier)).toEqual(['media']);
+    expect(tierMarks(withReplyTier(draft).tier).marks).toBe('MEDIA');
+  });
+});
 
 describe('easy', () => {
   test('thanks, warm words and a plain answer go out on their own', () => {

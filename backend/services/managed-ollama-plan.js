@@ -18,6 +18,8 @@
 // The build is PINNED with the SHA-256 GitHub publishes for each file: a download that does not
 // hash to these bytes is discarded, never run. Moving the pin is a reviewed commit.
 
+import { ollamaModelPin } from './managed-ollama-models.js';
+
 export const OLLAMA_VERSION = '0.40.7';
 // The oldest Ollama trusted with the recommended models: the pinned build. An older one is not
 // used (proven 2026-10-22: Ollama 0.24.0 refuses the Qwen3.8 GGUF the capacity check
@@ -95,6 +97,7 @@ export const ollamaModelRef = (recommendation) => {
   const quant = recommendation?.quant;
   if (typeof source !== 'string' || !/^[\w.-]+\/[\w.-]+$/.test(source)) return null;
   if (typeof quant !== 'string' || !/^[\w.-]+$/.test(quant)) return null;
+  if (!ollamaModelPin(recommendation)) return null;
   return `hf.co/${source}:${quant}`;
 };
 
@@ -136,17 +139,23 @@ export const pullableChoice = (recommendation) => {
  */
 export const installPlan = ({ platform, arch, recommendation: matched, running, own = null, system, managedInstalled, freeBytes, endpoints = managedEndpoints(), gpuGuard = null, verify = true }) => {
   const { choice: recommendation, note: choiceNote } = pullableChoice(matched);
+  const pin = ollamaModelPin(recommendation);
   const ref = ollamaModelRef(recommendation);
   if (!ref) {
-    return Object.freeze({ supported: false, reason: matched?.why || 'This machine is below the floor for a local model, so there is no model to set up.' });
+    const reason = matched?.why || (matched?.model
+      ? 'The recommended model has no reviewed revision and SHA-256, so there is no safe Ollama model to set up.'
+      : 'This machine is below the floor for a local model, so there is no model to set up.');
+    return Object.freeze({ supported: false, reason });
   }
   const asset = ollamaAssetFor(platform, arch);
-  const ok = (s) => Boolean(s?.up && versionAtLeast(s.version, MIN_OLLAMA_VERSION));
+  // one another account on this computer runs is never used, whatever version it claims (ollama-server-state.js)
+  const ok = (s) => Boolean(s?.up && !s.foreign && versionAtLeast(s.version, MIN_OLLAMA_VERSION));
   const ownOk = ok(own);
   const runningOk = ok(running);
   const systemOk = Boolean(system && versionAtLeast(system.version, MIN_OLLAMA_VERSION));
   const notes = choiceNote ? [choiceNote] : [];
-  if (!ownOk && running?.up && !runningOk) notes.push(`An Ollama${running.version ? ` ${running.version}` : ''} is running here, too old for this model (it needs ${MIN_OLLAMA_VERSION} or newer). Deus Neuma sets up its own beside it and leaves yours as it is.`);
+  if (!ownOk && running?.foreign) notes.push('A program run by another account on this computer answers where Ollama usually does. Deus Neuma does not use it and sets up its own beside it.');
+  else if (!ownOk && running?.up && !runningOk) notes.push(`An Ollama${running.version ? ` ${running.version}` : ''} is running here, too old for this model (it needs ${MIN_OLLAMA_VERSION} or newer). Deus Neuma sets up its own beside it and leaves yours as it is.`);
   else if (!ownOk && !runningOk && system && !systemOk) notes.push(`An older Ollama${system.version ? ` (${system.version})` : ''} is installed here, too old for this model. Deus Neuma sets up its own ${OLLAMA_VERSION} beside it and leaves yours as it is.`);
   const server = ownOk || runningOk ? 'running' : systemOk && !running?.up ? 'installed' : managedInstalled ? 'managed' : 'download';
   if (server === 'download' && !asset) {
@@ -175,7 +184,7 @@ export const installPlan = ({ platform, arch, recommendation: matched, running, 
     managed: server === 'download' || server === 'managed' || ownOk,
     endpoint,
     notes: Object.freeze(notes),
-    model: Object.freeze({ ref, name: recommendation.model, quant: recommendation.quant, sizeGB: recommendation.sizeGB, ready: haveModel }),
+    model: Object.freeze({ ref, name: recommendation.model, quant: recommendation.quant, sizeGB: recommendation.sizeGB, ready: haveModel, revision: pin.revision, sha256: pin.sha256 }),
     steps: Object.freeze(steps.map((s) => Object.freeze(s))),
     downloadBytes: steps.reduce((n, s) => n + s.bytes, 0),
     needBytes,

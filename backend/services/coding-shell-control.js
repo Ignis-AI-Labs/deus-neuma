@@ -52,7 +52,7 @@ const refreshCatalog = async (connection, origin, sandbox, error = null) => {
   connection._turnSandboxRecoverable = error?.code === 'OVERLAY_CONFLICT';
   const tools = annotateToolAccess(codingToolsForState(sandbox, connection._turnSandboxRecoverable),
     resolvePolicy(GLOBAL_DEFAULTS, lanePolicy, connection._sessionToolPolicy), normalizeToolMode(connection.toolMode),
-    resolvePolicy({}, lanePolicy, connection._sessionToolPolicy));
+    resolvePolicy({}, lanePolicy, connection._sessionToolPolicy), connection.sandboxEnabled === false);
   connection._turnCatalog = [...(connection._turnCatalog || []).filter((tool) => tool.server !== 'coding'), ...tools];
   connection._turnDisclosedToolIds = new Set([...(connection._turnDisclosedToolIds || []),
     ...tools.filter((tool) => tool.access !== 'denied').map((tool) => `coding/${tool.name}`)]);

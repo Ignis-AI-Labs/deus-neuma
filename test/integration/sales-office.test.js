@@ -21,7 +21,7 @@ import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/work
 import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
 import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-briefing.js';
 import { leadEmailRefusal } from '../../backend/services/sales/email-ledger.js';
-import { SALES_DISCLOSURE } from '../../backend/services/sales/sales-facts.js';
+import { judgeCover } from '../../backend/services/sales/sales-cover.js';
 import revenueRouter from '../../backend/routes/revenue-routes.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 
@@ -184,7 +184,8 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     const briefing = await mercatorBriefingSection(conn('merc'));
     expect(briefing).toContain(`FACTS: sheet [${sheet.id}], APPROVED.`);
     expect(briefing).toContain('- (ignis) A session costs 250 US dollars an hour [250 USD]');
-    expect(briefing).toContain('I am an AI, writing for the company. Reply "stop" and I will not write again.');
+    expect(briefing).toContain('Sign each email as who you are, an AI of the company, never as a person. No set line is required in its words. A way out (reply "stop" and you will not write again) is optional; if you give one, it is one short line at the very end, below your name, never in the body.');
+    expect(briefing).not.toContain('I am an AI, writing for the company');
   });
 
   test('an audience and a fact belong to ONE company of the house; a sister company\'s fact backs nothing in this company\'s email', async () => {
@@ -197,9 +198,73 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     expect((await act('merc', { type: 'sales/facts', facts: [fact('ignis', 'Sessions are one to one with the founder'), fact('umbrae', 'A position starts at 250 US dollars', { value: 250, unit: 'USD' }), fact('ignis', 'Sessions run 60 minutes', { value: 60, unit: 'minutes' })] })).status).toBe('ok');
     const { sheet } = (await engine()).facts;
     expect((await request(app).post(`/api/v1/revenue/lead-engine/facts/${sheet.id}`).use(as).send({ verdict: 'approved' })).status).toBe(200);
-    const email = (words) => ({ to: ['ada@acme.dev'], subject: 'Your build', text: `${words} May I send two ideas?\n\n${SALES_DISCLOSURE}\nMerc`, promise: 'two short written ideas', laneId: 'merc' });
+    const email = (words) => ({ to: ['ada@acme.dev'], subject: 'Your build', text: `${words} May I send two ideas?\n\nMerc`, promise: 'two short written ideas', laneId: 'merc' });
     expect(await leadEmailRefusal(me.address, email('It starts at 250 dollars.'))).toMatch(/250 is not on the approved facts sheet/);
-    // Her own company's figure passes the facts check; what stops it next is only that no model is here to read its claims.
+    // Her own company's figure passes the facts check; her address a database confirmed live (a first email needs that,
+    // 2026-11-19); what stops it next is only that no model is here to read its claims.
+    const { noteAddressCheck } = await import('../../backend/services/sales/sales-store.js');
+    await noteAddressCheck(me.address, { email: 'ada@acme.dev', check: { status: 'valid', score: 98, checker: 'Hunter' }, spent: 0.5, by: 'test' });
     expect(await leadEmailRefusal(me.address, email('A session runs 60 minutes.'))).toMatch(/the claims check could not run/);
+  });
+  test('a lead filed with no audience is put under one, and reads its campaign — no drop, no re-file; moved again, it loses the old list approval', async () => {
+    // A lead added by hand: on the ledger, under no audience, so under no campaign.
+    const ledger = await leadLedgerFor(me.address);
+    const made = await ledger.add({ name: 'Kinetiq', contact: 'team@kinetiq.example', channelId: 'email', source: 'operator', ownerNeumaId: 'merc' });
+    const leadId = made.lead?.id ?? made.id;
+    const leadOf = async () => (await engine()).leads.find((l) => l.id === leadId);
+    expect((await leadOf()).origin ?? null).toBeNull();
+    // An audience under a campaign.
+    const [segment] = (await engine()).segments;
+    const opened = await request(app).post('/api/v1/revenue/lead-engine/campaigns').use(as).send({ name: 'User Acquisition', company: 'ignis', goal: 'first hundred users' });
+    expect(opened.status).toBe(200);
+    const campaign = (await engine()).campaigns.find((c) => c.name === 'User Acquisition');
+    expect((await request(app).post(`/api/v1/revenue/lead-engine/segments/${segment.id}/campaign`).use(as).send({ campaign: campaign.id })).status).toBe(200);
+
+    expect(await act('scout', { type: 'sales/place', lead: leadId, segment: segment.id })).toMatchObject({ status: 'denied' });
+    expect(await act('merc', { type: 'sales/place', lead: 'nobody@nowhere.example', segment: segment.id })).toMatchObject({ status: 'error', error: expect.stringMatching(/is not a lead on the ledger/) });
+    expect(await act('merc', { type: 'sales/place', lead: leadId, segment: 's-nope' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is not an audience of this house/) });
+    // by its address, as the seat knows it
+    const placed = await act('merc', { type: 'sales/place', lead: 'team@kinetiq.example', segment: segment.id });
+    expect(placed.status).toBe('ok');
+    expect(placed.content).toMatch(/now stands under audience "Non-developer founders".*campaign "User Acquisition"/);
+    expect((await leadOf()).origin).toMatchObject({ audienceId: segment.id, campaignId: campaign.id, campaign: 'User Acquisition' });
+    expect(await act('merc', { type: 'sales/place', lead: leadId, segment: segment.id })).toMatchObject({ status: 'error', error: expect.stringMatching(/already stands under/) });
+    // placed, never listed: nothing the operator approved a list of
+    const record = (await engine()).prospects.find((p) => p.leadId === leadId);
+    expect(record).toMatchObject({ stage: 'promoted', placed: true });
+    expect(record.listApproved ?? false).toBe(false);
+  });
+
+  test('P6-123: an address away from its company\'s domain is filed, and no approved list covers it — every email to it asks', async () => {
+    const [segment] = (await engine()).segments;
+    expect((await request(app).post(`/api/v1/revenue/lead-engine/segments/${segment.id}/state`).use(as).send({ state: 'approved' })).status).toBe(200);
+    const companies = [company('epsilon.dev', 5), company('zeta.dev', 5)];
+    expect((await act('merc', { type: 'sales/prospect', segment: segment.id, companies })).status).toBe('ok');
+    const pool = (await engine()).prospects.filter((p) => ['epsilon.dev', 'zeta.dev'].includes(p.domain));
+    // The operator approves the list: both companies are on it.
+    const listed = await request(app).post(`/api/v1/revenue/lead-engine/segments/${segment.id}/list`).use(as).send({ ids: (await engine()).prospects.filter((p) => p.segmentId === segment.id && p.match >= 2 && p.stage !== 'dropped' && !p.listApproved).map((p) => p.id) });
+    expect(listed.status, JSON.stringify(listed.body)).toBe(200);
+    const file = (domain, email) => act('merc', { type: 'sales/lead', id: pool.find((p) => p.domain === domain).id, person: 0, email, emailSource: `https://${domain}/contact` });
+    const away = await file('epsilon.dev', 'epsilon.studio@mailbox.example');
+    expect(away).toMatchObject({ status: 'ok', content: expect.stringMatching(/is not at epsilon\.dev, so no approved list covers it: every email to it waits for your operator's yes/) });
+    expect((await file('zeta.dev', 'ada@zeta.dev')).content).not.toMatch(/no approved list covers it/);
+    const leads = await (await leadLedgerFor(me.address)).load();
+    expect(leads.find((l) => l.contact === 'epsilon.studio@mailbox.example').touches[0].note).toContain('address is not at epsilon.dev: every email to it asks the operator');
+    // The cover, on the house's real records: the company's own address goes under the list, the other one asks.
+    const state = { leads, prospects: (await engine()).prospects, segments: (await engine()).segments, now: Date.now() };
+    expect(judgeCover({ ...state, recipients: ['ada@zeta.dev'] })).toEqual({ covered: true });
+    expect(judgeCover({ ...state, recipients: ['epsilon.studio@mailbox.example'] })).toEqual({ covered: false, reason: 'epsilon.studio@mailbox.example is not at epsilon.dev — the list the operator approved is companies' });
+  });
+
+  test('P6-70: the operator lifts a do-not-contact entry through the real route; an entry not listed is a 404', async () => {
+    const lift = (target) => request(app).post('/api/v1/revenue/lead-engine/suppress/lift').use(as).send({ target });
+    expect((await request(app).post('/api/v1/revenue/lead-engine/suppress').use(as).send({ target: 'cfo@wrongly-listed.example', reason: 'bounced' })).status).toBe(200);
+    expect((await engine()).suppressions.map((e) => e.value)).toContain('cfo@wrongly-listed.example');
+    const lifted = await lift('cfo@wrongly-listed.example');
+    expect(lifted.status).toBe(200);
+    expect(lifted.body).toMatchObject({ ok: true, entry: { kind: 'email', value: 'cfo@wrongly-listed.example' } });
+    expect((await engine()).suppressions.map((e) => e.value)).not.toContain('cfo@wrongly-listed.example');
+    expect((await lift('cfo@wrongly-listed.example')).status).toBe(404);
+    expect((await request(app).post('/api/v1/revenue/lead-engine/suppress/lift').send({ target: 'gamma.dev' })).status).toBe(401);
   });
 });

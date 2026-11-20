@@ -9,11 +9,18 @@
  * X and the mandate stays ACTIVE; with no mandate the tier changes nothing.
  */
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import fs from 'fs/promises';
+import path from 'path';
+import { createTempDir } from '../helpers/temp-fs.js';
 import { getChannel } from '../../backend/services/social/channel-registry.js';
 import { grantMandate } from '../../backend/services/marketing/mandate/mandate-lifecycle.js';
 import { readMandate } from '../../backend/services/marketing/mandate/mandate-store.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
+import { ownHostsFor } from '../../backend/services/marketing/mandate/own-hosts.js';
+import { addCompany, setCompanyBlock } from '../../backend/services/marketing/companies.js';
+import { setAccountMeta } from '../../backend/services/social/account-store.js';
+import { setHouseWorkspace } from '../../backend/services/house-workspace.js';
 import {
   buildMandateHouse, teardownMandateHouse, resetHouse, grantInput, HOUSE,
 } from '../helpers/mandate-house-kit.js';
@@ -28,6 +35,9 @@ const C_ARGUMENT = {
   postId: '2009', conversationId: '909', authorId: '48', username: 'skeptic', verified: false, verifiedType: null,
   text: 'honestly this is overhyped', postCreatedAt: '2026-07-28T00:09:00Z',
 };
+
+// A real 1x1 PNG: the media door sniffs the bytes.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 
 let h;
 beforeAll(async () => {
@@ -78,6 +88,74 @@ describe('replies granted', () => {
     expect(carded()).toBe(false);
     expect(h.x.state.posts).toHaveLength(1);
     expect((await readMandate(HOUSE)).status).toBe('active');
+  });
+});
+
+describe('links and attachments (audit P6-71)', () => {
+  test('a link in the answer is not sent on its own: it waits as the operator\'s draft and nothing reaches X', async () => {
+    await grantMandate(HOUSE, grantInput(REPLIES));
+    h.decide = () => 'allow';
+    const out = await answer('2001', 'Start here: https://evil.example/claim');
+    expect(out.content).toContain('awareness: a link (https://evil.example/claim)');
+    expect(carded()).toBe(true);
+    expect(h.x.state.posts).toEqual([]);
+    expect(await entryFor('2001')).toMatchObject({ status: 'draft' });
+    expect((await readMandate(HOUSE)).status).toBe('active');
+  });
+
+  test('an answer that attaches an image waits too, and the card names the file', async () => {
+    await grantMandate(HOUSE, grantInput(REPLIES));
+    h.decide = () => 'allow';
+    const dir = await createTempDir('p6-71-art-');
+    try {
+      const file = path.join(dir, 'chart.png');
+      await fs.writeFile(file, PNG);
+      h.connection._grantedReadRoots = [dir];
+      const out = await answer('2001', 'Thank you for reading it.', { media: [{ path: file, alt: 'a chart' }] });
+      expect(out.content).toContain('awareness: an attachment (1 attached)');
+      const card = h.clientLog.find((m) => m.type === 'tool:approval_request');
+      expect(JSON.stringify(card)).toContain('chart.png');
+      expect(h.x.state.posts).toEqual([]);
+      expect(h.x.state.uploads).toBe(0);
+      expect(await entryFor('2001')).toMatchObject({ status: 'draft' });
+    } finally {
+      delete h.connection._grantedReadRoots;
+    }
+  });
+});
+
+describe('the house\'s own site (P6-71 default, 2026-11-19)', () => {
+  test('with no site recorded every link waits; once the operator records the company\'s site, a link to it goes out and any other still waits', async () => {
+    await grantMandate(HOUSE, grantInput(REPLIES));
+    h.decide = () => 'allow';
+    expect(await ownHostsFor(HOUSE, 'x-1')).toEqual([]);
+    expect((await answer('2001', 'The guide: https://tidewater.example/docs')).content).toContain('awareness: a link (https://tidewater.example/docs)');
+    expect(h.x.state.posts).toEqual([]);
+
+    // The operator's own record: a company of the house, its site, and the account that speaks for it.
+    await setHouseWorkspace(HOUSE, await createTempDir('p6-71-ground-'));
+    const added = await addCompany(HOUSE, { name: 'Tidewater' });
+    expect(added.ok, JSON.stringify(added)).toBe(true);
+    const sited = await setCompanyBlock(HOUSE, 'tidewater', { site: { url: 'https://www.tidewater.example', links: ['https://x.com/tidewater'] } });
+    expect(sited.ok, JSON.stringify(sited)).toBe(true);
+    expect((await setAccountMeta(HOUSE, 'x-1', { companyId: 'tidewater' }, ['tidewater'])).ok).toBe(true);
+    expect(await ownHostsFor(HOUSE, 'x-1')).toEqual(['tidewater.example']);
+
+    await resetHouse(h);
+    await grantMandate(HOUSE, grantInput(REPLIES));
+    h.decide = () => 'allow';
+    const other = await answer('2001', 'The guide: https://x.com/tidewater');
+    expect(other.content).toContain('awareness: a link (https://x.com/tidewater)');
+    expect(h.x.state.posts).toEqual([]);
+
+    await resetHouse(h);
+    await grantMandate(HOUSE, grantInput(REPLIES));
+    h.decide = () => 'deny'; // were a card to rise, it would refuse
+    const own = await answer('2001', 'The guide: https://tidewater.example/docs');
+    expect(own.content).toContain('under your mandate');
+    expect(carded()).toBe(false);
+    expect(h.x.state.posts).toHaveLength(1);
+    expect(await entryFor('2001')).toMatchObject({ status: 'sent' });
   });
 });
 

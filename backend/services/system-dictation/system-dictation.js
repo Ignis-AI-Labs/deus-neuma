@@ -3,10 +3,10 @@
 // The words go through the speech engine the desk's own dictation uses (managed-stt.js, loaded and
 // kept); the microphone is open only while the key is held; nothing leaves the computer.
 //
-// Off until the install owner turns it on (Settings). It needs what ears needs: the `input` group
-// to read the keyboard (/dev/input), a recorder (PipeWire, PulseAudio or ALSA), and a typist
+// Off until the install owner turns it on (Settings). It needs read access to the chosen keyboard
+// event device (never the whole input group), a recorder (PipeWire, PulseAudio or ALSA), and a typist
 // (ydotool with its daemon on Wayland, xdotool on X11); readiness names whatever is missing and
-// the command that adds it. impure (fs, child processes, the speech engine).
+// the least-privilege step that adds it. impure (fs, child processes, the speech engine).
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -17,7 +17,9 @@ import { sttReadiness, transcribeWav, usesManagedStt } from '../managed-stt.js';
 import { HOLD_KEYS, parseKeyboards, parseKeyEvents } from './input-events.js';
 import { HOLD_MS, IDLE, holdStep } from './hold-machine.js';
 import { MIN_SPEECH_BYTES, RECORDERS, pcmToWav } from './audio.js';
+import { typeableText } from './typed-text.js';
 import { withoutSpeechArtifacts } from '../../../core/text/speech-artifacts.js';
+import { probeEnvironment } from '../agent-terminal-environment.js';
 
 const log = createLogger('SystemDictation');
 const DEFAULTS = Object.freeze({ on: false, key: 'rightctrl' });
@@ -75,7 +77,7 @@ export const systemDictationReadiness = async () => {
   }
   const missing = [];
   const keyboards = readableKeyboards();
-  if (!keyboards.length) missing.push({ id: 'input', why: 'reading the keyboard needs the input group', fix: 'sudo usermod -aG input $USER, then sign out and back in' });
+  if (!keyboards.length) missing.push({ id: 'input', why: 'reading the keyboard needs access to its event device', fix: 'do not join the input group: ask your administrator for a udev rule for only this keyboard event device, or use your desktop portal, then sign out and back in' });
   const recorder = Object.keys(RECORDERS).find((bin) => which(bin)) ?? null;
   if (!recorder) missing.push({ id: 'recorder', why: 'there is no recorder (PipeWire, PulseAudio or ALSA tools)', fix: 'install pipewire-utils (Fedora) or pipewire-bin (Ubuntu)' });
   const typist = chooseTypist();
@@ -88,22 +90,30 @@ export const systemDictationReadiness = async () => {
 // ── the running listener ─────────────────────────────────────────────────────
 let running = null; // { streams (the keyboards' readers), state, timer, rec, typing }
 
-/** The words, typed into the window in focus. impure */
-const typeText = (text) => new Promise((resolve) => {
+/**
+ * The words, typed into the window in focus as words only (typed-text.js): no line break, which a
+ * terminal reads as Enter, and no control character. impure
+ * @param {string} text
+ * @returns {Promise<void>} settled once the typist has finished, or could not type
+ */
+export const typeText = (text) => new Promise((resolve) => {
+  const words = typeableText(text);
+  if (!words) { resolve(); return; }
   const typist = chooseTypist();
   if (!typist.ok) { log.warn('cannot type', { why: typist.why }); resolve(); return; }
-  const child = spawn(typist.cmd, typist.args, { env: { ...process.env, YDOTOOL_SOCKET: ydotoolSocket() }, stdio: ['pipe', 'ignore', 'pipe'] });
+  const child = spawn(typist.cmd, typist.args, { env: { ...probeEnvironment(), YDOTOOL_SOCKET: ydotoolSocket() }, stdio: ['pipe', 'ignore', 'pipe'] });
   let err = '';
   child.stderr.on('data', (c) => { err += c; });
   child.on('error', (e) => { log.warn('typing failed', { error: e.message }); resolve(); });
   child.on('close', (code) => { if (code) log.warn('typing failed', { code, error: err.trim().slice(0, 200) }); resolve(); });
-  child.stdin.end(text);
+  // ears' trailing space, so one hold's words never run into the next's
+  child.stdin.end(`${words} `);
 });
 
 const beginRecording = (run) => {
   const recorder = Object.keys(RECORDERS).find((bin) => which(bin));
   if (!recorder) return;
-  const child = spawn(recorder, RECORDERS[recorder], { stdio: ['ignore', 'pipe', 'ignore'] });
+  const child = spawn(recorder, RECORDERS[recorder], { env: probeEnvironment(), stdio: ['ignore', 'pipe', 'ignore'] });
   const chunks = [];
   child.stdout.on('data', (c) => chunks.push(c));
   child.on('error', (e) => log.warn('the recorder did not start', { recorder, error: e.message }));
@@ -121,8 +131,8 @@ const finishRecording = async (run) => {
   try {
     // a line Whisper wrote over silence is never typed (core/text/speech-artifacts.js)
     const text = withoutSpeechArtifacts((await transcribeWav(pcmToWav(pcm))).text);
-    // one hold's words after the last's, never interleaved, with ears' trailing space
-    if (text) run.typing = run.typing.then(() => typeText(`${text} `));
+    // one hold's words after the last's, never interleaved
+    if (text) run.typing = run.typing.then(() => typeText(text));
   } catch (err) {
     log.warn('a hold could not be read', { error: err.message });
   }
@@ -152,7 +162,7 @@ export const startSystemDictation = async () => {
   // write in the backend would wait for a key press (seen in this feature's own test). A child's
   // pipe is read on the event loop like any socket; Node refuses a device fd for that itself.
   for (const keyboard of readableKeyboards()) {
-    const reader = spawn('cat', [`/dev/input/${keyboard.event}`], { stdio: ['ignore', 'pipe', 'ignore'] });
+    const reader = spawn('cat', [`/dev/input/${keyboard.event}`], { env: probeEnvironment(), stdio: ['ignore', 'pipe', 'ignore'] });
     const stream = reader.stdout;
     let carry;
     stream.on('data', (chunk) => {

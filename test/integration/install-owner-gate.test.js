@@ -59,9 +59,11 @@ describe('machine-wide settings belong to the install owner, changed at its own 
     owner = await fullAuth();
     guest = await fullAuth();
     third = await fullAuth();
-    // The guest's being was born too — later. The first genesis names the owner.
+    // Both wallets hold a sealed being. A genesis seal no longer seats anyone (P6-37): the owner is the
+    // wallet recorded at the first local sign-in, seated here the way that sign-in seats it.
     await sealLane(process.env.WORKSPACES_ROOT, 'guestlane', guest.address, Date.UTC(2026, 6, 1));
     await sealLane(process.env.WORKSPACES_ROOT, 'ownerlane', owner.address, Date.UTC(2026, 5, 23));
+    await (await import('../../backend/services/install-owner.js')).recordFirstLocalOwner(owner.address);
     const feedLog = (await import('../../backend/services/logger.js')).createLogger('OwnerFeedProof');
     feedLog.warn('owner house bind failed', { neumaId: 'ownerlane', wallet: owner.address });
     feedLog.warn('guest house bind failed', { neumaId: 'guestlane', wallet: guest.address });
@@ -119,7 +121,7 @@ describe('machine-wide settings belong to the install owner, changed at its own 
   ];
   const send = (who, place, [method, url], body) => place(who, request(base())[method](url)).send(body);
 
-  test('the first genesis names the owner; every other wallet is a guest', async () => {
+  test('the wallet seated at the first local sign-in is the owner; every other wallet is a guest', async () => {
     const seen = await atDesk(guest, request(base()).get('/api/v1/install-owner'));
     expect(seen.status).toBe(200);
     expect(seen.body).toMatchObject({ standing: 'guest', owner: owner.address, coOwners: [] });

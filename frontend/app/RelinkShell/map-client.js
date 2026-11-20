@@ -1,7 +1,7 @@
 // map-client.js — the architecture map, witness side.
 //
 // impure — fetches a repository's architecture graph (routes, channels,
-// functions/call-graph, anomalies) over REST. Like graph-client, a failure does
+// functions/call-graph, anomalies) over REST. Like the memory atlas client, a failure does
 // NOT collapse into an empty success: the Map window renders states honestly, so
 // the HTTP status travels back (404 = nothing to map, a real distinct state).
 

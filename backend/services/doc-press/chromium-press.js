@@ -1,8 +1,8 @@
 /**
  * Chromium press — renders a complete HTML document to PDF bytes. // impure
  *
- * Drives a local Chromium binary over the raw DevTools protocol (CDP) using
- * the ws dependency we already carry — no Puppeteer/Playwright runtime dep.
+ * Drives a local Chromium binary over the raw DevTools protocol (CDP) through
+ * inherited process pipes — no Puppeteer/Playwright runtime dep or TCP listener.
  * Binary resolution order: NEUMA_CHROMIUM_PATH → Playwright's cached
  * chromium builds → common system install paths.
  */
@@ -13,7 +13,6 @@ import { existsSync, readdirSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
-import WebSocket from 'ws';
 import { createLogger } from './../logger.js';
 import { helperEnvironment } from '../agent-terminal-environment.js';
 import { PRESS_DIR_PREFIX, recordPressOwner, sweepOrphanedPresses } from './press-orphans.js';
@@ -21,9 +20,7 @@ import { BADGE_MARK } from './document-shell.js';
 
 const log = createLogger('DocPress.Chromium');
 
-const LAUNCH_TIMEOUT_MS = 20_000;
 const RENDER_TIMEOUT_MS = 60_000;
-const WS_MAX_PAYLOAD = 512 * 1024 * 1024;
 
 const PAPER_SIZES_IN = Object.freeze({
   letter: Object.freeze({ width: 8.5, height: 11 }),
@@ -105,56 +102,47 @@ const PRESS_RUNTIME_KEY = /^(FONTCONFIG_|LC_|LANGUAGE$)/;
 export const pressEnvironment = (env, platform = process.platform) =>
   helperEnvironment(env, platform, (key) => PRESS_RUNTIME_KEY.test(key));
 
-function launchChromium(executable, profileDir) {
-  const args = [
-    ...(/headless[_-]shell/.test(executable) ? [] : ['--headless=new']),
-    `--user-data-dir=${profileDir}`,
-    '--remote-debugging-port=0',
-    '--no-first-run',
-    '--no-default-browser-check',
-    '--disable-gpu',
-    '--hide-scrollbars',
-    '--mute-audio',
-    'about:blank'
-  ];
-  // Its own process group, so the press ends the browser with every helper it spawned.
-  const child = spawn(executable, args, {
-    env: pressEnvironment(process.env),
-    stdio: ['ignore', 'ignore', 'pipe'],
-    detached: process.platform !== 'win32',
+export const pressChromiumArgs = (executable, profileDir) => [
+  ...(/headless[_-]shell/.test(executable) ? [] : ['--headless=new']),
+  `--user-data-dir=${profileDir}`,
+  '--remote-debugging-pipe',
+  '--no-first-run',
+  '--no-default-browser-check',
+  '--disable-gpu',
+  '--hide-scrollbars',
+  '--mute-audio',
+  'about:blank'
+];
+
+function openPipe(child) {
+  const listeners = new Set();
+  let buffered = '';
+  child.stdio[4].on('data', (chunk) => {
+    buffered += chunk.toString();
+    let end = buffered.indexOf('\0');
+    while (end !== -1) {
+      const raw = buffered.slice(0, end);
+      buffered = buffered.slice(end + 1);
+      if (raw) for (const listener of listeners) listener(raw);
+      end = buffered.indexOf('\0');
+    }
   });
-  const wsUrl = new Promise((resolve, reject) => {
-    let stderrTail = '';
-    const timer = setTimeout(
-      () => reject(new Error(`Chromium did not expose DevTools within ${LAUNCH_TIMEOUT_MS}ms: ${stderrTail.slice(-500)}`)),
-      LAUNCH_TIMEOUT_MS
-    );
-    child.stderr.on('data', (chunk) => {
-      stderrTail += chunk.toString();
-      const match = stderrTail.match(/DevTools listening on (ws:\/\/\S+)/);
-      if (match) {
-        clearTimeout(timer);
-        resolve(match[1]);
-      }
-    });
-    child.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Chromium exited before DevTools came up (code ${code}): ${stderrTail.slice(-500)}`));
-    });
-    child.once('error', (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-  });
-  return { child, wsUrl };
+  return {
+    on: (event, handle) => { if (event === 'message') listeners.add(handle); },
+    send: (raw) => { child.stdio[3].write(`${raw}\0`); },
+    close: () => { child.stdio[3].end(); child.stdio[4].destroy(); },
+  };
 }
 
-function openSocket(url) {
-  return new Promise((resolve, reject) => {
-    const socket = new WebSocket(url, { maxPayload: WS_MAX_PAYLOAD });
-    socket.once('open', () => resolve(socket));
-    socket.once('error', reject);
+function launchChromium(executable, profileDir) {
+  // Its own process group, so the press ends the browser with every helper it spawned.
+  const child = spawn(executable, pressChromiumArgs(executable, profileDir), {
+    env: pressEnvironment(process.env),
+    stdio: ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'],
+    detached: process.platform !== 'win32',
   });
+  child.stderr.resume();
+  return { child, socket: openPipe(child) };
 }
 
 function createCdpClient(socket) {
@@ -296,11 +284,9 @@ export async function pressPdf({ html, headerTemplate, footerTemplate, format = 
     await fs.writeFile(badgePath, withPressPolicy(`<!DOCTYPE html><html><body style="margin:0"><img id="badge" src="${badge}" style="height:${BADGE_DRAWN_HEIGHT_PX}px;display:block"></body></html>`), 'utf8');
   }
 
-  const { child, wsUrl } = launchChromium(executable, path.join(workDir, 'profile'));
-  let socket = null;
+  const { child, socket } = launchChromium(executable, path.join(workDir, 'profile'));
   try {
     await recordPressOwner(workDir, child.pid);
-    socket = await openSocket(await wsUrl);
     const cdp = createCdpClient(socket);
 
     const { targetId } = await cdp.send('Target.createTarget', { url: 'about:blank' });

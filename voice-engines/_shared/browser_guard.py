@@ -13,13 +13,12 @@ sidecar refuses:
 And a sidecar never binds off loopback: an unauthenticated /speak on a LAN address is a
 voice-cloning service for anyone on the network.
 
-Re-audit 2026-10-29 (M-06): loopback is shared by every program on the machine, so a sidecar and
-the backend now know each other by the install key the backend hands each sidecar it spawns
-(NEUMA_SIDECAR_KEY; backend/services/voice/sidecar-trust.js). GET /identity?challenge=<hex> answers
-an HMAC of the challenge, so the backend can tell its own sidecar from an impostor on the port
-without the key crossing the wire; every call but /health and /identity must carry the backend's
-token (x-neuma-sidecar), so no other local program can use a sidecar. A sidecar started without the
-key answers /health and nothing else.
+Re-audit 2026-11-17 (P6-76): each sidecar receives a key derived for NEUMA_SIDECAR_ENGINE.
+GET /identity?challenge=<hex>&socket=<loopback-host:port> answers only when that socket is the
+ASGI server's own listening socket, then proves engine + socket + challenge with the derived key.
+A proof relayed through another engine or port therefore fails. Every call but /health and /identity
+must carry that engine's token (x-neuma-sidecar). A sidecar started without its key answers /health
+and nothing else.
 """
 
 from __future__ import annotations
@@ -66,30 +65,50 @@ def refusal(headers) -> str | None:
 
 OPEN_PATHS = frozenset({"/health", "/identity"})
 _CHALLENGE = re.compile(r"^[0-9a-f]{32,128}$")
+_ENGINE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+
+
+_KEY = re.compile(r"^[0-9a-f]{64}$")
 
 
 def _mac(key: str, text: str) -> str:
-    """Pure: hex HMAC-SHA256 of text under key (the same as sidecar-trust.js)."""
-    return hmac.new(key.encode(), text.encode(), hashlib.sha256).hexdigest()
+    """Pure: hex HMAC-SHA256 of text under this engine's derived key. The backend hands the key over
+    as hex and MACs with its 32 raw bytes (sidecar-trust.js), so the same bytes are used here."""
+    return hmac.new(bytes.fromhex(key), text.encode(), hashlib.sha256).hexdigest()
 
 
-def guard(headers, path: str, query: str = "", key: str | None = None):
-    """Pure but for its default key (the environment): the answer the middleware gives in place of
-    the route — (status, body) — or None to let the route run."""
+def _local_socket(local) -> str:
+    """Pure: the ASGI listening server tuple in the proof's canonical loopback form."""
+    if not local or len(local) < 2:
+        return ""
+    host, port = local[0], local[1]
+    canonical = "[::1]" if host == "::1" else "127.0.0.1"
+    return f"{canonical}:{port}"
+
+
+def guard(headers, path: str, query: str = "", key: str | None = None,
+          engine: str | None = None, local=None):
+    """Pure but for environment defaults: the answer the middleware gives in place of the route."""
     key = os.environ.get("NEUMA_SIDECAR_KEY", "") if key is None else key
+    engine = os.environ.get("NEUMA_SIDECAR_ENGINE", "") if engine is None else engine
     why = refusal(headers)
     if why:
         return 403, {"error": "forbidden", "detail": why}
     if path == "/identity":
-        challenge = (parse_qs(query or "").get("challenge") or [""])[0]
-        if not key or not _CHALLENGE.match(challenge):
-            return 403, {"error": "forbidden", "detail": "no install key, or no challenge"}
-        return 200, {"proof": _mac(key, "neuma-sidecar-identity-v1\n" + challenge)}
+        params = parse_qs(query or "")
+        challenge = (params.get("challenge") or [""])[0]
+        socket = (params.get("socket") or [""])[0]
+        if (not _KEY.match(key or "") or not _ENGINE.match(engine or "") or not _CHALLENGE.match(challenge)
+                or not socket or socket != _local_socket(local)):
+            return 403, {"error": "forbidden", "detail": "no engine key, or the challenge is not for this socket"}
+        proof = _mac(key, f"neuma-sidecar-identity-v2\n{engine}\n{socket}\n{challenge}")
+        return 200, {"proof": proof}
     if path in OPEN_PATHS:
         return None
-    if not key:
-        return 403, {"error": "forbidden", "detail": "this sidecar was started without the app's key — start it from Neuma"}
-    if not hmac.compare_digest(_get(headers, "x-neuma-sidecar"), _mac(key, "neuma-sidecar-caller-v1")):
+    if not _KEY.match(key or "") or not _ENGINE.match(engine or ""):
+        return 403, {"error": "forbidden", "detail": "this sidecar was started without the app's engine key — start it from Neuma"}
+    expected = _mac(key, f"neuma-sidecar-caller-v2\n{engine}")
+    if not hmac.compare_digest(_get(headers, "x-neuma-sidecar"), expected):
         return 403, {"error": "forbidden", "detail": "this sidecar answers the Neuma backend only"}
     return None
 

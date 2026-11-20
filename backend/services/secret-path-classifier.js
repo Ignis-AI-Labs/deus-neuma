@@ -2,7 +2,7 @@
 // Basenames: dotenv and credential stores, ssh keys, keypairs wherever they
 // stand (keys/ is walled by place already), shell and REPL histories (a typed
 // token outlives the session there), and the token files tools keep.
-const SECRET_FILE = /^(?:\.env(?:\..*)?|env\..+|.+\.env|\.git-credentials|\.gitconfig|\.netrc|\.npmrc|\.pypirc|\.pgpass|\.vault-token|\.terraformrc|auth\.json|\.?credentials(?:\..+)?|secrets?(?:\..+)?|service-account.*\.json|.*-credentials\.json|.*keypair.*\.json|(?:mnemonic|seed-?phrase)(?:\.txt)?|rclone\.conf|id_(?:dsa|ecdsa|ed25519|rsa)(?:_sk)?(?:\.pub)?|\.[a-z0-9_.-]*_history|\.history|fish_history|.*\.(?:jks|kdbx|key|keyring|keystore|p12|pem|pfx|tfstate(?:\.backup)?))$/i;
+const SECRET_FILE = /^(?:\.env(?:\..*)?|env\..+|.+\.env|\.git-credentials|\.gitconfig|\.netrc|\.npmrc|\.pypirc|\.pgpass|\.vault-token|\.terraformrc|auth\.json|\.?credentials(?:\..+)?|secrets?(?:\..+)?|service-account.*\.json|.*-credentials\.json|.*keypair.*\.json|neuma-cli-token-.+\.json|(?:mnemonic|seed-?phrase)(?:\.txt)?|rclone\.conf|wallet\.dat|UTC--\d{4}-.+--[0-9a-f]{40}|id_(?:dsa|ecdsa|ed25519|rsa)(?:_sk)?(?:\.pub)?|\.[a-z0-9_.-]*_history|\.history|fish_history|.*\.(?:jks|kdbx|key|keyring|keystore|p12|pem|pfx|tfstate(?:\.backup)?))$/i;
 // Path tails: generic names that are a credential only where their tool keeps
 // them (gh's hosts.yml carries its token, docker's config.json its registry
 // auths, kube's config its cluster tokens, hub's its GitHub token) — and a
@@ -10,6 +10,10 @@ const SECRET_FILE = /^(?:\.env(?:\..*)?|env\..+|.+\.env|\.git-credentials|\.gitc
 // Re-audit 2026-10-29 (M-02 residual): Maven's and Gradle's repository passwords,
 // doctl's token, gcloud's and Azure's token stores, and a Chromium-family
 // profile's saved logins, cookies and form data.
+// PR600 audit (P6-17): the stores that hold a wallet's key — an Ethereum node's keystore
+// (and its UTC-- files wherever they are copied), Solana's keypair files, Foundry's
+// keystores, Electrum's wallets and a Bitcoin wallet.dat. A keystore folder is walled
+// with everything below it.
 const SECRET_PATH = new RegExp('(?:^|/)(?:'
   + '\\.docker/config\\.json|gh/hosts\\.yml|\\.kube/config|\\.config/hub'
   + '|(?:\\.mozilla/firefox|\\.thunderbird)/[^/]+/(?:logins\\.json|key[34]\\.db|cookies\\.sqlite)'
@@ -17,6 +21,8 @@ const SECRET_PATH = new RegExp('(?:^|/)(?:'
   + '|\\.config/gcloud/(?:credentials\\.db|access_tokens\\.db|application_default_credentials\\.json|legacy_credentials/.+)'
   + '|\\.azure/(?:accessTokens\\.json|msal_token_cache\\.(?:json|bin))'
   + '|(?:google-chrome(?:-beta|-unstable)?|chromium|BraveSoftware/Brave-Browser|microsoft-edge|vivaldi|Google/Chrome)/[^/]+/(?:Login Data|Cookies|Web Data|Network/Cookies)'
+  + '|\\.ethereum/(?:[^/]+/)?keystore(?:/.+)?|\\.config/solana/[^/]+\\.json|\\.foundry/keystores(?:/.+)?|\\.electrum/wallets(?:/.+)?'
+  + '|\\.neuma/cli/token-[^/]+\\.json|hooks/hooks\\.json'
   + ')$', 'i');
 const CREDENTIAL_SOURCE = /^(?:[a-z0-9_-]+[-.])?credentials?(?:[-.][a-z0-9_-]+)*\.(?:js|mjs|cjs|jsx|ts|tsx)(?:\.map)?$/i;
 const basename = (value) => String(value).replace(/\\/g, '/').split('/').at(-1);

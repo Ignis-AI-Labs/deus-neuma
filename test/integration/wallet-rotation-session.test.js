@@ -56,19 +56,23 @@ test('rotation invalidates the old neuma token before it can use the replacement
   expect(oldUnlock.status).toBe(200);
   const oldNeumaToken = oldUnlock.body.token;
 
+  const cacheOnly = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/rotate`)).send({ newPassword });
+  expect(cacheOnly.status).toBe(401);
   const rotated = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/rotate`)).send({ oldPassword, newPassword });
   expect(rotated.status).toBe(200);
   const newAddress = rotated.body.newAddress;
   const delivered = await owned(request(app).get(`/api/v1/neuma/${neumaId}/recovery/rotation/codes`));
-  expect(delivered.status).toBe(200);
-  expect(delivered.body.recoveryCodes).toEqual(rotated.body.recoveryCodes);
-  const resumed = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/rotate`)).send({});
+  expect(delivered.status).toBe(410);
+  const noPassword = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/rotate`)).send({});
+  expect(noPassword.status).toBe(400);
+  const wrongPassword = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/rotate`)).send({ newPassword: 'wrong-new-password' });
+  expect(wrongPassword.status).toBe(401);
+  const resumed = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/rotate`)).send({ newPassword });
   expect(resumed.status).toBe(200);
   expect(resumed.body).toMatchObject({ newAddress, resumed: true });
   expect(resumed.body.recoveryCodes).toEqual(rotated.body.recoveryCodes);
   const acknowledged = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/rotation/ack`)).send({ address: newAddress });
   expect(acknowledged.status).toBe(200);
-  expect((await owned(request(app).get(`/api/v1/neuma/${neumaId}/recovery/rotation/codes`))).status).toBe(404);
 
   const newUnlock = await owned(request(app).post('/api/v1/neuma-auth/unlock')).send({ neumaId, password: newPassword });
   expect(newUnlock.status).toBe(200);
@@ -86,9 +90,7 @@ test('rotation invalidates the old neuma token before it can use the replacement
 
   const retired = await owned(request(app).post(`/api/v1/neuma/${neumaId}/recovery/retired/${oldWallet.address}/reveal`))
     .send({ password: newPassword });
-  expect(retired.status).toBe(200);
-  const retiredSigner = new ethers.Wallet(retired.body.privateKey);
-  expect(retiredSigner.address).toBe(oldWallet.address);
-  const retiredMessage = 'neuma:retired-key-recovery-proof';
-  expect(ethers.verifyMessage(retiredMessage, await retiredSigner.signMessage(retiredMessage))).toBe(oldWallet.address);
+  expect(retired.status).toBe(410);
+  expect(retired.body.privateKey).toBeUndefined();
+  expect(JSON.stringify(retired.body)).not.toContain(oldWallet.privateKey);
 });

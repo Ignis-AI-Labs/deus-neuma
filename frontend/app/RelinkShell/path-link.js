@@ -11,7 +11,7 @@
 // WHOLE content is one path — absolute by default, project-relative only where
 // the caller supplies a focused base. Prose, commands, and traversal stay text.
 
-import { isAbsolutePath } from '../../utils/path.js';
+import { hasDotSegment, isAbsolutePath, isUncPath } from '../../utils/path.js';
 
 // Sentence punctuation a being trails after a path inside a span. Stripped so
 // "`/mnt/thing.`" still opens /mnt/thing. Closing brackets are NOT stripped —
@@ -29,6 +29,7 @@ export const openablePath = (raw, { relative = false } = {}) => {
   if (typeof raw !== 'string') return null;
   const text = raw.trim();
   if (text.length < 2 || text.length > 4096) return null;
+  if (isUncPath(text) || hasDotSegment(text)) return null;
   const absolute = isAbsolutePath(text);
   // Markdown may explicitly allow a project-relative path; PathOpener supplies
   // the focused base. Tool lines keep the absolute-only default.
@@ -44,8 +45,7 @@ export const openablePath = (raw, { relative = false } = {}) => {
   // space-separated words where the tail looks like an argument rather than a
   // path with spaces in it. Flags are the honest tell.
   if (/\s-{1,2}\w/.test(text)) return null;
-  // URLs that merely begin with a slash-slash are not local paths. A Windows
-  // UNC share is `\\host\share` and is NOT caught by this — it is a real place.
+  // Network shares and URL-shaped slash-slash paths are not local desk doors.
   if (text.startsWith('//')) return null;
 
   const trimmed = text.replace(TRAILING_PUNCT, '');

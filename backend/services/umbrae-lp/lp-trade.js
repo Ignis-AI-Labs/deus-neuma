@@ -30,10 +30,11 @@ import { KYBER_ROUTER } from '../../../core/wallet/aggregator-policy.js';
 import { classifyLpTransaction, checkLpIntent } from '../../../core/wallet/lp-tx-policy.js';
 import { guardLpExecution, recordLpBroadcast, settleLpExecution } from './lp-executions.js';
 import { swapOutputFromReceipt } from '../../../core/wallet/swap-receipt.js';
-import { proveLpReceipt } from './lp-receipt-proof.js';
+import { proveLpReceipt, independentReceiptProvider } from './lp-receipt-proof.js';
 import { reserveCapitalAssets } from './lp-capital-controls.js';
 import { broadcastLpTransaction, prepareLpBroadcast } from './lp-broadcast.js';
 import { readAgentVault } from '../agent-vault/vault-store.js';
+import { PINNED_TOKENS, resolveToken, tokenLabel } from './lp-tokens.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('LpTrade');
@@ -49,6 +50,8 @@ const ERC20 = new ethers.Interface([
 ]);
 /** The most slippage a swap may be asked to accept, in percent. */
 export const MAX_SLIPPAGE_PCT = 5;
+/** How far two Base nodes' quotes for one route may sit apart, in basis points, before nothing is signed. */
+export const QUOTE_AGREEMENT_BPS = 100n;
 const AMOUNT = /^\d{1,30}(\.\d{1,18})?$/;
 
 const refuse = (reason, extra = {}) => Object.freeze({ ok: false, reason, ...extra });
@@ -65,18 +68,20 @@ const readPools = async () => {
     .map((p) => ({ ...p, address: ethers.getAddress(p.address), tokens: p.tokens.map((t) => ethers.getAddress(t)) }));
 };
 
-// pure — every token the pools trade, by address and by symbol.
+// pure — every token the pools trade, by address, under the name it is shown by (lp-tokens.js).
 const tokenBook = (pools) => {
   const book = new Map();
-  for (const p of pools) p.tokens.forEach((t, i) => { book.set(t, p.symbols[i]); });
+  for (const p of pools) p.tokens.forEach((t, i) => { if (!book.has(t)) book.set(t, tokenLabel(t, p.symbols[i])); });
   return book;
 };
 
-// pure — a token named by address or symbol, as an address the pools trade; null if none.
-const tokenOf = (book, said) => {
-  const s = String(said ?? '').trim();
-  if (ethers.isAddress(s)) return book.has(ethers.getAddress(s)) ? ethers.getAddress(s) : null;
-  return [...book].find(([, symbol]) => String(symbol).toLowerCase() === s.toLowerCase())?.[0] ?? null;
+// pure — the tokens named, each as the one address the pools trade for it; a
+// name two tokens share is refused with its own reason, any other miss with `unlisted`.
+const tokensNamed = (book, said, unlisted) => {
+  const found = said.map((name) => resolveToken(book, name));
+  const ambiguous = found.find((f) => !f.ok && f.ambiguous);
+  if (ambiguous) return refuse(ambiguous.reason);
+  return found.every((f) => f.ok) ? { ok: true, addresses: found.map((f) => f.address) } : refuse(unlisted);
 };
 
 // pure — every route of one pool or two between two tokens.
@@ -105,6 +110,24 @@ const bestRoute = async (provider, pools, from, to, amountIn) => {
   return quoted[0] ?? null;
 };
 
+// impure — the best route's quote asked again at the second Base node (P6-11: one node's word
+// sets neither the price nor the floor). Two answers further apart than QUOTE_AGREEMENT_BPS, or
+// no second answer, sign nothing; the floor is then cut from the larger of the two.
+const secondQuote = async (ctx, best, amountIn) => {
+  if (!ctx.second) return refuse('No second Base node is available to check this swap\'s price against, so nothing was signed.');
+  let other;
+  try {
+    other = await call(ctx.second, UMBRAE_ROUTER, ROUTER, 'getDetailedSwapQuote', [amountIn, best.route.path, best.route.binSteps, best.route.pools]);
+  } catch {
+    return refuse('The second Base node did not answer for this swap\'s price, so nothing was signed.');
+  }
+  const [larger, smaller] = other.amountOut > best.amountOut ? [other.amountOut, best.amountOut] : [best.amountOut, other.amountOut];
+  if (other.liquidityExhausted || (larger - smaller) * 10000n > larger * QUOTE_AGREEMENT_BPS) {
+    return refuse('Two Base nodes disagree about what this swap would pay, so nothing was signed. Check the Base node address saved in Settings.');
+  }
+  return { ok: true, best: { ...best, amountOut: larger } };
+};
+
 // impure — the receipt, asked for directly until it comes (or null after timeoutMs). Not ethers'
 // waitForTransaction: it waits for a NEXT block past a block number it may hold from its own
 // 250 ms cache, and a node that mines only on demand never makes one.
@@ -118,7 +141,7 @@ const receiptOf = async (provider, hash, timeoutMs = 120000) => {
 };
 
 const receiptEvidence = (ctx) => ({
-  secondary: ctx.receiptProvider,
+  secondary: ctx.second ?? undefined,
   minConfirmations: ctx.receiptConfirmations,
   timeoutMs: ctx.receiptTimeoutMs ?? 120000,
 });
@@ -130,7 +153,7 @@ const signAndSend = async (ctx, tx, asked, maxApprove) => {
   if (!ready.ok) return refuse(ready.reason);
   const guard = await guardLpExecution({ neumaId: ctx.neumaId, tx: guardedTx, asked, provider: ctx.provider, ...receiptEvidence(ctx) });
   if (!guard.ok) return guard;
-  const signed = await signLpTransaction({ signer: ctx.signer, provider: ctx.provider, tx: guardedTx, asked, maxApprove, tokens: ctx.tokens, recipients: ctx.recipients, vault: ctx.vault });
+  const signed = await signLpTransaction({ signer: ctx.signer, provider: ctx.provider, second: ctx.second, tx: guardedTx, asked, maxApprove, tokens: ctx.tokens, recipients: ctx.recipients, vault: ctx.vault });
   if (!signed.ok) return signed;
   const recorded = await recordLpBroadcast({ neumaId: ctx.neumaId, actionHash: guard.actionHash, signed });
   if (!recorded.ok) return recorded;
@@ -138,7 +161,7 @@ const signAndSend = async (ctx, tx, asked, maxApprove) => {
     log.error('LP execution settlement was not written', { neumaId: ctx.neumaId, state, error: error.message });
   });
   try {
-    const sent = await broadcastLpTransaction({ neumaId: ctx.neumaId, signed, provider: ctx.provider });
+    const sent = await broadcastLpTransaction({ neumaId: ctx.neumaId, signed, provider: ctx.provider, second: ctx.second });
     if (!sent.ok) {
       const uncertain = sent.sent !== false;
       await mark(uncertain ? 'unknown' : 'aborted');
@@ -166,7 +189,27 @@ const signAndSend = async (ctx, tx, asked, maxApprove) => {
   }
 };
 
-// impure — the wallet, the node, the token book and the house, for one act.
+// impure — a confirmed swap stays confirmed even when its allowance cleanup reports a failure.
+const cleanupAllowance = async (ctx, token, spender) => {
+  const txHashes = [];
+  const warnings = [];
+  try {
+    const [remaining] = await call(ctx.provider, token, ERC20, 'allowance', [ctx.wallet, spender]);
+    if (remaining > 0n) {
+      const revoked = await signAndSend(ctx,
+        { to: token, data: ERC20.encodeFunctionData('approve', [spender, 0n]) },
+        { kind: 'approval', spender, token, revoke: true }, { [token]: '0' });
+      if (revoked.ok) txHashes.push(revoked.txHash);
+      else warnings.push(revoked.reason);
+    }
+  } catch (error) {
+    warnings.push(`Allowance cleanup could not be confirmed: ${error.shortMessage || error.message}`);
+  }
+  return { txHashes, warnings };
+};
+
+// impure — the wallet, the node, a second independent node (the caller's, or one opened here
+// and closed by withContext), the token book and the house, for one act.
 const contextFor = async (neumaId, provider, opts = {}) => {
   const signer = await lpSigner(neumaId);
   if (!signer) return refuse('This house member has no LP wallet yet.');
@@ -174,7 +217,18 @@ const contextFor = async (neumaId, provider, opts = {}) => {
   if (!base) return refuse('Base did not answer, so nothing can be signed.');
   const [pools, house, vault] = await Promise.all([readPools(), houseRecipients(neumaId), readAgentVault(neumaId)]);
   const book = tokenBook(pools);
-  return { ok: true, neumaId, signer, provider: base, pools, book, house, vault, wallet: vault?.safe ?? signer.address, tokens: new Set(book.keys()), recipients: new Set(house.map((r) => r.address)), receiptTimeoutMs: opts.receiptTimeoutMs, receiptProvider: opts.receiptProvider, receiptConfirmations: opts.receiptConfirmations };
+  return { ok: true, neumaId, signer, provider: base, pools, book, house, vault, wallet: vault?.safe ?? signer.address, tokens: new Set(book.keys()), recipients: new Set(house.map((r) => r.address)), receiptTimeoutMs: opts.receiptTimeoutMs, second: opts.receiptProvider ?? independentReceiptProvider(base), ownsSecond: !opts.receiptProvider, receiptConfirmations: opts.receiptConfirmations };
+};
+
+// impure — one act run with its context; a second node opened for it is closed after.
+const withContext = async (neumaId, options, run) => {
+  const ctx = await contextFor(neumaId, options.provider, options);
+  if (!ctx.ok) return ctx;
+  try {
+    return await run(ctx);
+  } finally {
+    if (ctx.ownsSecond) ctx.second?.destroy();
+  }
 };
 
 // The swap itself (runSwap's body); may throw on an unanswered read.
@@ -187,15 +241,13 @@ const contextFor = async (neumaId, provider, opts = {}) => {
  * @param {{provider?: ethers.Provider}} [opts]
  * @returns {Promise<Readonly<{ok: true, txHashes: string[], amountIn: string, amountOut: string, route: string[]} | {ok: false, reason: string}>>}
  */
-const swapOnce = async (neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } = {}, options = {}) => {
-  const provider = options.provider;
+const swapOnce = (neumaId, ask, options = {}) => withContext(neumaId, options, (ctx) => swapWith(ctx, neumaId, ask));
+const swapWith = async (ctx, neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } = {}) => {
   const slip = Number(slippagePct);
-  const ctx = await contextFor(neumaId, provider, options);
-  if (!ctx.ok) return ctx;
   if (!ctx.pools.length) return refuse('Umbrae\'s pool list did not answer, so no route can be found.');
-  const from = tokenOf(ctx.book, tokenIn);
-  const to = tokenOf(ctx.book, tokenOut);
-  if (!from || !to) return refuse(`Swaps are between tokens Umbrae's pools trade: ${[...ctx.book.values()].join(', ')}.`);
+  const named = tokensNamed(ctx.book, [tokenIn, tokenOut], `Swaps are between tokens Umbrae's pools trade: ${[...ctx.book.values()].join(', ')}.`);
+  if (!named.ok) return named;
+  const [from, to] = named.addresses;
   const roundTrip = from === to;
   const wallet = ctx.wallet;
   let decimalsIn; let decimalsOut; let held;
@@ -217,10 +269,13 @@ const swapOnce = async (neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } 
   // TWO ROADS (Design note, 2026-11-13: […]): Umbrae's
   // router and KyberSwap's aggregator, each asked for the same amount; the one that pays more is
   // taken. A round trip is an arbitrage between two Umbrae pools, so it stays on Umbrae's road.
-  const [best, agg] = await Promise.all([
+  const [first, agg] = await Promise.all([
     bestRoute(ctx.provider, ctx.pools, from, to, amountIn),
     roundTrip ? null : aggregatorQuote({ tokenIn: from, tokenOut: to, amountIn }),
   ]);
+  const agreed = first ? await secondQuote(ctx, first, amountIn) : null;
+  if (agreed && !agreed.ok) return agreed;
+  const best = agreed?.best ?? null;
   const aggOk = agg?.ok ? agg : null;
   if (!best && !aggOk) {
     return refuse(roundTrip ? 'No two pools of one pair can take this round trip right now.'
@@ -265,19 +320,25 @@ const swapOnce = async (neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } 
   const txHashes = [];
   const [allowance] = await call(ctx.provider, from, ERC20, 'allowance', [wallet, road.spender]);
   if (allowance < amountIn) {
-    const approved = await signAndSend(ctx, { to: from, data: ERC20.encodeFunctionData('approve', [road.spender, amountIn]) }, { kind: 'approval' }, { [from]: amountIn.toString() });
+    const approved = await signAndSend(ctx, { to: from, data: ERC20.encodeFunctionData('approve', [road.spender, amountIn]) }, { kind: 'approval', spender: road.spender, token: from }, { [from]: amountIn.toString() });
     if (!approved.ok) return approved;
     txHashes.push(approved.txHash);
   }
   const swapped = await signAndSend(ctx, road.tx, { kind: 'swap', tokenIn: from, tokenOut: to, amountIn: amountIn.toString(), amountOutMin: amountOutMin.toString() });
-  if (!swapped.ok) return Object.freeze({ ...swapped, txHashes });
+  if (!swapped.ok) {
+    if (swapped.uncertain) return Object.freeze({ ...swapped, txHashes });
+    const approvalCleanup = await cleanupAllowance(ctx, from, road.spender);
+    return Object.freeze({ ...swapped, txHashes: [...txHashes, ...approvalCleanup.txHashes], approvalCleanup });
+  }
   txHashes.push(swapped.txHash);
+  const approvalCleanup = await cleanupAllowance(ctx, from, road.spender);
+  txHashes.push(...approvalCleanup.txHashes);
   const receipt = swapped.receipt ?? await ctx.provider.send('eth_getTransactionReceipt', [swapped.txHash]).catch(() => null);
   const executedOut = swapOutputFromReceipt({ receipt, tokenOut: to, wallet, sources: viaAgg ? null : new Set(best.route.pools) });
   const route = viaAgg ? [ctx.book.get(from), ctx.book.get(to)] : best.route.path.map((t) => ctx.book.get(t));
   await neumaWorkspace.audit(neumaId, 'LP_ACTION', { type: 'swap', via: road.via, route, amountIn: String(amount), compared, txHashes });
   const amountOut = executedOut === null ? 'an unread amount of' : ethers.formatUnits(executedOut, decimalsOut);
-  return Object.freeze({ ok: true, txHashes, amountIn: String(amount), amountOut, route, via: road.via, exchanges: road.exchanges ?? null, compared });
+  return Object.freeze({ ok: true, txHashes, amountIn: String(amount), amountOut, route, tokens: { in: from, out: to }, via: road.via, exchanges: road.exchanges ?? null, compared, approvalCleanup });
 };
 
 // The send itself (runSend's body); may throw on an unanswered read.
@@ -289,15 +350,14 @@ const swapOnce = async (neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } 
  * @param {{provider?: ethers.Provider}} [opts]
  * @returns {Promise<Readonly<{ok: true, txHashes: string[], to: string, name: string} | {ok: false, reason: string}>>}
  */
-const sendOnce = async (neumaId, { to, token = 'ETH', amount } = {}, options = {}) => {
-  const provider = options.provider;
-  const ctx = await contextFor(neumaId, provider, options);
-  if (!ctx.ok) return ctx;
+const sendOnce = (neumaId, ask, options = {}) => withContext(neumaId, options, (ctx) => sendWith(ctx, neumaId, ask));
+const sendWith = async (ctx, neumaId, { to, token = 'ETH', amount } = {}) => {
   const target = resolveRecipient(ctx.house, to);
   if (!target) return refuse(`That is not a wallet of the house. It can send to: ${[...new Set(ctx.house.map((r) => r.name))].join(', ')}.`);
   const native = String(token).trim().toUpperCase() === 'ETH';
-  const tokenAddress = native ? null : tokenOf(ctx.book, token);
-  if (!native && !tokenAddress) return refuse(`It sends ETH or a token Umbrae's pools trade: ${[...ctx.book.values()].join(', ')}.`);
+  const named = native ? null : tokensNamed(ctx.book, [token], `It sends ETH or a token Umbrae's pools trade: ${[...ctx.book.values()].join(', ')}.`);
+  if (named && !named.ok) return named;
+  const tokenAddress = named ? named.addresses[0] : null;
   const [decimals] = native ? [18] : await call(ctx.provider, tokenAddress, ERC20, 'decimals');
   let raw;
   try {
@@ -306,7 +366,7 @@ const sendOnce = async (neumaId, { to, token = 'ETH', amount } = {}, options = {
     return refuse(`That token has ${decimals} decimal places.`);
   }
   const admitted = await reserveCapitalAssets(neumaId, [{
-    token: tokenAddress ?? tokenOf(ctx.book, 'WETH'), amount: raw, decimals: Number(decimals),
+    token: tokenAddress ?? PINNED_TOKENS.WETH, amount: raw, decimals: Number(decimals),
   }]);
   if (!admitted.ok) return admitted;
   const tx = native
@@ -374,9 +434,9 @@ export const quoteSwap = async ({ tokenIn, tokenOut, amount } = {}, { provider }
     const pools = await readPools();
     if (!pools.length) return refuse('Umbrae\'s pool list did not answer.');
     const book = tokenBook(pools);
-    const from = tokenOf(book, tokenIn);
-    const to = tokenOf(book, tokenOut);
-    if (!from || !to) return refuse(`Quotes are between tokens Umbrae's pools trade: ${[...book.values()].join(', ')}.`);
+    const named = tokensNamed(book, [tokenIn, tokenOut], `Quotes are between tokens Umbrae's pools trade: ${[...book.values()].join(', ')}.`);
+    if (!named.ok) return named;
+    const [from, to] = named.addresses;
     const [[decimalsIn], [decimalsOut]] = await Promise.all([call(base, from, ERC20, 'decimals'), call(base, to, ERC20, 'decimals')]);
     const raw = ethers.parseUnits(String(amount), Number(decimalsIn));
     // Both roads, as the swap itself asks them (a round trip stays on Umbrae's).
@@ -384,7 +444,7 @@ export const quoteSwap = async ({ tokenIn, tokenOut, amount } = {}, { provider }
     const kyberswap = agg?.ok ? { amountOut: ethers.formatUnits(agg.amountOut, decimalsOut), exchanges: agg.exchanges, gasUsd: agg.gasUsd } : agg ? { error: agg.error } : null;
     if (!best && !kyberswap?.amountOut) return refuse(`No Umbrae pool route can take this amount whole right now${kyberswap?.error ? `, and ${kyberswap.error}` : ''}.`);
     return Object.freeze({
-      ok: true, amountIn: String(amount), symbolIn: book.get(from), symbolOut: book.get(to),
+      ok: true, amountIn: String(amount), symbolIn: book.get(from), symbolOut: book.get(to), tokens: { in: from, out: to },
       route: best ? best.route.path.map((t) => book.get(t)) : null,
       amountOut: best ? ethers.formatUnits(best.amountOut, decimalsOut) : null, priceImpact: best ? best.priceImpact.toString() : null,
       kyberswap,

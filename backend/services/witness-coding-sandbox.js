@@ -1,8 +1,9 @@
 /**
- * The coding shell — direct execution with SANDBOX OFF (the default), or the
- * isolated paths below with SANDBOX ON. OFF never prepares an overlay, calls
- * bwrap, masks paths, or scrubs the environment; it is an explicit owner-gated
- * choice, never a silent fallback. ON retains the original confinement.
+ * The coding shell — direct execution with SANDBOX OFF (an explicit owner
+ * choice), or the isolated paths below with SANDBOX ON (the default). OFF never
+ * prepares an overlay, calls bwrap, or masks paths; it requires command approval,
+ * uses an allowlisted environment, and refuses home-contained key roots. ON
+ * retains the original confinement.
  *
  * A being's shell used to run in a disposable COPY of the focused folder,
  * served at the ground's own path. Every freshness signal for that copy
@@ -34,6 +35,7 @@
  * refusals remain errors — they never silently turn direct execution ON.
  */
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawn } from 'child_process';
@@ -51,7 +53,9 @@ import { findSecretTwins } from './secret-twin-finder.js';
 import { createCommandOutput } from './coding-command-output.js';
 import { ensureCodingBase, activeCodingDirectory, freshCodingDirectory, assertActiveCodingShell } from './coding-shell-storage.js';
 import { liveShellWalls } from './live-shell-walls.js';
+import { prepareLiveInspectMounts, cleanupLiveInspectMounts } from './live-inspect-mounts.js';
 import { houseRoots, isOtherHouse, laneOwner, realOf } from './explorer-walls.js';
+import { helperEnvironment } from './agent-terminal-environment.js';
 export { sandboxPathFor } from './coding-shell-storage.js';
 
 // Directory names that are secret-shaped wherever they appear. Size-motivated
@@ -254,7 +258,7 @@ export const SHELL_GIT_NOTE = "Note: Git internals are masked here. coding/groun
  */
 export const sandboxStatusText = (sandbox) => (sandbox?.direct ? [
   `Shell ground: ${sandbox.sourceRoot} — SANDBOX OFF, direct execution.`,
-  'Commands run directly in this folder with the operator\'s normal OS user, environment, network and permissions. There is no bubblewrap, overlay, mask or sandbox recovery in this path.',
+  'Commands require operator approval and run directly in this folder with the operator\'s OS user, an allowlisted environment, network and permissions. There is no bubblewrap, overlay, mask or sandbox recovery in this path.',
   'Turn SANDBOX ON at the composer to use the isolated shell instead.',
 ].join('\n') : [
   `Shell ground: ${sandbox.sourceRoot} — SANDBOX ON, the live focused folder.`,
@@ -290,7 +294,7 @@ export const confinedBaseArgs = ({ network = false } = {}) => [
   '--ro-bind', '/usr', '/usr',
   '--ro-bind', '/bin', '/bin',
   '--ro-bind', '/lib', '/lib',
-  '--ro-bind', '/lib64', '/lib64',
+  '--ro-bind-try', '/lib64', '/lib64',
   '--tmpfs', '/etc',
   '--proc', '/proc', '--dev', '/dev',
   '--tmpfs', '/tmp', '--tmpfs', '/home', '--dir', '/home/witness',
@@ -328,19 +332,23 @@ export const CONFINED_ULIMITS = 'ulimit -t 120 -v 2147483648 -f unlimited -n 409
 // network namespace unshared; granted swaps --unshare-all for the per-namespace
 // set that keeps every other isolation and shares only the net.
 // `live` is THE OPEN FOLDER on AUTO (open-folder-autonomy.js, ruling 2026-10-28):
-// the live ground itself, read-write for execute and read-only for inspect —
-// no overlay, but the very same masks on top, so .git and every secret stay
-// out of reach and history remains the safety net; platform state inside the
-// folder (lanes, the data root, settings, login files) stays read-only.
-const bwrapArgs = ({ workspace, sourceRoot, masks, command, mode, network = false, live = false }) => {
+// execute binds the live ground read-write; inspect creates any absent wall
+// mountpoints, binds the walls, then remounts read-only. Only empty directories
+// made for those mounts are cleaned afterward; .git and secrets stay masked.
+const bwrapArgs = ({ workspace, sourceRoot, masks, command, mode, network = false, live = false, startedBy = null }) => {
   const ground = path.resolve(sourceRoot);
   const shellDir = path.dirname(workspace);
+  const emptyFile = path.join(shellDir, 'empty');
+  const emptyDir = path.join(shellDir, 'empty-dir');
   const args = confinedBaseArgs({ network });
   if (live) {
-    args.push(mode === 'inspect' ? '--ro-bind' : '--bind', ground, ground);
-    // platform state inside the open folder (live-shell-walls.js): read-only,
-    // bound BEFORE the masks so a masked secret below one stays masked
-    for (const place of masks.readOnly ?? []) args.push('--ro-bind', place, place);
+    args.push('--bind', ground, ground);
+  }
+  if (live) {
+    // Create every mountpoint before a parent wall makes its subtree read-only.
+    for (const place of masks.readOnly ?? []) if (!existsSync(place)) args.push('--dir', place);
+    for (const place of masks.readOnly ?? []) args.push('--ro-bind', existsSync(place) ? place : emptyDir, place);
+    if (mode === 'inspect') args.push('--remount-ro', ground);
   } else if (mode === 'inspect') {
     // The last --overlay-src is the top layer: prior shell work shows over
     // the live ground, and the whole view refuses writes.
@@ -348,12 +356,12 @@ const bwrapArgs = ({ workspace, sourceRoot, masks, command, mode, network = fals
   } else {
     args.push('--overlay-src', ground, '--overlay', workspace, path.join(shellDir, 'work'), ground);
   }
-  const emptyFile = path.join(shellDir, 'empty');
-  const emptyDir = path.join(shellDir, 'empty-dir');
   for (const dir of masks.dirs) args.push('--ro-bind', emptyDir, dir);
   for (const file of masks.files) args.push('--ro-bind', emptyFile, file);
   args.push('--chdir', ground);
   args.push('--setenv', 'NEUMA_COMMAND', command);
+  // Whose chat ran it (chat-processes.js): whatever the command leaves running is found again by this mark.
+  if (startedBy) args.push('--setenv', 'NEUMA_STARTED_BY', String(startedBy));
   return args;
 };
 
@@ -401,7 +409,10 @@ const runPreparedCommand = async (input) => {
     const executionTimer = startTimer();
     const child = spawn(launch.command, launch.args, {
       detached: true, stdio: ['ignore', 'pipe', 'pipe'],
-      ...(input.direct ? { cwd: input.sourceRoot, env: { ...process.env, NEUMA_COMMAND: command } } : {}),
+      ...(input.direct ? {
+        cwd: input.sourceRoot,
+        env: { ...helperEnvironment(process.env, process.platform), NEUMA_COMMAND: command, ...(input.startedBy ? { NEUMA_STARTED_BY: String(input.startedBy) } : {}) },
+      } : {}),
     });
     const output = createCommandOutput();
     let timedOut = false;
@@ -448,6 +459,7 @@ export const runWitnessCommand = async (input) => {
   await assertCodingShellAvailable();
   input.beforeSpawn?.();
   const release = await lockOverlay(input.workspace, { directory: input.anchor });
+  let inspectMounts = [];
   try {
     const walls = input.live ? liveShellWalls(input.sourceRoot) : null;
     const run = !walls ? input
@@ -456,9 +468,14 @@ export const runWitnessCommand = async (input) => {
     if (!run.live) {
       await assertActiveCodingShell(run);
       await assertOverlayFresh(run);
+    } else if (run.mode === 'inspect') {
+      inspectMounts = await prepareLiveInspectMounts(run.masks.readOnly ?? []);
     }
     const result = await runPreparedCommand(run);
     if (!run.live) await assertOverlayFresh(run);
     return { ...result, live: run.live === true };
-  } finally { await release(); }
+  } finally {
+    await cleanupLiveInspectMounts(inspectMounts);
+    await release();
+  }
 };

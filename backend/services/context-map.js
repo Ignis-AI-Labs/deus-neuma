@@ -356,7 +356,7 @@ export const boundContextMapSource = (text) => {
 // whole on the observation (sanitized before it faces a model); an anchored
 // exchange reopens through the real expand seam (the living session or the
 // archive); an anchorless memory answers honestly instead of inventing text.
-const _readNodeSource = async (laneId, obs, ref) => {
+export const readNodeSource = async (laneId, obs, ref) => {
   if (obs.type === 'self-note') {
     const raw = typeof obs.content === 'string' ? obs.content : '';
     return {
@@ -429,6 +429,6 @@ export const readContextMapNode = async (laneId, nodeId, { includeNeighbors = tr
     const labelsById = new Map(docs.map((entry) => [entry.id, toContextMapLabel(entry.text)]));
     result.neighbors = doc ? shapeNodeNeighbors(graph.adjacency, nodeId, labelsById) : [];
   }
-  if (includeSource) result.source = await _readNodeSource(laneId, obs, ref);
+  if (includeSource) result.source = await readNodeSource(laneId, obs, ref);
   return result;
 };

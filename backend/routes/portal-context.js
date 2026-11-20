@@ -86,20 +86,49 @@ export const runTurnAndDrain = async (connection, first) => {
         connection.interruptRequested = false;
       }
     }
+    // EVERYTHING WAITS BEHIND A COMPACTION (Design note, 2026-11-19: […]): one that began as this turn closed (the context boundary's) holds what
+    // waits; it goes when the compaction settles (drainHeldThoughts), in order.
+    if (connection.compacting && (connection.drainEpoch || 0) === epoch) { afterCompaction(connection); return; }
     // A turn the platform owes (a held legal answer) is taken now, before the
     // operator's held words — and dropped if a settle ended this drain.
     const owed = takePlatformFollowUp(connection);
     // A settle while this turn ran (navigation, an interjection) ended this drain.
     if ((connection.drainEpoch || 0) !== epoch) return;
-    if (owed) {
-      connection.ws?.send(JSON.stringify(owed.frame));
-      connection._turnOrigin = owed.origin;
-      next = { thought: owed.thought };
-      continue;
-    }
-    next = connection.pendingThoughts?.shift() || null;
-    announceTakenThought(connection, next);
+    next = nextHeld(connection, owed);
   }
+};
+
+// impure — the next thing to run: a turn the platform owes first, then the operator's held words in order.
+const nextHeld = (connection, owed) => {
+  if (owed) {
+    connection.ws?.send(JSON.stringify(owed.frame));
+    connection._turnOrigin = owed.origin;
+    return { thought: owed.thought };
+  }
+  const next = connection.pendingThoughts?.shift() || null;
+  announceTakenThought(connection, next);
+  return next;
+};
+
+// The compactions whose end already has a drain waiting on it (one each is enough; more would be harmless).
+const drainsAwaited = new WeakSet();
+
+/** impure — when the compaction running on this connection settles, deliver what waited behind it. */
+export const afterCompaction = (connection) => {
+  const running = connection?.compaction;
+  if (!running || drainsAwaited.has(running)) return;
+  drainsAwaited.add(running);
+  Promise.resolve(running).catch(() => {}).then(() => drainHeldThoughts(connection)).catch((err) => log.warn('held words after a compaction did not run', { error: err?.message }));
+};
+
+/**
+ * impure — deliver what waited behind a compaction: the same drain as after a turn, once nothing runs.
+ * Called when a compaction settles (the operator's /compact, the context boundary's).
+ */
+export const drainHeldThoughts = async (connection) => {
+  if (!connection || connection.turnPromise || connection.compacting) return;
+  const next = nextHeld(connection, takePlatformFollowUp(connection));
+  if (next) await runTurnAndDrain(connection, next);
 };
 
 // impure — bind the connection's session-scoped counters to disk truth.

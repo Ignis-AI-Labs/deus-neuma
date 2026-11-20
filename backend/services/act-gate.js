@@ -180,7 +180,8 @@ export const gateAct = async (connection, opts) => {
   const explicit = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`${server}/${tool}`] === 'allowed'
     || landsInOpenFolder({ server, tool, args, ground: focusGroundOf(connection) });
   const access = observeExempt ? baseAccess
-    : holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, tool), mode, server, tool, explicit), server, tool);
+    : holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, tool), mode, server, tool, explicit,
+      connection.sandboxEnabled === false), server, tool);
 
   if (access === 'denied') {
     // An observe-mode hold reads differently from a policy denial — the

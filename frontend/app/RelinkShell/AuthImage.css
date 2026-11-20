@@ -12,3 +12,13 @@
 }
 
 .authimg-missing { border-color: var(--alert); }
+
+/* A still that opens full size (zoom): the image is the button, the cursor says so. */
+.authimg-zoom {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+.authimg-zoom:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }

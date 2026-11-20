@@ -24,6 +24,8 @@ import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
 import { createToolPolicyDomain } from './workspace-tool-policy.js';
 import { createLpNonceDomain } from './lp-nonce-domain.js';
 import { createLpNotionalDomain } from './lp-notional-domain.js';
+import { consumeRateSlot } from './rate-slots.js';
+import { writeExclusiveJson } from './exclusive-json.js';
 
 /**
  * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function}}} deps
@@ -169,34 +171,17 @@ export const createSettingsDomain = (deps) => Object.freeze({
     });
   },
 
-  /**
-   * Consume one transfer-rate slot durably and under the lane's per-file lock.
-   * An unreadable record refuses the send rather than granting a fresh window.
-   */
+  /** Consume one transfer-rate slot through exclusive cross-process records. */
   async consumeSpendRateSlot(neumaId, { limit, windowMs, now = Date.now() }) {
-    const filePath = path.join(this._path(neumaId), 'config', 'spend-rate.json');
-    return deps.locks.withFileLock(filePath, async () => {
-      let current = null;
-      try {
-        current = await this._readTrustedJSON(filePath);
-      } catch (error) {
-        if (error.code !== 'ENOENT') throw error;
-      }
-      const sameWindow = current && Number.isSafeInteger(current.windowStart)
-        && now >= current.windowStart && now - current.windowStart < windowMs;
-      const windowStart = sameWindow ? current.windowStart : now;
-      const count = sameWindow ? Number(current.count) : 0;
-      if (!Number.isSafeInteger(count) || count < 0) throw new Error('Spend rate record is invalid');
-      if (count >= limit) return false;
-      await this._writeJSON(filePath, { windowStart, count: count + 1 });
-      return true;
+    return consumeRateSlot(this, neumaId, {
+      namespace: 'spend-rate-slots', limit, windowMs, now, legacyFile: 'spend-rate.json',
     });
   },
 
   /**
    * Consume an owner-approval nonce once, durably and across backend processes.
-   * The encrypted temporary record is hard-linked into its immutable final name:
-   * the link is atomic and EEXIST is the replay refusal, including after restart.
+   * Exclusive create is atomic and EEXIST is the replay refusal, including on
+   * filesystems without hard-link support.
    * @param {string} neumaId
    * @param {string} nonce
    * @param {number} expiry Unix seconds after which the signed approval stops verifying
@@ -207,19 +192,13 @@ export const createSettingsDomain = (deps) => Object.freeze({
       throw new Error('Operator approval nonce is invalid');
     }
     const nonceHash = crypto.createHash('sha256').update(nonce).digest('hex');
-    const dir = path.join(this._path(neumaId), 'config', 'spend-approvals');
-    const finalPath = path.join(dir, `${nonceHash}.json`);
-    const tempPath = path.join(dir, `${nonceHash}.${process.pid}.${crypto.randomBytes(8).toString('hex')}.tmp`);
-    await this._writeJSON(tempPath, { version: 1, nonceHash, expiry, usedAt: new Date().toISOString() });
-    try {
-      await fs.link(tempPath, finalPath);
-    } catch (error) {
-      if (error.code === 'EEXIST') throw new Error('Operator approval already used', { cause: error });
-      throw error;
-    } finally {
-      await fs.rm(tempPath, { force: true });
-    }
-    const stored = await this._readTrustedJSON(finalPath);
+    const claimed = await writeExclusiveJson(this, {
+      directory: path.join(this._path(neumaId), 'config', 'spend-approvals'),
+      name: nonceHash,
+      record: { version: 1, nonceHash, expiry, usedAt: new Date().toISOString() },
+    });
+    if (!claimed) throw new Error('Operator approval already used');
+    const stored = await this._readTrustedJSON(path.join(this._path(neumaId), 'config', 'spend-approvals', `${nonceHash}.json`));
     if (stored?.nonceHash !== nonceHash) throw new Error('Operator approval could not be recorded');
   },
 

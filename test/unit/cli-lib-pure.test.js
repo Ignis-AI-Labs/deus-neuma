@@ -179,10 +179,22 @@ describe('cli/lib/wallet — readOperatorWallet (real fs, no mocks)', () => {
     expect(readOperatorWallet(path).privateKey).toBe(VALID_KEY);
   });
 
-  test('single generic *_PRIVATE_KEY is accepted (forgiving vendor-name fallback)', () => {
+  test('single generic *_PRIVATE_KEY is refused without explicit opt-in', () => {
     const path = join(tmp, '.env');
     writeFileSync(path, 'MY_CUSTOM_PRIVATE_KEY=' + VALID_KEY);
-    expect(readOperatorWallet(path).privateKey).toBe(VALID_KEY);
+    expect(() => readOperatorWallet(path)).toThrow(/Refusing implicit wallet key MY_CUSTOM_PRIVATE_KEY/);
+  });
+
+  test('single generic *_PRIVATE_KEY resolves only with explicit opt-in and names its identity', async () => {
+    const path = join(tmp, '.env');
+    writeFileSync(path, 'MY_CUSTOM_PRIVATE_KEY=' + VALID_KEY);
+    const { withEnv } = await import('../helpers/with-env.js');
+    await withEnv('NEUMA_WALLET_ALLOW_GENERIC_KEY', '1', () => {
+      const resolved = readOperatorWallet(path);
+      expect(resolved.privateKey).toBe(VALID_KEY);
+      expect(resolved.keyName).toBe('MY_CUSTOM_PRIVATE_KEY');
+      expect(resolved.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    });
   });
 
   test('MULTIPLE generic *_PRIVATE_KEY entries throw with all names listed (disambiguation)', () => {

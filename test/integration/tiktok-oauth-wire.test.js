@@ -124,12 +124,18 @@ describe('Login Kit for Desktop: loopback consent → token exchange → sealed 
     await expect(fetch(`${redirect}?code=again&state=x`)).rejects.toThrow();
   });
 
-  test('a callback naming another state is refused and seals nothing', async () => {
+  test('a forged state cannot abort the consent; the matching callback still connects', async () => {
     const started = await startTikTokConnect(HOUSE);
-    expect((await browserReturns(started.authUrl, { code: 'c', state: 'forged' })).status).toBe(400);
-    expect((await settled(HOUSE)).error).toMatch(/state mismatch/);
+    expect((await browserReturns(started.authUrl, { code: 'forged', state: 'forged' })).status).toBe(400);
+    expect(pollTikTokConnect(HOUSE).status).toBe('pending');
     expect(tiktok.state.hits.filter((h) => h.leg === 'token')).toHaveLength(0);
-    expect(await resolveChannelCredential(HOUSE, 'tiktok')).toBeNull();
+
+    const valid = await browserReturns(started.authUrl, {
+      code: 'AUTH-CODE*v!2', state: stateOf(started.authUrl), scopes: 'user.info.basic,video.publish,video.upload',
+    });
+    expect(valid.status).toBe(200);
+    expect((await settled(HOUSE)).status).toBe('complete');
+    expect(tiktok.state.hits.filter((h) => h.leg === 'token')).toHaveLength(1);
   });
 
   test('declining on TikTok\'s page, or a grant without video.publish: refused in plain words, nothing sealed', async () => {

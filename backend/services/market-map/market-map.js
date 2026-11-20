@@ -43,11 +43,12 @@ const addressOf = (id) => String(id ?? '').split('_').slice(1).join('_').toLower
  */
 export const poolRow = (p) => {
   const a = p?.attributes ?? {};
-  const fee = /(\d+(?:\.\d+)?)%\s*$/.exec(String(a.name ?? ''));
+  const name = String(a.name ?? '?');
+  const fee = /(\d+(?:\.\d+)?)%\s*$/.exec(name.slice(-64));
   const feePct = fee ? Number(fee[1]) : null;
   const vol24 = n(a.volume_usd?.h24);
   return {
-    name: String(a.name ?? '?'), dex: p?.relationships?.dex?.data?.id ?? '?', address: String(a.address ?? ''),
+    name, dex: p?.relationships?.dex?.data?.id ?? '?', address: String(a.address ?? ''),
     base: addressOf(p?.relationships?.base_token?.data?.id), quote: addressOf(p?.relationships?.quote_token?.data?.id),
     vol24, tvl: n(a.reserve_in_usd), feePct, feesPerDay: feePct !== null && vol24 !== null ? (vol24 * feePct) / 100 : null,
     change24: n(a.price_change_percentage?.h24), created: a.pool_created_at ?? null,

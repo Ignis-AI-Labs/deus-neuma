@@ -6,6 +6,8 @@
 // SYNCHRONOUSLY from the menu's click — an await before it would spend the
 // gesture and the browser would refuse.
 
+import { safeMediaUrl } from './media-url.js';
+
 /**
  * impure — the live state of a clip's player, or null when there is no player.
  * @param {HTMLVideoElement|null} video
@@ -72,10 +74,13 @@ export const actOnPlayer = (video, id) => {
  * @param {string} name
  */
 export const downloadFrom = (src, name) => {
-  const a = Object.assign(document.createElement('a'), { href: src, download: name });
+  const safe = safeMediaUrl(src);
+  if (!safe) return false;
+  const a = Object.assign(document.createElement('a'), { href: safe, download: name });
   document.body.appendChild(a);
   a.click();
   a.remove();
+  return true;
 };
 
 // impure — the clipboard holds pictures as PNG only, so any other format is

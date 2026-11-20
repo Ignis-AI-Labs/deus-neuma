@@ -14,16 +14,16 @@ const { browserTargetFor } = require('../../electron/open-in-browser.cjs');
 
 describe('browserTargetFor — the file:// gate', () => {
   test('an absolute .html path becomes a file:// URL', () => {
-    expect(browserTargetFor('/repo/out/gallery.html')).toBe('file:///repo/out/gallery.html');
+    expect(browserTargetFor('/repo/out/gallery.html', ['/repo'])).toBe('file:///repo/out/gallery.html');
   });
 
   test('.htm and uppercase extensions pass too', () => {
-    expect(browserTargetFor('/repo/a.htm')).toBe('file:///repo/a.htm');
-    expect(browserTargetFor('/repo/GALLERY.HTML')).toBe('file:///repo/GALLERY.HTML');
+    expect(browserTargetFor('/repo/a.htm', ['/repo'])).toBe('file:///repo/a.htm');
+    expect(browserTargetFor('/repo/GALLERY.HTML', ['/repo'])).toBe('file:///repo/GALLERY.HTML');
   });
 
   test('spaces and special chars are URL-encoded by pathToFileURL', () => {
-    expect(browserTargetFor('/repo/my page.html')).toBe('file:///repo/my%20page.html');
+    expect(browserTargetFor('/repo/my page.html', ['/repo'])).toBe('file:///repo/my%20page.html');
   });
 
   test('relative paths are refused — the shell never guesses a root', () => {

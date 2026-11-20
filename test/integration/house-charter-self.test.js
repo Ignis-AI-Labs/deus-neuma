@@ -2,21 +2,25 @@
  * house/charter — the house sets up its own charter (Design note, 2026-11-13: […]), through the REAL intent sweep
  * (RULE 0): a real temp realm and workspaces, two members of one operator's
  * house and one lane of another house, the real charter store, the real wake
- * gate and the real notification store. What it proves: a member's change
- * stands at once and lets a seat wake; only the fields it names change; the
+ * gate and the real notification store. What it proves: an unapproved member's
+ * filing waits; an explicitly granted change stands and lets a seat wake; only the fields it names change; the
  * operator's three fields and the pause stay theirs; another house's lane
  * cannot touch this house's charter; every version is kept with who set it,
  * and the operator gets a card for each.
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import process from 'node:process';
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ethers } from 'ethers';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { granting, settled } from '../helpers/intent-path.js';
 
 const ENV = ['WORKSPACES_ROOT', 'NEUMA_REALM_ROOT', 'NEUMA_DATA_ROOT'];
 const saved = {};
-let root, operator, stranger, store, read, gate, viaIntent, notes, KIND;
+let root, operator, stranger, store, read, gate, viaIntentReal, notes, KIND;
+const viaIntent = (connection, type, payload, mode = 'ask', lanePolicy = granting('house.charter'), emit = () => {}) =>
+  viaIntentReal(connection, type, payload, mode, lanePolicy, emit);
 const member = (neumaId, wallet = operator) => ({ companion: { neumaId, name: neumaId[0].toUpperCase() + neumaId.slice(1) }, walletAddress: wallet, sessionId: 's-1', toolMode: 'ask' });
 const cards = async () => (await notes.readNotifications(operator)).records.filter((n) => n.kind === KIND.houseWake);
 
@@ -39,7 +43,7 @@ beforeEach(async () => {
   store = await import('../../backend/services/house-clock/charter-store.js');
   read = await import('../../backend/services/house-clock/charter-shape.js');
   gate = await import('../../backend/services/house-clock/wake-gate.js');
-  ({ viaIntent } = await import('../helpers/intent-path.js'));
+  ({ viaIntent: viaIntentReal } = await import('../helpers/intent-path.js'));
   notes = await import('../../backend/services/notification-store.js');
   ({ KIND } = await import('../../core/runtime/notification-record.js'));
 });
@@ -50,6 +54,18 @@ afterEach(async () => {
 });
 
 describe('the house sets up its own charter', () => {
+  test('a member filing is refused by default; the same filing stands under an explicit grant', async () => {
+    const connection = member('tenekom');
+    const payload = { goal: 'Run the LP books.', seat: { dailyCap: 24 } };
+    const [held] = await viaIntent(connection, 'house/charter', payload, 'ask', null);
+    expect(held).toMatchObject({ status: 'denied', tool: 'intents/house.charter' });
+    expect(await settled(connection)).toBe(true);
+    expect(await store.readCharter(operator)).toBeNull();
+    const [approved] = await viaIntent(connection, 'house/charter', payload);
+    expect(approved.status).toBe('ok');
+    expect(await store.readCharter(operator)).toMatchObject({ version: 1, approvedBy: { laneId: 'tenekom' } });
+  });
+
   test('a member sets one up from nothing: it stands at once, its seat may wake, and the operator is told', async () => {
     const [receipt] = await viaIntent(member('tenekom'), 'house/charter', { goal: 'Run the LP books round the clock.', seat: { dailyCap: 24 }, why: 'so I can work my portfolio rounds' });
     expect(receipt.status).toBe('ok');

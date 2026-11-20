@@ -1,0 +1,140 @@
+/* SalesPipeline — the sales position's hub as one straight line (Design note, 2026-11-18: […]). Parts are told apart by TONE (design-language.md § SURFACES): the campaign
+   row and the MORE links ride the window; the rail is sunk; the chosen stage is a band with a signal edge that runs
+   into the body under it; a stage that waits on the operator carries alert, nothing else does. The body is the
+   stage's one sheet. THE FLOOR: every word reads at 13px or more. */
+
+.spl { display: flex; flex-direction: column; min-width: 0; container-type: inline-size; }
+.spl .label-data { font-size: var(--text-label); letter-spacing: 0.12em; }
+.spl-k { color: var(--color-text-tertiary); margin-right: var(--space-1); }
+
+/* The top row: which campaign is in view (left), and what is not a stage (right, quiet). */
+.spl-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
+}
+.spl-campaigns, .spl-more { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.spl-camp {
+  position: relative;
+  padding: 6px var(--space-3);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color var(--snap), border-color var(--snap), background var(--snap);
+}
+.spl-camp:hover { color: var(--color-text-primary); border-color: var(--line-hover); }
+.spl-camp.is-on { background: var(--surface-band); border-color: var(--signal-dim); color: var(--color-text-primary); }
+.spl-new { border-style: dashed; color: var(--color-text-tertiary); }
+.spl-dot { display: inline-block; width: 7px; height: 7px; margin-left: var(--space-2); border-radius: 50%; background: var(--alert); vertical-align: middle; }
+.spl-more-b {
+  padding: 4px var(--space-2);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+.spl-more-b:hover { color: var(--color-text-primary); }
+.spl-more-b.is-on { color: var(--signal); border-bottom-color: var(--signal); }
+
+/* THE RAIL: eight stages in one row, in order, on the sunk tone; each a column a press wide. */
+.spl-rail {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  background: var(--surface-sunk);
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+.spl-rail > li { min-width: 0; display: flex; }
+.spl-rail > li + li { border-left: 1px solid var(--line); }
+.spl-stage {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-3) var(--space-3) var(--space-3);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-top: 2px solid transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--snap), border-color var(--snap), color var(--snap);
+}
+.spl-stage:hover { background: var(--surface-raised); color: var(--color-text-primary); }
+.spl-stage.is-on { background: var(--surface-band); border-top-color: var(--signal); color: var(--color-text-primary); }
+.spl-stage-n { color: var(--color-text-tertiary); }
+.spl-stage.is-on .spl-stage-n { color: var(--signal); }
+.spl-stage-head { display: flex; flex-direction: column; align-items: flex-start; margin: 2px 0 4px; }
+.spl-stage-head b { font-family: var(--font-data); font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.spl-stage-unit { color: var(--color-text-secondary); }
+.spl .spl-stage-line, .spl .spl-stage-unit, .spl .spl-stage-you { letter-spacing: 0.06em; }
+.spl-stage-line { color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.spl-stage-you { color: var(--alert); }
+.spl-stage.is-you .spl-stage-n { color: var(--alert); }
+
+/* THE BODY: the chosen stage's one sheet, under a head that says what the stage is. */
+.spl-body { padding: var(--space-3) var(--space-4) var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.spl-body-h { margin: 0; color: var(--color-text-secondary); }
+.spl-notice { margin: 0; padding: var(--space-2) var(--space-4); color: var(--signal); }
+.spl-empty { margin: 0; color: var(--color-text-tertiary); }
+.spl-note { margin: 0; color: var(--color-text-tertiary); font-size: 14px; line-height: 1.5; }
+.spl-detail { margin: 0; padding: var(--space-2) 0; font-size: 14px; line-height: 1.5; color: var(--color-text-secondary); }
+ul.spl-detail { padding-left: var(--space-4); }
+.spl-acts { display: inline-flex; gap: var(--space-1); }
+.spl-picks { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+/* A person's messages, opened under their row: each its own block, the house's on the left edge in signal, theirs in
+   the plain line colour, the words whole and wrapped as written. */
+.spl-thread { list-style: none; margin: 0; padding: var(--space-2) 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.spl-msg { padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-left: 2px solid var(--line-strong); white-space: normal; }
+.spl-msg.is-out { border-left-color: var(--signal-dim); }
+.spl-msg-h { margin: 0 0 var(--space-1); color: var(--color-text-secondary); }
+.spl-msg-subject { margin: 0 0 var(--space-1); color: var(--color-text-primary); font-weight: 600; }
+/* Their reply, first when a REPLIES row opens: it is what the operator came for. */
+.spl-their-reply { border-left-color: var(--signal); margin-bottom: var(--space-2); }
+.spl-msg-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 14px; line-height: 1.5; color: var(--color-text-primary); }
+.spl-msg-note { margin: 0; font-size: 14px; line-height: 1.5; color: var(--color-text-secondary); white-space: pre-wrap; }
+
+/* A row that waits on the operator stands first in its sheet, edged and washed in alert, so the eye finds it at once. */
+.spl-body .sheet-table tbody tr[data-waits] > * { background: color-mix(in srgb, var(--alert) 9%, transparent); }
+.spl-body .sheet-table tbody tr[data-waits] > :first-child { box-shadow: inset 2px 0 0 var(--alert); }
+
+/* The operator's one decision in a stage stands above its sheet, on the raised tone, in alert. */
+.spl-decide { padding: var(--space-3); background: var(--surface-raised); border-left: 2px solid var(--alert); display: flex; flex-direction: column; gap: var(--space-2); }
+.spl-decide-h { margin: 0; color: var(--alert); }
+.spl-decide ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.spl-decide-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-3); align-items: center; }
+.spl-decide-what { color: var(--color-text-primary); }
+
+/* Narrow (the window, not the screen): the rail wraps to two rows of four, still in order. */
+@container (max-width: 820px) {
+  .spl-rail { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .spl-rail > li:nth-child(5) { border-left: 0; }
+  .spl-rail > li:nth-child(n + 5) { border-top: 1px solid var(--line); }
+  .spl-decide-row { grid-template-columns: 1fr; }
+}
+
+/* A campaign's email plan (EmailPlan.jsx): its variables as a short list of label and words. */
+.spl-email-plan { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--line-strong); }
+.spl-plan { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: var(--space-1) 0 var(--space-2); font-size: 14px; line-height: 1.5; }
+.spl-plan dt { color: var(--color-text-tertiary); letter-spacing: 0.1em; }
+.spl-plan dd { margin: 0; color: var(--color-text-primary); }
+.spl-plan-asks { margin: 0; padding-left: var(--space-4); }
+/* What a reply was read as, over the reply itself: a band, with the presses that say otherwise. */
+.spl-said { display: flex; flex-direction: column; gap: var(--space-1); margin-bottom: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-band); border-left: 2px solid var(--line-strong); }
+.spl-said[data-said='wants'] { border-left-color: var(--signal); }
+.spl-said[data-said='no'], .spl-said[data-said='gone'] { border-left-color: var(--alert-dim); }
+.spl-said-h { margin: 0; font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-secondary); }
+.spl-said-h b { color: var(--color-text-primary); font-weight: 600; }
+.spl-said[data-said='wants'] .spl-said-h b { color: var(--signal); }
+.spl-said-set { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: var(--space-1) 0 0; font-size: 13px; color: var(--color-text-tertiary); }

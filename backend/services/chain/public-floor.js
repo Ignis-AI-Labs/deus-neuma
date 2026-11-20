@@ -7,8 +7,8 @@
  * Base mainnet only: mainnet.base.org is the node the wallet already names
  * in the connections list. A fallback answer always says so (`node:
  * 'public'`), so a reader knows the number did not come through the keyed
- * address. BASE_PUBLIC_RPC_URL repoints the floor; set blank it removes it,
- * which is how the test suite stays off the real network.
+ * address. BASE_PUBLIC_RPC_URL admits a loopback floor only under NODE_ENV=test;
+ * set blank it removes the floor, which is how the test suite stays off the real network.
  *
  * A floor is verified like any endpoint (eth_chainId against the chain) and
  * kept for ten minutes, so a keyed address that comes back is picked up again
@@ -18,6 +18,7 @@
  */
 
 import { ethers } from 'ethers';
+import { testEndpoint } from '../test-endpoint-door.js';
 
 const FLOORS = Object.freeze({
   base: Object.freeze({ envName: 'BASE_PUBLIC_RPC_URL', url: 'https://mainnet.base.org', chainId: 8453 }),
@@ -30,8 +31,8 @@ const FLOOR_KEEP_MS = 10 * 60 * 1000;
 const publicFloor = (key, env = process.env) => {
   const floor = FLOORS[key];
   if (!floor) return '';
-  const set = env[floor.envName];
-  return set === undefined ? floor.url : String(set).trim();
+  if (env[floor.envName] === '') return '';
+  return testEndpoint(env, floor.envName, floor.url, ['http:', 'https:']);
 };
 
 const floors = new Map(); // `${key}\n${url}` → { provider, until }

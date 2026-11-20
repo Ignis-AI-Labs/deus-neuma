@@ -298,6 +298,34 @@ describe('User files conditional write — PUT /write (#235)', () => {
     expect(await fs.readFile(filePath, 'utf8')).toBe('saved by the desk');
   });
 
+  test('a linked folder inside the root never carries a new file, folder or move outside it (PR600 P6-126)', async () => {
+    const outside = await createTempDir(`files-outside-${Math.random().toString(36).slice(2)}`);
+    await fs.symlink(outside, path.join(tempFolder, 'link'));
+    await fs.symlink(path.join(outside, 'not-there-yet.txt'), path.join(tempFolder, 'broken'));
+    await fs.writeFile(path.join(tempFolder, 'mine.txt'), 'inside');
+    const call = (method, route, body) => request(app)[method](`/api/v1/user/files/${route}`).set(witness.header).send(body);
+
+    const write = await call('put', 'write', { path: path.join(tempFolder, 'link', 'new.txt'), content: 'escaped' });
+    expect(write.status).toBe(403);
+    const deep = await call('put', 'write', { path: path.join(tempFolder, 'link', 'a', 'b.txt'), content: 'escaped' });
+    expect(deep.status).toBe(403);
+    const dangling = await call('put', 'write', { path: path.join(tempFolder, 'broken'), content: 'escaped' });
+    expect(dangling.status).toBe(403);
+    for (const kind of ['file', 'dir']) {
+      expect((await call('post', 'create', { path: path.join(tempFolder, 'link', `made-${kind}`), kind })).status).toBe(403);
+    }
+    const move = await call('post', 'rename', { from: path.join(tempFolder, 'mine.txt'), to: path.join(tempFolder, 'link', 'moved.txt') });
+    expect(move.status).toBe(403);
+    expect(await fs.readdir(outside)).toEqual([]);
+    expect(await fs.readFile(path.join(tempFolder, 'mine.txt'), 'utf8')).toBe('inside');
+
+    // A new file in a real folder of the root still lands, at any depth that exists.
+    await fs.mkdir(path.join(tempFolder, 'real'));
+    expect((await call('post', 'create', { path: path.join(tempFolder, 'real', 'new.txt'), kind: 'file' })).status).toBe(200);
+    expect((await call('put', 'write', { path: path.join(tempFolder, 'real', 'fresh.txt'), content: 'kept' })).status).toBe(200);
+    expect(await fs.readFile(path.join(tempFolder, 'real', 'fresh.txt'), 'utf8')).toBe('kept');
+  });
+
   test('no stamp → the unconditional write still lands (the being path)', async () => {
     const filePath = path.join(tempFolder, 'doc.txt');
     await fs.writeFile(filePath, 'the original');

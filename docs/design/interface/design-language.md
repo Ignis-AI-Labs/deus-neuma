@@ -500,6 +500,12 @@ signal-tinted text selection, bracket-style `:focus-visible` rings. Keyboard
 navigation and text highlighting stay inside the fiction — immersion holds
 for the user who never touches the mouse.
 
+**One focus ring, on the element's own edge** (Design note, 2026-11-18: […]). The ring is
+`base.css`'s alone: 1px signal, `outline-offset: -1px`. Drawn outside an element,
+a scrolling strip cut it off and it spilled across the neighbouring tab or row. No
+component sets its own ring width or offset. A component may answer focus another
+way (a border, a band), never with a ring that leaves its own box.
+
 ---
 
 ## TYPE

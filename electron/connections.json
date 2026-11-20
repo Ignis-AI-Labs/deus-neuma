@@ -82,9 +82,9 @@
       "name": "Lead sources",
       "to": "the public lists your sales seat gathers companies from (GeckoTerminal, DefiLlama), the own websites of the companies it gathered, and the contact-data providers you attached, if any (Hunter, Tomba, Apollo)",
       "when": "when your sales seat gathers companies or looks up a company's people",
-      "sends": "a request for the public list; to a gathered company's own site, a request for its public pages; to an attached provider, a company's web address and your own key for it; to Hunter's company search, the words your sales seat describes the companies with, and your own key",
+      "sends": "a request for the public list; to a gathered company's own site, a request for its public pages; to an attached provider, a company's web address and your own key for it; to an attached provider's company search (Hunter's, Tomba's or Apollo's), the words or keywords your sales seat describes the companies with, the audience's countries and sizes, and your own key; to find or check one person's address, that person's name and their company's web address, or the address itself, and your own key",
       "whileOff": "your sales seat finds companies one at a time by reading the web",
-      "detail": "Once you turn it on, the member who holds your sales seat can gather companies in bulk for an audience you can read. The free sources are public lists read without any account: the tokens trading on Base (GeckoTerminal) and the DeFi protocols on Base (DefiLlama). They see a request from this computer and nothing about your house. If you attach a contact-data provider with your own key (Hunter, Tomba or Apollo, under Settings, API, Service keys), the seat can also ask it for the people at one company it gathered: that provider receives the company's web address and your key, and nothing else. Those lookups spend your credits there, so none runs until you turn Paid lead data on in that position's Settings, and it stops at the monthly limit you set beside the switch. A gathered company is only a candidate until your sales seat scores it, and nobody is emailed before you approve the audience and its list. While it is off, the seat finds companies one at a time by reading the web.",
+      "detail": "Once you turn it on, the member who holds your sales seat can gather companies in bulk for an audience you can read. The free sources are public lists read without any account: the tokens trading on Base (GeckoTerminal) and the DeFi protocols on Base (DefiLlama). They see a request from this computer and nothing about your house. If you attach a contact-data provider with your own key (Hunter, Tomba or Apollo, under Settings, API, Service keys), the seat can also ask it for the people at one company it gathered: that provider receives the company's web address and your key, and nothing else. It can also ask Tomba's or Apollo's company search for companies, and find one named person's address. Those lookups and searches spend your credits there, so none runs until you turn Paid lead data on in that position's Settings, and it stops at the monthly limit you set beside the switch. Every address an email goes to is checked first by Hunter, Tomba or Apollo, whichever is attached and answers first, whether Paid lead data is on or off, within that limit; that provider receives the address and your key. You can have every attached provider check an address too. A gathered company is only a candidate until your sales seat scores it, and nobody is emailed before you approve the audience and its list. While it is off, the seat finds companies one at a time by reading the web.",
       "control": "switch",
       "default": false
     },
@@ -131,6 +131,15 @@
       "control": "web"
     },
     {
+      "id": "being-browser",
+      "name": "A neuma's own browser",
+      "to": "the websites a neuma opens, clicks and types in, in its own browser on this computer",
+      "when": "only while a neuma uses it; opening a page asks your approval (or allow always, or use AUTO); every click and every typing asks you even in AUTO, unless you allow that neuma always",
+      "sends": "the addresses a neuma opens and what it clicks or types on those sites, from this computer's IP address",
+      "detail": "A neuma can open websites in a browser of its own: a Chrome or Chromium already on this computer, started only while the neuma uses it and closed after 10 minutes without use. Each neuma keeps its own browser profile on this computer, so its sign-ins stay apart from yours and from every other neuma's. Everything it sends leaves through a door on this computer that reaches only the internet, never this computer or your network. The sites it visits see your IP address, as they would if you visited them. Before a click or typing, your approval card names exactly what will be clicked, and on which page. A neuma never types into a password field. Turning web access off in Settings stops it.",
+      "control": "web"
+    },
+    {
       "id": "cloud-models",
       "name": "Cloud models",
       "to": "the provider you choose",
@@ -145,7 +154,7 @@
       "to": "a public Ethereum node and CoinGecko",
       "when": "when you open a wallet, or every 10 minutes once you save your own node",
       "sends": "your wallet address, to read it; prices are asked with coin names, never an address",
-      "detail": "Your wallet's balances and transactions are read and sent through a public Ethereum node (ethereum-rpc.publicnode.com, or one you set), which sees your wallet address. A neuma's own wallet is read through Base's public node (mainnet.base.org), which sees that wallet's address. The wallet view asks CoinGecko for prices with coin names only, never an address. If you save your own node address, the app checks every 10 minutes for payments received by your house's and your neumas' wallets.",
+      "detail": "Your wallet's balances and transactions are read and sent through a public Ethereum node (ethereum-rpc.publicnode.com, or one you set), which sees your wallet address. A neuma's own wallet is read through Base's public node (mainnet.base.org), which sees that wallet's address. The wallet view asks CoinGecko for prices with coin names only, never an address. If you save your own node address, the app checks every 10 minutes for payments received by your house's and your neumas' wallets, and confirms each one it finds with a second public node (base-rpc.publicnode.com or ethereum-rpc.publicnode.com), which sees that transaction.",
       "control": "use"
     },
     {

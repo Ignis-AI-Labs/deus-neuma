@@ -16,6 +16,7 @@
  *      is deleted. Lesser findings are kept and shown.
  *   5. Only then does the folder take its place, and that folder — the copy
  *      that was checked — is what runs. Never `npx`, which would fetch again.
+ *      Its files are hashed as checked, and hashed again before every start.
  *
  * The daily security watch checks every installed extension again
  * (recheckInstalledExtensions); a new high or critical finding blocks it until
@@ -31,6 +32,7 @@ import { isConnectionOn } from '../connections/connection-switches.js';
 import { runAdvisoryScan } from '../security/advisory-scan.js';
 import { extensionById } from './extension-catalog.js';
 import { extensionsDir, extensionDir, readInstalled, updateInstalled, forgetKeys } from './extension-store.js';
+import { sealOf } from './extension-seal.js';
 
 /** Findings at these levels refuse an extension (and block an installed one). */
 export const BLOCKING_SEVERITIES = Object.freeze(['critical', 'high']);
@@ -109,11 +111,13 @@ export const installEntry = async (entry) => {
     const scan = await runAdvisoryScan({ id: `extension:${entry.id}`, path: staging });
     const verdict = judgeScan(scan);
     if (!verdict.ok) throw new ExtensionRefused(`${entry.name} was not added: ${verdict.why}`, { check: checkRecord(scan, verdict) });
+    // sealed as checked: these files, and no others, are what may start (extension-seal.js)
+    const seal = await sealOf(staging);
     await fs.rm(extensionDir(entry.id), { recursive: true, force: true });
     await fs.rename(staging, extensionDir(entry.id));
     return updateInstalled(entry.id, (prior) => ({
       id: entry.id, package: entry.package, version: entry.version, installedAt: new Date().toISOString(),
-      enabled: prior?.enabled ?? true, blocked: false, tools: null, check: checkRecord(scan, verdict),
+      enabled: prior?.enabled ?? true, blocked: false, tools: null, check: checkRecord(scan, verdict), seal,
     }));
   } finally {
     await fs.rm(staging, { recursive: true, force: true });

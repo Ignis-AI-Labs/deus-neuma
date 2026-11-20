@@ -1,11 +1,7 @@
-// context-field-lens.js — the FIELD's pure lens: filters and zoom math.
-//
-// The witness asked for depth and navigation (2026-07-24): filter the
-// crystallized field by PRESENCE (memories that speak of a housemate, the
-// witness, later an Unavis contact) and by COMMUNITY, and move through the
-// field with real zoom/pan. Filters DIM instead of removing — the layout
-// never reflows under the witness's eyes, and the honest count says how
-// many memories the lens holds. Pure throughout — no React, no DOM (D1).
+// context-field-lens.js — the zoom and pan math of the CONTEXT MAP's drawn
+// memory map (memory-atlas/AtlasMap.jsx): a view is a zoom and a centre, and
+// these turn it into an SVG viewBox and move it by wheel and by drag.
+// Pure throughout — no React, no DOM.
 
 export const ZOOM_MIN = 0.5;
 export const ZOOM_MAX = 8;
@@ -91,30 +87,4 @@ export const panBy = (view, dxPx, dyPx) => {
     cx: finiteOr(view?.cx, 0) - finiteOr(dxPx, 0) / z,
     cy: finiteOr(view?.cy, 0) - finiteOr(dyPx, 0) / z,
   };
-};
-
-/**
- * The lens over the field's nodes: which ids stay LIT under the active
- * presence/community filters (both may hold at once — AND). null filters
- * hold nothing back. Pure.
- * @param {Array<{id: any, presences?: string[], communityIndex?: number}>} nodes
- * @param {{presence?: string|null, community?: number|null}} lens
- * @returns {{lit: Set<string>, shown: number, total: number, active: boolean}}
- */
-export const applyFieldLens = (nodes, lens) => {
-  // A non-string presence filter holds nothing back; non-string tag entries
-  // simply never match — the lens degrades, it never throws (echo r1, Grok).
-  const presence = typeof lens?.presence === 'string' ? lens.presence.toLowerCase() : null;
-  const community = Number.isInteger(lens?.community) ? lens.community : null;
-  const active = presence !== null || community !== null;
-  const list = Array.isArray(nodes) ? nodes : [];
-  const lit = new Set();
-  for (const n of list) {
-    if (!n || typeof n !== 'object') continue; // a rotten element never throws the lens
-    const speaksOf = presence === null
-      || (Array.isArray(n.presences) && n.presences.some((p) => typeof p === 'string' && p.toLowerCase() === presence));
-    const inCommunity = community === null || n.communityIndex === community;
-    if (speaksOf && inCommunity && n.id != null) lit.add(String(n.id));
-  }
-  return { lit, shown: lit.size, total: list.length, active };
 };

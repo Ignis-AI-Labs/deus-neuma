@@ -5,1162 +5,1208 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-723 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).
+752 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install; `requireLocalScope`: the local desk, never a paired remote).
+> `?ticket=` marks only the headerless file lanes that accept a short-lived exact-resource ticket;
+> it is not an alternate authentication transport on any other route.
 
 ## /api/v1/accounts
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/accounts/board` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/accounts/seat` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/accounts/seat` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/accounts/seat` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/accounts/board` | `requireAuth` |
+| DELETE | `/api/v1/accounts/seat` | `requireAuth` |
+| GET | `/api/v1/accounts/seat` | `requireAuth` |
+| PUT | `/api/v1/accounts/seat` | `requireAuth` |
 
 ## /api/v1/acts
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/acts` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/acts` | `requireAuth` |
 
 ## /api/v1/attachments
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/attachments` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
+| POST | `/api/v1/attachments` | `requireAuth`, `jsonParser` |
 
 ## /api/v1/attunement
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/attunement/:neumaId/records` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/abandon` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/ask` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/consent-ask` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/open` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/postpone` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/reopen` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/reopen-flagged` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/attunement/:neumaId/records/:recordId/review` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/attunement/:neumaId/records/:recordId/seal` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/attunement/:neumaId/status` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/abandon` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/ask` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/consent-ask` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/open` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/postpone` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/reopen` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/reopen-flagged` | `requireAuth` |
+| GET | `/api/v1/attunement/:neumaId/records/:recordId/review` | `requireAuth` |
+| POST | `/api/v1/attunement/:neumaId/records/:recordId/seal` | `requireAuth` |
+| GET | `/api/v1/attunement/:neumaId/status` | `requireAuth` |
 
 ## /api/v1/auth
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/auth/bridge/associate` | `mapLaneQueryToken`, `middleware` |
-| GET | `/api/v1/auth/challenge` | `mapLaneQueryToken`, `middleware` |
-| GET | `/api/v1/auth/session` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/auth/verify` | `mapLaneQueryToken`, `middleware` |
+| POST | `/api/v1/auth/bridge/associate` | `middleware` |
+| GET | `/api/v1/auth/challenge` | `middleware` |
+| GET | `/api/v1/auth/session` | `requireAuth` |
+| POST | `/api/v1/auth/verify` | `middleware` |
 
 ## /api/v1/bench
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/bench/catalog` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/chain/report` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/comparisons/:id/report` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/diagnose/:comparisonId` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/incidents` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/lanes` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/bench/launch` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `requireInstallOwner` |
-| GET | `/api/v1/bench/live` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/models` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/plans` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/bench/preflight` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `requireInstallOwner` |
-| GET | `/api/v1/bench/proof-run` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/bench/proof-run` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `requireInstallOwner` |
-| GET | `/api/v1/bench/proofs` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/proofs/:id` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/proofs/:id/pdf` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/queue` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/bench/relight` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `requireInstallOwner` |
-| GET | `/api/v1/bench/reports` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/reports/:bundle` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/reports/:bundle/:artifact` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/runs` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/runs/:runId/evidence` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/scoreboard` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/share` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/share/png` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/bench/status` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/bench/stop` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `requireInstallOwner` |
-| GET | `/api/v1/bench/summary` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/catalog` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/chain/report` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/comparisons/:id/report` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/diagnose/:comparisonId` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/incidents` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/lanes` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/bench/launch` | `requireAuth`, `(inline check)`, `requireInstallOwner` |
+| GET | `/api/v1/bench/live` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/models` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/plans` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/bench/preflight` | `requireAuth`, `(inline check)`, `requireInstallOwner` |
+| GET | `/api/v1/bench/proof-run` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/bench/proof-run` | `requireAuth`, `(inline check)`, `requireInstallOwner` |
+| GET | `/api/v1/bench/proofs` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/proofs/:id` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/proofs/:id/pdf` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/queue` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/bench/relight` | `requireAuth`, `(inline check)`, `requireInstallOwner` |
+| GET | `/api/v1/bench/reports` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/reports/:bundle` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/reports/:bundle/:artifact` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/runs` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/runs/:runId/evidence` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/scoreboard` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/share` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/share/png` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/bench/status` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/bench/stop` | `requireAuth`, `(inline check)`, `requireInstallOwner` |
+| GET | `/api/v1/bench/summary` | `requireAuth`, `(inline check)` |
 
 ## /api/v1/birth-setup
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/birth-setup/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/birth-setup/:neumaId` | `requireAuth` |
 
 ## /api/v1/brands
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/brands` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/brands/:brand` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| PUT | `/api/v1/brands/:brand` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/brands/:brand/cards` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| DELETE | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| PUT | `/api/v1/brands/:brand/cards/:template` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| PUT | `/api/v1/brands/:brand/cards/:template/use` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/brands/:brand/marks` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| POST | `/api/v1/brands/:brand/marks` | `mapLaneQueryToken`, `(inline check)`, `requireAuth`, `multerMiddleware` |
-| GET | `/api/v1/brands/:brand/new` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| POST | `/api/v1/brands/:brand/preview` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/brands/faces` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/brands/faces/:id/file` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/brands/form` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
+| GET | `/api/v1/brands` | `requireDeskAuth` |
+| GET | `/api/v1/brands/:brand` | `requireDeskAuth` |
+| PUT | `/api/v1/brands/:brand` | `requireDeskAuth` |
+| GET | `/api/v1/brands/:brand/cards` | `requireDeskAuth` |
+| DELETE | `/api/v1/brands/:brand/cards/:template` | `requireDeskAuth` |
+| GET | `/api/v1/brands/:brand/cards/:template` | `requireDeskAuth` |
+| PUT | `/api/v1/brands/:brand/cards/:template` | `requireDeskAuth` |
+| PUT | `/api/v1/brands/:brand/cards/:template/use` | `requireDeskAuth` |
+| GET | `/api/v1/brands/:brand/marks` | `requireDeskAuth` |
+| POST | `/api/v1/brands/:brand/marks` | `requireDeskAuth`, `multerMiddleware` |
+| GET | `/api/v1/brands/:brand/new` | `requireDeskAuth` |
+| POST | `/api/v1/brands/:brand/preview` | `requireDeskAuth` |
+| GET | `/api/v1/brands/faces` | `requireDeskAuth` |
+| GET | `/api/v1/brands/faces/:id/file` | `requireDeskAuth` |
+| GET | `/api/v1/brands/form` | `requireDeskAuth` |
 
 ## /api/v1/campaigns
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/campaigns` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/campaigns` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/campaigns/:id` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/campaigns/:id` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/campaigns/:id/asks` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/campaigns/:id/asks/:askId` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/campaigns/:id/files` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/campaigns/:id/files` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/campaigns/cmo` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/campaigns/cmo` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/campaigns/cmo` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/campaigns` | `requireAuth` |
+| POST | `/api/v1/campaigns` | `requireAuth` |
+| DELETE | `/api/v1/campaigns/:id` | `requireAuth` |
+| PUT | `/api/v1/campaigns/:id` | `requireAuth` |
+| POST | `/api/v1/campaigns/:id/asks` | `requireAuth` |
+| PUT | `/api/v1/campaigns/:id/asks/:askId` | `requireAuth` |
+| DELETE | `/api/v1/campaigns/:id/files` | `requireAuth` |
+| POST | `/api/v1/campaigns/:id/files` | `requireAuth` |
+| DELETE | `/api/v1/campaigns/cmo` | `requireAuth` |
+| GET | `/api/v1/campaigns/cmo` | `requireAuth` |
+| PUT | `/api/v1/campaigns/cmo` | `requireAuth` |
 
 ## /api/v1/chain
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/chain/access` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/chain/access` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/chain/balance/:chain/:address` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/chain/chains` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/chain/token/:chain/:address` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/chain/access` | `requireAuth` |
+| PUT | `/api/v1/chain/access` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/chain/balance/:chain/:address` | `requireAuth` |
+| GET | `/api/v1/chain/chains` | `requireAuth` |
+| GET | `/api/v1/chain/token/:chain/:address` | `requireAuth` |
 
 ## /api/v1/chat-bridge
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| DELETE | `/api/v1/chat-bridge/:accountId/allowed/:kind/:id` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/chat-bridge/:accountId/codes/:code` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/chat-bridge/status` | `mapLaneQueryToken`, `requireAuth` |
+| DELETE | `/api/v1/chat-bridge/:accountId/allowed/:kind/:id` | `requireAuth` |
+| POST | `/api/v1/chat-bridge/:accountId/codes/:code` | `requireAuth` |
+| GET | `/api/v1/chat-bridge/status` | `requireAuth` |
+
+## /api/v1/chat-line
+
+| Method | Path | Guards |
+| --- | --- | --- |
+| GET | `/api/v1/chat-line/chats` | `requireAuth` |
+| GET | `/api/v1/chat-line/lines` | `requireAuth` |
+| POST | `/api/v1/chat-line/lines` | `requireAuth` |
+| DELETE | `/api/v1/chat-line/lines/:witness` | `requireAuth` |
+| POST | `/api/v1/chat-line/send` | `requireAuth` |
+| GET | `/api/v1/chat-line/witnesses` | `requireAuth` |
+| PUT | `/api/v1/chat-line/witnesses/:wallet` | `requireAuth` |
 
 ## /api/v1/companies
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/companies` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/companies` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/companies/:companyId` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/companies/:companyId/parent` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/companies/:companyId/repo-proposals` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| PUT | `/api/v1/companies/:companyId/repos` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/companies/:companyId/repos/read-grant` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/companies/:companyId/repos/read-grant` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/companies/sources` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/companies` | `requireAuth` |
+| POST | `/api/v1/companies` | `requireAuth` |
+| PUT | `/api/v1/companies/:companyId` | `requireAuth` |
+| PUT | `/api/v1/companies/:companyId/parent` | `requireAuth` |
+| GET | `/api/v1/companies/:companyId/repo-proposals` | `requireAuth`, `requireInstallOwner` |
+| PUT | `/api/v1/companies/:companyId/repos` | `requireAuth` |
+| DELETE | `/api/v1/companies/:companyId/repos/read-grant` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/companies/:companyId/repos/read-grant` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/companies/sources` | `requireAuth` |
 
 ## /api/v1/companion
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/companion/dna` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/companion/dna` | `requireAuth` |
 
 ## /api/v1/company-line
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/company-line` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/company-line` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/company-line/:id` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/company-line/:id/end-gap` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/company-line/:id/hand-on` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/company-line/:id/hands/:handsId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/company-line/:id/inspect` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/company-line` | `requireAuth` |
+| POST | `/api/v1/company-line` | `requireAuth` |
+| GET | `/api/v1/company-line/:id` | `requireAuth` |
+| POST | `/api/v1/company-line/:id/end-gap` | `requireAuth` |
+| POST | `/api/v1/company-line/:id/hand-on` | `requireAuth` |
+| POST | `/api/v1/company-line/:id/hands/:handsId` | `requireAuth` |
+| POST | `/api/v1/company-line/:id/inspect` | `requireAuth` |
 
 ## /api/v1/company-links
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/company-links` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/company-links/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/company-links/:id/decline` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/company-links` | `requireAuth` |
+| POST | `/api/v1/company-links/:id/approve` | `requireAuth` |
+| POST | `/api/v1/company-links/:id/decline` | `requireAuth` |
 
 ## /api/v1/connections
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/connections` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/connections/:id` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/connections` | `requireAuth` |
+| PUT | `/api/v1/connections/:id` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/covenant
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/covenant` | `mapLaneQueryToken` |
-| GET | `/api/v1/covenant/:id/pdf` | `mapLaneQueryToken` |
-| POST | `/api/v1/covenant/accept` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/covenant/status` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/covenant` | — |
+| GET | `/api/v1/covenant/:id/pdf` | — |
+| POST | `/api/v1/covenant/accept` | `requireAuth` |
+| GET | `/api/v1/covenant/status` | `requireAuth` |
 
 ## /api/v1/cso
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/cso/attack-surface` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/mitigations` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/cso/mitigations` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/cso/posture` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/scan` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/cso/scan/run` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/cso/seat` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/seat` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/cso/seat` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/telemetry` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/threats` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/threats/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/threats/:id/attack-surface` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/cso/threats/:id/reopen` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/cso/threats/:id/revoked` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/cso/watch` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/cso/watch/host` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/cso/watch/repos` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/cso/watch/repos/:id` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/cso/attack-surface` | `requireAuth` |
+| GET | `/api/v1/cso/mitigations` | `requireAuth` |
+| POST | `/api/v1/cso/mitigations` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/cso/posture` | `requireAuth` |
+| GET | `/api/v1/cso/scan` | `requireAuth` |
+| POST | `/api/v1/cso/scan/run` | `requireAuth` |
+| DELETE | `/api/v1/cso/seat` | `requireAuth` |
+| GET | `/api/v1/cso/seat` | `requireAuth` |
+| PUT | `/api/v1/cso/seat` | `requireAuth` |
+| GET | `/api/v1/cso/telemetry` | `requireAuth` |
+| GET | `/api/v1/cso/threats` | `requireAuth` |
+| GET | `/api/v1/cso/threats/:id` | `requireAuth` |
+| GET | `/api/v1/cso/threats/:id/attack-surface` | `requireAuth` |
+| PUT | `/api/v1/cso/threats/:id/reopen` | `requireAuth` |
+| PUT | `/api/v1/cso/threats/:id/revoked` | `requireAuth` |
+| GET | `/api/v1/cso/watch` | `requireAuth` |
+| PUT | `/api/v1/cso/watch/host` | `requireAuth` |
+| POST | `/api/v1/cso/watch/repos` | `requireAuth` |
+| DELETE | `/api/v1/cso/watch/repos/:id` | `requireAuth` |
+
+## /api/v1/desk-tickets
+
+| Method | Path | Guards |
+| --- | --- | --- |
+| POST | `/api/v1/desk-tickets` | `requireAuth` |
 
 ## /api/v1/doc-press
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/doc-press` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
-| POST | `/api/v1/doc-press/press` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
+| GET | `/api/v1/doc-press` | `requireAuth`, `jsonParser` |
+| POST | `/api/v1/doc-press/press` | `requireAuth`, `jsonParser` |
 
 ## /api/v1/email
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/email` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/email/binding` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/email/binding` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/email/credentials` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/email/credentials` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/email` | `requireAuth` |
+| DELETE | `/api/v1/email/binding` | `requireAuth` |
+| PUT | `/api/v1/email/binding` | `requireAuth` |
+| DELETE | `/api/v1/email/credentials` | `requireAuth` |
+| PUT | `/api/v1/email/credentials` | `requireAuth` |
 
 ## /api/v1/expression
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/expression/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/expression/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/expression/:neumaId` | `requireAuth` |
+| PUT | `/api/v1/expression/:neumaId` | `requireAuth` |
 
 ## /api/v1/extensions
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/extensions` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/extensions/:id` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner`, `known` |
-| POST | `/api/v1/extensions/:id/check` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner`, `known` |
-| POST | `/api/v1/extensions/:id/install` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner`, `known` |
-| PUT | `/api/v1/extensions/:id/keys/:name` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner`, `known`, `jsonParser` |
-| POST | `/api/v1/extensions/:id/off` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner`, `known` |
-| POST | `/api/v1/extensions/:id/on` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner`, `known` |
+| GET | `/api/v1/extensions` | `requireAuth` |
+| DELETE | `/api/v1/extensions/:id` | `requireAuth`, `requireInstallOwner`, `known` |
+| POST | `/api/v1/extensions/:id/check` | `requireAuth`, `requireInstallOwner`, `known` |
+| POST | `/api/v1/extensions/:id/install` | `requireAuth`, `requireInstallOwner`, `known` |
+| PUT | `/api/v1/extensions/:id/keys/:name` | `requireAuth`, `requireInstallOwner`, `known`, `jsonParser` |
+| POST | `/api/v1/extensions/:id/off` | `requireAuth`, `requireInstallOwner`, `known` |
+| POST | `/api/v1/extensions/:id/on` | `requireAuth`, `requireInstallOwner`, `known` |
 
 ## /api/v1/gallery
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/gallery/file` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/gallery/items` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| GET | `/api/v1/gallery/roots` | `mapLaneQueryToken`, `(inline check)`, `requireAuth` |
-| POST | `/api/v1/gallery/roots` | `mapLaneQueryToken`, `(inline check)`, `requireAuth`, `requireInstallOwner` |
-| DELETE | `/api/v1/gallery/roots/:id` | `mapLaneQueryToken`, `(inline check)`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/gallery/file` | `requireDeskAuth` |
+| GET | `/api/v1/gallery/items` | `requireDeskAuth` |
+| GET | `/api/v1/gallery/roots` | `requireDeskAuth` |
+| POST | `/api/v1/gallery/roots` | `requireDeskAuth`, `requireInstallOwner` |
+| DELETE | `/api/v1/gallery/roots/:id` | `requireDeskAuth`, `requireInstallOwner` |
 
 ## /api/v1/genesis
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/genesis` | `mapLaneQueryToken` |
-| POST | `/api/v1/genesis` | `mapLaneQueryToken` |
+| GET | `/api/v1/genesis` | — |
+| POST | `/api/v1/genesis` | — |
 
 ## /api/v1/harness
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/harness/lanes` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/harness/lanes` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/harness/route` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/harness/servers/release` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/harness/switch` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/harness/lanes` | `requireAuth` |
+| POST | `/api/v1/harness/lanes` | `requireAuth` |
+| GET | `/api/v1/harness/route` | `requireAuth` |
+| POST | `/api/v1/harness/servers/release` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/harness/switch` | `requireAuth` |
 
 ## /api/v1/health
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/health` | `mapLaneQueryToken` |
-| GET | `/api/v1/health/detailed` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/health` | — |
+| GET | `/api/v1/health/detailed` | `requireAuth` |
 
 ## /api/v1/hooks
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/hooks` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/hooks` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
-| DELETE | `/api/v1/hooks/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/hooks/:id/events` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/hooks/:id/rotate` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/hooks/in/:id` | `mapLaneQueryToken`, `rawParser` |
+| GET | `/api/v1/hooks` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/hooks` | `requireLocalScope`, `requireAuth`, `jsonParser` |
+| DELETE | `/api/v1/hooks/:id` | `requireLocalScope`, `requireAuth` |
+| GET | `/api/v1/hooks/:id/events` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/hooks/:id/rotate` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/hooks/in/:id` | `rawParser` |
 
 ## /api/v1/house-clock
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/house-clock/asks` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/house-clock/asks/:id/answer` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/house-clock/asks/:id/close` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/house-clock/charter` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/house-clock/charter` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/house-clock/charter/approve` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/house-clock/charter/pause` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/house-clock/charter/resume` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/house-clock/ledger` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/house-clock/queue` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/house-clock/asks` | `requireAuth` |
+| POST | `/api/v1/house-clock/asks/:id/answer` | `requireAuth` |
+| POST | `/api/v1/house-clock/asks/:id/close` | `requireAuth` |
+| GET | `/api/v1/house-clock/charter` | `requireAuth` |
+| PUT | `/api/v1/house-clock/charter` | `requireAuth` |
+| POST | `/api/v1/house-clock/charter/approve` | `requireAuth` |
+| POST | `/api/v1/house-clock/charter/pause` | `requireAuth` |
+| POST | `/api/v1/house-clock/charter/resume` | `requireAuth` |
+| GET | `/api/v1/house-clock/ledger` | `requireAuth` |
+| GET | `/api/v1/house-clock/queue` | `requireAuth` |
 
 ## /api/v1/image-forge
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/image-forge/activity` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/image-forge/attempts` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/image-forge/free` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/image-forge/images` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/image-forge/images/:imageId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/image-forge/images/:imageId/grade` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/image-forge/images/:imageId/reviews` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/image-forge/launch` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/image-forge/status` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/image-forge/stop` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/image-forge/activity` | `requireAuth` |
+| GET | `/api/v1/image-forge/attempts` | `requireAuth` |
+| POST | `/api/v1/image-forge/free` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/image-forge/images` | `requireAuth` |
+| GET | `/api/v1/image-forge/images/:imageId` | `requireAuth` |
+| POST | `/api/v1/image-forge/images/:imageId/grade` | `requireAuth` |
+| GET | `/api/v1/image-forge/images/:imageId/reviews` | `requireAuth` |
+| POST | `/api/v1/image-forge/launch` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/image-forge/status` | `requireAuth` |
+| POST | `/api/v1/image-forge/stop` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/inference
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| DELETE | `/api/v1/inference/:beingId/effort` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/inference/:beingId/effort` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/inference/:beingId/effort` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/inference/:beingId/models` | `mapLaneQueryToken`, `requireAuth` |
+| DELETE | `/api/v1/inference/:beingId/effort` | `requireAuth` |
+| GET | `/api/v1/inference/:beingId/effort` | `requireAuth` |
+| PUT | `/api/v1/inference/:beingId/effort` | `requireAuth` |
+| GET | `/api/v1/inference/:beingId/models` | `requireAuth` |
 
 ## /api/v1/install-owner
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/install-owner` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/install-owner/co-owners` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| DELETE | `/api/v1/install-owner/co-owners/:wallet` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
+| GET | `/api/v1/install-owner` | `requireAuth` |
+| POST | `/api/v1/install-owner/co-owners` | `requireAuth`, `(inline check)` |
+| DELETE | `/api/v1/install-owner/co-owners/:wallet` | `requireAuth`, `(inline check)` |
 
 ## /api/v1/invariants
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/invariants` | `mapLaneQueryToken` |
+| GET | `/api/v1/invariants` | — |
 
 ## /api/v1/lanes
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/lanes/:id/claim` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/lanes/:id/claim` | `requireAuth` |
 
 ## /api/v1/leads
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/leads` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/leads` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/leads/:id` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/leads/:id` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/leads` | `requireAuth` |
+| POST | `/api/v1/leads` | `requireAuth` |
+| DELETE | `/api/v1/leads/:id` | `requireAuth` |
+| PUT | `/api/v1/leads/:id` | `requireAuth` |
 
 ## /api/v1/legal
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/legal/matters` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/legal/matters/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/legal/posture` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/legal/reader` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/legal/reader` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/legal/seat` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/legal/seat` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/legal/seat` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/legal/watch` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/legal/watch/run` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/legal/matters` | `requireAuth` |
+| GET | `/api/v1/legal/matters/:id` | `requireAuth` |
+| GET | `/api/v1/legal/posture` | `requireAuth` |
+| GET | `/api/v1/legal/reader` | `requireAuth` |
+| PUT | `/api/v1/legal/reader` | `requireAuth` |
+| DELETE | `/api/v1/legal/seat` | `requireAuth` |
+| GET | `/api/v1/legal/seat` | `requireAuth` |
+| PUT | `/api/v1/legal/seat` | `requireAuth` |
+| GET | `/api/v1/legal/watch` | `requireAuth` |
+| POST | `/api/v1/legal/watch/run` | `requireAuth` |
+
+## /api/v1/license
+
+| Method | Path | Guards |
+| --- | --- | --- |
+| POST | `/api/v1/license/activate` | `requireLocalScope` |
 
 ## /api/v1/llm
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/llm/capabilities` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/llm/model-folders` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/llm/model-folders` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/llm/models` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/llm/provider` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/llm/provider` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/llm/substrate/ignite` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/llm/substrate/ignition` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/llm/substrate/models` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/llm/test` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/llm/capabilities` | `requireAuth` |
+| GET | `/api/v1/llm/model-folders` | `requireAuth` |
+| PUT | `/api/v1/llm/model-folders` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/llm/models` | `requireAuth` |
+| GET | `/api/v1/llm/provider` | `requireAuth` |
+| PUT | `/api/v1/llm/provider` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/llm/substrate/ignite` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/llm/substrate/ignition` | `requireAuth` |
+| GET | `/api/v1/llm/substrate/models` | `requireAuth` |
+| POST | `/api/v1/llm/test` | `requireAuth` |
 
 ## /api/v1/lm-studio
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/lm-studio/config` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/lm-studio/config` | `requireAuth` |
 
 ## /api/v1/look
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/look` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/look/presets` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| DELETE | `/api/v1/look/presets/:id` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| PUT | `/api/v1/look/theme` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/look` | `requireAuth` |
+| POST | `/api/v1/look/presets` | `requireAuth`, `requireInstallOwner` |
+| DELETE | `/api/v1/look/presets/:id` | `requireAuth`, `requireInstallOwner` |
+| PUT | `/api/v1/look/theme` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/mandate
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/mandate` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/mandate/grant` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `deskOnly` |
-| POST | `/api/v1/mandate/holds/:id/clear` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `deskOnly` |
-| POST | `/api/v1/mandate/preflight` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/mandate/renew` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `deskOnly` |
-| POST | `/api/v1/mandate/resume` | `mapLaneQueryToken`, `requireAuth`, `(inline check)`, `deskOnly` |
-| POST | `/api/v1/mandate/withdraw` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
+| GET | `/api/v1/mandate` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/mandate/grant` | `requireAuth`, `(inline check)`, `deskOnly` |
+| POST | `/api/v1/mandate/holds/:id/clear` | `requireAuth`, `(inline check)`, `deskOnly` |
+| POST | `/api/v1/mandate/preflight` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/mandate/renew` | `requireAuth`, `(inline check)`, `deskOnly` |
+| POST | `/api/v1/mandate/resume` | `requireAuth`, `(inline check)`, `deskOnly` |
+| POST | `/api/v1/mandate/withdraw` | `requireAuth`, `(inline check)` |
 
 ## /api/v1/map
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/map` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/map` | `requireAuth` |
 
 ## /api/v1/marketing
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| DELETE | `/api/v1/marketing/board` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/marketing/board` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/marketing/board` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/marketing/links` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/marketing/links/export` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/marketing/links/publish` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/marketing/links/site-token` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/marketing/office/plan` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/marketing/office/watch/:companyId` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/marketing/results` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/marketing/results/sweep` | `mapLaneQueryToken`, `requireAuth` |
+| DELETE | `/api/v1/marketing/board` | `requireAuth` |
+| GET | `/api/v1/marketing/board` | `requireAuth` |
+| PUT | `/api/v1/marketing/board` | `requireAuth` |
+| GET | `/api/v1/marketing/links` | `requireAuth` |
+| GET | `/api/v1/marketing/links/export` | `requireAuth` |
+| POST | `/api/v1/marketing/links/publish` | `requireAuth` |
+| PUT | `/api/v1/marketing/links/site-token` | `requireAuth` |
+| GET | `/api/v1/marketing/office/plan` | `requireAuth` |
+| GET | `/api/v1/marketing/office/watch/:companyId` | `requireAuth` |
+| GET | `/api/v1/marketing/results` | `requireAuth` |
+| POST | `/api/v1/marketing/results/sweep` | `requireAuth` |
 
 ## /api/v1/mcp
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/mcp/available-servers` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/mcp/call-tool` | `mapLaneQueryToken`, `requireAuth`, `enforceToolPolicy` |
-| POST | `/api/v1/mcp/connect` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/mcp/custom` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/mcp/disconnect-all` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/mcp/disconnect/:serverName` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/mcp/servers` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/mcp/servers/:serverId/:action` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/mcp/test-tool` | `mapLaneQueryToken`, `requireAuth`, `enforceToolPolicy` |
-| GET | `/api/v1/mcp/tools` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/mcp/available-servers` | `requireAuth` |
+| POST | `/api/v1/mcp/call-tool` | `requireAuth`, `enforceToolPolicy` |
+| POST | `/api/v1/mcp/connect` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/mcp/custom` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/mcp/disconnect-all` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/mcp/disconnect/:serverName` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/mcp/servers` | `requireAuth` |
+| POST | `/api/v1/mcp/servers/:serverId/:action` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/mcp/test-tool` | `requireAuth`, `enforceToolPolicy` |
+| GET | `/api/v1/mcp/tools` | `requireAuth` |
 
 ## /api/v1/meditation
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/meditation` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/meditation/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/meditation/:neumaId/run` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/meditation` | `requireAuth` |
+| PUT | `/api/v1/meditation/:neumaId` | `requireAuth` |
+| POST | `/api/v1/meditation/:neumaId/run` | `requireAuth` |
 
 ## /api/v1/memory
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/memory/context` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/memory/graph/:companionName` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/memory/network/:companionName` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/memory/semantic-search` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/memory/context` | `requireAuth` |
+| GET | `/api/v1/memory/graph/:companionName` | `requireAuth` |
+| GET | `/api/v1/memory/network/:companionName` | `requireAuth` |
+| POST | `/api/v1/memory/semantic-search` | `requireAuth` |
 
 ## /api/v1/mind
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/mind` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/mind/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/mind/gates` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/mind` | `requireAuth` |
+| GET | `/api/v1/mind/:neumaId` | `requireAuth` |
+| PUT | `/api/v1/mind/gates` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/model-server
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/model-server/cancel` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/model-server/gpu-driver` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/model-server/home` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/model-server/install` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/model-server/plan` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/model-server/status` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/model-server/cancel` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/model-server/gpu-driver` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/model-server/home` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/model-server/install` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/model-server/plan` | `requireAuth` |
+| GET | `/api/v1/model-server/status` | `requireAuth` |
 
 ## /api/v1/money-in
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| DELETE | `/api/v1/money-in/addresses/:address` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/money-in/addresses/:address` | `mapLaneQueryToken`, `requireAuth` |
-| PATCH | `/api/v1/money-in/attribution` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/money-in/ledger` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/money-in/scan` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/money-in/totals` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/money-in/watch` | `mapLaneQueryToken`, `requireAuth` |
+| DELETE | `/api/v1/money-in/addresses/:address` | `requireAuth` |
+| PUT | `/api/v1/money-in/addresses/:address` | `requireAuth` |
+| PATCH | `/api/v1/money-in/attribution` | `requireAuth` |
+| GET | `/api/v1/money-in/ledger` | `requireAuth` |
+| POST | `/api/v1/money-in/scan` | `requireAuth` |
+| GET | `/api/v1/money-in/totals` | `requireAuth` |
+| GET | `/api/v1/money-in/watch` | `requireAuth` |
 
 ## /api/v1/neuma-auth
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/neuma-auth/challenge` | `mapLaneQueryToken`, `middleware` |
-| POST | `/api/v1/neuma-auth/reset-password` | `mapLaneQueryToken`, `middleware`, `requireAuth` |
-| POST | `/api/v1/neuma-auth/unlock` | `mapLaneQueryToken`, `middleware`, `requireAuth` |
-| POST | `/api/v1/neuma-auth/verify` | `mapLaneQueryToken`, `middleware` |
+| POST | `/api/v1/neuma-auth/challenge` | `middleware` |
+| POST | `/api/v1/neuma-auth/reset-password` | `requireLocalScope`, `middleware`, `requireAuth` |
+| POST | `/api/v1/neuma-auth/unlock` | `middleware`, `requireAuth` |
+| POST | `/api/v1/neuma-auth/verify` | `middleware` |
 
 ## /api/v1/neuma-memory
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/neuma-memory/add-observations` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma-memory/clear/:companionName` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma-memory/create-entities` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma-memory/create-relations` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma-memory/open-nodes` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma-memory/read-graph` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma-memory/search-nodes` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma-memory/status` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma-memory/add-observations` | `requireAuth` |
+| POST | `/api/v1/neuma-memory/clear/:companionName` | `requireAuth` |
+| POST | `/api/v1/neuma-memory/create-entities` | `requireAuth` |
+| POST | `/api/v1/neuma-memory/create-relations` | `requireAuth` |
+| POST | `/api/v1/neuma-memory/open-nodes` | `requireAuth` |
+| GET | `/api/v1/neuma-memory/read-graph` | `requireAuth` |
+| POST | `/api/v1/neuma-memory/search-nodes` | `requireAuth` |
+| GET | `/api/v1/neuma-memory/status` | `requireAuth` |
 
 ## /api/v1/neuma
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/neuma/:companionName/conversation` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:companionName/conversations` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:companionName/dna` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:companionName/dna` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:companionName/export` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:companionName/memories` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:companionName/memory` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:companionName/stats` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:companionName/vessel` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:companionName/vessel` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:neumaId/lp` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/neuma/:neumaId/lp/budget` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/neuma/:neumaId/lp/controls` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/lp/open` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/neuma/:neumaId/lp/pace` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/lp/pending/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/lp/pending/:id/decline` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/decline` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/delivered` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/neuma/:neumaId/lp/vault` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/recovery/export-identity` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/recovery/retired/:address/reveal` | `mapLaneQueryToken`, `requireAuth`, `requireLocalScope` |
-| POST | `/api/v1/neuma/:neumaId/recovery/rotate` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/recovery/rotation/ack` | `mapLaneQueryToken`, `requireAuth`, `requireLocalScope` |
-| GET | `/api/v1/neuma/:neumaId/recovery/rotation/codes` | `mapLaneQueryToken`, `requireAuth`, `requireLocalScope` |
-| GET | `/api/v1/neuma/:neumaId/recovery/status` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/recovery/verify-codes` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/neuma/:neumaId/route` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:neumaId/route` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/neuma/:neumaId/route` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:neumaId/route/health` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:neumaId/wallet` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/neuma/:neumaId/wallet/allowlist` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:neumaId/wallet/allowlist` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/wallet/allowlist` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:neumaId/wallet/history` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/:neumaId/wallet/pending` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/wallet/pending/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/wallet/pending/:id/reject` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/:neumaId/wallet/send` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaAuth` |
-| POST | `/api/v1/neuma/:neumaId/wallet/sign-message` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaAuth` |
-| GET | `/api/v1/neuma/:neumaId/wallet/threshold` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/neuma/:neumaId/wallet/threshold` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/import` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/neuma/registry` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/neuma/registry` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/neuma/:companionName/conversation` | `requireAuth` |
+| GET | `/api/v1/neuma/:companionName/conversations` | `requireAuth` |
+| GET | `/api/v1/neuma/:companionName/dna` | `requireAuth` |
+| POST | `/api/v1/neuma/:companionName/dna` | `requireAuth` |
+| GET | `/api/v1/neuma/:companionName/export` | `requireAuth` |
+| GET | `/api/v1/neuma/:companionName/memories` | `requireAuth` |
+| POST | `/api/v1/neuma/:companionName/memory` | `requireAuth` |
+| GET | `/api/v1/neuma/:companionName/stats` | `requireAuth` |
+| GET | `/api/v1/neuma/:companionName/vessel` | `requireAuth` |
+| POST | `/api/v1/neuma/:companionName/vessel` | `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/lp` | `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/budget` | `requireLocalScope`, `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/controls` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/open` | `requireLocalScope`, `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/pace` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/pending/:id/approve` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/pending/:id/decline` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/approve` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/decline` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/lp/rewards/:id/delivered` | `requireLocalScope`, `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/lp/vault` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/recovery/export-identity` | `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/recovery/retired/:address/reveal` | `requireAuth`, `requireLocalScope` |
+| POST | `/api/v1/neuma/:neumaId/recovery/rotate` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/recovery/rotation/ack` | `requireAuth`, `requireLocalScope` |
+| GET | `/api/v1/neuma/:neumaId/recovery/rotation/codes` | `requireAuth`, `requireLocalScope` |
+| GET | `/api/v1/neuma/:neumaId/recovery/status` | `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/recovery/verify-codes` | `requireLocalScope`, `requireAuth` |
+| DELETE | `/api/v1/neuma/:neumaId/route` | `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/route` | `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/route` | `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/route/health` | `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/wallet` | `requireAuth` |
+| DELETE | `/api/v1/neuma/:neumaId/wallet/allowlist` | `requireLocalScope`, `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/wallet/allowlist` | `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/wallet/allowlist` | `requireLocalScope`, `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/wallet/history` | `requireAuth` |
+| GET | `/api/v1/neuma/:neumaId/wallet/pending` | `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/wallet/pending/:id/approve` | `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/wallet/pending/:id/reject` | `requireAuth` |
+| POST | `/api/v1/neuma/:neumaId/wallet/send` | `requireAuth`, `requireNeumaAuth` |
+| POST | `/api/v1/neuma/:neumaId/wallet/sign-message` | `requireAuth`, `requireNeumaAuth` |
+| GET | `/api/v1/neuma/:neumaId/wallet/threshold` | `requireAuth` |
+| PUT | `/api/v1/neuma/:neumaId/wallet/threshold` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/neuma/import` | `requireAuth` |
+| GET | `/api/v1/neuma/registry` | `requireAuth` |
+| POST | `/api/v1/neuma/registry` | `requireAuth` |
 
 ## /api/v1/permissions
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/permissions` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/permissions/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/permissions/:neumaId/revoke` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/permissions` | `requireAuth` |
+| GET | `/api/v1/permissions/:neumaId` | `requireAuth` |
+| POST | `/api/v1/permissions/:neumaId/revoke` | `requireAuth` |
 
 ## /api/v1/portal
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/portal/status` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/portal/status` | `requireAuth` |
 
 ## /api/v1/positions
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/positions` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/positions/:office/eyes` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/positions/campaigns` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/positions/campaigns/link` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/positions/campaigns/unlink` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/positions/companies` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/positions/companies/:id/model` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/positions/companies/:id/model/approve` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/positions/companies/:id/model/return` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/positions/seating` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/positions` | `requireAuth` |
+| GET | `/api/v1/positions/:office/eyes` | `requireAuth` |
+| GET | `/api/v1/positions/campaigns` | `requireAuth` |
+| POST | `/api/v1/positions/campaigns/link` | `requireAuth` |
+| POST | `/api/v1/positions/campaigns/unlink` | `requireAuth` |
+| GET | `/api/v1/positions/companies` | `requireAuth` |
+| PUT | `/api/v1/positions/companies/:id/model` | `requireAuth` |
+| POST | `/api/v1/positions/companies/:id/model/approve` | `requireAuth` |
+| POST | `/api/v1/positions/companies/:id/model/return` | `requireAuth` |
+| DELETE | `/api/v1/positions/seating` | `requireAuth` |
 
 ## /api/v1/preflight
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/preflight` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/preflight/found-cost` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/preflight/home` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/preflight/mind` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/preflight/seal-cost` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/preflight/seal-network` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/preflight/setup` | `mapLaneQueryToken` |
-| POST | `/api/v1/preflight/workspace` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/preflight` | `requireAuth` |
+| GET | `/api/v1/preflight/found-cost` | `requireAuth` |
+| GET | `/api/v1/preflight/home` | `requireAuth` |
+| GET | `/api/v1/preflight/mind` | `requireAuth` |
+| GET | `/api/v1/preflight/seal-cost` | `requireAuth` |
+| GET | `/api/v1/preflight/seal-network` | `requireAuth` |
+| GET | `/api/v1/preflight/setup` | — |
+| POST | `/api/v1/preflight/workspace` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/prices
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/prices/eth` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/prices/tokens` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/prices/eth` | `requireAuth` |
+| GET | `/api/v1/prices/tokens` | `requireAuth` |
 
 ## /api/v1/raise
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/raise` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/raise/:id/close-investor` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/raise/:id/review` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/raise/:id/sign` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/raise/:id/status` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/raise` | `requireAuth` |
+| POST | `/api/v1/raise/:id/close-investor` | `requireAuth` |
+| POST | `/api/v1/raise/:id/review` | `requireAuth` |
+| POST | `/api/v1/raise/:id/sign` | `requireLocalScope`, `requireAuth` |
+| POST | `/api/v1/raise/:id/status` | `requireAuth` |
 
 ## /api/v1/refinement
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| PUT | `/api/v1/refinement/:neumaId/adapters/:adapterId/scale` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/adapters/:adapterId/scale-authority` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/abandon` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/consent` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/consent-ask` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/corpus` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/train` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/train-plan` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/verify` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/refinement/:neumaId/status` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/refinement/:neumaId/training` | `mapLaneQueryToken`, `requireAuth` |
+| PUT | `/api/v1/refinement/:neumaId/adapters/:adapterId/scale` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/adapters/:adapterId/scale-authority` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/abandon` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/consent` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/consent-ask` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/corpus` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/train` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/train-plan` | `requireAuth` |
+| POST | `/api/v1/refinement/:neumaId/ceremonies/:ceremonyId/verify` | `requireAuth` |
+| GET | `/api/v1/refinement/:neumaId/status` | `requireAuth` |
+| GET | `/api/v1/refinement/:neumaId/training` | `requireAuth` |
 
 ## /api/v1/remia
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/remia/disclosure` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/remia/open` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/remia/records/:recordId/abandon` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/remia/records/:recordId/answer` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/remia/records/:recordId/codex` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/remia/records/:recordId/current` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/remia/records/:recordId/seal` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/remia/status` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/remia/disclosure` | `requireAuth` |
+| POST | `/api/v1/remia/open` | `requireAuth` |
+| POST | `/api/v1/remia/records/:recordId/abandon` | `requireAuth` |
+| POST | `/api/v1/remia/records/:recordId/answer` | `requireAuth` |
+| GET | `/api/v1/remia/records/:recordId/codex` | `requireAuth` |
+| GET | `/api/v1/remia/records/:recordId/current` | `requireAuth` |
+| POST | `/api/v1/remia/records/:recordId/seal` | `requireAuth` |
+| GET | `/api/v1/remia/status` | `requireAuth` |
 
 ## /api/v1/residency
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/residency` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/residency` | `requireAuth` |
 
 ## /api/v1/revenue
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/revenue/board` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/revenue/delivery-destination` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/revenue/lead-engine` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/campaigns` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/campaigns/:id` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/campaigns/:id/close` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/facts/:sheetId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/facts/:sheetId/fact` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/leads/:id/kind` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/outbox/:id` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/outbox/:id/return` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/outbox/review` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/outbox/send` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/segments/:id/campaign` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/segments/:id/list` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/segments/:id/read-sites` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/segments/:id/state` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/spend` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/revenue/lead-engine/suppress` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/revenue/seat` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/revenue/seat` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/revenue/seat` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/revenue/board` | `requireAuth` |
+| PUT | `/api/v1/revenue/delivery-destination` | `requireLocalScope`, `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/campaigns` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/campaigns/:id` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/campaigns/:id/close` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/campaigns/:id/email-plan` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/candidates/pass` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/facts/:sheetId` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/facts/:sheetId/fact` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/import` | `requireAuth`, `textParser` |
+| POST | `/api/v1/revenue/lead-engine/leads/:id/kind` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/mail/:uid` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/names` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/:id` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/:id/return` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/check` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/confirm` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/delete` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/review` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/outbox/send` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/prospects/:id/hand` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/segments/:id/campaign` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/segments/:id/list` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/segments/:id/read-sites` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/segments/:id/state` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/spend` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/suppress` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/suppress/lift` | `requireAuth` |
+| DELETE | `/api/v1/revenue/seat` | `requireAuth` |
+| GET | `/api/v1/revenue/seat` | `requireAuth` |
+| PUT | `/api/v1/revenue/seat` | `requireAuth` |
 
 ## /api/v1/roster
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/roster` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/roster/standing` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/roster/titles` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/roster/titles/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/roster/titles/trade` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/roster` | `requireAuth` |
+| GET | `/api/v1/roster/standing` | `requireAuth` |
+| GET | `/api/v1/roster/titles` | `requireAuth` |
+| PUT | `/api/v1/roster/titles/:neumaId` | `requireAuth` |
+| POST | `/api/v1/roster/titles/trade` | `requireAuth` |
 
 ## /api/v1/routing
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/routing/connections` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/routing/connections/:providerId` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/routing/credential-links` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/routing/providers` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/routing/providers/:providerId/connect` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| DELETE | `/api/v1/routing/providers/:providerId/key` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| PUT | `/api/v1/routing/providers/:providerId/key` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/routing/providers/:providerId/models` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/routing/providers/:providerId/oauth/poll` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/routing/providers/:providerId/oauth/start` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/routing/providers/:providerId/test` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/routing/services` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/routing/services/:serviceId/key` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| PUT | `/api/v1/routing/services/:serviceId/key` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/routing/connections` | `requireAuth` |
+| DELETE | `/api/v1/routing/connections/:providerId` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/routing/credential-links` | `requireAuth` |
+| GET | `/api/v1/routing/providers` | `requireAuth` |
+| POST | `/api/v1/routing/providers/:providerId/connect` | `requireAuth`, `requireInstallOwner` |
+| DELETE | `/api/v1/routing/providers/:providerId/key` | `requireAuth`, `requireInstallOwner` |
+| PUT | `/api/v1/routing/providers/:providerId/key` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/routing/providers/:providerId/models` | `requireAuth` |
+| POST | `/api/v1/routing/providers/:providerId/oauth/poll` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/routing/providers/:providerId/oauth/start` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/routing/providers/:providerId/test` | `requireAuth` |
+| GET | `/api/v1/routing/services` | `requireAuth` |
+| DELETE | `/api/v1/routing/services/:serviceId/key` | `requireAuth`, `requireInstallOwner` |
+| PUT | `/api/v1/routing/services/:serviceId/key` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/security
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/security/backup` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/security/backup-destination` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/security/backup-destination` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/security/backups` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/security/backups/:id` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/security/encryption/plan` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/security/status` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/security/backup` | `requireAuth` |
+| GET | `/api/v1/security/backup-destination` | `requireAuth` |
+| PUT | `/api/v1/security/backup-destination` | `requireAuth` |
+| GET | `/api/v1/security/backups` | `requireAuth` |
+| DELETE | `/api/v1/security/backups/:id` | `requireAuth` |
+| POST | `/api/v1/security/encryption/plan` | `requireAuth` |
+| GET | `/api/v1/security/status` | `requireAuth` |
+| GET | `/api/v1/security/write-limit` | `requireAuth` |
+| PUT | `/api/v1/security/write-limit` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/skills
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/skills` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/skills/install` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/skills` | `requireAuth` |
+| POST | `/api/v1/skills/install` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/social-channels
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/social-channels` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | `mapLaneQueryToken` |
-| GET | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | `mapLaneQueryToken` |
-| POST | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | `mapLaneQueryToken` |
-| DELETE | `/api/v1/social-channels/:channelId/binding` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/:channelId/binding` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/social-channels/:channelId/credentials` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/:channelId/credentials` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/:channelId/crew` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/:channelId/crew` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/social-channels/:channelId/crew/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/accounts` | `mapLaneQueryToken` |
-| POST | `/api/v1/social-channels/accounts` | `mapLaneQueryToken` |
-| DELETE | `/api/v1/social-channels/accounts/:accountId` | `mapLaneQueryToken` |
-| PATCH | `/api/v1/social-channels/accounts/:accountId` | `mapLaneQueryToken` |
-| DELETE | `/api/v1/social-channels/accounts/:accountId/binding` | `mapLaneQueryToken` |
-| PUT | `/api/v1/social-channels/accounts/:accountId/binding` | `mapLaneQueryToken` |
-| PUT | `/api/v1/social-channels/accounts/:accountId/credentials` | `mapLaneQueryToken` |
-| GET | `/api/v1/social-channels/accounts/:accountId/crew` | `mapLaneQueryToken` |
-| PUT | `/api/v1/social-channels/accounts/:accountId/crew` | `mapLaneQueryToken` |
-| DELETE | `/api/v1/social-channels/accounts/:accountId/crew/:neumaId` | `mapLaneQueryToken` |
-| GET | `/api/v1/social-channels/accounts/flight-test` | `mapLaneQueryToken` |
-| GET | `/api/v1/social-channels/accounts/house-check` | `mapLaneQueryToken` |
-| POST | `/api/v1/social-channels/accounts/start-fresh` | `mapLaneQueryToken` |
-| POST | `/api/v1/social-channels/accounts/unlock` | `mapLaneQueryToken` |
-| PUT | `/api/v1/social-channels/apps/:channelId` | `mapLaneQueryToken` |
-| GET | `/api/v1/social-channels/flight-test` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/intent-media` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/queue` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/social-channels/queue` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/social-channels/queue/:id` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/queue/:id` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/queue/:id/approve` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/queue/:id/approve-thread` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/queue/:id/media/:index` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/queue/:id/reject` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/queue/:id/retry` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/queue/:id/tiktok` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/queue/:id/withdraw` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/social-channels/queue/bulk-update` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/queue/groups/:groupId/approve` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/replies` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/social-channels/replies/:postId/:act(bin|restore)` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/tiktok/image` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social-channels/tiktok/profile` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/social-channels` | `requireAuth` |
+| POST | `/api/v1/social-channels/:channel(youtube|tiktok)/connect` | `requireLocalScope` |
+| DELETE | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | — |
+| GET | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | — |
+| POST | `/api/v1/social-channels/:channel(youtube|tiktok|linkedin)/connect` | — |
+| DELETE | `/api/v1/social-channels/:channelId/binding` | `requireAuth` |
+| PUT | `/api/v1/social-channels/:channelId/binding` | `requireAuth` |
+| DELETE | `/api/v1/social-channels/:channelId/credentials` | `requireLocalScope`, `requireAuth` |
+| PUT | `/api/v1/social-channels/:channelId/credentials` | `requireLocalScope`, `requireAuth` |
+| GET | `/api/v1/social-channels/:channelId/crew` | `requireAuth` |
+| PUT | `/api/v1/social-channels/:channelId/crew` | `requireAuth` |
+| DELETE | `/api/v1/social-channels/:channelId/crew/:neumaId` | `requireAuth` |
+| GET | `/api/v1/social-channels/accounts` | — |
+| POST | `/api/v1/social-channels/accounts` | `requireLocalScope` |
+| DELETE | `/api/v1/social-channels/accounts/:accountId` | `requireLocalScope` |
+| PATCH | `/api/v1/social-channels/accounts/:accountId` | — |
+| DELETE | `/api/v1/social-channels/accounts/:accountId/binding` | — |
+| PUT | `/api/v1/social-channels/accounts/:accountId/binding` | — |
+| PUT | `/api/v1/social-channels/accounts/:accountId/credentials` | `requireLocalScope` |
+| GET | `/api/v1/social-channels/accounts/:accountId/crew` | — |
+| PUT | `/api/v1/social-channels/accounts/:accountId/crew` | — |
+| DELETE | `/api/v1/social-channels/accounts/:accountId/crew/:neumaId` | — |
+| GET | `/api/v1/social-channels/accounts/flight-test` | — |
+| GET | `/api/v1/social-channels/accounts/house-check` | — |
+| POST | `/api/v1/social-channels/accounts/start-fresh` | `requireLocalScope` |
+| POST | `/api/v1/social-channels/accounts/unlock` | `requireLocalScope` |
+| PUT | `/api/v1/social-channels/apps/:channelId` | `requireLocalScope` |
+| GET | `/api/v1/social-channels/flight-test` | `requireAuth` |
+| GET | `/api/v1/social-channels/intent-media` | `requireAuth` |
+| GET | `/api/v1/social-channels/queue` | `requireAuth` |
+| POST | `/api/v1/social-channels/queue` | `requireAuth` |
+| DELETE | `/api/v1/social-channels/queue/:id` | `requireAuth` |
+| PUT | `/api/v1/social-channels/queue/:id` | `requireAuth` |
+| PUT | `/api/v1/social-channels/queue/:id/approve` | `requireAuth` |
+| PUT | `/api/v1/social-channels/queue/:id/approve-thread` | `requireAuth` |
+| GET | `/api/v1/social-channels/queue/:id/media/:index` | `requireAuth` |
+| PUT | `/api/v1/social-channels/queue/:id/reject` | `requireAuth` |
+| PUT | `/api/v1/social-channels/queue/:id/retry` | `requireAuth` |
+| GET | `/api/v1/social-channels/queue/:id/tiktok` | `requireAuth` |
+| PUT | `/api/v1/social-channels/queue/:id/withdraw` | `requireAuth` |
+| POST | `/api/v1/social-channels/queue/bulk-update` | `requireAuth` |
+| PUT | `/api/v1/social-channels/queue/groups/:groupId/approve` | `requireAuth` |
+| GET | `/api/v1/social-channels/replies` | `requireAuth` |
+| PUT | `/api/v1/social-channels/replies/:postId/:act(bin|restore)` | `requireAuth` |
+| GET | `/api/v1/social-channels/tiktok/image` | `requireAuth` |
+| GET | `/api/v1/social-channels/tiktok/profile` | `requireAuth` |
 
 ## /api/v1/social
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/social/emanations` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social/emanations/:id` | `mapLaneQueryToken` |
-| POST | `/api/v1/social/emanations/:id/echo` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/social/emanations/:id/reply` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/social/emanations/:id/resonate` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social/feed/following` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social/feed/global` | `mapLaneQueryToken` |
-| GET | `/api/v1/social/feed/profile/:address` | `mapLaneQueryToken` |
-| DELETE | `/api/v1/social/follow/:address` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/social/follow/:address` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social/followers/:address` | `mapLaneQueryToken` |
-| GET | `/api/v1/social/following/:address` | `mapLaneQueryToken` |
-| PUT | `/api/v1/social/profile` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/social/profile/:address` | `mapLaneQueryToken` |
-| GET | `/api/v1/social/thread/:id` | `mapLaneQueryToken` |
-| POST | `/api/v1/social/upload` | `mapLaneQueryToken`, `requireAuth`, `multerMiddleware` |
+| POST | `/api/v1/social/emanations` | `requireAuth` |
+| GET | `/api/v1/social/emanations/:id` | — |
+| POST | `/api/v1/social/emanations/:id/echo` | `requireAuth` |
+| POST | `/api/v1/social/emanations/:id/reply` | `requireAuth` |
+| POST | `/api/v1/social/emanations/:id/resonate` | `requireAuth` |
+| GET | `/api/v1/social/feed/following` | `requireAuth` |
+| GET | `/api/v1/social/feed/global` | — |
+| GET | `/api/v1/social/feed/profile/:address` | — |
+| DELETE | `/api/v1/social/follow/:address` | `requireAuth` |
+| POST | `/api/v1/social/follow/:address` | `requireAuth` |
+| GET | `/api/v1/social/followers/:address` | — |
+| GET | `/api/v1/social/following/:address` | — |
+| PUT | `/api/v1/social/profile` | `requireAuth` |
+| GET | `/api/v1/social/profile/:address` | — |
+| GET | `/api/v1/social/thread/:id` | — |
+| POST | `/api/v1/social/upload` | `requireAuth`, `multerMiddleware` |
 
 ## /api/v1/sovereignty
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/sovereignty/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/sovereignty/:neumaId/amendments/:amendmentId/retract` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/sovereignty/:neumaId/operator-changes` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/sovereignty/:neumaId/operator-changes/:changeId/withdraw` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/apply-dna` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/consent-ask` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/decide` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/sign-message` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/sovereignty/:neumaId` | `requireAuth` |
+| POST | `/api/v1/sovereignty/:neumaId/amendments/:amendmentId/retract` | `requireAuth` |
+| GET | `/api/v1/sovereignty/:neumaId/operator-changes` | `requireAuth` |
+| POST | `/api/v1/sovereignty/:neumaId/operator-changes/:changeId/withdraw` | `requireAuth` |
+| POST | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/apply-dna` | `requireAuth` |
+| POST | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/consent-ask` | `requireAuth` |
+| POST | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/decide` | `requireAuth` |
+| GET | `/api/v1/sovereignty/:neumaId/proposals/:proposalId/sign-message` | `requireAuth` |
 
 ## /api/v1/staff
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/staff/activity` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/staff/board` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/staff/plan` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/staff/seat` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/staff/seat` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/staff/seat` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/staff/activity` | `requireAuth` |
+| GET | `/api/v1/staff/board` | `requireAuth` |
+| DELETE | `/api/v1/staff/plan` | `requireAuth` |
+| DELETE | `/api/v1/staff/seat` | `requireAuth` |
+| GET | `/api/v1/staff/seat` | `requireAuth` |
+| PUT | `/api/v1/staff/seat` | `requireAuth` |
 
 ## /api/v1/substrate
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/substrate` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/substrate/capacity` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/substrate/capacity` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/substrate/fit` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/substrate/fit` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/substrate/fit/relaunch` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/substrate/machine` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/substrate/standby` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/substrate/standby` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/substrate/telemetry` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/substrate/unload` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/substrate` | `requireAuth` |
+| GET | `/api/v1/substrate/capacity` | `requireAuth` |
+| POST | `/api/v1/substrate/capacity` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/substrate/fit` | `requireAuth` |
+| PUT | `/api/v1/substrate/fit` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/substrate/fit/relaunch` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/substrate/holders` | `requireAuth` |
+| GET | `/api/v1/substrate/image-engine` | `requireAuth` |
+| GET | `/api/v1/substrate/machine` | `requireAuth` |
+| GET | `/api/v1/substrate/standby` | `requireAuth` |
+| PUT | `/api/v1/substrate/standby` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/substrate/telemetry` | `requireAuth` |
+| POST | `/api/v1/substrate/unload` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/system-dictation
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/system-dictation` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/system-dictation` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner`, `jsonParser` |
+| GET | `/api/v1/system-dictation` | `requireAuth` |
+| PUT | `/api/v1/system-dictation` | `requireAuth`, `requireInstallOwner`, `jsonParser` |
 
 ## /api/v1/tasks
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/tasks/agenda` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/tasks/calendar-token` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/calendar-token` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/tasks/calendar.ics` | `mapLaneQueryToken` |
-| GET | `/api/v1/tasks/deadlines` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/tasks/live` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/tasks/mine` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/mine` | `mapLaneQueryToken`, `requireAuth` |
-| PATCH | `/api/v1/tasks/mine/:taskId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/mine/:taskId/subtasks` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/tasks/mine/:taskId/subtasks/:subId` | `mapLaneQueryToken`, `requireAuth` |
-| PATCH | `/api/v1/tasks/mine/:taskId/subtasks/:subId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/mine/apply-preset` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/tasks/neuma/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/neuma/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
-| PATCH | `/api/v1/tasks/neuma/:neumaId/:taskId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/neuma/:neumaId/:taskId/subtasks` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/tasks/neuma/:neumaId/:taskId/subtasks/:subId` | `mapLaneQueryToken`, `requireAuth` |
-| PATCH | `/api/v1/tasks/neuma/:neumaId/:taskId/subtasks/:subId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/neuma/:neumaId/apply-preset` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/tasks/presets` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/tasks/presets` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/tasks/presets/:presetId` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/tasks/agenda` | `requireAuth` |
+| DELETE | `/api/v1/tasks/calendar-token` | `requireAuth` |
+| POST | `/api/v1/tasks/calendar-token` | `requireAuth` |
+| GET | `/api/v1/tasks/calendar.ics` | — |
+| GET | `/api/v1/tasks/deadlines` | `requireAuth` |
+| GET | `/api/v1/tasks/live` | `requireAuth` |
+| GET | `/api/v1/tasks/mine` | `requireAuth` |
+| POST | `/api/v1/tasks/mine` | `requireAuth` |
+| PATCH | `/api/v1/tasks/mine/:taskId` | `requireAuth` |
+| POST | `/api/v1/tasks/mine/:taskId/subtasks` | `requireAuth` |
+| DELETE | `/api/v1/tasks/mine/:taskId/subtasks/:subId` | `requireAuth` |
+| PATCH | `/api/v1/tasks/mine/:taskId/subtasks/:subId` | `requireAuth` |
+| POST | `/api/v1/tasks/mine/apply-preset` | `requireAuth` |
+| GET | `/api/v1/tasks/neuma/:neumaId` | `requireAuth` |
+| POST | `/api/v1/tasks/neuma/:neumaId` | `requireAuth` |
+| PATCH | `/api/v1/tasks/neuma/:neumaId/:taskId` | `requireAuth` |
+| POST | `/api/v1/tasks/neuma/:neumaId/:taskId/subtasks` | `requireAuth` |
+| DELETE | `/api/v1/tasks/neuma/:neumaId/:taskId/subtasks/:subId` | `requireAuth` |
+| PATCH | `/api/v1/tasks/neuma/:neumaId/:taskId/subtasks/:subId` | `requireAuth` |
+| POST | `/api/v1/tasks/neuma/:neumaId/apply-preset` | `requireAuth` |
+| GET | `/api/v1/tasks/presets` | `requireAuth` |
+| POST | `/api/v1/tasks/presets` | `requireAuth` |
+| DELETE | `/api/v1/tasks/presets/:presetId` | `requireAuth` |
 
 ## /api/v1/team
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/team/benches` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/benches/invocation` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/delivery/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/delivery/:id/file` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/live` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/live/:id/channel` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/live/:id/resume` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/live/:id/steer` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/live/:id/stop` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/live/:id/tune` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/run` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/runs` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/runs/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/runs/:id/log/:stepId` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/trial` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/team/trial` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/trial/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/team/trial/spec` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/team/benches` | `requireAuth` |
+| POST | `/api/v1/team/benches/invocation` | `requireAuth` |
+| GET | `/api/v1/team/delivery/:id` | `requireAuth` |
+| GET | `/api/v1/team/delivery/:id/file` | `requireAuth` |
+| GET | `/api/v1/team/live` | `requireAuth` |
+| POST | `/api/v1/team/live/:id/channel` | `requireAuth` |
+| POST | `/api/v1/team/live/:id/resume` | `requireAuth` |
+| POST | `/api/v1/team/live/:id/steer` | `requireAuth` |
+| POST | `/api/v1/team/live/:id/stop` | `requireAuth` |
+| POST | `/api/v1/team/live/:id/tune` | `requireAuth` |
+| POST | `/api/v1/team/run` | `requireAuth` |
+| GET | `/api/v1/team/runs` | `requireAuth` |
+| GET | `/api/v1/team/runs/:id` | `requireAuth` |
+| GET | `/api/v1/team/runs/:id/log/:stepId` | `requireAuth` |
+| GET | `/api/v1/team/trial` | `requireAuth` |
+| POST | `/api/v1/team/trial` | `requireAuth` |
+| GET | `/api/v1/team/trial/:id` | `requireAuth` |
+| GET | `/api/v1/team/trial/spec` | `requireAuth` |
 
 ## /api/v1/terminal
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/terminal/agents` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/terminal/sessions/:id` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/terminal/agents` | `requireAuth` |
+| DELETE | `/api/v1/terminal/sessions/:id` | `requireAuth` |
 
 ## /api/v1/titling
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/titling/jobs` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
-| DELETE | `/api/v1/titling/jobs/:jobId` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
-| GET | `/api/v1/titling/jobs/:jobId` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
+| POST | `/api/v1/titling/jobs` | `requireAuth`, `jsonParser` |
+| DELETE | `/api/v1/titling/jobs/:jobId` | `requireAuth`, `jsonParser` |
+| GET | `/api/v1/titling/jobs/:jobId` | `requireAuth`, `jsonParser` |
 
 ## /api/v1/treasury
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/treasury/board` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/treasury/costs` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/treasury/costs/:id/void` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/treasury/costs/bills` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/treasury/costs/fixed` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| PUT | `/api/v1/treasury/costs/setup` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/treasury/flags/:id/seen` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| PUT | `/api/v1/treasury/invoice-wallet` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/treasury/invoices/:id/paid` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| POST | `/api/v1/treasury/invoices/:id/void` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| DELETE | `/api/v1/treasury/seat` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/treasury/seat` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| PUT | `/api/v1/treasury/seat` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
-| GET | `/api/v1/treasury/spends` | `mapLaneQueryToken`, `requireAuth`, `(inline check)` |
+| GET | `/api/v1/treasury/board` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/treasury/costs` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/treasury/costs/:id/void` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/treasury/costs/bills` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/treasury/costs/fixed` | `requireAuth`, `(inline check)` |
+| PUT | `/api/v1/treasury/costs/setup` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/treasury/flags/:id/seen` | `requireAuth`, `(inline check)` |
+| PUT | `/api/v1/treasury/invoice-wallet` | `requireLocalScope`, `requireAuth`, `(inline check)` |
+| POST | `/api/v1/treasury/invoices/:id/paid` | `requireAuth`, `(inline check)` |
+| POST | `/api/v1/treasury/invoices/:id/void` | `requireAuth`, `(inline check)` |
+| DELETE | `/api/v1/treasury/seat` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/treasury/seat` | `requireAuth`, `(inline check)` |
+| PUT | `/api/v1/treasury/seat` | `requireAuth`, `(inline check)` |
+| GET | `/api/v1/treasury/spends` | `requireAuth`, `(inline check)` |
 
 ## /api/v1/user
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/user/dreams` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/user/dreams` | `mapLaneQueryToken`, `requireAuth`, `rawParser` |
-| DELETE | `/api/v1/user/dreams/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/dreams/:id/audio` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/user/dreams/:id/transcribe` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/files/browse` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| POST | `/api/v1/user/files/browse/mkdir` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| POST | `/api/v1/user/files/create` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/drives` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| DELETE | `/api/v1/user/files/entry` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/events` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/folder-info` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/git-status` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/git-status-many` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/list` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/raw` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/read` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/recents` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| POST | `/api/v1/user/files/rename` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| DELETE | `/api/v1/user/files/roots` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/files/roots` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| POST | `/api/v1/user/files/roots` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| POST | `/api/v1/user/files/upload` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround`, `rawParser` |
-| PUT | `/api/v1/user/files/write` | `mapLaneQueryToken`, `requireAuth`, `explorerWalls`, `explorerGround` |
-| GET | `/api/v1/user/realm` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/alliance-ground` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/user/realm/alliance-ground` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/user/realm/alliance-ground/raise` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/chat-labels` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/user/realm/chat-labels` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/chats` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/chats/:neumaId/export` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/council-labels` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/user/realm/council-labels` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/user/realm/council-labels/autotitle` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/house-workspace` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/user/realm/house-workspace` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/user/realm/location` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/user/realm/operator-name` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/user/realm/operator-name` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/preset` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/user/realm/preset` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/user/realm/presets` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/user/dreams` | `requireAuth` |
+| POST | `/api/v1/user/dreams` | `requireAuth`, `rawParser` |
+| DELETE | `/api/v1/user/dreams/:id` | `requireAuth` |
+| GET | `/api/v1/user/dreams/:id/audio` | `requireAuth` |
+| POST | `/api/v1/user/dreams/:id/transcribe` | `requireAuth` |
+| GET | `/api/v1/user/files/browse` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| POST | `/api/v1/user/files/browse/mkdir` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| POST | `/api/v1/user/files/create` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/drives` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| DELETE | `/api/v1/user/files/entry` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/events` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround`, `?ticket=` |
+| GET | `/api/v1/user/files/folder-info` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/git-status` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/git-status-many` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/list` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/raw` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround`, `?ticket=` |
+| GET | `/api/v1/user/files/read` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/recents` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| POST | `/api/v1/user/files/rename` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| DELETE | `/api/v1/user/files/roots` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/files/roots` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| POST | `/api/v1/user/files/roots` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| POST | `/api/v1/user/files/upload` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround`, `rawParser` |
+| PUT | `/api/v1/user/files/write` | `requireAuth`, `requireDeskAuth`, `explorerWalls`, `explorerGround` |
+| GET | `/api/v1/user/realm` | `requireAuth` |
+| GET | `/api/v1/user/realm/alliance-ground` | `requireAuth` |
+| PUT | `/api/v1/user/realm/alliance-ground` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/user/realm/alliance-ground/raise` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/user/realm/chat-labels` | `requireAuth` |
+| PUT | `/api/v1/user/realm/chat-labels` | `requireAuth` |
+| GET | `/api/v1/user/realm/chats` | `requireAuth` |
+| GET | `/api/v1/user/realm/chats/:neumaId/export` | `requireAuth` |
+| GET | `/api/v1/user/realm/council-labels` | `requireAuth` |
+| PUT | `/api/v1/user/realm/council-labels` | `requireAuth` |
+| POST | `/api/v1/user/realm/council-labels/autotitle` | `requireAuth` |
+| GET | `/api/v1/user/realm/house-workspace` | `requireAuth` |
+| PUT | `/api/v1/user/realm/house-workspace` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/user/realm/location` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/user/realm/operator-name` | `requireAuth` |
+| PUT | `/api/v1/user/realm/operator-name` | `requireAuth` |
+| GET | `/api/v1/user/realm/preset` | `requireAuth` |
+| PUT | `/api/v1/user/realm/preset` | `requireAuth` |
+| GET | `/api/v1/user/realm/presets` | `requireAuth` |
 
 ## /api/v1/version
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/version` | `mapLaneQueryToken` |
+| GET | `/api/v1/version` | — |
 
 ## /api/v1/vision
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/vision` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/vision` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/vision` | `requireAuth` |
+| PUT | `/api/v1/vision` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/vitals
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/vitals/mine` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/vitals/mine` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/vitals/mine/summary` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/vitals/mine` | `requireAuth` |
+| POST | `/api/v1/vitals/mine` | `requireAuth` |
+| GET | `/api/v1/vitals/mine/summary` | `requireAuth` |
 
 ## /api/v1/voice-pack
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/voice-pack/:neumaId` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/voice-pack/:neumaId` | `requireAuth` |
 
 ## /api/v1/voice-seal
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| POST | `/api/v1/voice-seal/:neumaId/ask` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/voice-seal/:neumaId/seal` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/voice-seal/:neumaId/status` | `mapLaneQueryToken`, `requireAuth` |
+| POST | `/api/v1/voice-seal/:neumaId/ask` | `requireAuth` |
+| POST | `/api/v1/voice-seal/:neumaId/seal` | `requireAuth` |
+| GET | `/api/v1/voice-seal/:neumaId/status` | `requireAuth` |
 
 ## /api/v1/voice
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/voice/dna/:companion` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/voice/engines` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/voice/engines/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/voice/engines/local` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/voice/engines/local/:id` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/voice/engines/local/:id/download` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/voice/engines/local/:id/download/status` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/voice/engines/local/:id/health` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/voice/engines/local/:id/launch` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/voice/engines/local/:id/stop` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/voice/engines/local/whisper` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/voice/engines/local/whisper/download` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| GET | `/api/v1/voice/engines/local/whisper/download/status` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/voice/engines/local/whisper/launch` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| POST | `/api/v1/voice/engines/shutdown-all` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
-| DELETE | `/api/v1/voice/forge/:id` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| GET | `/api/v1/voice/forge/:id` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| POST | `/api/v1/voice/forge/:id/find` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)`, `multerMiddleware` |
-| POST | `/api/v1/voice/forge/:id/offer` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| POST | `/api/v1/voice/forge/:id/pick` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| POST | `/api/v1/voice/forge/:id/reopen` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| POST | `/api/v1/voice/forge/:id/seal` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| GET | `/api/v1/voice/forge/:id/takes/:ref/audio` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| GET | `/api/v1/voice/forge/:id/takes/:ref/preview` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| GET | `/api/v1/voice/forge/library` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| GET | `/api/v1/voice/forge/library/:voiceId/preview` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| POST | `/api/v1/voice/forge/start` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| POST | `/api/v1/voice/forge/withdraw` | `mapLaneQueryToken`, `requireAuth`, `jsonParser`, `(inline check)` |
-| GET | `/api/v1/voice/has-voice/:companion` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/voice/refine` | `mapLaneQueryToken`, `requireAuth`, `jsonParser` |
-| GET | `/api/v1/voice/tier` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/voice/tier` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/voice/transcribe` | `mapLaneQueryToken`, `requireAuth`, `rawParser` |
+| GET | `/api/v1/voice/dna/:companion` | `requireAuth` |
+| GET | `/api/v1/voice/engines` | `requireAuth` |
+| GET | `/api/v1/voice/engines/:id` | `requireAuth` |
+| GET | `/api/v1/voice/engines/local` | `requireAuth` |
+| GET | `/api/v1/voice/engines/local/:id` | `requireAuth` |
+| POST | `/api/v1/voice/engines/local/:id/download` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/voice/engines/local/:id/download/status` | `requireAuth` |
+| GET | `/api/v1/voice/engines/local/:id/health` | `requireAuth` |
+| POST | `/api/v1/voice/engines/local/:id/launch` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/voice/engines/local/:id/stop` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/voice/engines/local/whisper` | `requireAuth` |
+| POST | `/api/v1/voice/engines/local/whisper/download` | `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/voice/engines/local/whisper/download/status` | `requireAuth` |
+| POST | `/api/v1/voice/engines/local/whisper/launch` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/voice/engines/shutdown-all` | `requireAuth`, `requireInstallOwner` |
+| DELETE | `/api/v1/voice/forge/:id` | `requireAuth`, `jsonParser`, `(inline check)` |
+| GET | `/api/v1/voice/forge/:id` | `requireAuth`, `jsonParser`, `(inline check)` |
+| POST | `/api/v1/voice/forge/:id/find` | `requireAuth`, `jsonParser`, `(inline check)`, `multerMiddleware` |
+| POST | `/api/v1/voice/forge/:id/offer` | `requireAuth`, `jsonParser`, `(inline check)` |
+| POST | `/api/v1/voice/forge/:id/pick` | `requireAuth`, `jsonParser`, `(inline check)` |
+| POST | `/api/v1/voice/forge/:id/reopen` | `requireAuth`, `jsonParser`, `(inline check)` |
+| POST | `/api/v1/voice/forge/:id/seal` | `requireAuth`, `jsonParser`, `(inline check)` |
+| GET | `/api/v1/voice/forge/:id/takes/:ref/audio` | `requireAuth`, `jsonParser`, `(inline check)` |
+| GET | `/api/v1/voice/forge/:id/takes/:ref/preview` | `requireAuth`, `jsonParser`, `(inline check)` |
+| GET | `/api/v1/voice/forge/library` | `requireAuth`, `jsonParser`, `(inline check)` |
+| GET | `/api/v1/voice/forge/library/:voiceId/preview` | `requireAuth`, `jsonParser`, `(inline check)` |
+| POST | `/api/v1/voice/forge/start` | `requireAuth`, `jsonParser`, `(inline check)` |
+| POST | `/api/v1/voice/forge/withdraw` | `requireAuth`, `jsonParser`, `(inline check)` |
+| GET | `/api/v1/voice/has-voice/:companion` | `requireAuth` |
+| POST | `/api/v1/voice/refine` | `requireAuth`, `jsonParser` |
+| GET | `/api/v1/voice/tier` | `requireAuth` |
+| PUT | `/api/v1/voice/tier` | `requireAuth` |
+| POST | `/api/v1/voice/transcribe` | `requireAuth`, `rawParser` |
 
 ## /api/v1/waiting
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/waiting` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/waiting` | `requireAuth` |
 
 ## /api/v1/weave
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/weave/identity/:id` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/weave/identity/:id/summary` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/weave/status` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/weave/verify` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/weave/identity/:id` | `requireAuth` |
+| GET | `/api/v1/weave/identity/:id/summary` | `requireAuth` |
+| GET | `/api/v1/weave/status` | `requireAuth` |
+| POST | `/api/v1/weave/verify` | `requireAuth` |
 
 ## /api/v1/web
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/web/web-access` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/web/web-access` | `mapLaneQueryToken`, `requireAuth`, `requireInstallOwner` |
+| GET | `/api/v1/web/web-access` | `requireAuth` |
+| PUT | `/api/v1/web/web-access` | `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/witnesses
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/witnesses` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/witnesses/:vendor/:name` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/witnesses/:vendor/:name/custody` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/witnesses/:vendor/:name/health` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/witnesses/:vendor/:name/model` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/witnesses/:vendor/:name/test` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/witnesses/summon` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/witnesses/summon/stream` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/witnesses` | `requireAuth` |
+| GET | `/api/v1/witnesses/:vendor/:name` | `requireAuth` |
+| POST | `/api/v1/witnesses/:vendor/:name/custody` | `requireAuth` |
+| GET | `/api/v1/witnesses/:vendor/:name/health` | `requireAuth` |
+| PUT | `/api/v1/witnesses/:vendor/:name/model` | `requireAuth` |
+| POST | `/api/v1/witnesses/:vendor/:name/test` | `requireAuth` |
+| POST | `/api/v1/witnesses/summon` | `requireAuth` |
+| POST | `/api/v1/witnesses/summon/stream` | `requireAuth` |
 
 ## /api/v1/workspace
 
 | Method | Path | Guards |
 | --- | --- | --- |
-| GET | `/api/v1/workspace/:id/aura` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/dna` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/workspace/:id/dna` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/dna/history` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/exists` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/export` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/form` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| POST | `/api/v1/workspace/:id/form/agree` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| POST | `/api/v1/workspace/:id/form/withdraw` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/identity-file` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/journal` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/workspace/:id/journal` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/memory` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/workspace/:id/memory/entity` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/memory/graph` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/workspace/:id/memory/observation` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/pins` | `mapLaneQueryToken`, `requireAuth` |
-| DELETE | `/api/v1/workspace/:id/place` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/place` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| PUT | `/api/v1/workspace/:id/place` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/rite` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| PUT | `/api/v1/workspace/:id/rite` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/self-check` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| POST | `/api/v1/workspace/:id/self-check` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/session-search` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/session-threads` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/sessions` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/sessions/:sessionId` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/sessions/:sessionId/turns/:turnId` | `mapLaneQueryToken`, `requireAuth` |
-| POST | `/api/v1/workspace/:id/sessions/autotitle` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/settings` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/workspace/:id/settings` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/skies` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| GET | `/api/v1/workspace/:id/skills` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/workspace/:id/skills` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/soul` | `mapLaneQueryToken`, `requireAuth` |
-| PUT | `/api/v1/workspace/:id/soul` | `mapLaneQueryToken`, `requireAuth` |
-| GET | `/api/v1/workspace/:id/stats` | `mapLaneQueryToken`, `requireAuth`, `requireNeumaLane` |
-| POST | `/api/v1/workspace/import` | `mapLaneQueryToken`, `requireAuth` |
+| GET | `/api/v1/workspace/_processes` | `requireAuth` |
+| POST | `/api/v1/workspace/_processes/:pgid/stop` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/aura` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/dna` | `requireAuth` |
+| PUT | `/api/v1/workspace/:id/dna` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/dna/history` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/exists` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/export` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/form` | `requireAuth`, `requireNeumaLane` |
+| POST | `/api/v1/workspace/:id/form/agree` | `requireAuth`, `requireNeumaLane` |
+| POST | `/api/v1/workspace/:id/form/withdraw` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/identity-file` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/journal` | `requireAuth` |
+| POST | `/api/v1/workspace/:id/journal` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/memory` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/memory/atlas` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/memory/atlas/memory/:memoryId` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/memory/atlas/search` | `requireAuth` |
+| POST | `/api/v1/workspace/:id/memory/entity` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/memory/graph` | `requireAuth` |
+| POST | `/api/v1/workspace/:id/memory/observation` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/pins` | `requireAuth` |
+| DELETE | `/api/v1/workspace/:id/place` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/place` | `requireAuth`, `requireNeumaLane` |
+| PUT | `/api/v1/workspace/:id/place` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/rite` | `requireAuth`, `requireNeumaLane` |
+| PUT | `/api/v1/workspace/:id/rite` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/self-check` | `requireAuth`, `requireNeumaLane` |
+| POST | `/api/v1/workspace/:id/self-check` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/session-search` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/session-threads` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/sessions` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/sessions/:sessionId` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/sessions/:sessionId/turns/:turnId` | `requireAuth` |
+| POST | `/api/v1/workspace/:id/sessions/autotitle` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/settings` | `requireAuth` |
+| PUT | `/api/v1/workspace/:id/settings` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/skies` | `requireAuth`, `requireNeumaLane` |
+| GET | `/api/v1/workspace/:id/skills` | `requireAuth` |
+| PUT | `/api/v1/workspace/:id/skills` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/soul` | `requireAuth` |
+| PUT | `/api/v1/workspace/:id/soul` | `requireAuth` |
+| GET | `/api/v1/workspace/:id/stats` | `requireAuth`, `requireNeumaLane` |
+| POST | `/api/v1/workspace/import` | `requireAuth` |

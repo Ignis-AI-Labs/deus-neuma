@@ -5,7 +5,7 @@
 // and carries the figures an entry takes from it.
 // impure (store reads); the shaping is pure.
 
-import { readReceipts } from '../money-in/money-in-store.js';
+import { readExternalReceipts } from '../money-in/money-in-store.js';
 import { readSpendRecords } from '../treasury/spend-records.js';
 import { houseLanes } from '../treasury/treasury-lanes.js';
 
@@ -26,7 +26,7 @@ const spendReceipt = (laneId, r) => ({
  * @returns {Promise<Array<object>>} oldest first
  */
 export const houseReceipts = async (wallet) => {
-  const [rows, lanes] = await Promise.all([readReceipts(wallet).catch(() => []), houseLanes(wallet).catch(() => [])]);
+  const [rows, lanes] = await Promise.all([readExternalReceipts(wallet).catch(() => []), houseLanes(wallet).catch(() => [])]);
   const spends = await Promise.all(lanes.map(async ({ neumaId }) => (await readSpendRecords(neumaId).catch(() => []))
     .filter((r) => r.status === 'executed').map((r) => spendReceipt(neumaId, r))));
   return [...rows.map(moneyInReceipt), ...spends.flat()].sort((a, b) => String(a.date).localeCompare(String(b.date)));

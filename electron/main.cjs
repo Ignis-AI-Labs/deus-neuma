@@ -29,7 +29,11 @@ const { guardAppSessions } = require('./permission-guard.cjs');
 const { placeDictionaries, registerSpellcheck } = require('./spellcheck-main.cjs');
 const { openAtRestKeys, registerKeyLockIpc } = require('./key-lock/key-lock-main.cjs');
 const { registerWalletBridgeIpc } = require('./wallet-bridge-ipc.cjs');
+const { showAppImageSandboxWarning } = require('./appimage-sandbox-warning.cjs');
 
+if (process.env.NEUMA_SETUP_MODEL_SERVER === '1') {
+  require('./setup-model-server.cjs').run();
+} else {
 // The spellcheck dictionaries go where Chromium looks before the app is ready (spellcheck-main.cjs):
 // userData is final once backend-spawn.cjs has loaded, and after ready the download has already begun.
 const spellcheckLanguages = placeDictionaries({ app });
@@ -71,6 +75,7 @@ if (!app.requestSingleInstanceLock()) {
     registerSpellcheck({ app, session, shipped: spellcheckLanguages });
     registerKeyLockIpc({ ipcMain, safeStorage, isDesk, getWindow: deskWindows.fallbackWindow });
     registerWalletBridgeIpc({ ipcMain, isDesk });
+    await showAppImageSandboxWarning({ dialog });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.
@@ -126,4 +131,5 @@ if (!app.requestSingleInstanceLock()) {
       app.quit();
     });
   });
+}
 }

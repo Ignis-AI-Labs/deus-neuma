@@ -52,6 +52,7 @@ import {
 import { withLineKind } from './substrate-lease.js';
 import { isHarnessLane } from '../../core/workspace/lane-grounds.js';
 import { isSelfCheckSitting } from './self-check/self-check-sitting.js';
+import { sessionOriginFields } from './session-origin.js';
 
 const log = createLogger('Portal');
 
@@ -155,14 +156,16 @@ const _compactWithSelfTorch = async (neumaId, sessionId, atBoundary) => {
 const _persistTurnPoint = async (connection, companion, sessionId, thought, images, docs, take, origin = null) => {
   if (!sessionId || !companion?.neumaId || isEphemeralSitting(connection)) return;
   try {
+    const timestamp = new Date().toISOString();
     take.userRecord = await neumaWorkspace.appendTurnPoint(companion.neumaId, sessionId, {
-      role: 'user', content: thought, ...(origin ? { origin } : {}),
+      role: 'user', content: thought, timestamp,
+      ...sessionOriginFields({ neumaId: companion.neumaId, sessionId, turnId: take.turnId, origin, content: thought, timestamp }),
       ...(images.length > 0 ? { images } : {}),
       ...(docs.length > 0 ? { docs } : {}),
     }, take.turnId);
     if (connection.walletAddress) {
       appendChat(connection.walletAddress, companion.neumaId, companion.name,
-        [{ role: 'user', content: thought }])
+        [{ role: 'user', content: thought, ...(origin ? { origin } : {}) }])
         // Same law at the neuma seat (EH-103 #204): best-effort, never silent.
         .catch((err) => log.debug('chat mirror skipped', { neumaId: companion?.neumaId, err: err?.message }));
     }
@@ -183,19 +186,19 @@ const _persistExchange = async (connection, thought, fullResponse, images = [], 
   try {
     // Images and documents persist on the user record itself — the durable
     // copy of what the neuma saw (the attachment store entry was single-use).
+    const origin = turnContext?.origin ?? null;
+    const timestamp = new Date().toISOString();
+    const userPayload = {
+      role: 'user', content: thought, timestamp,
+      ...sessionOriginFields({ neumaId: companion.neumaId, sessionId, turnId: take?.turnId ?? '', origin, content: thought, timestamp }),
+      ...(images.length > 0 ? { images } : {}),
+      ...(docs.length > 0 ? { docs } : {}),
+    };
     const userRecord = take?.userRecord ?? (take?.userOnDisk
       ? null
       : take
-        ? await neumaWorkspace.appendTurnPoint(companion.neumaId, sessionId, {
-            role: 'user', content: thought,
-            ...(images.length > 0 ? { images } : {}),
-            ...(docs.length > 0 ? { docs } : {}),
-          }, take.turnId)
-        : await neumaWorkspace.appendMessage(companion.neumaId, sessionId, {
-            role: 'user', content: thought,
-            ...(images.length > 0 ? { images } : {}),
-            ...(docs.length > 0 ? { docs } : {}),
-          }));
+        ? await neumaWorkspace.appendTurnPoint(companion.neumaId, sessionId, userPayload, take.turnId)
+        : await neumaWorkspace.appendMessage(companion.neumaId, sessionId, userPayload));
     const atBoundary = nearContextBoundary(turnContext?.usage, turnContext?.budget);
     let recordedComposition = turnContext?.composition || null;
     if (recordedComposition) {
@@ -261,7 +264,7 @@ const _persistExchange = async (connection, thought, fullResponse, images = [], 
     // a point already landed at turn start) appends only the new take.
     if (connection.walletAddress) {
       appendChat(connection.walletAddress, companion.neumaId, companion.name, [
-        ...(take?.userOnDisk || take?.userRecord ? [] : [{ role: 'user', content: thought }]),
+        ...(take?.userOnDisk || take?.userRecord ? [] : [{ role: 'user', content: thought, ...(origin ? { origin } : {}) }]),
         { role: 'assistant', content: fullResponse },
       ]).catch((err) => log.debug('chat mirror skipped', { neumaId: companion?.neumaId, err: err?.message }));
     }
@@ -277,10 +280,15 @@ const _persistExchange = async (connection, thought, fullResponse, images = [], 
     // truth only) — message counts predict nothing about context (Design note, 2026-08-15.
     if (atBoundary) {
       // Background work after the turn: it never rides the turn's place in line (substrate-lease.js).
-      Promise.resolve().then(() => withLineKind('background', () =>
-        _compactWithSelfTorch(companion.neumaId, sessionId, atBoundary))
-          .catch((err) => log.debug('Session compaction failed', { neumaId: companion?.neumaId, err: err?.message }))
-      );
+      // EVERYTHING WAITS BEHIND IT (Design note, 2026-11-19: […]): the connection says a compaction runs — set before the turn hands back, so the drain that
+      // follows the turn holds what waits — and what was said meanwhile goes when it settles (routes/portal-context.js).
+      const compaction = Promise.resolve().then(() => withLineKind('background', () =>
+        _compactWithSelfTorch(companion.neumaId, sessionId, atBoundary)))
+        .catch((err) => log.debug('Session compaction failed', { neumaId: companion?.neumaId, err: err?.message }))
+        .finally(() => {
+          if (connection && connection.compaction === compaction) { connection.compacting = false; connection.compaction = null; }
+        });
+      if (connection && !connection.compacting) { connection.compacting = true; connection.compaction = compaction; }
     }
     // THE WORKING-BAND HARVEST (Design note, 2026-08-31: the 0.4–0.75 band used to be
     // reachable only inside compaction — dormant on any large window. The sweep

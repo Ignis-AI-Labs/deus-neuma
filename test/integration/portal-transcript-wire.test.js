@@ -82,12 +82,11 @@ const sse = (text) => `data: ${JSON.stringify({ choices: [{ delta: { content: te
 
 // The local wire's current turn (85730874c, #539): the harness's per-turn
 // block, then the operator's words exactly as sent. Returns the block.
-const HARNESS_BLOCK_END = '\n</harness-context>\n\n';
 const harnessBlockOf = (message, ask) => {
   expect(message.role).toBe('user');
-  expect(message.content.startsWith('<harness-context>\n')).toBe(true);
-  expect(message.content.endsWith(`${HARNESS_BLOCK_END}${ask}`)).toBe(true);
-  return message.content.slice(0, -ask.length);
+  expect(message.content.startsWith('<harness-context:')).toBe(true);
+  expect(message.content.endsWith(`${ask}`)).toBe(true);
+  return message.content.slice(0, -ask.length).replace(/<\/harness-context:[^>]+>\n\n$/, '');
 };
 
 const openPortal = async (url, token) => {
@@ -316,8 +315,11 @@ describe('Stage A — the transcript rides the wire as real chat messages', () =
     expect(transcriptSection).toBeTruthy();
     const wireChars = transcript.map((m) => `${m.role}: ${m.content}`).join('\n\n').length;
     const restoredBlockChars = transcript
-      .filter((m) => m.content.startsWith('<harness-context>\n'))
-      .reduce((n, m) => n + m.content.indexOf(HARNESS_BLOCK_END) + HARNESS_BLOCK_END.length, 0);
+      .filter((m) => m.content.startsWith('<harness-context:'))
+      .reduce((n, m) => {
+        const end = m.content.match(/<\/harness-context:[^>]+>\n\n/);
+        return n + (end ? end.index + end[0].length : 0);
+      }, 0);
     expect(restoredBlockChars).toBeGreaterThan(0);
     const stampChars = transcriptSection.chars - (wireChars - restoredBlockChars);
     expect(stampChars).toBeGreaterThan(0);

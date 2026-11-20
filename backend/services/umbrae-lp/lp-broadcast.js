@@ -33,9 +33,19 @@ export const prepareLpBroadcast = async ({ neumaId }) => {
   }
 };
 
+// impure — the signed bytes handed to our Base node and, when there is one, a second
+// independent node at once (P6-11: a node that keeps a transaction to itself cannot hold it
+// back from the chain). Sent when either takes it; throws the first node's reason when neither does.
+const sendToBoth = async (provider, second, signedTransaction) => {
+  const sends = [provider.broadcastTransaction(signedTransaction)];
+  if (second) sends.push(second.send('eth_sendRawTransaction', [signedTransaction]));
+  const settled = await Promise.allSettled(sends);
+  if (!settled.some((s) => s.status === 'fulfilled')) throw settled[0].reason;
+};
+
 // impure — broadcast through the mandatory private lane, or the existing public
 // path only when the operator has not required privacy. Never fall back after a private failure.
-export const broadcastLpTransaction = async ({ neumaId, signed, provider, keyedSend }) => {
+export const broadcastLpTransaction = async ({ neumaId, signed, provider, keyedSend, second }) => {
   let controls;
   try {
     controls = await readLpCapitalControls(neumaId);
@@ -48,7 +58,7 @@ export const broadcastLpTransaction = async ({ neumaId, signed, provider, keyedS
         const sent = await keyedSend();
         return sent.ok ? { ok: true, hash: signed.hash } : { ok: false, sent: true, uncertain: true, reason: sent.error };
       }
-      await provider.broadcastTransaction(signed.signedTransaction);
+      await sendToBoth(provider, second, signed.signedTransaction);
       return { ok: true, hash: signed.hash };
     } catch (error) {
       return { ok: false, sent: true, uncertain: true, reason: redactRpcUrl(error.shortMessage || error.message) };

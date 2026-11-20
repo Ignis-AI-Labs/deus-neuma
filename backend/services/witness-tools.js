@@ -143,13 +143,13 @@ const toolIdentity = (match, catalog) => {
 // path gates through act-gate.js, which resolves the same three policy layers
 // at call time (with this same map_read observation carve-out), so a witness
 // is never told one thing and refused another.
-const effectiveAccess = (policy, mode, server, toolName, operatorPolicy) => {
+const effectiveAccess = (policy, mode, server, toolName, operatorPolicy, direct = false) => {
   const base = checkToolAccess(policy, server, toolName);
   // map_read is pure observation, so witness observe mode keeps it open
   // without broadening READ_TOOLS by name across unrelated servers.
   const contextRead = server === 'context' && toolName === 'map_read';
   return { base, effective: contextRead ? base : applyProtocolGuard(applyToolMode(base, mode, toolName),
-    mode, server, toolName, operatorPolicy[`${server}/${toolName}`] === 'allowed') };
+    mode, server, toolName, operatorPolicy[`${server}/${toolName}`] === 'allowed', direct) };
 };
 
 // impure — resolve this witness's three policy layers for the turn.
@@ -242,7 +242,7 @@ export const toolsForWitness = async (connection, sourceRoot, { nativeTools = fa
   ];
   const stamped = Object.freeze(catalog.map((tool) => Object.freeze({
     ...tool,
-    access: effectiveAccess(policy, mode, tool.server, tool.name, operatorPolicy).effective,
+    access: effectiveAccess(policy, mode, tool.server, tool.name, operatorPolicy, connection.sandboxEnabled === false).effective,
   })));
   // The flight check reports the surface THIS turn is holding — the stamped
   // catalog, the sandbox, and the craft — so it reads them from here rather

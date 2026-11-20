@@ -1,0 +1,3 @@
+Fixed
+- A campaign's email plan was being cut short without saying so: "what we offer" stopped at 600 characters, mid-sentence, and the cut text was what you were asked to lock in and what emails were written from. Nothing is cut to fit any more. A plan's offer has room for 1,500 characters, and a field that is still too long is refused with its length and the limit, so your sales member shortens it itself. The same holds for the other plan fields, a person's research card, and each part of an email.
+- A plan that was already cut stays cut until it is written again: send it back with a note and your sales member files it whole.

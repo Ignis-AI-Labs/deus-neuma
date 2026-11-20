@@ -27,7 +27,7 @@ import { seatName } from '../house-clock/wake-plan.js';
 import { createChannelBridge } from './channel-bridge.js';
 import { createTelegramAdapter } from './adapters/telegram.js';
 import { createDiscordAdapter } from './adapters/discord.js';
-import { atTheDoor, answerCode, revoke, pairingWords, emptyAccess } from './chat-access.js';
+import { atTheDoor, answerCode, revoke, pairingWords, emptyAccess, isOperatorsOwn } from './chat-access.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('ChatBridge');
@@ -51,10 +51,10 @@ const writeAccount = (wallet, accountId, change) => serialize(async () => {
 });
 
 /** The operator answers a pairing code. impure. */
-export const answerChatCode = async (wallet, accountId, { code, approve, by }) => {
+export const answerChatCode = async (wallet, accountId, { code, approve, by, mine = false }) => {
   let outcome = null;
   await writeAccount(wallet, accountId, (access) => {
-    outcome = answerCode(access, { code, approve, by, nowMs: Date.now() });
+    outcome = answerCode(access, { code, approve, by, mine, nowMs: Date.now() });
     return outcome.ok ? outcome.access : access;
   });
   return outcome;
@@ -74,14 +74,16 @@ const run = async (conn, credentials) => {
   const bridge = createChannelBridge({ adapter, record: { connectionId: conn.connectionId, neumaId: holder, companionName, walletAddress: house } });
   const onEvent = async (event, { mentioned = false } = {}) => {
     let door = null;
+    let operator = false;
     await writeAccount(house, accountId, (access) => {
       door = atTheDoor(access, event, { nowMs: Date.now(), mentioned });
+      operator = door.door === 'hear' && isOperatorsOwn(access, event);
       return door.access ?? access;
     });
     if (door.door === 'hear') {
       conn.status.heard += 1;
       // never awaited: a turn may take minutes, and the line keeps hearing the other chats meanwhile
-      bridge.handleEvent(event).catch((err) => log.warn('a chat turn failed', { connection: conn.connectionId, error: err.message }));
+      bridge.handleEvent(event, { operator }).catch((err) => log.warn('a chat turn failed', { connection: conn.connectionId, error: err.message }));
       return null;
     }
     if (door.door === 'pair') {

@@ -93,7 +93,7 @@ from browser_guard import assert_loopback_bind, guard  # noqa: E402  (audits 202
 @app.middleware("http")
 async def _track_activity(request, call_next):
     # Marked on arrival AND completion: idle counts from the end of the last real request.
-    answer = guard(request.headers, request.url.path, request.url.query)  # browser_guard.py: page, key
+    answer = guard(request.headers, request.url.path, request.url.query, local=request.scope.get("server"))
     if answer:
         return JSONResponse(answer[1], status_code=answer[0])
     global _last_activity
@@ -332,7 +332,7 @@ async def _stream_ready(timeout_s: float = 300.0) -> bool:
 async def stream_ws(websocket: WebSocket):
     global _last_activity
     # HTTP middleware never runs for a socket: a page's socket is refused here, before accept
-    if guard(websocket.headers, "/stream"):
+    if guard(websocket.headers, "/stream", local=websocket.scope.get("server")):
         await websocket.close(code=1008)
         return
     if not _stream_slot.acquire(blocking=False):

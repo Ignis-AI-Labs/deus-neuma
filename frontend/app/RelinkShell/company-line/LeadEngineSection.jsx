@@ -24,23 +24,24 @@ import { SUPPRESS_REASONS, segmentRows, suppressTargetOk } from './lead-engine-v
 // what is due stands on that person's row), and under it the do-not-contact list. In the POSITIONS window an audience stands UNDER ITS CAMPAIGN
 // (SalesCampaigns.jsx), with its companies and its leads; 'audiences' here is the old COMPANY LINE
 // window's flat list, which still shows all three parts.
-const HEADS = Object.freeze({ facts: 'THE FACTS — WHAT A BUYER MAY BE TOLD', audiences: 'AUDIENCES — WHO EACH CAMPAIGN REACHES, AND THE OFFER', leads: 'LEADS — EVERY PERSON THE HOUSE KNOWS, AND WHO IS NEVER WRITTEN TO' });
+const HEADS = Object.freeze({ facts: 'THE FACTS — WHAT A BUYER MAY BE TOLD', audiences: 'AUDIENCES — WHO EACH CAMPAIGN REACHES, AND THE OFFER', leads: 'LEADS — EVERY PERSON THE HOUSE KNOWS, AND WHO IS NEVER WRITTEN TO', people: 'PEOPLE — EVERY PERSON THE HOUSE KNOWS, AND WHO IS NEVER WRITTEN TO' });
+// 'people' is 'leads' without the outbox: on the sales hub the outbox is its own stage, EMAILS (SalesPipeline.jsx).
 const ALL_PARTS = Object.freeze(['facts', 'audiences', 'leads']);
 
 /** @param {{holder?: ?{laneId: string, name: string}, onHand?: Function, parts?: string[]}} props - the seat's holder and the door to their chat, where the screen has them; parts: which of 'facts', 'audiences', 'leads' this screen carries */
 export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PARTS }) => {
   const has = (part) => parts.includes(part);
-  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress, changeFact, refileLead, sendEmails, returnEmail, editEmail } = useLeadEngine();
+  const { engine, busy, error, notice, refresh, moveSegment, approveList, reviewFacts, suppress, lift, changeFact, refileLead, sendEmails, returnEmail, editEmail, sending, stopSending, clearSending } = useLeadEngine();
   const [target, setTarget] = useState('');
   const [reason, setReason] = useState('asked');
   const rows = segmentRows(engine);
   // A part that names itself on its own first line (the facts fold, the people list) gets no second heading.
-  const alone = parts.length === 1 && (parts[0] === 'facts' || parts[0] === 'leads');
+  const alone = parts.length === 1 && ['facts', 'leads', 'people'].includes(parts[0]);
   const okTarget = suppressTargetOk(target);
   return (
     <section className="cline-sec" aria-label={parts.length === 1 ? HEADS[parts[0]].split(' — ')[0].toLowerCase() : 'lead engine'} data-lead-engine={parts.join(' ')}>
       {alone ? null : <p className="cline-h label-data">{parts.length === 1 ? HEADS[parts[0]] : 'LEAD ENGINE — WHO THE MERCATOR SELLS TO, AND WHAT IS DUE'}</p>}
-      {has('leads') ? null : (
+      {has('leads') || has('people') ? null : (
         <div className="cline-open">
           <button type="button" className="sec-scan label-data" disabled={busy} onClick={refresh}>REFRESH</button>
         </div>
@@ -53,9 +54,9 @@ export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PA
           {has('audiences') ? (rows.length === 0
             ? <EmptyState title="NO AUDIENCE YET" />
             : <ul className="cline-aud-list" aria-label="audiences">{rows.map((r) => <LeadAudienceCard key={r.segment.id} row={r} busy={busy} onMove={moveSegment} onList={approveList} />)}</ul>) : null}
-          {has('leads') ? (
+          {has('leads') || has('people') ? (
             <>
-              <Outbox outbox={engine.outbox ?? null} leads={engine.leads ?? []} busy={busy} onSend={sendEmails} onReturn={returnEmail} onEdit={editEmail} />
+              {has('people') ? null : <Outbox outbox={engine.outbox ?? null} leads={engine.leads ?? []} busy={busy} onSend={sendEmails} onReturn={returnEmail} onEdit={editEmail} sending={sending} onStop={stopSending} onClear={clearSending} />}
               <People engine={engine} busy={busy} onKind={refileLead} onRefresh={refresh} holder={holder} onHand={onHand} />
               <Fold id="leads:dnc" title="DO NOT CONTACT" stats={[`${engine.suppressions.length} ENTR${engine.suppressions.length === 1 ? 'Y' : 'IES'}`]}>
                 <div className="cline-open" data-suppress-form="">
@@ -67,7 +68,8 @@ export const LeadEngineSection = ({ holder = null, onHand = null, parts = ALL_PA
                     onClick={() => { suppress(target, reason); setTarget(''); }}>ADD</button>
                 </div>
                 <Sheet label="do not contact" rows={engine.suppressions} rowKey={(e) => `${e.kind}:${e.value}`} rowAttrs={(e) => ({ 'data-suppressed': e.value })}
-                  columns={[{ head: 'ADDRESS OR DOMAIN', cell: (e) => e.value, exact: true }, { head: 'WHY', cell: (e) => SUPPRESS_REASONS.find((r) => r.value === e.reason)?.label ?? e.reason }, { head: 'ADDED BY', cell: (e) => (e.by ? String(e.by).toUpperCase() : null) }, { head: 'WHEN', cell: (e) => (e.at ? String(e.at).slice(0, 10) : null) }]} />
+                  columns={[{ head: 'ADDRESS OR DOMAIN', cell: (e) => e.value, exact: true }, { head: 'WHY', cell: (e) => SUPPRESS_REASONS.find((r) => r.value === e.reason)?.label ?? e.reason }, { head: 'ADDED BY', cell: (e) => (e.by ? String(e.by).toUpperCase() : null) }, { head: 'WHEN', cell: (e) => (e.at ? String(e.at).slice(0, 10) : null) },
+                    { head: 'LIFT', cell: (e) => <button type="button" className="sec-scan label-data" data-lift={e.value} disabled={busy} aria-label={`LIFT ${e.value} from the do-not-contact list`} onClick={() => lift(e)}>LIFT</button> }]} />
               </Fold>
             </>
           ) : null}

@@ -12,7 +12,9 @@ import {
   spliceTranscript, holdsPushToTalkKey, stripHoldSpace, HOLD_TO_TALK_MS,
 } from './dictation.js';
 
-export const useHoldToTalk = ({ connected, setValue, fieldRef }) => {
+// windowLane: whether this field also owns Space held anywhere the witness is not typing. The composer does; another
+// field that dictates into itself (an earlier message being edited, InlineEdit.jsx) does not — one recorder per hold.
+export const useHoldToTalk = ({ connected, setValue, fieldRef, windowLane = true }) => {
   // In-field hold-Space: the pending is-it-a-hold timer, and whether the
   // recording was Space-started (auto-repeats eaten; only a Space release
   // ends it). A pointer hold on the mic button is tracked separately — a
@@ -111,17 +113,17 @@ export const useHoldToTalk = ({ connected, setValue, fieldRef }) => {
       if (holdsPushToTalkKey(e)) e.preventDefault();
       settle();
     };
-    window.addEventListener('keydown', down);
+    if (windowLane) window.addEventListener('keydown', down);
     window.addEventListener('keyup', up);
     window.addEventListener('blur', settle);
     return () => {
-      window.removeEventListener('keydown', down);
+      if (windowLane) window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       window.removeEventListener('blur', settle);
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = null;
     };
-  }, [connected, beginCapture, end]);
+  }, [connected, beginCapture, end, windowLane]);
 
   // The composer field's own keydown half of the lane. Returns true when the
   // key belonged to dictation (Space); any other key settles a still-pending

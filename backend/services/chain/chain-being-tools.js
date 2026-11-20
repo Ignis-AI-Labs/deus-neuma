@@ -110,13 +110,13 @@ export const CHAIN_TOOLS = Object.freeze([
   Object.freeze({
     name: 'chain_holders',
     server: 'chain',
-    description: 'Reconstruct a token\'s holders from its Transfer events — args {chain, token, fromBlock?}. Walks chunked log scans from fromBlock (default 0 — pass the deployment block, or the walk is long and balances are relative to the window) to the latest block: mints credit, burns debit. ERC-20, ERC-721 (count), and ERC-1155 (all ids summed) are understood. Bounded at 50,000 events; when the cap bites, truncated is true and the set is partial — say so when you report it.',
+    description: 'Reconstruct a token\'s holders from Transfer events — args {chain, token, fromBlock?}. Defaults to the latest 2,000 blocks; an explicit older fromBlock walks at most 8 log requests. ERC-20, ERC-721 (count), and ERC-1155 (all ids summed) are understood. Request or 50,000-event caps set truncated with a reason and nextFromBlock for continuation, so a partial set is always named partial. STOP cancels the walk.',
     inputSchema: Object.freeze({
       type: 'object',
       properties: Object.freeze({
         chain: Object.freeze({ type: 'string', description: 'a chain key from chain_chains' }),
         token: Object.freeze({ type: 'string', description: 'the token contract address' }),
-        fromBlock: Object.freeze({ type: ['number', 'string'], description: 'optional — the deployment block; default 0 (full walk)' }),
+        fromBlock: Object.freeze({ type: ['number', 'string'], description: 'optional — older start block; omit for the recent window; a long walk returns nextFromBlock to continue' }),
       }),
       required: Object.freeze(['chain', 'token']),
     }),
@@ -195,7 +195,7 @@ const EXECUTE = {
   chain_logs: (a) => getLogs(a?.chain, {
     address: a?.address, topic0: a?.topic0, fromBlock: a?.fromBlock, toBlock: a?.toBlock,
   }),
-  chain_holders: (a) => tokenHolders(a?.chain, a?.token, { fromBlock: a?.fromBlock }),
+  chain_holders: (a, signal) => tokenHolders(a?.chain, a?.token, { fromBlock: a?.fromBlock, signal }),
 };
 
 // pure — the one-line summary the operator's chip carries.
@@ -259,7 +259,7 @@ export const handleChainTool = async (ws, connection, neumaPolicy, toolMode, mat
     return { tool, status: 'error', error: `unknown chain tool: ${toolName}` };
   }
   try {
-    const result = await execute(args || {});
+    const result = await execute(args || {}, connection.activeTurn?.signal);
     const detail = summarize(toolName, args);
     if (!result.ok) {
       const error = `${result.error.code}: ${result.error.message}`;

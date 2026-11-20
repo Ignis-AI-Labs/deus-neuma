@@ -11,10 +11,13 @@
 
 import tls from 'tls';
 import { parseMimeHeaders, decodeEncodedWords, extractTextPart } from './mime.js';
+import { htmlToText } from '../html-to-text.js';
 
 export const INBOX_MAX_MESSAGES = 20;
 export const SCAN_MAX_MESSAGES = 300;
 export const READ_BODY_CAP_BYTES = 262144;
+const MESSAGE_ID_TOKEN = /<[^<>\s@]{1,200}@[^<>\s@]{1,200}>/g;
+const MESSAGE_IDS_MAX = 500;
 const SESSION_TIMEOUT_MS = 30000;
 
 /**
@@ -230,8 +233,9 @@ export const listInbox = (credentials, { limit, signal, max = INBOX_MAX_MESSAGES
  * @param {number} uid
  * @param {{signal?: AbortSignal}} [opts]
  * @returns {Promise<{ok: true, message: {uid: number, seen: boolean, from: string,
- *   to: string, subject: string, date: string, text: string, truncated: boolean}}
- *   |{ok: false, detail: string}>}
+ *   to: string, subject: string, date: string, text: string, truncated: boolean, ids: string[]}}
+ *   |{ok: false, detail: string}>} ids: every <id@host> the message carries anywhere (its In-Reply-To and
+ *   References, a bounce's returned headers) — how a reply or a notice proves which sent email it answers
  */
 // impure — network
 export const readMessage = (credentials, uid, { signal } = {}) => {
@@ -244,19 +248,69 @@ export const readMessage = (credentials, uid, { signal } = {}) => {
     if (!fetch.ok) return { ok: false, detail: `message fetch failed: ${fetch.status.slice(0, 120)}` };
     const item = parseFetchItems(fetch.responses).find((i) => i.uid === id);
     if (!item || !item.payload) return { ok: false, detail: `no message with uid ${id}` };
-    const raw = item.payload.toString('latin1');
-    const envelope = parseEnvelope(item.payload);
-    const part = extractTextPart(raw);
-    return {
-      ok: true,
-      message: {
-        uid: id,
-        seen: item.seen,
-        ...envelope,
-        text: part ? part.text : '(this message has no readable text part)',
-        truncated: item.payload.length >= READ_BODY_CAP_BYTES,
-      },
-    };
+    return { ok: true, message: messageOf(item) };
+  });
+};
+
+// pure — one fetched message as the house reads it. contentType: which part the text came from. An email with no
+// plain part (an auto-reply, most newsletters) is read as WORDS here, once, for every reader — the mailbox watch that
+// keeps a lead's reply, the being's read_email, the desk's reply view (Design note, 2026-11-20: a lead's reply
+// was drawn as its raw markup). Its links' addresses stay in the words.
+const messageOf = (item) => {
+  const raw = item.payload.toString('latin1');
+  const part = extractTextPart(raw);
+  return {
+    uid: item.uid,
+    seen: item.seen,
+    ...parseEnvelope(item.payload),
+    text: !part ? '(this message has no readable text part)' : part.contentType === 'text/html' ? htmlToText(part.text, READ_BODY_CAP_BYTES) : part.text,
+    contentType: part ? part.contentType : null,
+    ids: [...new Set(raw.match(MESSAGE_ID_TOKEN) ?? [])].slice(0, MESSAGE_IDS_MAX),
+    truncated: item.payload.length >= READ_BODY_CAP_BYTES,
+  };
+};
+
+const FIND_MAX = 10;
+const DAY_MS = 86_400_000;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** pure — a day as IMAP's SEARCH writes it: 18-Nov-2026. */
+export const imapDay = (date) => `${date.getUTCDate()}-${MONTHS[date.getUTCMonth()]}-${date.getUTCFullYear()}`;
+/** pure — the folder holding every message (Gmail's All Mail), as the server marks it (\All) in a LIST; null if none is. */
+export const allMailFolder = (responses) => responses
+  .map((r) => /^\* LIST \(([^)]*)\) (?:"[^"]*"|NIL) (?:"((?:[^"\\]|\\.)*)"|(\S+))$/i.exec(r.text))
+  .filter((m) => m && /\\All\b/i.test(m[1]))
+  .map((m) => (m[2] ?? m[3]).replace(/\\(.)/g, '$1'))[0] ?? null;
+
+/**
+ * Find one email by who sent it and when, wherever it now is (Design note, 2026-11-19: a lead's reply would not open — […]): an email that has left the inbox since it was recorded
+ * (archived, labelled away) keeps no number there, so the folder that holds all mail is searched for mail from that
+ * address since a little before, and the one sent nearest that moment is read. Read-only, like every read here.
+ * @param {Record<string, string>|null} credentials
+ * @param {{from: string, near: string, days?: number}} q from: the sender's address; near: when it was recorded
+ * @returns {Promise<{ok: true, message: object & {folder: string}} | {ok: false, detail: string}>}
+ */
+// impure — network
+export const findMessage = (credentials, { from, near, days = 3 }, { signal } = {}) => {
+  const who = from ? imapQuote(from) : null;
+  const at = Date.parse(near);
+  if (!who || !Number.isFinite(at)) return Promise.resolve({ ok: false, detail: 'name the sender and when it came' });
+  return _withSession(credentials, { signal }, async (exec) => {
+    const list = await exec('LIST "" "*"');
+    const folder = (list.ok ? allMailFolder(list.responses) : null) ?? 'INBOX';
+    if (folder !== 'INBOX') {
+      const open = await exec(`EXAMINE ${imapQuote(folder)}`);
+      if (!open.ok) return { ok: false, detail: `could not open ${folder}: ${open.status.slice(0, 120)}` };
+    }
+    const search = await exec(`UID SEARCH FROM ${who} SINCE ${imapDay(new Date(at - days * DAY_MS))}`);
+    if (!search.ok) return { ok: false, detail: `the search of ${folder} failed: ${search.status.slice(0, 120)}` };
+    const uids = parseSearchUids(search.responses).slice(-FIND_MAX);
+    if (!uids.length) return { ok: false, detail: `no email from ${from} since ${imapDay(new Date(at - days * DAY_MS))} in ${folder}` };
+    const fetch = await exec(`UID FETCH ${uids.join(',')} (FLAGS BODY.PEEK[]<0.${READ_BODY_CAP_BYTES}>)`);
+    if (!fetch.ok) return { ok: false, detail: `message fetch failed: ${fetch.status.slice(0, 120)}` };
+    const found = parseFetchItems(fetch.responses).filter((i) => i.payload).map(messageOf);
+    const off = (m) => { const t = Date.parse(m.date); return Number.isFinite(t) ? Math.abs(t - at) : Infinity; };
+    const nearest = [...found].sort((a, b) => off(a) - off(b))[0];
+    return nearest ? { ok: true, message: { ...nearest, folder } } : { ok: false, detail: `no email from ${from} could be read in ${folder}` };
   });
 };
 

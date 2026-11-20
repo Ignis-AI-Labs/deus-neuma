@@ -10,9 +10,13 @@
 //   { type: 'found', prospect, at }   { type: 'dropped', id, reason, by, at }
 //   { type: 'promoted', id, leadId, by, at }
 //   { type: 'listed', segmentId, ids, by, at } — the operator approved the list
+//   { type: 'placed', leadId, segmentId, name, domain, by, at } — a lead already on the ledger put under an
+//     audience: its own record moves there (and loses the list approval of the audience it left); a lead no
+//     audience ever found gets a record of its own, a promoted one with no scores
 // PURE, but for makeProspect's random id.
 
 import crypto from 'crypto';
+import { proofsFor, requiredState } from './required-signs.js';
 
 export const MATCH_WORDS = Object.freeze({ 1: 'none', 2: 'weak', 3: 'strong' });
 const PEOPLE_MAX = 5;
@@ -81,11 +85,14 @@ export const makeProspect = (f) => {
   const fit = scoresFor(f.segment.positiveCriteria, given, 'sign of fit', true);
   const misfit = scoresFor(f.segment.negativeCriteria, given, 'disqualifier', false);
   const crew = peopleOf(f.people);
+  // What the audience REQUIRES is proved, either way, before anything is scored (required-signs.js).
+  const must = proofsFor(f.segment, { domain, name }, f.proofs);
+  const stand = requiredState(f.segment, { proofs: must.proofs });
   const source = f.source === 'operator' || isHttps(f.source) ? String(f.source) : '';
   const problems = [
     ...(!domain ? ['domain: the company\'s own web domain'] : []),
     ...(name.length < 2 ? ['name: the company\'s name'] : []),
-    ...fit.problems, ...misfit.problems, ...crew.problems,
+    ...must.problems, ...fit.problems, ...misfit.problems, ...crew.problems,
     ...(!source ? ['source: the https page where you found the company'] : []),
     ...(f.country != null && f.country !== '' && !/^[A-Za-z]{2}$/.test(String(f.country).trim()) ? ['country: the ISO code of where the company is (e.g. "US")'] : []),
   ];
@@ -100,7 +107,10 @@ export const makeProspect = (f) => {
     size: clean(f.size, 60) || null,
     fit: Object.freeze(fit.scores),
     misfit: Object.freeze(misfit.scores),
-    match: matchLevel(fit.scores, misfit.scores),
+    // A required sign that is not met is no match, whatever the other signs average to.
+    match: stand.state === 'failed' ? 1 : matchLevel(fit.scores, misfit.scores),
+    ...(must.proofs.length ? { proofs: Object.freeze(must.proofs) } : {}),
+    ...(stand.state === 'failed' ? { failedRequired: stand.failed.map((r) => r.sign), ...(stand.route ? { belongsTo: stand.route } : {}) } : {}),
     people: Object.freeze(crew.people),
     source,
     foundBy: f.by,
@@ -117,9 +127,20 @@ export const foldProspects = (events) => {
     if (e?.type === 'dropped' && prior) byId.set(e.id, { ...prior, stage: 'dropped', dropReason: e.reason, droppedAt: e.at });
     // A person read after the company was scored (the address is often found last) joins its people.
     if (e?.type === 'people' && prior && Array.isArray(e.people)) byId.set(e.id, { ...prior, people: [...prior.people, ...e.people] });
+    // Proofs filed after the company was scored (sales/prove): an audience that gained a required sign.
+    if (e?.type === 'proved' && prior && Array.isArray(e.proofs)) byId.set(e.id, { ...prior, proofs: e.proofs });
     if (e?.type === 'promoted' && prior) byId.set(e.id, { ...prior, stage: 'promoted', leadId: e.leadId, promotedAt: e.at });
     if (e?.type === 'listed' && Array.isArray(e.ids)) {
       for (const id of e.ids) if (byId.has(id)) byId.set(id, { ...byId.get(id), listApproved: true, listedAt: e.at });
+    }
+    // The operator's hands on one company (Design note, 2026-11-18: taken off the approved list, or moved under another
+    // audience — a move leaves the old audience's list approval behind.
+    if (e?.type === 'unlisted' && prior) byId.set(e.id, { ...prior, listApproved: false, listedAt: null });
+    if (e?.type === 'moved' && prior && e.segmentId) byId.set(e.id, { ...prior, segmentId: e.segmentId, listApproved: false, movedAt: e.at });
+    if (e?.type === 'placed' && e.leadId && e.segmentId) {
+      const held = [...byId.values()].find((p) => p.leadId === e.leadId);
+      if (held) byId.set(held.id, { ...held, segmentId: e.segmentId, listApproved: false, placedAt: e.at });
+      else byId.set(`placed:${e.leadId}`, { id: `placed:${e.leadId}`, segmentId: e.segmentId, leadId: e.leadId, name: e.name ?? '', domain: e.domain ?? null, description: null, country: null, size: null, fit: [], misfit: [], match: 0, people: [], source: 'operator', foundBy: e.by, foundAt: e.at, stage: 'promoted', promotedAt: e.at, placedAt: e.at, placed: true });
     }
   }
   return [...byId.values()];

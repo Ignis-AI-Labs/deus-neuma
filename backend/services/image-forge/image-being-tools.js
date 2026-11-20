@@ -22,11 +22,11 @@
  * missing engine and a missing content law both mean the tool could only ever
  * refuse, and the catalog does not advertise tools that can only refuse.
  */
-import { getDataRoot } from '../data-root.js';
-import path from 'node:path';
+import { contentLawPath } from './content-law-path.js';
 import { gateAct } from '../act-gate.js';
 import { resolveComfyConfig, comfyInstallState } from './comfyui-supervisor.js';
-import { catalogForCaller } from './pack-registry.js';
+import { catalogWithWorkflows, findModel, findPipeline } from './workflow-store.js';
+import { installsWaiting } from './model-install.js';
 import { loadScreenList } from './prompt-screen.js';
 import { resolveImage } from './image-store.js';
 import {
@@ -35,6 +35,7 @@ import {
 
 /** Where the witness-reviewed content law lives (gitignored by law). */
 import { CARD_TOOL, handleCardTool } from '../branding/card-tool.js';
+import { FORGE_ENGINE_TOOLS, isForgeEngineToolName, runForgeEngineTool } from './forge-engine-tools.js';
 
 /**
  * The card tool's own advertisement — DECOUPLED from the diffusion engine
@@ -49,8 +50,7 @@ export const cardToolsFor = (connection) => (
   connection?.companion?.neumaId ? [CARD_TOOL] : []
 );
 
-export const contentLawPath = (env = process.env) =>
-  env.COMFYUI_CONTENT_LAW_PATH || path.join(getDataRoot(), 'image-forge', 'content-law.json');
+export { contentLawPath };
 
 // The brand card lives in the branding lane — an SVG-infrastructure system
 // of its own (Playwright-rasterized, GPU-free), and per Founder's ruling
@@ -88,7 +88,7 @@ export const IMAGE_TOOLS = Object.freeze([
 // row `image/render_card`) even though its ADVERTISEMENT no longer rides the
 // engine gate above — the gate was the leak Founder ruled out; the classifier is
 // just routing.
-const IMAGE_TOOL_NAMES = new Set([...IMAGE_TOOLS.map((t) => t.name), CARD_TOOL.name]);
+const IMAGE_TOOL_NAMES = new Set([...IMAGE_TOOLS.map((t) => t.name), CARD_TOOL.name, ...FORGE_ENGINE_TOOLS.map((t) => t.name)]);
 
 export const isImageTool = (match) =>
   IMAGE_TOOL_NAMES.has(String(match.toolName || '').replace(/^image__/, '')) ||
@@ -107,9 +107,11 @@ export const imageToolsFor = async (connection, env = process.env) => {
   const cfg = resolveComfyConfig(env);
   if (!comfyInstallState(cfg).installed) return [];
   // No reviewed law, no generation (FR-15) — so no advertisement either. A
-  // tool that can only refuse is noise in the catalog.
-  if (loadScreenList(contentLawPath(env)).failClosed) return [];
-  return [...IMAGE_TOOLS];
+  // tool that can only refuse is noise in the catalog. The engine's own two
+  // (forge_status, forge_control) make nothing, so the law does not gate them:
+  // an installed engine can always be read and steered.
+  if (loadScreenList(contentLawPath(env)).failClosed) return [...FORGE_ENGINE_TOOLS];
+  return [...IMAGE_TOOLS, ...FORGE_ENGINE_TOOLS];
 };
 
 // pure — every required review_image field that is missing or out of range,
@@ -133,12 +135,14 @@ export const reviewRefusal = (wanting) =>
   + 'Call it again with all three required fields — {imageId, matches, verdict} — plus missing, defects and note if you have them.';
 
 // pure — how a caller reads the pipeline catalog.
-export const renderPipelines = (catalog) => catalog.map((p) => {
+export const renderPipelines = (catalog, waiting = new Map()) => catalog.map((p) => {
   const params = p.parameters.map((x) => {
     const bound = x.allowed ? `one of ${x.allowed.join('/')}` : (x.min !== undefined ? `${x.min}–${x.max}` : x.type);
     return `    ${x.name}: ${bound}${x.default !== undefined ? ` (default ${x.default})` : ''}${x.required ? ' [required]' : ''}`;
   }).join('\n');
-  return `- ${p.id} — ${p.label}\n  ${p.description}${p.requiresSourceImage ? '\n  requires a source image' : ''}\n${params}`;
+  // A pipeline whose files the engine lacks says so, with the installs that bring them (forge/install-model).
+  const lacking = waiting.get(p.id);
+  return `- ${p.id} — ${p.label}\n  ${p.description}${p.requiresSourceImage ? '\n  requires a source image' : ''}${lacking ? `\n  ${lacking}` : ''}\n${params}`;
 }).join('\n\n');
 
 /**
@@ -215,10 +219,25 @@ export const handleImageTool = async (ws, connection, neumaPolicy, toolMode, mat
   });
   if (!gate.ok) return gate.result;
 
+  // The engine itself — read whole, or steered (forge-engine-tools.js).
+  if (isForgeEngineToolName(toolName)) {
+    const done = await runForgeEngineTool(connection, toolName, args, resolveComfyConfig(process.env))
+      .catch((err) => ({ ok: false, reason: `the image engine could not be reached: ${err.message}` }));
+    ports.sendToolEvent(ws, companion, done.ok ? { tool, status: 'ok', summary: done.summary } : { tool, status: 'error', summary: `${toolName} — refused`, detail: done.reason });
+    return done.ok ? { tool, status: 'ok', content: done.content } : { tool, status: 'error', error: done.reason };
+  }
+
   if (toolName === 'list_pipelines') {
-    const catalog = catalogForCaller();
-    ports.sendToolEvent(ws, companion, { tool, status: 'ok', summary: `${catalog.length} pipeline(s)` });
-    return { tool, status: 'ok', content: `Image pipelines available to you:\n\n${renderPipelines(catalog)}` };
+    const catalog = await catalogWithWorkflows(); // the platform's pipelines, then the workflows registered here
+    const cfg = resolveComfyConfig(process.env);
+    const waiting = new Map();
+    for (const p of catalog) {
+      const { pipeline } = await findPipeline(p.id);
+      const lacking = await installsWaiting(findModel(pipeline).model, cfg, pipeline);
+      if (lacking) waiting.set(p.id, lacking.words);
+    }
+    ports.sendToolEvent(ws, companion, { tool, status: 'ok', summary: `${catalog.length} pipeline(s)${waiting.size ? `, ${waiting.size} waiting for an install` : ''}` });
+    return { tool, status: 'ok', content: `Image pipelines available to you:\n\n${renderPipelines(catalog, waiting)}` };
   }
 
   // ── review_image ──

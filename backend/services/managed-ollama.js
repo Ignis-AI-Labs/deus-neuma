@@ -11,7 +11,8 @@
 //   verify   → the model answers a real message (it is loaded, and it speaks)
 //   adopt    → the platform's mind becomes that server and model, persisted (provider-choice.js)
 // A step that fails is tried again by the job itself before a person is told (one sentence, one act).
-// An Ollama already on the machine is used as it is when it is new enough: started if it is
+// An Ollama already on the machine is used as it is when it is new enough and this account (or the
+// system) runs it, never one another account runs (ollama-server-state.js): started if it is
 // installed but not running, never downloaded twice. A server the setup started is started again at
 // every boot (startManagedAtBoot) and stopped with the backend.
 //
@@ -39,9 +40,11 @@ import { sameEndpoint } from './provider-discovery.js';
 import { currentDriverGuard, fitManagedWindow, saveGpuAnyway } from './managed-ollama-gpu.js';
 import { _resetCapsCache } from './llm-runtime-cache.js';
 import {
-  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, setupDoneLine, versionAtLeast,
+  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, setupDoneLine,
 } from './managed-ollama-plan.js';
+import { ollamaUp, serverState, usableServer as usable } from './ollama-server-state.js';
 import { probeEnvironment } from './agent-terminal-environment.js';
+import { verifyModelRef } from './managed-ollama-ref.js';
 
 export { obtainArchive } from './managed-ollama-download.js';
 
@@ -88,22 +91,6 @@ export const findSystemOllama = () => {
   }
   return null;
 };
-
-/** What answers at an Ollama endpoint: up, its version, the models it holds. impure */
-export const serverState = async (endpoint = endpoints().usual) => {
-  try {
-    const v = await fetch(`${endpoint}/api/version`, { signal: AbortSignal.timeout(2000) });
-    if (!v.ok) return { up: false, version: null, models: [] };
-    const { version = null } = await v.json().catch(() => ({}));
-    const t = await fetch(`${endpoint}/api/tags`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
-    const models = t?.ok ? ((await t.json().catch(() => ({}))).models || []).map((m) => m.name) : [];
-    return { up: true, version, models };
-  } catch { return { up: false, version: null, models: [] }; }
-};
-
-/** Is an Ollama answering at this endpoint? impure */
-export const ollamaUp = async (endpoint = endpoints().usual) => (await serverState(endpoint)).up;
-const usable = (state) => state.up && versionAtLeast(state.version, MIN_OLLAMA_VERSION);
 
 /** Free bytes on the disk the next setup goes into. impure */
 const freeBytes = async () => {
@@ -235,12 +222,15 @@ const run = async (plan, signal, loadModel) => {
   const record = { managed, bin, endpoint, ...(managed ? { home: serverHome(), modelsDir: modelsDir() } : {}) };
   if (managed) await writeManagedRecord({ ...readRecord(), ...record });
   const state = await serverState(endpoint);
+  // never another account's program standing where the model server should be (PR600 audit P6-153)
+  if (state.foreign) throw setupFailure('SERVER_FOREIGN', `what answers at ${endpoint} is run by another account on this computer (${state.ownerUid ?? 'its account could not be read'})`);
   if (!usable(state)) {
     throw setupFailure('SERVER_OLD', `the model server answering at ${endpoint} is Ollama ${state.version || '(unknown)'}, older than ${MIN_OLLAMA_VERSION}`);
   }
   // what the server holds now, never what the plan saw: a models folder removed since is pulled again
   const has = state.models.some((m) => m.toLowerCase() === plan.model.ref.toLowerCase());
   if (!has) await pullModel(plan.model.ref, signal, endpoint, plan.model.name);
+  await verifyModelRef(plan.model, endpoint, signal);
   const loaded = loadModel ? await loadAndAnswer(plan, signal, { bin, endpoint, started, guard, startedWindow }) : null;
   if (loaded) endpoint = loaded.endpoint;
   update({ step: 'adopt', line: 'Making it the platform\'s model server' });

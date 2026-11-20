@@ -23,6 +23,7 @@
 // impure — the house's stores.
 
 import { postQueue } from '../../social/post-queue.js';
+import { mediaSealsOf } from '../../social/approval-seal.js';
 import { houseEntries } from '../../social/queue-house.js';
 import { houseOfLane } from '../../social/house-positions.js';
 import { loadAccountStore } from '../../social/account-store.js';
@@ -36,6 +37,7 @@ import { readMandate, journalMandate } from './mandate-store.js';
 import { tripMandate } from './mandate-tripwire.js';
 import { heldFor } from './mandate-hostile.js';
 import { replyTier } from './reply-tier.js';
+import { ownHostsFor } from './own-hosts.js';
 import { noteInjectionSighting } from '../../security/injection-sightings.js';
 import { createLogger } from '../../logger.js';
 
@@ -117,7 +119,7 @@ export const approveUnderMandate = async ({ laneId, entry, sessionId = null, tex
     const house = await houseOfLane(laneId);
     const judged = await judge(house, laneId, entry, { sessionId, text });
     if (!judged.mandate) return { covered: false, reason: judged.reason, tripped: Boolean(judged.tripped), held: Boolean(judged.held) };
-    const result = await postQueue.approve(entry.id, { decidedBy: house, under: judged.mandate.id });
+    const result = await postQueue.approve(entry.id, { decidedBy: house, under: judged.mandate.id, textSeen: entry.text, mediaSeen: mediaSealsOf(entry) });
     if (!result.ok) return { covered: false, reason: result.error };
     await journalMandate(house, {
       mandateId: judged.mandate.id, kind: 'act', act: 'post', queueId: entry.id,
@@ -151,14 +153,15 @@ const answerHits = async (house, accountId, text) => {
  * stages as the operator's draft with its reasons, and the mandate goes on.
  * The full judgment runs again at send. impure.
  * @param {{laneId: string, accountId: string, sessionId?: ?string, postId?: ?string,
- *   answering?: string, category?: string, text?: string, raised?: boolean}} q
+ *   answering?: string, category?: string, text?: string, raised?: boolean, media?: number}} q
  *   answering — the words of the reply being answered; category — its reply
- *   category; text — the CMO's answer; raised — the CMO asked for the operator's eyes
+ *   category; text — the CMO's answer; raised — the CMO asked for the operator's eyes;
+ *   media — how many files the answer attaches
  * @returns {Promise<{covered: boolean, tier?: {tier: string, reasons: object[]}}>}
  *   tier — only when a standing mandate would otherwise have sent it
  */
 export const replyMandateFor = async ({
-  laneId, accountId, sessionId = null, postId = null, answering = '', category = 'ordinary', text = '', raised = false,
+  laneId, accountId, sessionId = null, postId = null, answering = '', category = 'ordinary', text = '', raised = false, media = 0,
 }) => {
   const house = await houseOfLane(laneId).catch(() => null);
   const mandate = await seatedMandate(house, laneId).catch(() => null);
@@ -169,7 +172,7 @@ export const replyMandateFor = async ({
     text: answering, read: true, sessionId, postId,
   });
   if (hostile || await heldFor({ house, laneId, sessionId, postId })) return { covered: false };
-  const tier = replyTier({ answering, category, text, raised, hits: await answerHits(house, accountId, text) });
+  const tier = replyTier({ answering, category, text, raised, media, hits: await answerHits(house, accountId, text), ownHosts: await ownHostsFor(house, accountId) });
   return { covered: tier.tier === 'easy', tier };
 };
 

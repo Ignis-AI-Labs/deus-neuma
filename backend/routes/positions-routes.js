@@ -89,8 +89,8 @@ router.get('/companies', async (req, res) => {
 // The operator's three moves on a company's business model; each answers with the companies as they now stand.
 const MODEL_MOVES = [
   ['put', '/companies/:id/model', (wallet, id, body) => fileModel(wallet, id, body, { by: 'operator' })],
-  ['post', '/companies/:id/model/approve', (wallet, id) => settleModel(wallet, id, { approve: true })],
-  ['post', '/companies/:id/model/return', (wallet, id, body) => settleModel(wallet, id, { approve: false, note: body?.note })],
+  ['post', '/companies/:id/model/approve', (wallet, id, body) => settleModel(wallet, id, { approve: true, proposalId: body?.proposalId })],
+  ['post', '/companies/:id/model/return', (wallet, id, body) => settleModel(wallet, id, { approve: false, note: body?.note, proposalId: body?.proposalId })],
 ];
 for (const [method, path, act] of MODEL_MOVES) {
   router[method](path, async (req, res) => {

@@ -2,17 +2,21 @@
  * RUNNING AN EXTENSION — the checked copy, started only when a being first
  * calls it (load on demand), with exactly the keys its catalog entry names.
  *
- * It runs on the app's own Node (process.execPath; under Electron with
- * ELECTRON_RUN_AS_NODE), from the entry file inside the folder the security
- * check read. Its environment is the platform's helper environment (no
+ * It runs on the app's own Node (process.execPath, or utilityProcess under Electron), from the
+ * entry file inside the folder the security check read. Its environment is the platform's helper environment (no
  * backend secrets) plus its own keys and fixed settings — nothing else.
  *
  * impure — child processes through the MCP client.
  */
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { mcpService } from '../mcp.js';
 import { extensionById } from './extension-catalog.js';
 import { extensionDir, readInstalled, keysFor } from './extension-store.js';
+import { sealBroken } from './extension-seal.js';
+import { helperEnvironment } from '../agent-terminal-environment.js';
+
+const UTILITY_ENTRY = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../electron/extension-utility-entry.cjs');
 
 /** The MCP client name an extension runs under. Pure. */
 export const serverNameOf = (id) => `ext-${id}`;
@@ -35,7 +39,6 @@ export const launchOf = (entry, dir, keys = {}) => ({
   env: {
     ...Object.fromEntries(Object.entries(entry.fixedEnv).map(([k, v]) => [k, String(v).replaceAll('{dir}', dir)])),
     ...Object.fromEntries(entry.env.filter((k) => keys[k.name]).map((k) => [k.name, keys[k.name]])),
-    ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}),
   },
 });
 
@@ -56,8 +59,19 @@ export const ensureRunning = async (id) => {
     throw new Error(`${entry?.name ?? id} cannot run: ${why}`);
   }
   if (!mcpService.clients.has(name)) {
+    const broken = await sealBroken(extensionDir(id), record);
+    if (broken) throw new Error(`${entry.name} cannot run: ${broken}`);
     const { command, args, env } = launchOf(entry, extensionDir(id), keys);
-    await mcpService.connectToServer(name, command, args, env);
+    if (process.versions.electron) {
+      const { utilityProcess } = await import('electron');
+      const child = utilityProcess.fork(UTILITY_ENTRY, args, {
+        env: { ...helperEnvironment(process.env, process.platform), ...env },
+        stdio: ['ignore', 'ignore', 'inherit'],
+      });
+      await mcpService.connectUtilityToServer(name, child);
+    } else {
+      await mcpService.connectToServer(name, command, args, env);
+    }
   }
   return name;
 };

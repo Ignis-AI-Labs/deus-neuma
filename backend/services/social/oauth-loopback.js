@@ -50,8 +50,9 @@ export const openOAuthLoopback = async ({ platform, callbackPath = '', port = 0,
     }
     if (state !== pkce.state) {
       res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(page('This sign-in link does not belong to the connect in progress. Start CONNECT again from the desk.'));
-      settle({ ok: false, detail: 'the sign-in answer did not match the connect in progress (state mismatch); start CONNECT again' });
+      res.end(page('This sign-in link does not belong to the connect in progress. Return to the original sign-in page; it is still waiting.'));
+      // An unknown state is a stray or hostile probe, not this consent's answer.
+      // The matching callback can still land on this listener.
       return;
     }
     if (error || !code) {

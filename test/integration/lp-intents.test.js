@@ -13,10 +13,10 @@ import { ethers } from 'ethers';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { startAnvil } from '../helpers/money-in-kit.js';
 import { returnContract } from '../helpers/evm-return-contract.js';
-import { installLpManager, installLpPool } from '../helpers/lp-chain-kit.js';
+import { installLpManager, installLpPool, registerLpIntegrityPins } from '../helpers/lp-chain-kit.js';
 import { startLpReceiptRpc } from '../helpers/lp-receipt-rpc-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
-import { viaIntent } from '../helpers/intent-path.js';
+import { viaIntent, granting } from '../helpers/intent-path.js';
 import { startUmbraeStandIn, POOL, USDC } from '../helpers/umbrae-stand-in.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { resetChainProviders } from '../../backend/services/chain/chain-registry.js';
@@ -25,6 +25,7 @@ import { intentType } from '../../backend/services/intents/registry.js';
 import { openLpWallet } from '../../backend/services/umbrae-lp/lp-wallet.js';
 import { listPendingDeposits, writeLpBudget } from '../../backend/services/umbrae-lp/lp-budget.js';
 import { readLpView, lpViewLines } from '../../backend/services/umbrae-lp/lp-view.js';
+import { lpBase } from '../../backend/services/umbrae-lp/lp-base.js';
 
 const NEUMA_ID = 'lpintentecho';
 const BARE_ID = 'lpintentbare';
@@ -57,10 +58,14 @@ beforeAll(async () => {
   umbrae = await startUmbraeStandIn({ provider });
   await installLpManager(provider, '0x362A4AD56E93B71b0dBB28f9Ba1e578E5b077134');
   await installLpPool(provider, POOL);
-  for (const [token, units] of [['0x4200000000000000000000000000000000000006', 18], [USDC, 6]]) {
+  await registerLpIntegrityPins(await lpBase());
+  for (const [token, units, symbol] of [['0x4200000000000000000000000000000000000006', 18, 'WETH'], [USDC, 6, 'USDC']]) {
     await provider.send('anvil_setCode', [token, returnContract({
       fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [0n]),
-      routes: { [ethers.id('decimals()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]) },
+      routes: {
+        [ethers.id('decimals()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]),
+        [ethers.id('symbol()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['string'], [symbol]),
+      },
     })]);
   }
 }, 30000);
@@ -87,35 +92,38 @@ beforeEach(() => {
 const sends = () => umbrae.seen.filter((r) => r.url === '/api/v1/base/send');
 
 describe('the LP intents through the real sweep', () => {
-  test('a filed claim runs with no card, and Base mines it from the LP wallet', async () => {
-    const [receipt] = await viaIntent(connection(), 'lp/claim', { pool: POOL, tokenId: '42', why: 'fees are worth collecting' });
-    expect(receipt.status).toBe('ok');
+  test('a filed claim needs approval, then Base mines it from the LP wallet', async () => {
+    const [held] = await viaIntent(connection(), 'lp/claim', { pool: POOL, tokenId: '42' });
+    expect(held.status).toBe('denied');
+    expect(sends()).toEqual([]);
+    const [receipt] = await viaIntent(connection(), 'lp/claim', { pool: POOL, tokenId: '42', why: 'fees are worth collecting' }, 'ask', granting('lp.claim'));
+    expect(receipt.status, receipt.content ?? receipt.error).toBe('ok');
     expect(receipt.content).toMatch(/^Done: lp\/claim on Base in 1 transaction/);
     const hash = receipt.content.match(/0x[0-9a-f]{64}/)[0];
     expect((await provider.getTransactionReceipt(hash)).from).toBe(wallet);
   }, 60000);
 
-  test('an open past a $0 cap waits for the operator: the request succeeds, nothing is signed', async () => {
+  test('an approved open past a $0 cap waits for the operator: nothing is signed', async () => {
     await writeLpBudget(NEUMA_ID, 0);
-    const [receipt] = await viaIntent(connection(), 'lp/open', { pool: POOL, amountY: '5' });
-    expect(receipt.status).toBe('ok');
+    const [receipt] = await viaIntent(connection(), 'lp/open', { pool: POOL, amountY: '5' }, 'ask', granting('lp.open'));
+    expect(receipt.status, receipt.content ?? receipt.error).toBe('ok');
     expect(receipt.content).toMatch(/past the \$0 budget\. It is waiting for the operator's answer\. Request [0-9a-f-]{36}\./);
     expect(sends()).toEqual([]);
     expect(await listPendingDeposits(NEUMA_ID)).toHaveLength(1);
   }, 60000);
 
-  test('a malformed action is a failed act with the reason, and Umbrae hears nothing past the public pool read', async () => {
-    const [receipt] = await viaIntent(connection(), 'lp/withdraw', { pool: POOL, tokenId: '42', percent: 250 });
+  test('a malformed approved action is a failed act with the reason, and Umbrae hears nothing past the public pool read', async () => {
+    const [receipt] = await viaIntent(connection(), 'lp/withdraw', { pool: POOL, tokenId: '42', percent: 250 }, 'ask', granting('lp.withdraw'));
     expect(receipt.status).toBe('error');
     expect(receipt.error).toMatch(/percent to withdraw, from 1 to 100/);
     expect(umbrae.seen).toEqual([]);
   });
 
-  test('lp/swap and lp/send run through the sweep with no card, and answer with the run\'s own reason', async () => {
-    const [send] = await viaIntent(connection(), 'lp/send', { to: '0x2222222222222222222222222222222222222222', amount: '0.01' });
+  test('approved lp/swap and lp/send answer with the run\'s own reason', async () => {
+    const [send] = await viaIntent(connection(), 'lp/send', { to: '0x2222222222222222222222222222222222222222', amount: '0.01' }, 'ask', granting('lp.send'));
     expect(send.status).toBe('error');
     expect(send.error).toMatch(/^lp\/send did not complete: That is not a wallet of the house/);
-    const [swap] = await viaIntent(connection(), 'lp/swap', { tokenIn: 'USDC', tokenOut: 'SCAM', amount: '1' });
+    const [swap] = await viaIntent(connection(), 'lp/swap', { tokenIn: 'USDC', tokenOut: 'SCAM', amount: '1' }, 'ask', granting('lp.swap'));
     expect(swap.error).toMatch(/^lp\/swap did not complete: Swaps are between tokens Umbrae's pools trade/);
     const [bad] = await viaIntent(connection(), 'lp/swap', { tokenIn: 'USDC' });
     expect(bad.error).toMatch(/needs \{tokenIn, tokenOut, amount\}/);

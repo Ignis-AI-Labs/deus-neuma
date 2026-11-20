@@ -1,0 +1,2 @@
+Fixed
+- A lead's reply now opens on their own words. A reply the mailbox watch recorded before it started keeping the words could sit on READING THEIR EMAIL. It is now read from the mailbox once and kept on the lead, so from then on it opens instantly. If the email has left the inbox since, for example archived or labelled away, it is found in All Mail by who sent it and when. An email with no plain-text part reads as words, not markup. If the mailbox can't be read, the box says why and offers TRY AGAIN instead of waiting forever.

@@ -74,7 +74,7 @@ export const getSoundVolume = () => parseVolume(localStorage.getItem(VOLUME_KEY)
 export const setSoundVolume = (level) => {
   const next = parseVolume(level);
   localStorage.setItem(VOLUME_KEY, String(next));
-  for (const { gain } of loops.values()) gain.gain.value = loopVolume(next);
+  for (const { gain } of loops.values()) if (gain) gain.gain.value = loopVolume(next);
   window.dispatchEvent(new CustomEvent('neuma:sound-volume', { detail: { volume: next } }));
   return next;
 };
@@ -178,19 +178,38 @@ export const primeSound = () => {
 
 // impure — sustained playback for ongoing processes (e.g. the consciousness
 // actively typing); quieter than one-shot events, loops its clip
+//
+// CLAIMED WHEN ASKED (Design note, 2026-11-20, two chats at work: […]). A loop's sound loads before it plays, and the loop used to be entered here only
+// once it played: a stop that came first found nothing and the loop began anyway, and a second start meanwhile began a
+// second copy nobody could stop. Now the loop is claimed the moment it is asked for — a stop cancels one still
+// loading, a second start is the same loop — and it fades in and out over LOOP_FADE_S, so a hand-over never clicks.
+const LOOP_FADE_S = 0.12;
 export const startLoop = (event) => {
   if (!isSoundOn() || loops.has(event) || !hasCue(event)) return;
-  void loopClip(event);
+  const claim = { pending: true };
+  loops.set(event, claim);
+  void loopClip(event, claim);
 };
 
-// impure — stops a sustained loop; safe when none is running
+// impure — stops a sustained loop (fading it out); safe when none is running, and when it is still loading
 export const stopLoop = (event) => {
   const running = loops.get(event);
   if (!running) return;
-  try { running.src.stop(); } catch { /* already ended */ }
-  running.src.disconnect();
-  running.gain.disconnect();
   loops.delete(event);
+  if (running.pending) { running.cancelled = true; return; }
+  const { src, gain } = running;
+  try {
+    const at = ctx.currentTime;
+    gain.gain.cancelScheduledValues(at);
+    gain.gain.setValueAtTime(gain.gain.value, at);
+    gain.gain.linearRampToValueAtTime(0, at + LOOP_FADE_S);
+    src.onended = () => { src.disconnect(); gain.disconnect(); };
+    src.stop(at + LOOP_FADE_S + 0.01);
+  } catch {
+    try { src.stop(); } catch { /* already ended */ }
+    src.disconnect();
+    gain.disconnect();
+  }
 };
 
 // impure — the witness's chosen pack: persisted, a bed already playing
@@ -221,17 +240,20 @@ const playClip = async (event, volume, askedAt) => {
   }
 };
 
-// impure — loop a clip's region indefinitely
-const loopClip = async (event) => {
+// impure — loop a clip's region indefinitely, unless it was stopped (or asked again) while it loaded
+const loopClip = async (event, claim) => {
   try {
     const { buf, start, duration } = await clipOf(event);
+    if (claim.cancelled || loops.get(event) !== claim) return;
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
     src.loopStart = start;
     src.loopEnd = start + duration;
     const gain = ctx.createGain();
-    gain.gain.value = loopVolume(getSoundVolume());
+    const level = loopVolume(getSoundVolume());
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(level, ctx.currentTime + LOOP_FADE_S);
     src.connect(gain).connect(ctx.destination);
     src.start(0, start);
     // The gain node is kept beside the source so a dial moved mid-bed reaches
@@ -239,6 +261,7 @@ const loopClip = async (event) => {
     loops.set(event, { src, gain });
   } catch {
     // Sound is ornament, never load-bearing
+    if (loops.get(event) === claim) loops.delete(event);
   }
 };
 

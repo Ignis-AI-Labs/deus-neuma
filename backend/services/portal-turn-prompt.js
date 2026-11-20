@@ -33,7 +33,6 @@ import { assemblePromptSections, stablePromptSplit } from '../../core/index.js';
 // the marker itself lives with the builder that consumes it and is re-exported
 // so portal-stream's import surface stays one module.
 export { systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead } from './llm-request-builders.js';
-export { wireContextSections } from './turn-context-carry.js';
 import { expressionSectionFor } from './expression-prompt.js';
 import { voiceSittingSection } from '../../core/voice/purpose.js';
 import { speechBriefingSection } from './speech-consent.js';

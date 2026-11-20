@@ -159,11 +159,11 @@ describe('AUDIT-W3 mediums', () => {
 // Lows — batch closed observation
 // ---------------------------------------------------------------------------
 describe('Low findings — closed observation', () => {
-  test('W1-008: portal and terminal use ?token= query', () => {
+  test('W1-008: portal keeps its session query; terminal uses an exact-lane ticket', () => {
     const portal = readFileSync(path.join(REPO, 'backend/routes/portal-routes.js'), 'utf8');
     const term = readFileSync(path.join(REPO, 'backend/routes/terminal-routes.js'), 'utf8');
     expect(portal).toMatch(/urlParams\.get\(['"]token['"]\)|searchParams\.get\(['"]token['"]\)|\.get\(['"]token['"]\)/);
-    expect(term).toMatch(/token/);
+    expect(term).toMatch(/deskTicketSessionForUrl/);
   });
 
   test('W1-007 → audit 2026-10-28 M-03: preflight GET needs a signed-in caller, then returns home.root', async () => {

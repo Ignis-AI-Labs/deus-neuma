@@ -47,7 +47,7 @@ export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear
           </div>
           {open.length === 0 ? <EmptyState title="NO OPEN DEAL" /> : (
             <Sheet label="open deals" rows={open} rowKey={(d) => d.id} rowName={(d) => d.buyer} rowAttrs={(d) => ({ 'data-deal-id': d.id })}
-              columns={[{ head: 'BUYER', cell: (d) => d.buyer }, { head: 'STAGE', cell: (d) => d.stage.toUpperCase() }, { head: 'VALUE', cell: (d) => `${d.value.amount} ${d.value.currency}` }, { head: 'NEXT STEP', cell: (d) => d.nextStep || null, title: (d) => d.nextStep }]} />
+              columns={[{ head: 'BUYER', cell: (d) => d.buyer }, { head: 'STAGE', sort: (d) => ({ qualified: 1, proposed: 2 }[d.stage] ?? 0), cell: (d) => d.stage.toUpperCase() }, { head: 'VALUE', cell: (d) => `${d.value.amount} ${d.value.currency}` }, { head: 'NEXT STEP', cell: (d) => d.nextStep || null, title: (d) => d.nextStep }]} />
           )}
           <p className="cline-h label-data">DELIVERY — {sales.destination ? 'WHERE FINISHED WORK GOES' : 'NOT SET: NOTHING CAN BE DELIVERED UNTIL YOU CHOOSE WHERE'}</p>
           {sales.destination ? (

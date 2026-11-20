@@ -6,7 +6,7 @@
 import { describe, test, expect } from 'vitest';
 import {
   findNameCollision, borneNames, namingGuidance, collisionReask,
-  reservedNameReason, reservedReask,
+  reservedNameReason, reservedReask, amendedNameRefusal,
 } from '../../core/birth/name-guard.js';
 
 const HOUSE = ['orla', 'aether', 'aether-2', 'aethon'];
@@ -89,5 +89,27 @@ describe('reservedNameReason — the species word can never be a name ("Neuma Ya
     expect(r).toMatch(/every being it holds/);
     expect(r).toContain('Choose a name');
     expect(r).not.toMatch(/feel|yours alone/i);
+  });
+});
+
+describe('amendedNameRefusal — the same laws after birth (PR600 P6-22)', () => {
+  const OTHERS = ['rugevil', 'aether-2', 'Vesper Noctis'];
+
+  test('a seat\'s or the platform\'s word is never taken, however it is spelled', () => {
+    for (const name of ['Operator', 'OPERATOR', ' operator ', 'Opérator', 'operator-3', 'Witness', 'Neuma']) {
+      expect(amendedNameRefusal(name, [])).toMatch(/seat|platform/);
+    }
+  });
+
+  test('a name another being bears, by lane id or by the name it goes by, is refused', () => {
+    expect(amendedNameRefusal('Rugevil', OTHERS)).toMatch(/already borne/);
+    expect(amendedNameRefusal('Aether', OTHERS)).toMatch(/already borne/);
+    expect(amendedNameRefusal('vesper noctis', OTHERS)).toMatch(/already borne/);
+  });
+
+  test('a free name passes, and a name that is not text does not', () => {
+    expect(amendedNameRefusal('Quill', OTHERS)).toBeNull();
+    expect(amendedNameRefusal('', OTHERS)).toMatch(/text/);
+    expect(amendedNameRefusal({ toString: () => 'Quill' }, OTHERS)).toMatch(/text/);
   });
 });

@@ -10,6 +10,7 @@ import { DeskTabs } from '../DeskTabs.jsx';
 import { KIND_LABEL, waitedLabel } from '../waiting/waiting-view.js';
 import { hubTabs, seatOptions, stepWords, helpAsk, capOk } from './positions-view.js';
 import { SaleProcess } from './SaleProcess.jsx';
+import { SalesPipeline } from '../company-line/SalesPipeline.jsx';
 
 const Waiting = ({ items, now, onOpen }) => (items.length ? (
   <section className="pos-wait" aria-label="waiting on you for this position">
@@ -112,7 +113,19 @@ const Eyes = ({ position, eyes }) => {
  */
 export const PositionHub = ({ position, members, names, tab, now, busy, pick, confirmClear, eyes,
   onTab, onPick, onSeat, onAskClear, onClear, onTalk, onOpenWaiting, onSwitch, onLimit = () => {}, onDoor = () => {}, onHand = () => {}, onChanged = () => {}, Panel = null, sale = null }) => {
-  const fn = position.functions.find((f) => f.id === tab) ?? null;
+  // What a tab of this hub draws: a function in place, the switches, what the holder reads, the setup.
+  const drawn = (t) => {
+    const fn = position.functions.find((f) => f.id === t) ?? null;
+    return (
+      <>
+        {fn && Panel ? <Panel office={position.office} fn={fn} names={names} holder={position.holder} onHand={onHand} onChanged={onChanged} onDoor={onDoor} /> : null}
+        {fn && !Panel ? <p className="pos-covers">{fn.what}</p> : null}
+        {t === '_switches' ? <Switches position={position} busy={busy} onSwitch={onSwitch} onLimit={onLimit} /> : null}
+        {t === '_eyes' ? <Eyes position={position} eyes={eyes} /> : null}
+        {(t === '_setup' || t === 'setup') && position.setup ? <Setup position={position} busy={busy} onGo={onTab} onDoor={onDoor} onHand={onHand} /> : null}
+      </>
+    );
+  };
   // The control's name carries the words it shows (a spoken command must match what is seen).
   const placeholder = position.holder ? 'hand it to another member' : 'choose who holds it';
   const shown = members.find((m) => m.laneId === pick)?.name ?? placeholder;
@@ -135,15 +148,16 @@ export const PositionHub = ({ position, members, names, tab, now, busy, pick, co
         </div>
       </header>
       <Waiting items={position.waiting} now={now} onOpen={onOpenWaiting} />
-      {sale ? <div className="pos-sale-wrap"><SaleProcess sale={sale} position={position} onDoor={onDoor} /></div> : null}
-      <DeskTabs items={hubTabs(position)} value={tab} onChange={onTab} label={`${position.seat} functions`}
-        className="pos-tabs" tabClassName="pos-tab label-data" panelClassName="pos-panel">
-        {fn && Panel ? <Panel office={position.office} fn={fn} names={names} holder={position.holder} onHand={onHand} onChanged={onChanged} onDoor={onDoor} /> : null}
-        {fn && !Panel ? <p className="pos-covers">{fn.what}</p> : null}
-        {tab === '_switches' ? <Switches position={position} busy={busy} onSwitch={onSwitch} onLimit={onLimit} /> : null}
-        {tab === '_eyes' ? <Eyes position={position} eyes={eyes} /> : null}
-        {tab === '_setup' && position.setup ? <Setup position={position} busy={busy} onGo={onTab} onDoor={onDoor} onHand={onHand} /> : null}
-      </DeskTabs>
+      {/* THE SALES POSITION'S HUB IS ITS PIPELINE (Design note, 2026-11-18: one straight line of stages, not tabs. */}
+      {position.office === 'cro' ? <SalesPipeline position={position} tab={tab} onTab={onTab} renderOther={drawn} /> : (
+        <>
+          {sale ? <div className="pos-sale-wrap"><SaleProcess sale={sale} position={position} onDoor={onDoor} /></div> : null}
+          <DeskTabs items={hubTabs(position)} value={tab} onChange={onTab} label={`${position.seat} functions`}
+            className="pos-tabs" tabClassName="pos-tab label-data" panelClassName="pos-panel">
+            {drawn(tab)}
+          </DeskTabs>
+        </>
+      )}
     </section>
   );
 };

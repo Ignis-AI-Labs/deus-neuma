@@ -24,17 +24,19 @@ const Bars = ({ title, rows }) => (rows.length ? (
   </div>
 ) : null);
 
+// How far along a company stands, nearest the lead list first (Sheet sorts by this, not by the words).
+const STANDS_RANK = Object.freeze({ lead: 4, strong: 3, weak: 2, none: 1, gathered: 0 });
 const COLUMNS = Object.freeze([
   { head: 'NAME', cell: (r) => r.name },
-  { head: 'SITE', cell: (r) => <a className="cline-link" href={r.site} target="_blank" rel="noreferrer noopener">{r.domain}</a>, exact: true },
+  { head: 'SITE', sort: (r) => r.domain, cell: (r) => <a className="cline-link" href={r.site} target="_blank" rel="noreferrer noopener">{r.domain}</a>, exact: true },
   { head: 'WHAT IT IS', cell: (r) => r.about || null, tone: () => 'dim', title: (r) => r.about },
   { head: 'AT HUNTER', cell: (r) => hunterShort(r), tone: (r) => (r.addresses === 0 ? 'dim' : null), title: (r) => (r.addresses ? `${r.addresses.toLocaleString('en-US')} addresses Hunter holds there, ${(r.named ?? 0).toLocaleString('en-US')} of them named people — a lookup there costs one credit` : null), attrs: () => ({ 'data-company-hunter': '' }) },
   { head: 'REACH', cell: (r) => contactShort(r), tone: (r) => (r.read && !r.read.alive ? 'alert' : null), title: (r) => r.read?.why ?? r.read?.emails.join(', ') ?? null, attrs: () => ({ 'data-company-reach': '' }) },
   { head: 'GEO', cell: (r) => r.country },
   { head: 'SIZE', cell: (r) => r.size },
   { head: 'INDUSTRY', cell: (r) => r.industry },
-  { head: 'TRAFFIC', cell: (r) => (r.ranked ? trafficShort(r.rank) : null), tone: (r) => (r.ranked && !r.rank ? 'alert' : null) },
-  { head: 'STANDS', cell: (r) => `${standingWords(r.standing)[0]}${r.people ? ` · ${r.people}` : ''}`, tone: (r) => standingWords(r.standing)[1] },
+  { head: 'TRAFFIC', sort: (r) => (r.ranked && r.rank ? -r.rank : null), cell: (r) => (r.ranked ? trafficShort(r.rank) : null), tone: (r) => (r.ranked && !r.rank ? 'alert' : null) },
+  { head: 'STANDS', sort: (r) => STANDS_RANK[r.standing] ?? null, cell: (r) => `${standingWords(r.standing)[0]}${r.people ? ` · ${r.people}` : ''}`, tone: (r) => standingWords(r.standing)[1] },
 ]);
 
 /**

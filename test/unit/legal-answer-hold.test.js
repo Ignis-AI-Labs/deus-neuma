@@ -135,6 +135,11 @@ describe('only what is presented AS LAW is held', () => {
     for (const line of ['15 U.S.C. § 78c', 'the SEC said', 'the Securities Act', 'Rule 506(c)', 'the statute reads', 'the court held']) expect(speaksAsLaw(line)).toBe(true);
     for (const line of ['In § 3 the form asks', 'the next section', 'Project Summary']) expect(speaksAsLaw(line)).toBe(false);
   });
+
+  it('bounds named-Act matching on hostile capitalized prose', () => {
+    expect(speaksAsLaw('The Securities Act')).toBe(true);
+    expect(speaksAsLaw('A '.repeat(20000))).toBe(false);
+  });
 });
 
 describe('what the CLO is sent back with', () => {

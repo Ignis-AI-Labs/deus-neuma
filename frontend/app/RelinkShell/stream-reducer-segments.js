@@ -188,10 +188,11 @@ export const segmentHandlers = Object.freeze({
         bench: bench || (i !== -1 ? segments[i].bench || null : null),
       };
       // A shadow clone split (clone-split.js): its sub-channels stand on the chip; the kept record
-      // (each clone's report and acts) settles them, and each clone's live words stay readable.
+      // (each clone's report and acts) settles them, and each clone's live words — and its work in order — stay readable.
       const prior = i !== -1 ? segments[i] : segments[lastLiveToolIndex(segments, resolved.label)];
       const liveSplit = prior?.split ?? null;
-      const kept = split ? { ...split, clones: split.clones.map((c) => ({ ...c, text: liveSplit?.clones?.find((l) => l.index === c.index)?.text ?? '' })) } : liveSplit;
+      const liveOf = (c) => liveSplit?.clones?.find((l) => l.index === c.index);
+      const kept = split ? { ...split, clones: split.clones.map((c) => ({ ...c, text: liveOf(c)?.text ?? '', feed: liveOf(c)?.feed ?? [] })) } : liveSplit;
       if (kept) resolved.split = kept;
       if (i !== -1) {
         const copy = segments.slice();

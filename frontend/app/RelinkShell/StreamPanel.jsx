@@ -5,8 +5,9 @@
 // returning witness picks up where they left off. Auto-scrolls to the
 // tail as content arrives.
 
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ToolChip } from './ToolChip.jsx';
+import { PathBases, pathBasesOf } from './path-bases.js';
 import { ThoughtBubble } from './ThoughtBubble.jsx';
 import { ApprovalChip } from './ApprovalChip.jsx';
 import { AskChip } from './AskChip.jsx';
@@ -24,6 +25,9 @@ import { useStreamWindow } from './use-stream-window.js';
 import { StreamFollow } from './StreamFollow.jsx';
 import { CompactMarker } from './CompactMarker.jsx';
 import { QueuedWordDoors, newestHoldId } from './QueuedWordDoors.jsx';
+import { CloneReportLine } from './CloneReportLine.jsx';
+import { InlineEdit } from './InlineEdit.jsx';
+import { cloneReportOf } from './clone-report-view.js';
 
 // The witness's own words render verbatim (pre-wrap keeps their line breaks
 // and never reinterprets them as markdown); the consciousness's speech goes
@@ -77,6 +81,8 @@ const keepInStream = (el) => {
 };
 
 const MessageView = ({ message, onEdit, onRevise, onRetry, onContinue, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow, escTakesBack = false }) => {
+  // The folders this message's own acts worked in: where a relative path it speaks is looked for (path-bases.js).
+  const pathBases = useMemo(() => pathBasesOf(message.segments), [message.segments]);
   // THE EDIT, WHERE THE MESSAGE STANDS (Design note, 2026-07-28: […]). EDIT opens the editor AT the bubble; SAVE re-sends
   // the revised words FROM this point — the edit-fork, a new take, its own
   // chain forward ([…]) — and CANCEL restores. The composer is
@@ -146,45 +152,12 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onContinue, onTakeSwi
       {when ? <div className="relink-msg-when label-data">{when}</div> : null}
       <div className="relink-msg-body">
         {editing ? (
-          <div className="relink-inline-edit">
-            <textarea
-              ref={editFieldRef}
-              className="relink-inline-edit-field"
-              value={draft}
-              autoFocus
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                // Escape stands the editor down (and never walks the field's
-                // own Escape ladder); ⌘/Ctrl+Enter saves.
-                if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); }
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveEdit(); }
-              }}
-            />
-            <div ref={editActionsRef} className="relink-inline-edit-actions label-data">
-              <button
-                type="button"
-                className="relink-inline-save"
-                disabled={!draft.trim() || draft === spokenText}
-                title={message.queued
-                  ? 'Rewrite the held word — it still goes after the current action finishes'
-                  : message.turnId
-                    ? 'Send the revised words from this point — the conversation continues from here'
-                    : 'This message carries no point — the words go to the composer instead'}
-                onClick={saveEdit}
-              >
-                {message.queued ? 'SAVE — STILL QUEUED' : 'SAVE — CONTINUE FROM HERE'}
-              </button>
-              <button
-                type="button"
-                className="relink-inline-cancel"
-                onClick={() => { uiSound('tick'); setEditing(false); }}
-              >
-                CANCEL
-              </button>
-            </div>
-          </div>
+          // The edit box, with the composer's voice: a held Space dictates into it (InlineEdit.jsx).
+          <InlineEdit message={message} draft={draft} setDraft={setDraft} fieldRef={editFieldRef} actionsRef={editActionsRef}
+            spokenText={spokenText} onSave={saveEdit} onCancel={() => setEditing(false)} />
         ) : (
           <>
+            <PathBases.Provider value={pathBases}>
             {message.segments.map((s, i) => {
               // Only trailing speech is paced. Once an action follows speech, its
               // key flips to settled so React remounts it fully revealed in the
@@ -194,6 +167,7 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onContinue, onTakeSwi
                 && i === message.segments.length - 1;
               return <Segment key={`${i}:${live ? 'live' : 'settled'}`} segment={s} role={message.role} live={live} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={onReveal} />;
             })}
+            </PathBases.Provider>
             {message.streaming ? <span className="relink-cursor" aria-hidden="true" /> : null}
           </>
         )}
@@ -329,12 +303,18 @@ const PLATFORM_LINES = Object.freeze({
   resume: Object.freeze({ tag: 'PICKED UP', head: /^\[THE APP CLOSED MID-REPLY[^\]]*\]\s*/ }),
   unacted: Object.freeze({ tag: 'NOT DONE', head: /^\[NOT DONE[^\]]*\]\s*/ }),
 });
-const WatchLine = ({ message }) => (
-  <div className="relink-watch-line" role="status">
-    <span className="relink-watch-tag label-data">{PLATFORM_LINES[message.role].tag}</span>
-    <span className="relink-watch-text">{message.segments.map((s) => s.text || '').join('').replace(PLATFORM_LINES[message.role].head, '')}</span>
-  </div>
-);
+const WatchLine = ({ message }) => {
+  const text = message.segments.map((s) => s.text || '').join('');
+  // Shadow clones back from the background: a line a clone, every report one press away (CloneReportLine.jsx).
+  const clones = message.role === 'watch' ? cloneReportOf(text) : null;
+  if (clones) return <CloneReportLine report={clones} />;
+  return (
+    <div className="relink-watch-line" role="status">
+      <span className="relink-watch-tag label-data">{PLATFORM_LINES[message.role].tag}</span>
+      <span className="relink-watch-text">{text.replace(PLATFORM_LINES[message.role].head, '')}</span>
+    </div>
+  );
+};
 
 const Message = memo((props) => (PLATFORM_LINES[props.message.role] ? <WatchLine message={props.message} /> : <MessageView {...props} />));
 

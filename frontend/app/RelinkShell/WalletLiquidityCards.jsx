@@ -55,7 +55,7 @@ export const BudgetMeter = ({ budgetUsd, inPositionsUsd, waitingUsd, onSave }) =
       <div className="lpw-legend">
         <span><i className="lpw-dot is-used" />{inPositionsUsd === null ? 'positions not read' : `${usd(inPositionsUsd)} in positions`}</span>
         {waitingUsd ? <span><i className="lpw-dot is-wait" />{usd(waitingUsd)} waiting</span> : null}
-        {budgetUsd === null ? <span>No cap: deposits run on their own</span> : null}
+        {budgetUsd === null ? <span>No budget cap: the action approval is still required</span> : null}
       </div>
       {editing ? (
         <form className="lpw-form" onSubmit={save}>
@@ -76,13 +76,14 @@ export const BudgetMeter = ({ budgetUsd, inPositionsUsd, waitingUsd, onSave }) =
  * @param {{request: object, pools: Array<object>, budgetUsd: number|null, busy: boolean, onAnswer: (verdict: 'approve'|'decline') => void}} props
  */
 export const WaitingCard = ({ request, pools, budgetUsd, busy, onAnswer }) => {
-  const pool = poolNamed(pools, request.action.pool);
+  const pool = poolNamed(pools, request.action.pool, request.action);
   const verb = request.action.type === 'add' ? 'ADD TO' : 'OPEN IN';
+  const poolLabel = pool.known ? pool.name : `UNLISTED POOL · ${pool.name}`;
   return (
-    <li className="lpw-card lpw-wait" aria-label={`${verb} ${pool.name}, ${usd(request.depositUsd)}`}>
+    <li className="lpw-card lpw-wait" aria-label={`${verb} ${poolLabel}, ${usd(request.depositUsd)}`}>
       <div className="lpw-row">
         <span className="lpw-amount">{usd(request.depositUsd)}</span>
-        <span className="lpw-k">{verb} {pool.name}</span>
+        <span className="lpw-k">{verb} {poolLabel}</span>
       </div>
       <p className="lpw-sub">{waitingLine(request, pool, budgetUsd)}</p>
       <div className="lpw-acts">

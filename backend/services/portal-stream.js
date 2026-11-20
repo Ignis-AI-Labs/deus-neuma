@@ -13,7 +13,7 @@ import { safeSend as _safeSend } from './ws-send.js';
 import { mcpService } from './mcp.js';
 import { bindTurnAdapter } from './portal-turn-adapter-binding.js';
 import { ACCESS_REQUEST_TOOL } from './access-request-being-tools.js';
-import { SUBSTRATE_FACTS_TOOL } from './substrate-facts-being-tool.js';
+import { SUBSTRATE_FACTS_TOOL, MACHINE_MAP_TOOL } from './substrate-facts-being-tool.js';
 import { sweepBatchIntents } from './intents/intent-sweep.js';
 import { beingCodingToolsFor, callerTurnTail, disclosedNativeTools, stashBeingTurnCatalog, TOOL_DOORS } from './being-tool-surface.js';
 import { getConfig, configFromRoute, getActiveModelCapabilities, getRouteCapabilities } from './llm-provider.js';
@@ -58,7 +58,8 @@ import {
   crystallizeObservation, sendStreamError as _sendStreamError, isMemorylessSitting, isRecallBlindSitting, isHarnessSitting, isPlatformSitting,
   settleCompositionRecord as _settleCompositionRecord, compactWithSelfTorch as _compactWithSelfTorch,
 } from './portal-turn-persist.js';
-import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead, wireContextSections } from './portal-turn-prompt.js';
+import { assembleTurnPrompt, systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead } from './portal-turn-prompt.js';
+import { besideTurnSections, keepToolsOnWire, wireSectionsOf } from './wire-sections.js'; // the CONTEXT MAP counts all that rides
 import { settleUnfinishedTurn } from './portal-turn-unfinished.js';
 import { keepTurn } from './turn-keep.js';
 import { refuseUnboundTurn, refuseRetryAttachments, takeTurnOrigin } from './portal-turn-guards.js';
@@ -292,17 +293,14 @@ export const streamConsciousness = async (connection, message) => {
     const sessionCompaction = memories.compaction ?? null;
     delete memories.compaction;
     const lazyToolSchemas = turnCapabilities?.tools === true;
-    const advertisedTools = [...withFsPrimitives(mcpContext.available_tools), ACCESS_REQUEST_TOOL, SUBSTRATE_FACTS_TOOL, ...beingCodingTools,
+    const advertisedTools = [...withFsPrimitives(mcpContext.available_tools), ACCESS_REQUEST_TOOL, SUBSTRATE_FACTS_TOOL, MACHINE_MAP_TOOL, ...beingCodingTools,
       ...platformTools, ...(lazyToolSchemas ? TOOL_DOORS : [])];
     const _annotatedTools = await stashBeingTurnCatalog(connection, advertisedTools, skills);
     const nativeModel = turnCapabilities?.model || route?.model || getConfig().model;
-    const nativeToolsForRound = () => _nativeToolsFor(nativeModel, disclosedNativeTools(connection), turnCapabilities);
+    const nativeToolsForRound = () => keepToolsOnWire(connection, _nativeToolsFor(nativeModel, disclosedNativeTools(connection), turnCapabilities));
     const initialNativeTools = nativeToolsForRound();
-    // THE PROMPT ASSEMBLY (B-04) — the section list and its exact join live
-    // in portal-turn-prompt.js (size-law breakdown step 15), _tasteFor beside
-    // it. Every argument is the former local the inline block consumed in
-    // place, under its original name; the return is exactly the pair the rest
-    // of the turn consumes. The prompt stays the exact join of sections.
+    // THE PROMPT ASSEMBLY (B-04) — the section list and its exact join live in portal-turn-prompt.js (size-law
+    // breakdown step 15), _tasteFor beside it. The prompt stays the exact join of sections.
     // Documents compose before the assembly: the tail is sized against the turn that rides beside it.
     const docsBlock = composeDocsBlock(docs, { window: turnCapabilities?.contextWindow, promptTokens: connection.lastMeasuredStanding?.promptTokens });
     const { promptSections, systemPrompt, cacheSplit, transcriptMessages, transcriptSection, shed } = await assembleTurnPrompt({
@@ -350,12 +348,13 @@ export const streamConsciousness = async (connection, message) => {
     // image batch remains visible for follow-up questions without re-upload.
     const turnWithDocs = docsBlock ? `${turnContent}\n\n${docsBlock}` : turnContent;
     const priorImages = await loadRecentImageMessages(companion?.neumaId, sessionId, images, turnCapabilities?.vision);
+    const beside = { transcript: transcriptMessages.length, priorImages, queued: takeQueuedActionMessages(connection), echo: formatEchoTurn(connection, thought) };
     const messages = [
       // The cache split stays off every other dialect's serialized message.
       systemMessageWithCacheSplit(systemPrompt, cacheSplit),
       // THE TRANSCRIPT (#528 Stage A): the tail as chat messages — the witness lane's shape.
       ...transcriptMessages,
-      ...priorImages, ...takeQueuedActionMessages(connection), ...formatEchoTurn(connection, thought),
+      ...beside.priorImages, ...beside.queued, ...beside.echo,
       // With images the turn rides as OpenAI-shape content parts; providers
       // that speak another dialect convert at the body builder (llm-provider).
       ...callerTurnTail(connection, { role: 'user', content: images.length > 0 ? composeVisionTurn(turnWithDocs, images) : turnWithDocs }),
@@ -366,6 +365,7 @@ export const streamConsciousness = async (connection, message) => {
     const contextSections = Object.freeze([
       ...promptSections,
       ...(transcriptSection ? [transcriptSection] : []),
+      ...besideTurnSections(messages, beside), // earlier images, finished actions, the echo, a sender's results
       Object.freeze({ id: 'currentTurn', label: 'CURRENT TURN', text: turnWithDocs }),
     ]);
     const contextTelemetry = await _contextTelemetry(route);
@@ -377,7 +377,7 @@ export const streamConsciousness = async (connection, message) => {
     // What the window could not hold rides both emissions (ids + estimates) — the operator is told.
     _safeSend(ws, withShedSections({
       ...buildCompositionEvent({
-        sections: wireContextSections(contextSections, messages[0]), usage: null, toolResults: [], budget: contextBudget,
+        sections: wireSectionsOf(contextSections, messages[0], connection), usage: null, toolResults: [], budget: contextBudget,
         degraded: memories.degraded || [],
       }),
       ...contextScope,
@@ -408,7 +408,7 @@ export const streamConsciousness = async (connection, message) => {
     // portal-turn-persist's settleCompositionRecord, Design note, 2026-08-31.
     const compositionRecord = withShedSections(_settleCompositionRecord({
       connection, standingUsage, turnUsage, interrupted,
-      sections: [...wireContextSections(contextSections, messages[0]), ...toolContextSections],
+      sections: [...wireSectionsOf(contextSections, messages[0], connection), ...toolContextSections],
       completionText: latestResponse, budget: contextBudget, scope: contextScope,
       degraded: memories.degraded, cacheTelemetry: standingCacheTelemetry,
     }), shed);
@@ -432,7 +432,8 @@ export const streamConsciousness = async (connection, message) => {
         composition: compositionRecord,
         sessionCompaction,
         target: { sessionId, companion },
-        affect: declaredAffect }, turnTools, take);
+        affect: declaredAffect,
+        origin }, turnTools, take);
     if (declaredAffect && companion?.neumaId && !isMemorylessSitting(connection)) {
       // The palette deepens off the critical path — a missed fold is never
       // fatal to the turn, but never silent either.
@@ -482,8 +483,7 @@ export const streamConsciousness = async (connection, message) => {
 
   } catch (error) {
     connection.contextRecoveryPending = true;
-    // Interrupted or failed, the record keeps what was said and done (portal-turn-unfinished.js).
-    await settleUnfinishedTurn({ connection, companionName, thought, fullResponse, images, docs, sessionId, companion, take, interrupt, error, route });
+    await settleUnfinishedTurn({ connection, companionName, thought, fullResponse, images, docs, sessionId, companion, take, interrupt, error, route, origin });
   } finally {
     // Detached, but bound to THIS turn before activeTurn is cleared (H1/H2).
     if (!connection._operationRecoveryStopped) sweepBatchIntents(connection, (event) => _sendToolEvent(ws, companion, event), {

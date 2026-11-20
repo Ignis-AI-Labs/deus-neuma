@@ -9,10 +9,10 @@
  *   lp/withdraw  — a share of a position, 1–100 %    (money out)
  *   lp/close     — the whole position                (money out)
  *
- * The policy rows are `allowed` by default. Deposits run on their own unless
- * the operator set a budget cap, read fresh at each deposit (umbrae-lp/lp-run.js);
- * a deposit past a cap waits for the operator's yes, and a waiting deposit is a
- * request that succeeded, not a failure. Money out never waits. The wallet
+ * Fund-moving policy rows require operator approval in ASK, AUTO and wakes.
+ * Once approved, a deposit runs unless the operator's budget cap holds it; a
+ * deposit past a cap waits for the operator's yes. Money out never waits on
+ * that budget. The wallet
  * signs only Umbrae's position calls, every exit paying the wallet itself
  * (core/wallet/lp-tx-policy.js).
  *
@@ -34,11 +34,11 @@ const FIELDS = Object.freeze({
 });
 
 const DESCRIPTIONS = Object.freeze({
-  open: 'Open a liquidity position on Umbrae from your LP wallet. pool is the pool address; amountX/amountY are plain decimals of the pool\'s two tokens (one side may be 0); strategy 0 spot, 1 curve, 2 bid-ask; binRange 1–35 bins each side (default 10). It runs on its own; only if your operator set a budget cap and this passes it does it wait for their yes.',
-  add: 'Add to a position you hold (tokenId) in that pool, from your LP wallet. Same amounts and cap as lp/open.',
-  claim: 'Claim the fees your position (tokenId) has earned into your LP wallet. Never waits.',
-  withdraw: 'Withdraw percent (1–100) of your position (tokenId) back into your LP wallet. Never waits.',
-  close: 'Close your position (tokenId): everything returns to your LP wallet. Never waits.',
+  open: 'Open a liquidity position on Umbrae from your LP wallet. pool is the pool address; amountX/amountY are plain decimals of the pool\'s two tokens (one side may be 0); strategy 0 spot, 1 curve, 2 bid-ask; binRange 1–35 bins each side (default 10). Requires operator approval. After that, only a budget cap can make it wait for another yes.',
+  add: 'Add to a position you hold (tokenId) in that pool, from your LP wallet. Same amounts, approval and cap as lp/open.',
+  claim: 'Claim the fees your position (tokenId) has earned into your LP wallet. Requires operator approval; no budget wait.',
+  withdraw: 'Withdraw percent (1–100) of your position (tokenId) back into your LP wallet. Requires operator approval; no budget wait.',
+  close: 'Close your position (tokenId): everything returns to your LP wallet. Requires operator approval; no budget wait.',
 });
 
 // impure — the advertising probe: a house member's own seat, with an LP
@@ -66,6 +66,12 @@ export const walletWords = (out) => (Number.isFinite(out?.walletChangeUsd)
   ? ` Your wallet's own balance moved ${out.walletChangeUsd < 0 ? '−' : '+'}$${Math.abs(out.walletChangeUsd).toFixed(2)} (positions count apart; lp_book has the whole book).`
   : '');
 
+export const failedOutcome = (out, reason) => ({
+  ok: false,
+  ...(out?.uncertain ? { uncertain: true, txHash: out.txHash } : {}),
+  reason,
+});
+
 // pure — the one line the record and the desk read for an outcome.
 const outcomeOf = (type, out) => {
   if (out.ok && out.declined) return { ok: true, detail: 'Your operator declined that deposit.' };
@@ -75,7 +81,7 @@ const outcomeOf = (type, out) => {
   }
   if (out.pending) return { ok: true, detail: `${out.reason} Request ${out.requestId}.` };
   const sent = out.txHashes?.length ? ` Transactions already on Base: ${out.txHashes.join(', ')}.` : '';
-  return { ok: false, reason: `lp/${type} did not complete: ${out.reason}${sent}` };
+  return failedOutcome(out, `lp/${type} did not complete: ${out.reason}${sent}`);
 };
 
 const lpIntent = (type) => Object.freeze({

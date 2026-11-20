@@ -72,7 +72,8 @@ describe('CONTEXT MAP · COMPOSITION — real view, real styles, real builder', 
   it('the window, the families as doors, the ranked sections, the cut named', async () => {
     const page = await browser.newPage({ viewport: { width: 1212, height: 900 } });
     const errors = [];
-    page.on('pageerror', (e) => errors.push(e.message));
+    // The dev server's own reload socket is switched off for this fixture (hmr port 1); its client saying so is not the view's.
+    page.on('pageerror', (e) => { if (e.message !== 'WebSocket closed without opened.') errors.push(e.message); });
     await page.goto(`http://127.0.0.1:${server.address().port}/`);
     await page.locator('.ctx-window').waitFor({ timeout: 60000 });
 

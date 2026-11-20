@@ -65,7 +65,7 @@ export const SeatingStrip = ({ positions, members, seating, onCouncil = null, on
               return (
                 <li key={s.office} className="label-data">
                   <span>{s.seat || s.plain} · {s.acronym ? `${s.acronym} · ` : ''}{s.title}</span>
-                  <span>{s.name}{now && now !== s.laneId ? ` (now ${nameOf(now)})` : now === s.laneId ? ' (already)' : ''}</span>
+                  <span>{s.name} · {s.laneId}{now && now !== s.laneId ? ` (now ${nameOf(now)} · ${now})` : now === s.laneId ? ' (already)' : ''}</span>
                 </li>
               );
             })}

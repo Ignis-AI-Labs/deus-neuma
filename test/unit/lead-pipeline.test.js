@@ -8,7 +8,8 @@ import { describe, expect, it } from 'vitest';
 import { audiencePipeline, pipelineLine, stepItems, PIPELINE_RULE, STEPS } from '../../backend/services/sales/lead-pipeline.js';
 import { segmentRows, roadSteps } from '../../frontend/app/RelinkShell/company-line/lead-engine-view.js';
 import { leadEngineText } from '../../backend/services/sales/sales-briefing.js';
-import { outboxText } from '../../backend/services/sales/email-outbox.js';
+import { outboxText, foldOutbox } from '../../backend/services/sales/email-outbox.js';
+import { outboxStats } from '../../frontend/app/RelinkShell/company-line/outbox-view.js';
 
 const segment = { id: 's-1', name: 'Umbrae token teams', state: 'approved', countries: ['US'], positiveCriteria: ['Has a token on Base'], targetRole: 'Founder', offer: 'A pool', customerProblem: 'Thin', why: 'x' };
 const alive = { alive: true, description: 'A DeFi protocol', emails: [] };
@@ -23,7 +24,7 @@ const candidates = [
   { domain: 'lead.xyz', name: 'Lead', segmentId: 's-1', siteRead: alive },
   { domain: 'staged.xyz', name: 'Staged', segmentId: 's-1', siteRead: alive },
 ];
-const scored = (domain, match, extra = {}) => ({ id: `p-${domain}`, segmentId: 's-1', domain, name: domain, match, stage: 'found', people: [], ...extra });
+const scored = (domain, match, extra = {}) => ({ id: `p-${domain}`, segmentId: 's-1', domain, name: domain, match, stage: 'found', fit: [], people: [], ...extra });
 const prospects = [
   scored('fit.xyz', 3),
   scored('lead.xyz', 2, { stage: 'promoted', leadId: 'L1', people: [{ name: 'Ari', role: 'Founder', email: 'ari@lead.xyz' }] }),
@@ -69,7 +70,7 @@ describe('an audience on the road, step by step: gather, filter, verify, score �
     expect(stepItems(state, 'contacts').map((p) => p.id)).toEqual(['p-fit.xyz']);
     const held = new Map([['fit.xyz', [{ name: 'Cy', role: 'Founder', email: 'cy@fit.xyz', sourceUrl: 'https://fit.xyz/team' }]]]);
     expect(stepItems({ ...state, held }, 'leads')).toMatchObject([{ id: 'p-fit.xyz', top: { name: 'Cy', email: 'cy@fit.xyz' } }]);
-    expect(stepItems(state, 'outreach').map((l) => [l.id, l.domain, l.staged])).toEqual([['L1', 'lead.xyz', false], ['L2', 'staged.xyz', true]]);
+    expect(stepItems(state, 'outreach').map((l) => [l.id, l.domain, l.staged, l.draft])).toEqual([['L1', 'lead.xyz', false, null], ['L2', 'staged.xyz', true, 'd-1']]);
   });
 });
 
@@ -88,9 +89,40 @@ describe('the same road on the seat\'s briefing and the operator\'s desk', () =>
     expect(outboxText({ review: true, drafts: many })).toContain('; and 16 more) — sales/pipeline {step: "outbox"} lists every one, whole.');
   });
 
+  it('the seat changes its own staged email in place (Design note, 2026-11-17: a revision replaces the waiting or returned one, a withdrawn one never goes', () => {
+    const draft = (to, subject) => ({ to: [to], subject, text: 'words', by: 'cro' });
+    const { drafts } = foldOutbox([
+      { type: 'staged', id: 'm-1', draft: draft('a@x.io', 'First') },
+      { type: 'revised', id: 'm-1', draft: draft('a@x.io', 'Second') },
+      { type: 'staged', id: 'm-2', draft: draft('b@x.io', 'Hello') },
+      { type: 'returned', id: 'm-2', note: 'warmer' },
+      { type: 'revised', id: 'm-2', draft: draft('c@x.io', 'Hello, Cy') },
+      { type: 'staged', id: 'm-3', draft: draft('d@x.io', 'Gone') },
+      { type: 'withdrawn', id: 'm-3', why: 'not a fit' },
+      { type: 'revised', id: 'm-3', draft: draft('d@x.io', 'Back?') },
+    ]);
+    expect(drafts.map((d) => [d.id, d.to[0], d.subject, d.state, d.revised ?? 0, d.note ?? d.why ?? null])).toEqual([
+      ['m-3', 'd@x.io', 'Gone', 'withdrawn', 0, 'not a fit'], ['m-2', 'c@x.io', 'Hello, Cy', 'waiting', 1, null], ['m-1', 'a@x.io', 'Second', 'waiting', 1, null],
+    ]);
+    expect(outboxText({ review: true, drafts })).toContain('To change one, stage it again: it REPLACES the waiting email in place (same id, checked again) — the operator never has to return it first. sales/withdraw-email takes one back.');
+  });
+
+  it('an uncertain outbox event leaves nothing waiting to resend and says maybe sent', () => {
+    const box = foldOutbox([
+      { type: 'staged', id: 'm-u', draft: { to: ['uma@x.io'], subject: 'Hello', text: 'words', by: 'cro' } },
+      { type: 'uncertain', id: 'm-u', from: 'sales@x.io', at: '2026-11-17T00:00:00.000Z' },
+      { type: 'edited', id: 'm-u', subject: 'A blind retry' },
+    ]);
+    expect(box.drafts[0]).toMatchObject({ id: 'm-u', state: 'uncertain', subject: 'Hello' });
+    expect(outboxText(box)).toMatch(/MAYBE SENT \[m-u\][\s\S]*do not resend this draft/);
+    expect(outboxStats(box.drafts)).toContainEqual({ text: '1 MAYBE SENT', tone: 'alert' });
+  });
+
   it('the desk draws the eight steps, the next one lit, the operator\'s own marked (the list to approve, the emails to review)', () => {
     const [row] = segmentRows({ segments: [segment], prospects, candidates, leads, searches: [], pulled: ['fit.xyz'], outbox: { drafts } });
     expect(pipelineLine(row.road)).toContain('5 CONTACTS people at 3 of 3 fits');
+    expect(row.listableIds).toEqual(['p-fit.xyz', 'p-lead.xyz', 'p-staged.xyz']);
+    expect(row.listable).toBe(row.listableIds.length);
     const drawn = roadSteps(row.road);
     expect(drawn.map((s) => [s.label, s.next, Boolean(s.you)])).toEqual([
       ['GATHER', false, false], ['FILTER', false, false], ['VERIFY', false, false], ['SCORE', false, false], ['CONTACTS', false, false],
@@ -98,5 +130,16 @@ describe('the same road on the seat\'s briefing and the operator\'s desk', () =>
     ]);
     expect(drawn[1].words).toBe('3 SHORTLISTED · 1 PASSED · 1 TO FILTER');
     expect(drawn[7].words).toBe('0 SENT · 0 REPLIED · 1 FOR YOUR REVIEW · 1 TO WRITE');
+  });
+
+  it('the approval ids are exactly the eligible companies, never the whole displayed pool', () => {
+    const extra = [
+      scored('none.xyz', 1), scored('dropped.xyz', 3, { stage: 'dropped' }),
+      scored('listed.xyz', 3, { listApproved: true }), scored('foreign.xyz', 3, { segmentId: 's-2' }),
+    ];
+    const [row] = segmentRows({ segments: [segment], prospects: [...prospects, ...extra] });
+    expect(row.pool.map((p) => p.id)).toContain('p-none.xyz');
+    expect(row.listableIds).toEqual(['p-fit.xyz', 'p-lead.xyz', 'p-staged.xyz']);
+    expect(segmentRows({ segments: [{ ...segment, state: 'draft' }], prospects }).every((r) => r.listableIds.length === 0)).toBe(true);
   });
 });

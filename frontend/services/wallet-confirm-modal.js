@@ -59,9 +59,9 @@ export const requestConfirmation = (type, details) => {
     if (type === 'transaction') {
       const to = details.to || 'Unknown';
       const value = details.value ? ethers.formatEther(details.value) + ' ETH' : '0 ETH';
-      body.append(confirmationRow('To', to, true), confirmationRow('Value', value));
+      body.append(confirmationRow('From', details.from || 'Unknown', true), confirmationRow('To', to, true), confirmationRow('Value', value));
       if (details.data && details.data !== '0x') {
-        body.append(confirmationRow('Data', `${details.data.slice(0, 20)}...`, true));
+        body.append(confirmationRow('Data', details.data, true));
       }
     } else {
       const msg =

@@ -188,7 +188,8 @@ describe('one media menu on every image and clip', () => {
 
   it('the keyboard menu key opens a still\'s menu; it holds the loupe, the clipboard and the way home', async () => {
     const { context, page, errors } = await openPage();
-    await page.focus('img.tool-chip-made-img');
+    // A still in the chat is a door to the Lightbox (AuthImage `zoom`): the button around it takes focus and wears the menu.
+    await page.focus('.authimg-zoom:has(img.tool-chip-made-img)');
     await page.keyboard.press('Shift+F10');
     await page.waitForSelector('.cmenu');
     const labels = await menuLabels(page);

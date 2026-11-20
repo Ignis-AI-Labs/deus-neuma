@@ -21,6 +21,9 @@ export const CSP_DIRECTIVES = Object.freeze([
   "media-src 'self' blob:",
   "object-src 'none'",
   "frame-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
 ]);
 
 // impure (writes response headers)

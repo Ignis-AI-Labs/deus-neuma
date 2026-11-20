@@ -9,13 +9,20 @@
 .sheet-table tbody tr:hover > * { background: var(--color-glass-hover); }
 .sheet-table tbody tr:last-child > * { border-bottom: 0; }
 .sheet-table tbody th { font-weight: 600; }
+/* The ticking column: narrow, on the far left, its box centred. */
+.sheet-table .sheet-tick { width: 1%; text-align: center; padding-inline: var(--space-2); }
 .sheet-table .sheet-exact { font-family: var(--font-mono, ui-monospace, monospace); font-size: 13px; }
 .sheet-table .sheet-wrapped { white-space: normal; max-width: none; min-width: 16rem; overflow-wrap: anywhere; }
 .sheet-table .is-alert { color: var(--alert); }
 .sheet-table .is-on { color: var(--signal); }
 .sheet-table .is-dim { color: var(--color-text-secondary); }
+.sheet-sort { all: unset; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; letter-spacing: inherit; }
+.sheet-sort:hover { color: var(--signal); }
+.sheet-sort:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
+.sheet-sort::after { content: attr(data-mark) / ""; color: var(--color-text-tertiary); font-size: 13px; }
+.sheet-sort.is-on, .sheet-sort.is-on::after { color: var(--signal); }
 .sheet-open { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: inherit; cursor: pointer; text-align: left; }
-.sheet-open:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+.sheet-open:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 .sheet-table .sheet-detail { white-space: normal; max-width: none; color: var(--color-text-secondary); }
 .sheet-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .sheet-range { color: var(--color-text-secondary); font-size: 13px; }

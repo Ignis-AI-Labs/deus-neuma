@@ -47,6 +47,8 @@ import { mediaSaveIntent } from './media-save.js';
 import { mediaKeepIntent } from './media-keep.js';
 import { webDownloadIntent } from './web-download.js';
 import { imageGenerateIntent } from './image-generate.js';
+import { forgeInstallIntent } from './forge-install.js';
+import { forgeRegisterWorkflowIntent, forgeEditWorkflowIntent, forgeForgetWorkflowIntent } from './forge-workflow.js';
 import { formRenderIntent } from './form-render.js';
 import { formChampionIntent } from './form-champion.js';
 import { housePostIntent } from './house-post.js';
@@ -92,7 +94,7 @@ import {
 const TYPES = new Map(
   [
     socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent, ...lpIntents, lpSwapIntent, lpSendIntent, lpGoalIntent, lpRewardIntent, lpCreatePoolIntent,
-    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, houseSeatingIntent, houseCharterIntent, houseWakeIntent, kspCommandIntent,
+    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, forgeInstallIntent, forgeRegisterWorkflowIntent, forgeEditWorkflowIntent, forgeForgetWorkflowIntent, housePostIntent, houseReviewPacketIntent, houseSeatingIntent, houseCharterIntent, houseWakeIntent, kspCommandIntent,
     chatSendIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,

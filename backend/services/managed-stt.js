@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { getDataRoot } from './data-root.js';
 import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { plainFailure } from './managed-ollama-errors.js';
+import { listenerHeldBy } from './listener-owner.js';
 import { probeEnvironment } from './agent-terminal-environment.js';
 import { createLogger } from './logger.js';
 import { STT_GPU_MODEL, STT_MODEL, WHISPER_CPP_BUILD, sttEngineFor, sttGpuEngineFor, sttPlan, sttServerArgs, sttThreads } from './managed-stt-plan.js';
@@ -184,6 +185,15 @@ const answers = async (port) => {
   try { const r = await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1500) }); return r.status < 500; } catch { return false; }
 };
 
+// impure — is what answers on the port the engine this process started? Any program on this
+// computer can bind a free loopback port before the engine does and answer in its place, and what
+// it answers is typed into the person's windows (PR600 audit P6-59). On Linux every socket
+// listening there must be the child's own; where the system cannot say, the answer stands.
+const engineHolds = (port, child) => listenerHeldBy(port, child.pid) !== 'other';
+const notTheEngine = (port) => Object.assign(
+  new Error(`another program answered on the speech server's port (${port}); nothing it said was used`), { code: 'STT_NOT_THE_ENGINE' },
+);
+
 /** Stop the server this process started (the backend going away). impure */
 export const stopSttServer = () => {
   if (server?.child && server.child.exitCode === null) server.child.kill();
@@ -203,7 +213,10 @@ const startServer = async ({ files, gpu, libDir }) => {
   const ready = (async () => {
     for (let t = Date.now(); Date.now() - t < START_MS; await new Promise((r) => setTimeout(r, 300))) {
       if (child.exitCode !== null || child.signalCode !== null) throw new Error(`the speech server stopped while starting (exit ${child.exitCode})`);
-      if (await answers(port)) return;
+      if (await answers(port)) {
+        if (!engineHolds(port, child)) throw notTheEngine(port);
+        return;
+      }
     }
     throw new Error('the speech server did not answer within a minute');
   })();
@@ -279,6 +292,12 @@ const segmentsOf = (body) => (Array.isArray(body.segments) ? body.segments : [])
  */
 export const transcribeWav = async (wav, { prompt = '', processor = false } = {}) => {
   const port = await ensureSttServer({ processor });
+  // asked at every use, never once: the port is checked again before any audio is sent to it
+  if (!server || server.port !== port) throw new Error('the speech server stopped before it could be asked');
+  if (!engineHolds(port, server.child)) {
+    stopSttServer();
+    throw notTheEngine(port);
+  }
   const form = new FormData();
   form.append('file', new Blob([wav], { type: 'audio/wav' }), 'speech.wav');
   form.append('response_format', 'verbose_json');

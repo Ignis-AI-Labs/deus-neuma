@@ -187,8 +187,8 @@ describe('the local prefix law (volatile tail rides the current turn)', () => {
     expect(body.messages[0]).toEqual({ role: 'system', content: 'HEAD' });
     expect(body.messages.slice(1, 3)).toEqual(HISTORY);
     const turn = body.messages[3].content;
-    expect(turn).toMatch(/^<harness-context>\n.*not the operator's words/s);
-    expect(turn).toContain('PRESENT 12:01\n</harness-context>\n\npost it');
+    expect(turn).toMatch(/^<harness-context:[A-Za-z0-9-]+>\n.*not the operator's words/s);
+    expect(turn).toMatch(/PRESENT 12:01\n<\/harness-context:[A-Za-z0-9-]+>\n\npost it/);
   });
 
   test('two turns a minute apart share every byte up to the new turn', () => {
@@ -210,7 +210,7 @@ describe('the local prefix law (volatile tail rides the current turn)', () => {
     const messages = wire('PRESENT', HISTORY, 'x');
     messages[3] = { role: 'user', content: [{ type: 'text', text: 'look' }, { type: 'image_url', image_url: { url: 'data:' } }] };
     const body = buildStreamBody(LOCAL, messages, {});
-    expect(body.messages[3].content[0].text).toMatch(/^<harness-context>/);
+    expect(body.messages[3].content[0].text).toMatch(/^<harness-context:[A-Za-z0-9-]+>/);
     expect(body.messages[3].content.slice(1)).toEqual(messages[3].content);
   });
 

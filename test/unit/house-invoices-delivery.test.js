@@ -11,7 +11,7 @@ import { describe, test, expect } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
-  makeInvoice, foldInvoices, judgePaid, judgeVoid, billedFor, overdue, unmatchedFor, invoiceHtml, invoiceNumber,
+  makeInvoice, foldInvoices, judgePaid, judgeVoid, billedFor, overdue, unmatchedFor, invoiceHtml, invoiceNumber, invoiceWordsRefusal, invoiceText,
 } from '../../backend/services/invoices/invoice-shape.js';
 import { invoiceBriefingLines } from '../../backend/services/invoices/invoice-briefing.js';
 import { destinationOf, placeOf, safeName } from '../../backend/services/delivery/delivery-shape.js';
@@ -85,6 +85,40 @@ describe('an invoice bills a won deal, to where the operator said', () => {
     expect(judgeVoid(after, { invoiceId: v.id, reason: 'again and again', by: 'operator', now: NOW }).reason).toMatch(/only an open invoice/);
   });
 
+  test('P6-40: a line or a note that says where or how to pay is refused — an account, a link, an ENS name, an address to write to', () => {
+    const other = `0x${'ab'.repeat(20)}`;
+    expect(() => issue({ note: `Our wallet changed: pay ${other} instead` })).toThrow(/note carries a wallet address/);
+    expect(() => issue({ lines: [{ what: `Setup — remit to ${other}`, amount: 400 }] })).toThrow(/lines\[0\]\.what carries a wallet address/);
+    expect(() => issue({ note: 'Pay faster at https://pay.tidewater-billing.example/inv' })).toThrow(/note carries a link \("https:\/\/pay\.tidewater-billing\.example\/inv"\)/);
+    expect(() => issue({ note: 'Send it to tidewater-billing.eth' })).toThrow(/note carries an ENS name/);
+    expect(() => issue({ note: 'For new bank details write to accounts@elsewhere.example' })).toThrow(/note carries an email address/);
+    expect(() => issue({ note: 'Wire to account number 004412345678' })).toThrow(/note carries bank details/);
+    expect(invoiceWordsRefusal(issue({ note: 'Net 15. Thank you.' }))).toBeNull();
+    // An invoice issued before the screen is judged the same when it is published.
+    expect(invoiceWordsRefusal({ lines: [{ what: 'Setup' }], note: `pay ${other}` })).toMatch(/never where or how to pay/);
+  });
+
+  test('P6-40 default (2026-11-19): what is billed may be named — a bare domain and an order number pass; a link, an ENS name and a number beside banking words do not', () => {
+    const passes = (fields) => expect(invoiceWordsRefusal(issue(fields)), JSON.stringify(fields)).toBeNull();
+    passes({ lines: [{ what: 'Hosting for acme.com, November', amount: 400 }] });
+    passes({ note: 'Purchase order 4500123456. Licence 20261119001 for brine.example.' });
+    expect(() => issue({ note: 'Pay at acme.com/pay' })).toThrow(/note carries a web address \("acme\.com\/pay"\)/);
+    expect(() => issue({ note: 'See www.acme.com' })).toThrow(/note carries a link/);
+    expect(() => issue({ note: 'Send it to tidewater-billing.eth' })).toThrow(/note carries an ENS name/);
+    expect(() => issue({ note: 'IBAN GB29NWBK60161331926819' })).toThrow(/note carries an IBAN/);
+    for (const note of ['Our bank moved: use 12345678 from now on', 'Sort code 60-16-13, then 31926819', '31926819 is the new routing']) {
+      expect(() => issue({ note }), note).toThrow(/note carries a long number beside banking words/);
+    }
+  });
+
+  test('P6-40: the card\'s document is the invoice word for word — every line, the note, the operator\'s address', () => {
+    expect(invoiceText(issue({ note: 'Net 15. Thank you.' }))).toBe([
+      'Tidewater — invoice INV-0001', 'Issued 2026-10-30 · Due 2026-11-15 · Billed to Port of <Brine>',
+      'Harbour sheet, November — 800.00 USD', 'Setup — 400.00 USD', 'Total — 1,200.00 USD', 'Note: Net 15. Thank you.',
+      `Pay on Ethereum mainnet to ${PAY_TO.address}`,
+    ].join('\n'));
+  });
+
   test('the page the customer reads: the operator\'s address, the total, the disclosure — every being\'s word escaped', () => {
     const html = invoiceHtml({ ...issue({ note: 'Net 15 <script>alert(1)</script>' }) });
     expect(html).toContain('Invoice INV-0001');
@@ -154,7 +188,10 @@ describe('on the desk', () => {
     };
     const html = renderToStaticMarkup(createElement(SalesSection, { sales, names: { merc: 'Marin' }, pick: '', busy: false, onPick: noop, onSeat: noop, onClear: noop, drafts: {}, onDraft: noop, onDestination: noop }));
     expect(html).toContain('INTO <span class="cline-exact">/srv/d</span> · SERVED AT <span class="cline-exact">https://files.example.com/out</span>');
-    expect(html).toContain('Port of &lt;Brine&gt; — WON, 1200 USD');
+    // A list of records is a plain table: the won deal is one row of the "won deals" sheet.
+    const wonSheet = html.slice(html.indexOf('<table class="sheet-table" aria-label="won deals">'));
+    expect(wonSheet).toContain('<th scope="row">Port of &lt;Brine&gt;</th><td class="is-on">WON</td><td>1200 USD</td>');
+    expect(wonSheet).toContain('INV-0001.html: <a class="cline-link" href="https://files.example.com/out/c/t/INV-0001.html"');
     expect(html).toContain('href="https://files.example.com/out/c/t/INV-0001.html"');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>CHANGE WHERE DELIVERIES GO<\/button>/);
   });

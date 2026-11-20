@@ -75,11 +75,11 @@ const serialized = (neumaId, fn) => {
 const movedWords = (moved) => moved.map((m) => `${Number(m.amount.toPrecision(6))} ${m.symbol}`).join(', ');
 
 /**
- * How the book prices. 2 (2026-11-13): each token at its DEEPEST Umbrae pool
- * (lp-holdings.js poolTokens); 1 took whichever pool came last, and a thin
- * WETH-USDC pool priced WETH ~9% over the market.
+ * How the book prices. 3 (2026-11-17): independent markets checked against
+ * the actual pool's active bin; 2 used the deepest Umbrae pool; 1 took
+ * whichever pool came last, and a thin WETH-USDC pool priced WETH ~9% high.
  */
-const PRICING = 2;
+const PRICING = 3;
 
 // pure — a book priced the old way, brought to PRICING once. With nothing done
 // yet (only money that arrived), what it was given is re-counted at the right
@@ -95,20 +95,20 @@ const reprice = (book, holdings, nowMs) => {
     const arrivals = book.arrivals ?? [];
     const countable = arrivals.length > 0 && arrivals.every((a) => (a.moved ?? []).every((m) => Number.isFinite(prices.get(m.symbol))));
     if (!countable) {
-      return { ...book, pricing: PRICING, journal: [...(book.journal ?? []), { at, act: 'repriced', what: 'prices now come from each token\'s deepest Umbrae pool (a thinner pool priced WETH about 9% high before); figures from here may shift by that', deltaUsd: 0 }] };
+      return { ...book, pricing: PRICING, journal: [...(book.journal ?? []), { at, act: 'repriced', what: 'prices now use independent markets checked against the on-chain active bin; figures from here may shift by that', deltaUsd: 0 }] };
     }
     const recounted = arrivals.map((a) => ({ ...a, usd: a.moved.reduce((s, m) => s + m.amount * prices.get(m.symbol), 0) }));
     const was = arrivals.reduce((s, a) => s + (a.usd ?? 0), 0);
     const now = recounted.reduce((s, a) => s + a.usd, 0);
     return {
       ...book, pricing: PRICING, arrivals: recounted, fundedUsd: (book.fundedUsd ?? 0) - was + now,
-      journal: [...(book.journal ?? []), { at, act: 'repriced', what: `prices now come from each token's deepest Umbrae pool; what you were given is re-counted at them: $${now.toFixed(2)} (was $${was.toFixed(2)})`, deltaUsd: 0 }],
+      journal: [...(book.journal ?? []), { at, act: 'repriced', what: `prices now use independent markets checked against the on-chain active bin; what you were given is re-counted at them: $${now.toFixed(2)} (was $${was.toFixed(2)})`, deltaUsd: 0 }],
     };
   }
   const value = walletUsd(holdings).usd;
   return {
     ...book, pricing: PRICING, repriced: true, held: heldAfter(book.held, holdings), fundedUsd: value,
-    journal: [...(book.journal ?? []), { at, act: 'repriced', what: `prices now come from each token's deepest Umbrae pool; what you were given is re-counted at them: $${value.toFixed(2)}`, deltaUsd: 0 }],
+    journal: [...(book.journal ?? []), { at, act: 'repriced', what: `prices now use independent markets checked against the on-chain active bin; what you were given is re-counted at them: $${value.toFixed(2)}`, deltaUsd: 0 }],
   };
 };
 

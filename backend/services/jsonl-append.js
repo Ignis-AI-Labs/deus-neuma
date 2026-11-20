@@ -44,11 +44,14 @@ export const readJsonLines = async (file) => {
     if (err?.code === 'ENOENT') return { records: [], torn: 0 };
     throw err;
   }
-  return text.split('\n').filter((l) => l.trim()).reduce((acc, line) => {
+  const result = { records: [], torn: 0 };
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
     try {
-      return { ...acc, records: [...acc.records, JSON.parse(line)] };
+      result.records.push(JSON.parse(line));
     } catch {
-      return { ...acc, torn: acc.torn + 1 };
+      result.torn += 1;
     }
-  }, { records: [], torn: 0 });
+  }
+  return result;
 };

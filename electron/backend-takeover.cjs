@@ -17,11 +17,17 @@
 
 const fs = require('node:fs');
 const { execFile } = require('node:child_process');
+const { stopPosixTree } = require('./process-tree.cjs');
 
 const SERVER_MARK = /(^|[\\/])backend[\\/]server\.js$/;
 
 /** Is this argv a NEUMA backend? Pure. */
 const isBackendArgv = (argv) => argv.some((a) => SERVER_MARK.test(a));
+
+const WINDOWS_SERVER_MARK = /(?:^|\s)(?:"[^"\r\n]*[\\/]backend[\\/]server\.js"|'[^'\r\n]*[\\/]backend[\\/]server\.js'|[^\s"']*[\\/]backend[\\/]server\.js)(?=\s|$)/;
+
+/** Is a Windows command line's script argument exactly a NEUMA backend? Pure. */
+const isBackendCommandLine = (commandLine) => WINDOWS_SERVER_MARK.test(String(commandLine));
 
 /**
  * The inodes listening on a port in /proc/net/tcp(6) text. Pure.
@@ -85,8 +91,9 @@ const describe = async (pid) => {
   if (process.platform === 'linux') {
     if (fs.statSync(`/proc/${pid}`, { throwIfNoEntry: false })?.uid !== process.getuid()) return null;
     const argv = readText(`/proc/${pid}/cmdline`).split('\0').filter(Boolean);
-    if (!isBackendArgv(argv)) return null;
     const env = readText(`/proc/${pid}/environ`).split('\0');
+    // utilityProcess hides the entry from argv; only our explicit launch marker identifies it.
+    if (!env.includes('NEUMA_BACKEND_PROCESS=utility') && !isBackendArgv(argv)) return null;
     const desk = env.find((e) => e.startsWith('NEUMA_DESK_PID='));
     return { deskPid: desk ? Number(desk.slice('NEUMA_DESK_PID='.length)) : null };
   }
@@ -94,7 +101,7 @@ const describe = async (pid) => {
     const out = await run('powershell', ['-NoProfile', '-NonInteractive', '-Command',
       `$p = Get-CimInstance Win32_Process -Filter "ProcessId=${Number(pid)}"; if ($p) { "$($p.ParentProcessId)"; $p.CommandLine }`]);
     const [parent, ...rest] = out.split(/\r?\n/);
-    if (!/backend[\\/]server\.js/.test(rest.join(' '))) return null;
+    if (!isBackendCommandLine(rest.join(' '))) return null;
     return { deskPid: Number(parent) || null };
   }
   return null;
@@ -103,9 +110,7 @@ const describe = async (pid) => {
 /** impure — stop a backend and everything it started. */
 const stopTree = (pid, force = false) => {
   if (process.platform === 'win32') return run('taskkill', ['/PID', String(pid), '/T', '/F']);
-  const signal = force ? 'SIGKILL' : 'SIGTERM';
-  // The backend leads its own process group (backend-spawn.cjs: detached), so the group takes its children.
-  try { process.kill(-pid, signal); } catch { try { process.kill(pid, signal); } catch { /* gone */ } }
+  stopPosixTree(pid, force);
   return Promise.resolve();
 };
 
@@ -122,7 +127,8 @@ const takeOverPort = async (port, { isFree, graceMs = 5000, settleMs = 10000 }) 
   const pid = await findListener(port);
   const who = pid ? await describe(pid) : null;
   if (!who) return { outcome: 'not-ours', pid };
-  if (who.deskPid && alive(who.deskPid)) return { outcome: 'desk-alive', pid };
+  if (!Number.isInteger(who.deskPid) || who.deskPid <= 0) return { outcome: 'not-ours', pid };
+  if (alive(who.deskPid)) return { outcome: 'desk-alive', pid };
   await stopTree(pid);
   for (let waited = 0; waited < settleMs; waited += 250) {
     if (waited === graceMs && alive(pid)) await stopTree(pid, true);
@@ -132,4 +138,4 @@ const takeOverPort = async (port, { isFree, graceMs = 5000, settleMs = 10000 }) 
   return { outcome: 'stuck', pid };
 };
 
-module.exports = { takeOverPort, findListener, describe, isBackendArgv, listeningInodes, netstatListener };
+module.exports = { takeOverPort, findListener, describe, isBackendArgv, isBackendCommandLine, listeningInodes, netstatListener };

@@ -35,6 +35,7 @@ import {
   startWallClock,
   createCliPortal,
 } from '../lib/terminal-portal.js';
+import { authenticateAgentOwner } from '../lib/agent-owner.js';
 
 export { classifyFrame, addAgentRoundUsage, startWallClock, createCliPortal, parsePositiveInt, resolveBenchmarkControls };
 
@@ -205,9 +206,10 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
   const laneId = seat.laneId;
   const descriptor = harnessSeat || seats.find((entry) => entry.laneId === laneId);
   const owner = await workspace.readOwner(laneId);
-  if (!owner?.wallet) return fail(`${laneId} has no operator ownership record`);
+  const authenticated = authenticateAgentOwner({ cwd, laneId, owner });
+  if (authenticated.error) { if (process.cwd() !== seatedCwd) process.chdir(seatedCwd); return fail(authenticated.error); }
   // The transcript's images ride the operator's attachment path (caller-turn.js).
-  const staged = stageCallerImages(caller.images, owner.wallet);
+  const staged = stageCallerImages(caller.images, authenticated.address);
   if (staged.error) return fail(staged.error);
 
   const [
@@ -234,7 +236,7 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
     return fail(`filesystem tool surface unavailable — ${error.message}`);
   }
 
-  const connection = createPortalConnection({ ws: { send() {} }, walletAddress: owner.wallet });
+  const connection = createPortalConnection({ ws: { send() {} }, walletAddress: authenticated.address });
   connection.companion = {
     name: descriptor.name,
     id: descriptor.name,

@@ -4,10 +4,16 @@ import path from 'node:path';
 import { ethers } from 'ethers';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { proveLpReceipt } from './lp-receipt-proof.js';
+import { lpWalletAddress } from './lp-wallet.js';
 
 const ACTIVE = new Set(['broadcast', 'unknown']);
-const actionHash = (tx, asked) => crypto.createHash('sha256').update(JSON.stringify({
-  asked, to: ethers.getAddress(tx.to),
+const VOLATILE_QUOTE_FIELDS = new Set([
+  'activeIdDesired', 'amountOutMin', 'amountXMin', 'amountYMin', 'baseFactor',
+  'bidAskRatio', 'centerBinId', 'idSlippage', 'minTotalLiquidity', 'skipActiveBin',
+]);
+export const actionHash = (tx, asked) => crypto.createHash('sha256').update(JSON.stringify({
+  asked: Object.fromEntries(Object.entries(asked).filter(([key]) => !VOLATILE_QUOTE_FIELDS.has(key))),
+  to: ethers.getAddress(tx.to),
 })).digest('hex');
 const fileFor = (neumaId, hash) => path.join(neumaWorkspace._path(neumaId), 'config', 'lp-executions', `${hash}.json`);
 
@@ -21,6 +27,27 @@ const read = async (neumaId, hash) => {
 };
 const write = (neumaId, hash, record) => neumaWorkspace._writeJSON(fileFor(neumaId, hash), record);
 
+export const UNKNOWN_DROPPED_AFTER_MS = 15 * 60 * 1000;
+
+// impure — only an old, missing receipt whose account nonce has moved on may be dropped.
+const dropIfStale = async (neumaId, record, provider) => {
+  if (record.state !== 'unknown' || !Number.isSafeInteger(record.nonce)) return record;
+  const updatedMs = Date.parse(record.updatedAt ?? record.signedAt ?? '');
+  if (!Number.isFinite(updatedMs) || Date.now() - updatedMs < UNKNOWN_DROPPED_AFTER_MS) return record;
+  const from = record.from ?? await lpWalletAddress(neumaId).catch(() => null);
+  if (!ethers.isAddress(from)) return record;
+  let latestNonce;
+  try {
+    latestNonce = Number(BigInt(await provider.send('eth_getTransactionCount', [ethers.getAddress(from), 'latest'])));
+  } catch {
+    return record;
+  }
+  if (!Number.isSafeInteger(latestNonce) || latestNonce <= record.nonce) return record;
+  const next = { ...record, from: ethers.getAddress(from), state: 'dropped', updatedAt: new Date().toISOString() };
+  await write(neumaId, record.actionHash, next);
+  return next;
+};
+
 const reconcile = async (neumaId, record, provider, secondary, minConfirmations) => {
   if (!ACTIVE.has(record.state)) return record;
   let receipt;
@@ -33,7 +60,7 @@ const reconcile = async (neumaId, record, provider, secondary, minConfirmations)
     }
     return record;
   }
-  if (!receipt) return record;
+  if (!receipt) return dropIfStale(neumaId, record, provider);
   const proof = Number(receipt.status) === 1
     ? await proveLpReceipt({ primary: provider, secondary, minConfirmations, timeoutMs: 120000, hash: record.hash })
     : { ok: false };
@@ -54,7 +81,8 @@ export const guardLpExecution = async ({ neumaId, tx, asked, provider, secondary
 export const recordLpBroadcast = async ({ neumaId, actionHash: hash, signed }) => {
   const transaction = ethers.Transaction.from(signed.signedTransaction);
   const record = {
-    version: 1, actionHash: hash, hash: signed.hash, nonce: transaction.nonce,
+    version: 2, actionHash: hash, hash: signed.hash, nonce: transaction.nonce,
+    from: ethers.getAddress(transaction.from), chainId: Number(transaction.chainId),
     state: 'broadcast', signedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   };
   const file = fileFor(neumaId, hash);

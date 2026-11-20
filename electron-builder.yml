@@ -100,12 +100,15 @@ extraResources:
   - from: package-lock.json
     to: package-lock.json
 
-# NO asar — the backend runs as a SPAWNED Node child (ELECTRON_RUN_AS_NODE),
-# and a plain-Node child cannot read inside an asar archive (spawn ENOTDIR:
-# cwd/script paths inside app.asar are not real directories). Every tree the
-# backend touches — backend/, core/, dist/, node_modules — must be real files,
-# so the whole app ships unpacked. Proven by the 2026-07-31 boot test.
-asar: false
+# The backend and its helper JavaScript run as Electron utility children, so the
+# application can live in asar. Native addons stay real files for the OS loader.
+asar: true
+asarUnpack:
+  - node_modules/**/*
+electronFuses:
+  runAsNode: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
 
 # afterPack is ONE slot and two platforms need it, so the hook is a dispatcher:
 #   linux + AppImage → ./scripts/appimage-launcher-hook.cjs (the launcher in

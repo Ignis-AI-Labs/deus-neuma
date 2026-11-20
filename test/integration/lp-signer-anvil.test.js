@@ -71,7 +71,7 @@ describe('signing a transaction Umbrae built', () => {
 
   test('a token approval inside its ceiling is signed; over it, nothing is signed', async () => {
     const approve = (amount) => ({ to: USDC, chainId: 8453, data: erc20.encodeFunctionData('approve', [UMBRAE_BASE.positionManager, amount]) });
-    const inside = await signLpTransaction({ signer, provider, tx: approve(10n), asked: { kind: 'approval' }, maxApprove: { [USDC]: '10' } });
+    const inside = await signLpTransaction({ signer, provider, tx: approve(10n), asked: { kind: 'approval', spender: UMBRAE_BASE.positionManager, token: USDC }, maxApprove: { [USDC]: '10' } });
     expect(inside.ok).toBe(true);
     expect(ethers.Transaction.from(inside.signedTransaction).to).toBe(USDC);
     const over = await signLpTransaction({ signer, provider, tx: approve(11n), asked: { kind: 'approval' }, maxApprove: { [USDC]: '10' } });

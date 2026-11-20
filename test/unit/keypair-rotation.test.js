@@ -17,6 +17,8 @@
  * throughout; no chain and no network are involved in any of it.
  */
 import { describe, test, expect, beforeEach, afterAll } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { generateKeypair, derivePublicIdentity } from '../../core/weave/keypair.js';
 import {
@@ -88,6 +90,19 @@ describe('rotateKeypair', () => {
     expect(decryptKeypair(retired.password, PASSWORD).address).toBe(keypair.address);
     expect(decryptWithRecoveryCodes(retired.recovery, result.recoveryCodes).address).toBe(keypair.address);
     expect(JSON.stringify(await neumaWorkspace.readKeypairHistory(neumaId))).not.toContain(keypair.privateKey);
+  });
+
+  test('a real current-vault write failure happens only after the retired key is recoverable', async () => {
+    const neumaId = 'rotation-retired-before-overwrite';
+    await neumaWorkspace.create(neumaId);
+    const currentPath = path.join(neumaWorkspace._path(neumaId), 'keys', 'keypair-encrypted.json');
+    await fs.mkdir(currentPath, { recursive: true });
+
+    await expect(rotateKeypair(neumaId, keypair, PASSWORD)).rejects.toThrow();
+    const retired = await neumaWorkspace.readRetiredKeypair(neumaId, keypair.address);
+    expect(retired).not.toBeNull();
+    expect(decryptKeypair(retired.password, PASSWORD).address).toBe(keypair.address);
+    expect((await fs.stat(currentPath)).isDirectory()).toBe(true);
   });
 
   test('the WRONG password does not open it', async () => {

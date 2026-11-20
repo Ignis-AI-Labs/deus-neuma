@@ -45,6 +45,7 @@ import { checkPathAccess } from './sandbox-path-policy.js';
 import { otherHouseInWalk, readablePath } from './fs-read-clearance.js';
 // copy and move live apart: validated, and a move works across disks (fs-copy-move-clarity)
 import { copyFile, moveFile } from './native-fs-transfer.js';
+import { openLineRegex } from './line-regex.js';
 
 // The organ matches directory_tree excludes with the SAME minimatch the
 // package's own search path uses — resolved from the package's dependency
@@ -307,18 +308,23 @@ const CONTENT_SEARCH = Object.freeze({
 // excludePatterns (even []) replaces this default entirely.
 const CONTENT_SEARCH_EXCLUDES = Object.freeze(['node_modules', '.git']);
 
-// pure — one line-matcher from the pattern args; an invalid regex throws here
-// and surfaces as the tool's isError result.
+// One line-matcher from the pattern args: `find(text, lines, limit)` resolves the numbers of the first
+// `limit` matching lines. An invalid regex throws here and surfaces as the tool's isError result. A
+// regex is the caller's own program, so it runs off this thread and is stopped when it will not end
+// (line-regex.js); a plain needle is matched here.
 const buildLineMatcher = ({ pattern, regex, ignoreCase }) => {
   if (regex) {
-    const re = new RegExp(pattern, ignoreCase ? 'i' : '');
-    return (line) => re.test(line);
+    const guarded = openLineRegex(pattern, ignoreCase ? 'i' : '');
+    return { find: (text, _lines, limit) => guarded.matchingLines(text, limit), close: guarded.close };
   }
-  if (ignoreCase) {
-    const needle = pattern.toLowerCase();
-    return (line) => line.toLowerCase().includes(needle);
-  }
-  return (line) => line.includes(pattern);
+  const needle = ignoreCase ? pattern.toLowerCase() : pattern;
+  const has = ignoreCase ? (line) => line.toLowerCase().includes(needle) : (line) => line.includes(needle);
+  const find = async (_text, lines, limit) => {
+    const found = [];
+    for (let i = 0; i < lines.length && found.length < limit; i += 1) if (has(lines[i])) found.push(i);
+    return found;
+  };
+  return { find, close: async () => {} };
 };
 
 const searchContent = async (args) => {
@@ -326,7 +332,7 @@ const searchContent = async (args) => {
     throw new Error('pattern must be a non-empty string');
   }
   const rootPath = await validatePath(args.path, getNativeFilesystemRoots());
-  const matches = buildLineMatcher(args);
+  const matcher = buildLineMatcher(args);
   const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : CONTENT_SEARCH_EXCLUDES;
   const maxResults = Math.min(Math.max(1, Math.trunc(args.maxResults) || CONTENT_SEARCH.DEFAULT_MAX_RESULTS), CONTENT_SEARCH.RESULT_CEILING);
   const hits = [];
@@ -341,9 +347,9 @@ const searchContent = async (args) => {
     if (stats.size > CONTENT_SEARCH.MAX_FILE_BYTES) { oversize += 1; return; }
     const buffer = await fs.readFile(filePath).catch(() => null);
     if (!buffer || buffer.subarray(0, CONTENT_SEARCH.BINARY_SNIFF_BYTES).includes(0)) return;
-    const lines = buffer.toString('utf-8').split(/\r?\n/);
-    for (let i = 0; i < lines.length; i += 1) {
-      if (!matches(lines[i])) continue;
+    const text = buffer.toString('utf-8');
+    const lines = text.split(/\r?\n/);
+    for (const i of await matcher.find(text, lines, maxResults - hits.length)) {
       const line = lines[i].length > CONTENT_SEARCH.MAX_LINE_CHARS
         ? `${lines[i].slice(0, CONTENT_SEARCH.MAX_LINE_CHARS)}…` : lines[i];
       hits.push(`${filePath}:${i + 1}: ${line}`);
@@ -374,7 +380,7 @@ const searchContent = async (args) => {
       await scanFile(validPath);
     }
   };
-  await walk(rootPath);
+  try { await walk(rootPath); } finally { await matcher.close(); }
 
   const notes = [];
   if (stopped === 'results') notes.push(`[stopped at ${maxResults} matching lines — narrow the pattern or raise maxResults]`);

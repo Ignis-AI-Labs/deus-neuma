@@ -9,6 +9,7 @@ import { createWriteChain } from '../write-chain.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
 import { companyPath } from '../company-line/company-store.js';
 import { foldRaise, judgeReach } from './raise-shape.js';
+import { claimReceipt } from '../money-in/receipt-consumption.js';
 
 const serialize = createWriteChain();
 const fileOf = (wallet, id) => companyPath(wallet, id, 'raise.jsonl');
@@ -28,6 +29,10 @@ export const readRaise = async (wallet, id) => {
 export const applyRaise = (wallet, id, judge) => serialize(async () => {
   const judged = judge(await readRaise(wallet, id));
   if (!judged.ok) return judged;
+  if (judged.event.type === 'closed-in' && judged.event.received?.ref) {
+    const claimed = await claimReceipt(wallet, judged.event.received, { kind: 'raise', id, investorId: judged.event.id, at: judged.event.at });
+    if (!claimed.ok) return claimed;
+  }
   await appendJsonLine(fileOf(wallet, id), judged.event);
   return { ok: true, event: judged.event, state: await readRaise(wallet, id) };
 });
@@ -55,8 +60,9 @@ export const reachUnderChain = (wallet, id, { investorId, subject, body, by, now
   const judged = judgeReach(state, { investorId, now });
   if (!judged.ok) return judged;
   const sent = await send(judged.investor, state.account);
-  if (!sent.ok) return { ok: false, reason: `the message was not sent: ${sent.detail}` };
-  const event = { type: 'reach', id: investorId, to: judged.investor.email, subject, text: body, messageId: sent.messageId ?? null, by, at: now };
+  if (!sent.ok && !sent.uncertain) return { ok: false, reason: `the message was not sent: ${sent.detail}` };
+  const event = { type: 'reach', id: investorId, to: judged.investor.email, subject, text: body, messageId: sent.messageId ?? null, by, at: now, ...(sent.uncertain ? { delivery: 'maybe-sent' } : {}) };
   await appendJsonLine(fileOf(wallet, id), event);
+  if (sent.uncertain) return { ok: false, uncertain: true, event, reason: `the message may have been sent: ${sent.detail}` };
   return { ok: true, event };
 });

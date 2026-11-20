@@ -93,7 +93,7 @@ describe('lp-tx-policy — what the LP wallet may sign', () => {
   test('a token approval for the manager, inside the stated ceiling, is signed', () => {
     const tx = { to: USDC, chainId: 8453, data: erc20.encodeFunctionData('approve', [MANAGER, 10_000_000n]) };
     expect(judge(tx, { maxApprove: { [USDC]: '10000000' } })).toEqual({
-      ok: true, kind: 'approval', action: 'token-approval', target: USDC, amount: '10000000',
+      ok: true, kind: 'approval', action: 'token-approval', target: USDC, spender: MANAGER, amount: '10000000',
     });
   });
 
@@ -109,11 +109,12 @@ describe('lp-tx-policy — what the LP wallet may sign', () => {
     expect(judge(tx, { maxApprove: { [USDC]: '10000000' } }).reason).toMatch(/spender other than/);
   });
 
-  test('a pool approval for the manager is signed; for anyone else, or a removal, it is refused', () => {
+  test('a pool grant or revocation names the manager; anyone else is refused', () => {
     const grant = (spender, approved) => ({ to: POOL, chainId: 8453, data: pool.encodeFunctionData('setApprovalForAll', [spender, approved]) });
-    expect(judge(grant(MANAGER, true))).toEqual({ ok: true, kind: 'approval', action: 'pool-approval', target: POOL });
+    expect(judge(grant(MANAGER, true))).toEqual({ ok: true, kind: 'approval', action: 'pool-approval', target: POOL, spender: MANAGER });
+    expect(judge(grant(MANAGER, false))).toEqual({ ok: true, kind: 'approval', action: 'pool-revocation', target: POOL, spender: MANAGER });
     expect(judge(grant(THIEF, true)).ok).toBe(false);
-    expect(judge(grant(MANAGER, false)).ok).toBe(false);
+    expect(judge(grant(THIEF, false)).ok).toBe(false);
   });
 
   test('a plain token transfer is refused', () => {
@@ -234,13 +235,14 @@ describe('lp-tx-policy — the transaction must be the one that was asked for', 
     expect(checkLpIntent(topUp, { ...askedTopUp, tokenId: '7' }).reason).toMatch(/different position/);
   });
 
-  test('a pool approval must be for the pool that was named; a token approval rests on its ceiling', () => {
+  test('a pool and token approval must be for the pool and spender that were named', () => {
     const poolApproval = judge({ to: POOL, chainId: 8453, data: pool.encodeFunctionData('setApprovalForAll', [MANAGER, true]) });
-    expect(checkLpIntent(poolApproval, { kind: 'approval', pool: POOL })).toEqual({ ok: true });
-    expect(checkLpIntent(poolApproval, { kind: 'approval', pool: THIEF }).reason).toMatch(/different pool/);
-    expect(checkLpIntent(poolApproval, { kind: 'approval' }).ok).toBe(false);
+    expect(checkLpIntent(poolApproval, { kind: 'approval', pool: POOL, spender: MANAGER })).toEqual({ ok: true });
+    expect(checkLpIntent(poolApproval, { kind: 'approval', pool: THIEF, spender: MANAGER }).reason).toMatch(/different pool/);
+    expect(checkLpIntent(poolApproval, { kind: 'approval', pool: POOL, spender: THIEF }).reason).toMatch(/different spender/);
+    expect(checkLpIntent(poolApproval, { kind: 'approval', pool: POOL }).ok).toBe(false);
     const tokenApproval = judge({ to: USDC, chainId: 8453, data: erc20.encodeFunctionData('approve', [MANAGER, 10n]) }, { maxApprove: { [USDC]: '10' } });
-    expect(checkLpIntent(tokenApproval, { kind: 'approval', pool: POOL })).toEqual({ ok: true });
+    expect(checkLpIntent(tokenApproval, { kind: 'approval', pool: POOL, spender: MANAGER, token: USDC })).toEqual({ ok: true });
   });
 
   test('a claim cannot become a close, and altered deposit economics are refused', () => {

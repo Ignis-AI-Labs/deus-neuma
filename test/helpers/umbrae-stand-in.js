@@ -20,6 +20,7 @@ import { UMBRAE_FACTORY, binIdFor, orientPair } from '../../core/wallet/pool-pol
 
 const manager = new ethers.Interface([
   'function createPositionWithStrategy(address tokenX, address tokenY, uint16 binStep, uint16 baseFactor, uint256 amountX, uint256 amountY, uint8 strategy, uint24 binRange, uint8 bidAskRatio, uint24 centerBinId, bool skipActiveBin, uint24 activeIdDesired, uint24 idSlippage, uint256 minTotalLiquidity, address recipient, uint256 deadline)',
+  'function increasePositionWithStrategy(uint256 tokenId, uint256 amountX, uint256 amountY, uint24 centerBinId, bool skipActiveBin, uint24 activeIdDesired, uint24 idSlippage, uint256 minTotalLiquidity, uint256 deadline)',
   'function claimFees(uint256 tokenId, address recipient, uint256 deadline)',
   'function closePosition(uint256 tokenId, uint256 amountXMin, uint256 amountYMin, address recipient, uint256 deadline)',
 ]);
@@ -50,7 +51,8 @@ const fail = (status, error) => ({ status, body: { error } });
 export const startUmbraeStandIn = async ({ provider }) => {
   const seen = [];
   // wethPrice: the dollar price the pool list gives WETH (the book's ETH price too).
-  const state = { mode: 'honest', positions: [], wethPrice: 3200 };
+  // leadGroups: pool groups listed BEFORE the honest one (a look-alike token, a shared symbol).
+  const state = { mode: 'honest', positions: [], wethPrice: 3200, marketWethPrice: null, leadGroups: [] };
   const count = (url, pick = () => true) => seen.filter((r) => r.url === url && pick(r)).length - 1;
 
   const answer = async (url, body, auth) => {
@@ -68,10 +70,10 @@ export const startUmbraeStandIn = async ({ provider }) => {
     }
     if (url === '/api/account/api-keys') return auth === 'Bearer session-1' ? { key: `umbr_testkey_${count(url)}`, keyPrefix: 'umbr_t' } : fail(401, 'no session');
     if (url === `/api/v1/base/pools/${POOL}`) {
-      return { address: state.mode === 'other-pool' ? POOL_B : POOL, name: 'WETH-USDC', tokenX: { address: WETH, symbol: 'WETH', decimals: 18 }, tokenY: { address: USDC, symbol: 'USDC', decimals: state.mode === 'wrong-decimals' ? 18 : 6 }, binStep: 25, baseFactor: state.mode === 'wrong-fee-tier' ? 1 : 5000, currentPrice: 3200, tokenXPriceUsd: 3200, tokenYPriceUsd: state.mode === 'understated-price' ? 0.001 : 1 };
+      return { address: state.mode === 'other-pool' ? POOL_B : POOL, lane: state.mode === 'open-market' ? 'open' : 'verified', name: 'WETH-USDC', tokenX: { address: WETH, symbol: 'WETH', decimals: 18 }, tokenY: { address: USDC, symbol: 'USDC', decimals: state.mode === 'wrong-decimals' ? 18 : 6 }, binStep: 25, baseFactor: state.mode === 'wrong-fee-tier' ? 1 : 5000, currentPrice: 3200, tokenXPriceUsd: 3200, tokenYPriceUsd: state.mode === 'understated-price' ? 0.001 : 1 };
     }
     if (url === '/api/v1/base/pools') {
-      return { total: 1, network: 'base', groups: [{ name: 'WETH-USDC', mint_x: WETH, mint_y: USDC, tokenX: 'WETH', tokenY: 'USDC', tokenXPrice: state.wethPrice, tokenYPrice: 1, pairs: [
+      return { total: 1, network: 'base', groups: [...state.leadGroups, { name: 'WETH-USDC', mint_x: WETH, mint_y: USDC, tokenX: 'WETH', tokenY: 'USDC', tokenXPrice: state.wethPrice, tokenYPrice: 1, pairs: [
         { address: POOL, mint_x: WETH, mint_y: USDC, bin_step: 25, base_fee_percentage: '0.3', liquidity: '1234.5', trade_volume_24h: '210', current_price: '3200', aprPct: 18.2 },
         { address: POOL_B, mint_x: WETH, mint_y: USDC, bin_step: 10, base_fee_percentage: '0.08', liquidity: '50.25', trade_volume_24h: '0', current_price: '3360', aprPct: null },
       ] }] };
@@ -80,13 +82,14 @@ export const startUmbraeStandIn = async ({ provider }) => {
       const address = ethers.getAddress(url.slice('/api/v2/simple/networks/base/token_price/'.length));
       const token = TOKENS[address.toLowerCase()];
       if (!token) return { data: { attributes: { token_prices: {} } } };
-      return { data: { attributes: { token_prices: { [address.toLowerCase()]: String(token.priceUsd) } } } };
+      const usd = address === WETH && state.marketWethPrice !== null ? state.marketWethPrice : token.priceUsd;
+      return { data: { attributes: { token_prices: { [address.toLowerCase()]: String(usd) } } } };
     }
     if (url.startsWith('/token-pairs/v1/base/')) {
       const address = ethers.getAddress(url.slice('/token-pairs/v1/base/'.length));
       const token = TOKENS[address.toLowerCase()];
       if (!token) return [];
-      const usd = state.dexPriceUsd ?? token.priceUsd;
+      const usd = state.dexPriceUsd ?? (address === WETH && state.marketWethPrice !== null ? state.marketWethPrice : token.priceUsd);
       return [{ baseToken: { address, priceUsd: String(usd) }, quoteToken: { address: address === USDC ? WETH : USDC, priceUsd: String(usd) }, priceUsd: String(usd), priceNative: String(usd), liquidity: { usd: 1000000 } }];
     }
     if (url.startsWith(`/api/v1/base/bins?pool=${POOL}`)) {
@@ -105,9 +108,9 @@ export const startUmbraeStandIn = async ({ provider }) => {
       const quote = TOKENS[String(body.quoteToken).toLowerCase()];
       const { tokenX, tokenY, baseIsX } = orientPair(body.baseToken, body.quoteToken);
       const market = { price: base.priceUsd / quote.priceUsd, established: !(state.newTokenUnestablished && String(body.baseToken).toLowerCase() === NEW_TOKEN) };
-      const startPrice = body.startPrice ?? market.price;
+      const startPrice = state.mode === 'pool-api-offprice' ? market.price * 2 : body.startPrice ?? market.price;
       const valueUsd = Number(body.amountBase ?? 0) * base.priceUsd + Number(body.amountQuote ?? 0) * quote.priceUsd;
-      const problems = valueUsd > 20 ? [{ code: 'SEED_TOO_LARGE', status: 400, error: 'The seed is worth more than $20.' }] : [];
+      const problems = state.mode !== 'pool-uncapped-seed' && valueUsd > 20 ? [{ code: 'SEED_TOO_LARGE', status: 400, error: 'The seed is worth more than $20.' }] : [];
       if (url === '/api/v1/base/build-pool') {
         if (problems.length) return fail(400, problems[0].error);
         const raw = (amount, t) => ethers.parseUnits(String(amount), t.decimals);
@@ -143,7 +146,7 @@ export const startUmbraeStandIn = async ({ provider }) => {
         });
         return { chainId: 8453, spender: UMBRAE_FACTORY, steps };
       }
-      if (body.actionType === 'create') {
+      if (body.actionType === 'create' || body.actionType === 'add_liquidity') {
         const amount = ethers.parseUnits(body.amountY, body.tokenYDecimals);
         return { chainId: 8453, spender: UMBRAE_BASE.positionManager, steps: [{ kind: 'erc20-approve', token: USDC, approveAmount: amount.toString(), transaction: tx(USDC, approvals.encodeFunctionData('approve', [UMBRAE_BASE.positionManager, amount])) }] };
       }
@@ -152,9 +155,16 @@ export const startUmbraeStandIn = async ({ provider }) => {
     if (url === '/api/v1/base/build') {
       const recipient = state.mode === 'pays-thief' ? THIEF : body.walletAddress;
       const meta = { actionType: body.actionType };
+      const activeAnswer = await provider.call({ to: POOL, data: ethers.id('getActiveId()').slice(0, 10) });
+      const activeId = Number(ethers.AbiCoder.defaultAbiCoder().decode(['uint24'], activeAnswer)[0]);
       if (body.actionType === 'create') {
         const amountY = ethers.parseUnits(body.amountY, body.tokenYDecimals) * (state.mode === 'bigger-deposit' ? 10n : 1n);
-        return { transaction: tx(UMBRAE_BASE.positionManager, manager.encodeFunctionData('createPositionWithStrategy', [body.tokenX, body.tokenY, 25, body.baseFactor, 0n, amountY, body.strategy, body.binRange, 50, 8_388_608, Number(body.amountX) === 0 || Number(body.amountY) === 0, 8_388_608, 10, 4_950_000n, recipient, DEADLINE])), actionToken: 'act-create', meta };
+        return { transaction: tx(UMBRAE_BASE.positionManager, manager.encodeFunctionData('createPositionWithStrategy', [body.tokenX, body.tokenY, 25, body.baseFactor, 0n, amountY, body.strategy, body.binRange, 50, activeId, Number(body.amountX) === 0 || Number(body.amountY) === 0, activeId, 10, 4_950_000n, recipient, DEADLINE])), actionToken: 'act-create', meta };
+      }
+      if (body.actionType === 'add_liquidity') {
+        const amountX = ethers.parseUnits(body.amountX, body.tokenXDecimals);
+        const amountY = ethers.parseUnits(body.amountY, body.tokenYDecimals);
+        return { transaction: tx(UMBRAE_BASE.positionManager, manager.encodeFunctionData('increasePositionWithStrategy', [BigInt(body.tokenId), amountX, amountY, activeId, Number(body.amountX) === 0 || Number(body.amountY) === 0, activeId, 10, 4_950_000n, DEADLINE])), actionToken: 'act-add', meta };
       }
       if (body.actionType === 'claim_fees') {
         const data = state.mode === 'close-on-claim'
@@ -202,7 +212,7 @@ export const startUmbraeStandIn = async ({ provider }) => {
   return {
     seen,
     state,
-    reset: () => { seen.length = 0; state.mode = 'honest'; state.positions = []; state.wethPrice = 3200; state.dexPriceUsd = null; state.newTokenUnestablished = false; },
+    reset: () => { seen.length = 0; state.mode = 'honest'; state.positions = []; state.wethPrice = 3200; state.marketWethPrice = null; state.leadGroups = []; state.dexPriceUsd = null; state.newTokenUnestablished = false; },
     close: async () => {
       if (prior === undefined) delete process.env.NEUMA_UMBRAE_LP_ORIGIN; else process.env.NEUMA_UMBRAE_LP_ORIGIN = prior;
       if (priorDex === undefined) delete process.env.NEUMA_DEXSCREENER_ORIGIN; else process.env.NEUMA_DEXSCREENER_ORIGIN = priorDex;

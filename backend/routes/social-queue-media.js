@@ -13,7 +13,7 @@
  */
 import { createReadStream } from 'fs';
 import { postQueue } from '../services/social/post-queue.js';
-import { reverifyMediaFile } from '../services/social/media-source.js';
+import { verifySealedMedia } from '../services/social/approval-seal.js';
 import { readMediaFile } from '../services/social/x-media.js';
 import { readVideoHead } from '../services/social/video-media.js';
 import { postsOwnMedia } from '../services/social/poster-registry.js';
@@ -34,7 +34,7 @@ export const previewQueueMedia = async (req, res) => {
       ? entry.media?.[index]
       : null;
     if (!item) return res.status(404).json({ error: 'no such media on that queue entry' });
-    const verified = await reverifyMediaFile(item.path);
+    const verified = await verifySealedMedia(item, { requireSeal: false }); // only the sealed bytes are ever shown
     if (!verified.ok) {
       return res.status(404).json({ error: `the staged media no longer stands — ${verified.detail}` });
     }

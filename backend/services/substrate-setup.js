@@ -227,6 +227,23 @@ const probe = async (url) => {
 /** Join a provider base URL with a path, tolerating a trailing slash. Pure. */
 export const probeUrl = (base, suffix) => `${String(base || '').replace(/\/+$/, '')}${suffix}`;
 
+/** Public setup diagnostics keep the address, never its credentials. Pure. */
+export const redactEndpoint = (value) => {
+  const raw = String(value ?? '');
+  const withoutQuery = raw.split(/[?#]/, 1)[0];
+  try {
+    const url = new URL(withoutQuery);
+    const authority = /^[a-z][a-z\d+.-]*:\/\/([^/]+)/i.exec(withoutQuery)?.[1] ?? '';
+    const host = authority.slice(authority.lastIndexOf('@') + 1) || url.host;
+    const explicitPath = /^[a-z][a-z\d+.-]*:\/\/[^/]*\//i.test(withoutQuery);
+    return `${url.protocol}//${host}${explicitPath ? url.pathname : ''}`;
+  } catch {
+    return withoutQuery.replace(/(\/\/)[^/@\s]+@/, '$1');
+  }
+};
+
+const publicProvider = (provider) => ({ ...provider, endpoint: redactEndpoint(provider.endpoint) });
+
 /**
  * Where to probe a local provider: the operator's own endpoint if they set
  * one, else the default. impure (reads the credential store).
@@ -289,15 +306,15 @@ export const probeProviders = async () => {
     if (tags !== null) found.push({ provider: 'ollama', endpoint: own, models: parseOllamaTags(tags) });
   }
   return {
-    ollama: { running: ollama !== null, models: parseOllamaTags(ollama), endpoint: ollamaBase },
+    ollama: publicProvider({ running: ollama !== null, models: parseOllamaTags(ollama), endpoint: ollamaBase }),
     // `models` = loaded (what the flight check may adopt); `available` = every
     // downloaded model LM Studio can load on first use (local-server-models.js)
-    lmStudio: {
+    lmStudio: publicProvider({
       running: lmStudio !== null, models: parseLmStudioModels(lmStudio), endpoint: lmStudioBase,
       available: lmStudio !== null ? await servableModelIds(lmStudioBase, lmStudio) : [],
-    },
+    }),
     // Every local LLM server on ANY port: [{provider, endpoint, models}].
-    discovered: found,
+    discovered: found.map(publicProvider),
   };
 };
 

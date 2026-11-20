@@ -94,8 +94,8 @@ const classifyManagerCall = (data, wallet) => {
   });
 };
 
-// pure — an approval sent to a token or a pool. The spender is always the
-// pinned manager; a token allowance never exceeds the stated ceiling.
+// pure — an approval sent to a token or a pool. The spender is always pinned;
+// a token allowance never exceeds the stated ceiling (zero for cleanup).
 // The reason classifyApproval gives a call that is no approval at all — the
 // caller then tries it as a token send.
 const NOT_APPROVAL = 'The transaction is not aimed at Umbrae\'s position manager, its factory, its router or KyberSwap\'s, and is not an approval for one of them.';
@@ -112,15 +112,18 @@ const classifyApproval = (tx, { manager, router, aggregator, factory }, maxAppro
     return refuse('The approval names a spender other than Umbrae\'s position manager, its factory, its router or KyberSwap\'s.');
   }
   if (call.name === 'setApprovalForAll') {
-    if (args.approved !== true) return refuse('Only granting the position manager is signed here.');
-    return Object.freeze({ ok: true, kind: 'approval', action: 'pool-approval', target: getAddress(tx.to) });
+    return Object.freeze({
+      ok: true, kind: 'approval', action: args.approved ? 'pool-approval' : 'pool-revocation',
+      target: getAddress(tx.to), spender: getAddress(args.spender),
+    });
   }
   const ceiling = maxApprove?.[getAddress(tx.to)];
   if (ceiling === undefined || args.amount > BigInt(ceiling)) {
     return refuse('The token approval is larger than this action calls for.');
   }
   return Object.freeze({
-    ok: true, kind: 'approval', action: 'token-approval', target: getAddress(tx.to), amount: args.amount.toString(),
+    ok: true, kind: 'approval', action: 'token-approval', target: getAddress(tx.to),
+    spender: getAddress(args.spender), amount: args.amount.toString(),
   });
 };
 
@@ -139,7 +142,7 @@ const classifyApproval = (tx, { manager, router, aggregator, factory }, maxAppro
  * @returns {Readonly<{ok: true, kind: 'deposit'|'exit'|'approval'|'swap'|'transfer', action: string}
  *   | {ok: false, reason: string}>}
  */
-export const classifyLpTransaction = (tx, { wallet, maxApprove, tokens, recipients, pins = UMBRAE_BASE } = {}) => {
+const classify = (tx, { wallet, maxApprove, tokens, recipients, pins = UMBRAE_BASE } = {}) => {
   if (!isAddress(wallet)) return refuse('No LP wallet was named.');
   if (!tx || !isAddress(tx.to) || typeof tx.data !== 'string' || !/^0x([0-9a-fA-F]{2})*$/.test(tx.data)) {
     return refuse('The transaction is not well formed.');
@@ -158,6 +161,14 @@ export const classifyLpTransaction = (tx, { wallet, maxApprove, tokens, recipien
   if (same(tx.to, UMBRAE_FACTORY)) return classifyCreatePair(tx);
   const approval = classifyApproval(tx, { manager: pins.positionManager, router: pins.router, aggregator: KYBER_ROUTER, factory: UMBRAE_FACTORY }, maxApprove);
   return approval.ok || approval.reason !== NOT_APPROVAL ? approval : classifyTransfer(tx, { tokens, recipients });
+};
+
+export const classifyLpTransaction = (tx, ctx) => {
+  try {
+    return classify(tx, ctx);
+  } catch {
+    return refuse('The transaction could not be decoded safely.');
+  }
 };
 
 // pure — is raw amount a no larger than raw amount b? False when either is unreadable.
@@ -210,9 +221,19 @@ export const checkLpIntent = (verdict, asked) => {
     return atMost(verdict.amountX, asked.amountX) && atMost(verdict.amountY, asked.amountY) ? Object.freeze({ ok: true }) : refuse('The pool\'s seed is larger than was planned.');
   }
   if (verdict.kind === 'approval') {
-    return verdict.action === 'pool-approval' && !same(verdict.target, asked.pool)
-      ? refuse('The pool approval is for a different pool.')
-      : Object.freeze({ ok: true });
+    if (!same(verdict.spender, asked.spender)) return refuse('The approval names a different spender than was asked.');
+    if (verdict.action === 'token-approval' && asked.token !== undefined && !same(verdict.target, asked.token)) {
+      return refuse('The token approval is for a different token than was asked.');
+    }
+    if (verdict.action === 'token-approval' && asked.revoke === true && verdict.amount !== '0') {
+      return refuse('A token grant is not the zero-allowance cleanup that was asked for.');
+    }
+    if (verdict.action.startsWith('pool-') && !same(verdict.target, asked.pool)) {
+      return refuse('The pool approval is for a different pool.');
+    }
+    if (verdict.action === 'pool-revocation' && asked.revoke !== true) return refuse('A pool revocation must be the cleanup that was asked for.');
+    if (verdict.action === 'pool-approval' && asked.revoke === true) return refuse('A pool grant is not the revocation that was asked for.');
+    return Object.freeze({ ok: true });
   }
   if (verdict.tokenId !== null && verdict.tokenId !== String(asked.tokenId ?? '')) {
     return refuse('The transaction is for a different position.');

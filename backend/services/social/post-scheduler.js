@@ -19,7 +19,7 @@
 import { setAltText } from './x-media.js';
 import { uploadXMedia } from './x-post-media.js';
 import { markedMedia } from './disclosure-line.js';
-import { reverifyMediaFile } from './media-source.js';
+import { verifySealedMedia } from './approval-seal.js';
 import { postQueue, duePosts, threadOrphans, expiredReplies, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './post-queue.js';
 import { readXPost, readXListings, readXAccount } from './x-reader.js';
 import { channelBindings } from './channel-bindings.js';
@@ -188,7 +188,7 @@ const journalSend = async (entry, outcome) => {
 const uploadEntryMedia = async (credentials, entry) => {
   const mediaIds = [];
   for (const item of markedMedia(entry)) { // an AI-made post's images say so in their alt text
-    const verified = await reverifyMediaFile(item.path);
+    const verified = await verifySealedMedia(item);
     if (!verified.ok) return { ok: false, detail: `media refused — ${verified.detail}` };
     const up = await uploadXMedia(credentials, verified.path); // a still, or one video sent in pieces
     if (!up.ok) return { ok: false, detail: `${up.refused ? 'media refused' : 'media upload failed'} — ${up.detail}` };
@@ -323,7 +323,7 @@ export const publishEntry = async (entry) => {
     // The upload IS the post (a video): the poster takes the re-verified
     // paths itself, so nothing is uploaded ahead of the irreversible act.
     for (const item of entry.media) {
-      const verified = await reverifyMediaFile(item.path);
+      const verified = await verifySealedMedia(item);
       if (!verified.ok) {
         const refused = { ok: false, detail: `media refused — ${verified.detail}` };
         await postQueue.recordOutcome(entry.id, refused);

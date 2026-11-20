@@ -15,6 +15,7 @@
 //
 // NEUMA_TIKTOK_CDN_ROOT is the tests' door: one exact origin (a local
 // stand-in) admitted beside the CDN hosts. Production never sets it.
+import { testEndpoint } from '../test-endpoint-door.js';
 
 const CDN_DOMAINS = Object.freeze(['tiktokcdn.com', 'tiktokcdn-us.com', 'tiktokcdn-eu.com']);
 const IMAGE_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
@@ -28,7 +29,7 @@ const TIMEOUT_MS = 10 * 1000;
  * @param {string} [testOrigin] - the tests' one admitted origin
  * @returns {boolean}
  */
-export const tiktokImageUrlAllowed = (raw, testOrigin = process.env.NEUMA_TIKTOK_CDN_ROOT) => {
+export const tiktokImageUrlAllowed = (raw, testOrigin = testEndpoint(process.env, 'NEUMA_TIKTOK_CDN_ROOT', '')) => {
   let url;
   try { url = new URL(String(raw)); } catch { return false; }
   if (url.username || url.password) return false;

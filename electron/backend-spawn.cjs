@@ -6,12 +6,14 @@
 // at it. This module owns the child process and the loopback ORIGIN every desk
 // loads; main.cjs owns the app lifecycle that calls these.
 
-const { app, dialog } = require('electron');
+const { app, dialog, utilityProcess } = require('electron');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
-const http = require('node:http');
+const { waitForBackendHealth } = require('./backend-health.cjs');
 const { applyElectronPipeline, waitForBackendPort } = require('./pipeline-ports.cjs');
-const { openBackendLog } = require('./backend-log.cjs');
+const { openBackendLog, captureBackendLog } = require('./backend-log.cjs');
+const { asNodeChild } = require('./utility-child.cjs');
+const { stopPosixTree } = require('./process-tree.cjs');
 const { registerKspCapture } = require('./ksp-capture.cjs');
 const { resolvePort, portMovedNotice, isHeld } = require('./port-resolve.cjs');
 const { takeOverPort } = require('./backend-takeover.cjs');
@@ -20,7 +22,7 @@ const { attachBackend, lockActive } = require('./key-lock/key-lock-main.cjs');
 const { registerWalletBridgeBackend } = require('./wallet-bridge-ipc.cjs');
 
 const ROOT = path.join(__dirname, '..');
-const SERVER = path.join(ROOT, 'backend', 'server.js');
+const UTILITY_ENTRY = path.join(__dirname, 'backend-utility-entry.cjs');
 const PIPELINE = applyElectronPipeline(app, process.env, { home: app.getPath('home') });
 // Loopback-only and resolved at startup. Agent-launched desks inherit their
 // persistent lane; a human-launched desk keeps the operator's 47317 door.
@@ -34,6 +36,7 @@ const setPort = (port) => {
 const getOrigin = () => ORIGIN;
 
 let backend = null;
+let backendHealthToken = null;
 
 // Take the WHOLE backend tree on quit (INFRA-009 #211).
 //
@@ -44,9 +47,13 @@ let backend = null;
 // far end is gone, printing an unhandled EPIPE stack that reads like a real
 // fault on a perfectly clean quit.
 //
-// On POSIX the signal cascade already takes the group, so the plain kill stays
-// the right call there. This is a Windows-shaped problem and gets a
-// Windows-shaped answer rather than a new abstraction.
+// On POSIX utilityProcess shares the desk's process group and offers no detached option,
+// so process-tree.cjs signals the real descendants instead of assuming a child-led group.
+const stopPosixBackend = (child, force = false) => {
+  if (!Number.isInteger(child.pid)) { child.kill(); return; } // pid is undefined until utility's spawn event
+  stopPosixTree(child.pid, force);
+};
+
 const killBackendTree = () => {
   if (!backend) return;
   if (process.platform === 'win32') {
@@ -58,12 +65,7 @@ const killBackendTree = () => {
       backend.kill(); // better one pid than none
     }
   } else {
-    // Negative pid = the whole process group, which `detached: true` at spawn
-    // made the backend the leader of. Falls back to the single pid if the group
-    // is already gone (ESRCH) — better one than none.
-    try { process.kill(-backend.pid, 'SIGTERM'); } catch {
-      try { backend.kill(); } catch { /* already gone */ }
-    }
+    stopPosixBackend(backend);
   }
 };
 
@@ -72,9 +74,9 @@ const killBackendTree = () => {
 // backend still serving then is the old one standing in its way.
 const stopBackend = (graceMs = 5000) => new Promise((resolve) => {
   const child = backend;
-  if (!child || child.exitCode !== null || child.signalCode !== null) { resolve(); return; }
+  if (!child?.connected) { resolve(); return; }
   const force = setTimeout(() => {
-    try { process.platform === 'win32' ? child.kill() : process.kill(-child.pid, 'SIGKILL'); } catch { /* gone */ }
+    try { process.platform === 'win32' ? child.kill() : stopPosixBackend(child, true); } catch { /* gone */ }
   }, graceMs);
   const giveUp = setTimeout(resolve, graceMs * 2); // never hold the update hostage
   child.once('exit', () => { clearTimeout(force); clearTimeout(giveUp); resolve(); });
@@ -123,16 +125,18 @@ const startBackend = ({ onRestarted }) => {
   // so relocating it would lock the witness out; that wallet/app rename needs its
   // own keychain-migration pass (see docs/audit/ISSUE_TRACKER.md → APP-RENAME-001).
   const neumaHome = path.join(app.getPath('home'), '.neuma');
-  // Open BEFORE the spawn so the fd exists to hand to stdio. Packaged only —
+  // Open BEFORE the fork so its real fd can receive both utility streams. Packaged only —
   // in dev the terminal is the log and a file would just go stale.
   const backendLog = app.isPackaged ? openBackendLog(app.getPath('home')) : null;
   if (backendLog) console.log(`[NEUMA] backend log → ${backendLog.path}`);
-  backend = spawn(process.execPath, [SERVER], {
+  const environment = { ...process.env };
+  delete environment.ELECTRON_RUN_AS_NODE;
+  backend = asNodeChild(utilityProcess.fork(UTILITY_ENTRY, [], {
     cwd: ROOT,
     env: {
-      ...process.env,
-      ELECTRON_RUN_AS_NODE: '1',
+      ...environment,
       NODE_ENV: 'production',
+      NEUMA_BACKEND_PROCESS: 'utility',
       // Electron bundles its own Node (33.x → Node 20), which parses a
       // dependency's mispackaged ESM entry (astronomy-engine: exports.import →
       // esm/*.js, but the package is not type:module) as CommonJS and dies on
@@ -143,10 +147,9 @@ const startBackend = ({ onRestarted }) => {
       // Harmless no-op on Node ≥22; preserves any operator-supplied NODE_OPTIONS.
       NODE_OPTIONS: [process.env.NODE_OPTIONS, '--experimental-detect-module'].filter(Boolean).join(' '),
       PORT,
-      // WHO SPAWNED IT. The backend leads its own process group (below), so it
-      // no longer dies with the terminal that started us — and nothing we can
-      // register here survives a SIGKILL or a crash. So it watches this pid and
-      // exits when we stop being its parent (backend/services/desk-parent-watch).
+      // WHO SPAWNED IT. Nothing registered here survives a SIGKILL or a crash,
+      // so the backend watches this pid and exits when its desk is gone
+      // (backend/services/desk-parent-watch).
       NEUMA_DESK_PID: String(process.pid),
       // Stable, self-provisioned at-rest secrets (see secret-provisioning.js)
       NEUMA_SECRETS_FILE: process.env.NEUMA_SECRETS_FILE || path.join(neumaHome, 'secrets.json'),
@@ -212,10 +215,14 @@ const startBackend = ({ onRestarted }) => {
     // writes to ~/.neuma/logs/backend.log, with the previous run kept beside
     // it. Falls back to 'inherit' if the lane cannot be opened: a machine with
     // an unwritable home must still get an app.
-    stdio: backendLog ? ['ignore', backendLog.fd, backendLog.fd, 'ipc'] : ['inherit', 'inherit', 'inherit', 'ipc'],
-    // POSIX: the backend leads its own process group so quit takes the MCP
-    // grandchildren too. Windows has no groups and uses taskkill /T.
-    ...(process.platform === 'win32' ? {} : { detached: true }),
+    stdio: backendLog ? ['ignore', 'pipe', 'pipe'] : ['ignore', 'inherit', 'inherit'],
+  }));
+  captureBackendLog(backend, backendLog);
+  backendHealthToken = null;
+  backend.on('message', (message) => {
+    if (message?.type === 'neuma:backend-ready' && typeof message.healthToken === 'string') {
+      backendHealthToken = message.healthToken;
+    }
   });
   registerKspCapture(backend);
   registerWalletBridgeBackend(backend);
@@ -235,24 +242,11 @@ const startBackend = ({ onRestarted }) => {
 };
 
 // impure — resolve once the backend answers its health check
-const waitForBackend = (timeoutMs = 30000) =>
-  new Promise((resolve, reject) => {
-    const start = Date.now();
-    const ping = () => {
-      http
-        .get(`${ORIGIN}/api/v1/health`, (res) => {
-          res.resume();
-          if (res.statusCode === 200) resolve();
-          else retry();
-        })
-        .on('error', retry);
-    };
-    const retry = () => {
-      if (Date.now() - start > timeoutMs) reject(new Error('backend did not become ready'));
-      else setTimeout(ping, 300);
-    };
-    ping();
-  });
+const waitForBackend = (timeoutMs = 30000) => waitForBackendHealth({
+  origin: ORIGIN,
+  token: backendHealthToken,
+  timeoutMs,
+});
 
 // impure — IS THE PORT ALREADY HELD? Asked BEFORE spawning anything.
 //

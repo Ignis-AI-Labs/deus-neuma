@@ -182,6 +182,10 @@
 .cline-aud-signs li { display: flex; gap: var(--space-2); font-family: var(--font-voice); font-size: 14px; line-height: 1.45; color: var(--color-text-primary); }
 .cline-aud-mark { flex: 0 0 auto; color: var(--signal); }
 .cline-aud-signs.is-misfit .cline-aud-mark { color: var(--alert); }
+/* What MUST be true: its own band, above the scored signs, so a hard condition never reads as one more sign. */
+.cline-aud-signs.is-must { padding: var(--space-2) var(--space-3); background: var(--surface-band); border-left: 2px solid var(--signal); }
+.cline-aud-signs.is-must .cline-aud-mark { color: var(--signal); }
+.cline-aud-must-how { color: var(--color-text-secondary); font-size: 13px; }
 .cline-aud-why > summary { cursor: pointer; }
 .cline-aud-list { margin-top: var(--space-4); }
 
@@ -229,6 +233,10 @@
 .cline-ppl-tools .cline-input { flex: 2 1 14rem; }
 
 /* The outbox: one staged email read whole, exactly as it would leave (Outbox.jsx). */
+/* A batch on its way: a line, a bar filling as each email goes, then the batch itself. */
+.cline-out-sending { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-left: 2px solid var(--signal); }
+.cline-out-meter { height: 3px; background: var(--surface-sunk); overflow: hidden; }
+.cline-out-meter > span { display: block; height: 100%; background: var(--signal); transition: width 200ms ease-out; }
 .cline-out-mail { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) 0; max-width: 46rem; }
 .cline-out-subject { margin: 0; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
 .cline-out-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-voice, inherit); font-size: 14px; line-height: 1.55; color: var(--color-text-primary); background: var(--color-glass-light); border-left: 2px solid var(--line); padding: var(--space-3); }

@@ -240,7 +240,8 @@ const FilesBody = ({ focusRoots = null }) => {
       }
       case 'open-in-browser': {
         if (typeof window !== 'undefined' && window.neuma && typeof window.neuma.openInBrowser === 'function') {
-          const r = await window.neuma.openInBrowser(entry.path);
+          if (!window.confirm(`OPEN IN BROWSER?\n\n${entry.path}`)) break;
+          const r = await window.neuma.openInBrowser(entry.path, rootsRef.current);
           if (!r?.ok) setNote('The browser would not take that file.');
         } else {
           setNote('Opening in a browser needs the desktop shell.');

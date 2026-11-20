@@ -41,8 +41,8 @@ const logPaths = (home) => ({
 const MAX_BYTES = 8 * 1024 * 1024;
 
 /**
- * Open the log lane for a new backend run. Returns a file descriptor to hand
- * to `spawn`'s stdio, or null if anything at all went wrong — a machine whose
+ * Open the log lane for a new backend run. Returns the real descriptor used by
+ * captureBackendLog, or null if anything at all went wrong — a machine whose
  * home is unwritable must still get an app, so this NEVER throws and the caller
  * falls back to 'inherit'.
  *
@@ -74,6 +74,24 @@ const openBackendLog = (home) => {
   }
 };
 
+// impure — utilityProcess exposes stdout/stderr streams rather than accepting an fd.
+// End only after both real streams close, so exit cannot cut off their final lines.
+const captureBackendLog = (child, opened) => {
+  if (!opened) return null;
+  const output = fs.createWriteStream(null, { fd: opened.fd });
+  const streams = [child.stdout, child.stderr].filter(Boolean);
+  if (streams.length === 0) { output.end(); return output; }
+  let remaining = streams.length;
+  for (const stream of streams) {
+    stream.pipe(output, { end: false });
+    stream.once('close', () => {
+      remaining -= 1;
+      if (remaining === 0) output.end();
+    });
+  }
+  return output;
+};
+
 /**
  * Rotate if the CURRENT file is already oversized before a run begins. Pure
  * decision, exposed for test: the caller does the moving.
@@ -91,4 +109,4 @@ const shouldRotate = (bytes) => Number.isFinite(bytes) && bytes >= MAX_BYTES;
  */
 const revealBackendLog = (shell, home) => shell.showItemInFolder(logPaths(home).current);
 
-module.exports = { openBackendLog, logPaths, logDir, shouldRotate, revealBackendLog, MAX_BYTES };
+module.exports = { openBackendLog, captureBackendLog, logPaths, logDir, shouldRotate, revealBackendLog, MAX_BYTES };

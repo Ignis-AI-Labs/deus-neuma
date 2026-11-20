@@ -348,8 +348,9 @@ describe('Stage B — compaction fires at the measured boundary, and nothing is 
     // of the operator's words (85730874c, #539) — once, never in the system.
     const turn = body.messages.at(-1);
     expect(turn.role).toBe('user');
-    expect(turn.content.startsWith('<harness-context>\n')).toBe(true);
-    expect(turn.content.endsWith(`\n</harness-context>\n\n${Q3}`)).toBe(true);
+    expect(turn.content.startsWith('<harness-context:')).toBe(true);
+    expect(turn.content.endsWith(Q3)).toBe(true);
+    expect(turn.content).toMatch(/<\/harness-context:[A-Za-z0-9-]+>\n\n/);
     expect(turn.content).toContain('## Memory\nYour torch from your last instance');
     expect(turn.content).toContain('Pick up by continuing from the summary');
     expect(body.messages[0].content).not.toContain('Your torch from your last instance');

@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import brandRoutes from '../../backend/routes/brand-routes.js';
 import { EMBEDDABLE } from '../../backend/services/branding/embeddable-faces.js';
 import { fullAuth } from '../helpers/audit-auth.js';
+import { ticketedUrl } from '../helpers/desk-ticket-kit.js';
 
 test('font registry retains authenticated listing and exact registered file delivery', async () => {
   const app = express();
@@ -25,7 +26,7 @@ test('font registry retains authenticated listing and exact registered file deli
   }
   expect((await get('/api/v1/brands/faces/__proto__/file')).status).toBe(404);
   expect((await get('/api/v1/brands/faces/unknown-face/file')).status).toBe(404);
-  const native = await request(app).get(`/api/v1/brands/faces/grotesk-light/file?token=${token}`);
+  const native = await request(app).get(ticketedUrl('/api/v1/brands/faces/grotesk-light/file', token, '/api/v1/brands/faces/grotesk-light/file'));
   expect(native.status).toBe(200);
   expect(native.body).toEqual(await readFile(EMBEDDABLE['grotesk-light'].file));
 });

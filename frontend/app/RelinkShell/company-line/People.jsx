@@ -30,20 +30,23 @@ const Narrow = ({ all, picks, value, onPick, busy }) => (picks.length > 1 || val
 // found) opens under the row.
 const noteOf = (r) => r.lead?.last || r.found || null;
 const promisedOf = (r) => r.due.find((d) => d.promised)?.promised ?? null;
+// Where a person stands, nearest a sale first, and how sure their address is, surest first (Sheet sorts by these).
+const STATUS_RANK = Object.freeze({ won: 6, qualified: 5, replied: 4, contacted: 3, cold: 2, lost: 1 });
+const PROOF_RANK = Object.freeze({ confirmed: 4, verified: 3, published: 2, none: 1, bounced: 0 });
 const columnsFor = ({ kinds, busy, onKind }) => [
   { head: 'NAME', cell: (r) => r.name },
   { head: 'COMPANY', cell: (r) => r.company || null },
   { head: 'TITLE', cell: (r) => r.title || null },
   { head: 'CAMPAIGN', cell: (r) => campaignWords(r.lead), title: (r) => (r.lead ? originWords(r.lead) : null), tone: (r) => (r.lead?.origin && !r.lead.origin.campaign ? 'alert' : null), attrs: (r) => ({ 'data-lead-campaign': r.lead?.origin?.campaignId ?? '' }) },
   { head: 'EMAIL OR REACH', cell: (r) => r.email || r.reach || null, exact: true, attrs: () => ({ 'data-person-reach': '' }) },
-  { head: 'PROOF', cell: (r) => PROOF_SHORT[r.state] ?? String(r.state).toUpperCase(), tone: (r) => STATE_WORDS[r.state]?.[1] ?? null, title: (r) => STATE_WORDS[r.state]?.[0] ?? null },
-  { head: 'FILED AS', cell: (r) => (r.lead ? (
+  { head: 'PROOF', sort: (r) => PROOF_RANK[r.state] ?? null, cell: (r) => PROOF_SHORT[r.state] ?? String(r.state).toUpperCase(), tone: (r) => STATE_WORDS[r.state]?.[1] ?? null, title: (r) => STATE_WORDS[r.state]?.[0] ?? null },
+  { head: 'FILED AS', sort: (r) => (r.lead ? kindWords(r.lead.kind) : null), cell: (r) => (r.lead ? (
     <Select ariaLabel={`${kindWords(r.lead.kind)} — file ${r.name} under`} value={kinds.includes(r.lead.kind) ? r.lead.kind : ''} placeholder="file under…" disabled={busy}
       onChange={(kind) => { if (kind !== r.lead.kind) onKind(r.lead, kind); }} options={kinds.map((k) => ({ value: k, label: kindWords(k) }))} />
   ) : 'NOT A LEAD') },
-  { head: 'STANDS', cell: (r) => (r.lead ? rowStatus(r.lead) : null), attrs: (r) => ({ 'data-lead-status': r.lead?.status }) },
+  { head: 'STANDS', sort: (r) => (r.lead ? STATUS_RANK[r.lead.status] ?? 0 : null), cell: (r) => (r.lead ? rowStatus(r.lead) : null), attrs: (r) => ({ 'data-lead-status': r.lead?.status }) },
   { head: 'FROM', cell: (r) => (r.lead ? sourceWords(r.lead.channel) : null), attrs: (r) => ({ 'data-lead-source': r.lead?.channel }) },
-  { head: 'DUE', tone: (r) => (r.due.length ? 'alert' : null), cell: (r) => (r.due.length
+  { head: 'DUE', sort: (r) => r.due.length || null, tone: (r) => (r.due.length ? 'alert' : null), cell: (r) => (r.due.length
     ? r.due.map((d) => <span key={d.kind} data-upkeep={d.kind} title={[UPKEEP_WORDS[d.kind], d.next ? `NEXT: ${d.next.name}, ${d.next.role} (${d.next.email})` : null, promisedOf(r) ? `PROMISED: ${promisedOf(r)}` : null].filter(Boolean).join(' — ')}>{DUE_SHORT[d.kind] ?? UPKEEP_WORDS[d.kind]}{upkeepAge(d)} </span>)
     : null) },
 ];

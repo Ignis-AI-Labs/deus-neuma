@@ -18,10 +18,13 @@
  * object literals) — never string-templated into JSON, so no prompt can inject
  * a node.
  */
+import { buildCustomGraph } from './workflow-rules.js';
 import {
   buildTxt2Img, buildImg2Img, buildForm, buildAnima, buildZImage,
 } from './templates.js';
 import { buildFlux2, buildFlux2Edit, buildZImageControl } from './templates-flux2.js';
+import { buildFlux3 } from './pipelines-flux3.js';
+import { buildIllustrious, framedPrompts, setAsideNote } from './pipelines-illustrious.js';
 import { buildLtxI2v, buildWanI2v } from './templates-video.js';
 import { VIDEO_ASPECTS, VIDEO_FILE_KEYS } from './pipelines-video.js';
 import { resolveLoras, resolveControlNet, resolvePatch } from './pack-registry.js';
@@ -175,6 +178,8 @@ export const parameterize = ({
   // A job that starts from an image is judged WITH what made that image
   // (image-lineage.js): a picture cannot launder a prompt the law refuses.
   if (pipeline.requiresSourceImage === true && typeof sourceLineage === 'string' && sourceLineage) screened.push({ name: 'source', text: sourceLineage, polarity: 'positive' });
+  // A registered workflow's own written text is a being's, not the platform's: it is screened with every render.
+  for (const text of pipeline.literals ?? []) screened.push({ name: 'workflow', text, polarity: 'positive' });
   const verdict = screenSlots(screened, screenList, {
     licenceRefuses: pipeline.licenceRefuses ?? [],
     unrecordedSource: pipeline.requiresSourceImage === true && !(typeof sourceLineage === 'string' && sourceLineage),
@@ -266,6 +271,14 @@ export const parameterize = ({
     filenamePrefix: `${safeGroup(outputGroup)}/${segment}`,
   };
 
+  if (pipeline.template === 'custom') {
+    // A workflow registered on this computer (workflow-rules.js): its own graph, each declared knob put where it
+    // was declared, the caller's image at its one door, and every output named here — nothing else moves.
+    const values = { ...v, seed: common.seed };
+    const graph = buildCustomGraph(pipeline, values, { filenamePrefix: common.filenamePrefix, sourceImageName });
+    return { ok: true, graph, values: { ...values, positive, negative, filenamePrefix: common.filenamePrefix } };
+  }
+
   if (pipeline.template === 'ltxi2v' || pipeline.template === 'wani2v') {
     // Video: the model's own two-stage recipe is pinned inside the builder, so
     // only the prompt, seed, length and canvas travel from the slots; the
@@ -277,6 +290,30 @@ export const parameterize = ({
       filenamePrefix: common.filenamePrefix, ...files,
     };
     return { ok: true, graph: (pipeline.template === 'wani2v' ? buildWanI2v : buildLtxI2v)(values), values };
+  }
+
+  if (pipeline.template === 'illustrious') {
+    // An Illustrious checkpoint on its author's recipe (pipelines-illustrious.js): quality frame, sampler, clip skip and
+    // hires pass are the pipeline's; the caller's screened words are the subject and its negative joins the author's.
+    const r = pipeline.recipe;
+    const { subject, setAside, ...framed } = framedPrompts(r, positive, negative);
+    if (!subject) return { ok: false, error: `'${pipeline.id}' needs a subject: your prompt held only the quality tags the pipeline writes itself` };
+    const note = setAsideNote(setAside);
+    const values = {
+      ...framed, ckptName: model.ckptName, seed: common.seed, steps: v.steps, cfg: v.cfg,
+      sampler: r.sampler, scheduler: r.scheduler, clipSkip: r.clipSkip, hires: r.hires, upscaler: r.upscaler,
+      width: v.width, height: v.height, filenamePrefix: common.filenamePrefix, ...(note ? { note } : {}),
+    };
+    return { ok: true, graph: buildIllustrious(values), values };
+  }
+
+  if (pipeline.template === 'flux3') {
+    // FLUX 3 Image Klein: the distilled model's own sampler and guidance are in the graph; prompt, size, seed, steps travel.
+    const values = {
+      positive: v.positive, seed: common.seed, steps: v.steps, width: v.width, height: v.height, filenamePrefix: common.filenamePrefix,
+      unetName: model.unetName, clipName: model.clipName, clipType: model.clipType, vaeName: model.vaeName,
+    };
+    return { ok: true, graph: buildFlux3(values), values };
   }
 
   if (pipeline.template === 'flux2' || pipeline.template === 'flux2edit' || pipeline.template === 'zimagecontrol') {

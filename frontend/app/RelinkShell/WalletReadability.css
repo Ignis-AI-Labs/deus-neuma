@@ -15,6 +15,6 @@
 .wal .wal-tok-in { padding: 16px; }
 .wal .wal-tok span { font-size: .875rem; line-height: 1.6; letter-spacing: .02em; }
 .wal .wal-layer { gap: 20px; }
-.wal button:focus-visible, .wal a:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.wal button:focus-visible, .wal a:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 .wal .wal-head-top { flex-wrap: wrap; gap: 10px; }
 .wal .wal-head-addr { max-width: 100%; overflow-wrap: anywhere; }

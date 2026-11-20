@@ -126,19 +126,12 @@ const writeRecord = async (record) => {
 };
 
 /**
- * The install's owner record, written at first read from the derivation when
- * absent. Null only on an install where no being was ever sealed and no
- * wallet has signed in at the desk. impure (fs).
+ * The persisted install owner record. Null while the one-time local owner
+ * claim has not seated anyone; genesis seals never write machine ownership.
+ * impure (fs).
  * @returns {Promise<Readonly<{owner: string, coOwners: string[]}>|null>}
  */
-export const readInstallOwner = async () => {
-  const existing = await readRecordFile();
-  if (existing) return existing;
-  const derived = await deriveInstallOwner();
-  if (!derived) return null;
-  log.info('install owner recorded from the first genesis seal', { owner: derived.wallet, lane: derived.lane });
-  return writeRecord({ owner: derived.wallet, recordedAt: new Date().toISOString(), source: `genesis-seal:${derived.lane}` });
-};
+export const readInstallOwner = async () => readRecordFile();
 
 /**
  * The install's own desk house: the owner's wallet, when this process serves

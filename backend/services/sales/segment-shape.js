@@ -19,12 +19,13 @@
 // PURE, but for makeSegment's random id.
 
 import crypto from 'crypto';
+import { requiredSigns } from './required-signs.js';
 
 export const SEGMENT_STATES = Object.freeze(['draft', 'approved', 'paused', 'retired']);
 // The fields that decide who is found and what they are told: a change re-aims.
 export const TARGETING_FIELDS = Object.freeze([
   'company', 'offer', 'customerProblem', 'targetRole', 'targetGeography', 'countries', 'targetCompanySize',
-  'positiveCriteria', 'negativeCriteria', 'exampleClients',
+  'positiveCriteria', 'negativeCriteria', 'exampleClients', 'required',
 ]);
 const CRITERIA_MAX = 8;
 
@@ -40,7 +41,7 @@ const list = (v, max) => (Array.isArray(v) ? v.map((s) => clean(s, 160)).filter(
  * A segment, or a thrown reason naming every missing field at once.
  * @param {{id?: string, name: unknown, offer: unknown, customerProblem: unknown, targetRole: unknown,
  *   targetGeography: unknown, targetCompanySize?: unknown, positiveCriteria: unknown,
- *   negativeCriteria?: unknown, exampleClients?: unknown, why: unknown, by: string, now: string}} f
+ *   negativeCriteria?: unknown, exampleClients?: unknown, required?: unknown, why: unknown, by: string, now: string}} f
  */
 export const makeSegment = (f) => {
   const s = {
@@ -58,6 +59,8 @@ export const makeSegment = (f) => {
     exampleClients: list(f.exampleClients, CRITERIA_MAX),
     why: clean(f.why, 400),
   };
+  // What MUST be true of a company, proved from its own words (required-signs.js): a hard no, never averaged away.
+  const must = requiredSigns(f.required);
   const problems = [
     ...(s.name.length < 3 ? ['name: what this audience is called'] : []),
     ...(!s.company ? ['company: the id of the house company this audience is sold for (one company per audience)'] : []),
@@ -68,6 +71,7 @@ export const makeSegment = (f) => {
     ...(!s.countries.length ? ['countries: the ISO codes of the countries this may be sent to (e.g. ["US","DE"]) — an offer the law limits by country (crypto in the UK) leaves those countries out'] : []),
     ...(!s.positiveCriteria.length ? ['positiveCriteria: at least one sign a company fits'] : []),
     ...(s.why.length < 10 ? ['why: why this audience needs the offer'] : []),
+    ...must.problems,
   ];
   if (problems.length) throw new Error(problems.join('; '));
   return Object.freeze({
@@ -77,6 +81,7 @@ export const makeSegment = (f) => {
     positiveCriteria: Object.freeze(s.positiveCriteria),
     negativeCriteria: Object.freeze(s.negativeCriteria),
     exampleClients: Object.freeze(s.exampleClients),
+    required: Object.freeze(must.required),
     filedBy: f.by,
     filedAt: f.now,
   });

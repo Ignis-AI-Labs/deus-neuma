@@ -17,13 +17,14 @@ import { createTempDir } from '../helpers/temp-fs.js';
 
 const ENV_KEYS = ['NEUMA_DATA_ROOT', 'NEUMA_OLLAMA_ENDPOINT', 'NEUMA_DISCOVERY_PORTS', 'NEUMA_MODEL_BUDGET_GB', 'NEUMA_PROVIDER_CHOICE_PATH', 'LLAMA_SERVER_URL'];
 const saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
-let server; let dataRoot; let choicePath; let endpoint; let ref; let chats = 0; let chatMode = 'answer';
+let server; let dataRoot; let choicePath; let endpoint; let ref; let modelPin; let reportedDigest; let chats = 0; let chatMode = 'answer';
 let M;
 
 const ollama = (req, res) => {
   const json = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(body)); };
   if (req.url === '/api/version') return json(200, { version: '0.40.7' });
   if (req.url === '/api/tags') return json(200, { models: [{ name: ref, model: ref, size: 2_800_000_000 }] });
+  if (req.url === '/api/show' && req.method === 'POST') return json(200, { modelfile: `FROM /models/blobs/sha256-${reportedDigest || modelPin.sha256}\nTEMPLATE pinned` });
   if (req.url === '/api/chat' && req.method === 'POST') {
     chats += 1;
     return req.on('data', () => {}).on('end', () => (chatMode === 'answer'
@@ -56,7 +57,10 @@ beforeAll(async () => {
   // the model this machine is matched to, as the plan will name it
   const { getSetupStatus } = await import('../../backend/services/substrate-setup.js');
   const { ollamaModelRef, pullableChoice } = await import('../../backend/services/managed-ollama-plan.js');
-  ref = ollamaModelRef(pullableChoice((await getSetupStatus()).recommendation).choice);
+  const { ollamaModelPin } = await import('../../backend/services/managed-ollama-models.js');
+  const choice = pullableChoice((await getSetupStatus()).recommendation).choice;
+  ref = ollamaModelRef(choice);
+  modelPin = ollamaModelPin(choice);
   M = await import('../../backend/services/managed-ollama.js');
 }, 60_000);
 afterAll(async () => {
@@ -96,5 +100,19 @@ describe('the setup job', () => {
     expect(failed.error).toBe('The model is downloaded but did not answer a test message. Close other programs to free memory, then press TRY AGAIN.');
     expect(failed.detail).toMatch(/more system memory/);
     chatMode = 'answer';
+  }, 60_000);
+
+  it('a model blob that is not the reviewed pin is never loaded or adopted', async () => {
+    const before = fs.readFileSync(choicePath, 'utf8');
+    reportedDigest = '0'.repeat(64);
+    chats = 0;
+    await M.startJob();
+    const failed = await settle();
+    expect(failed.state).toBe('failed');
+    expect(failed.error).toMatch(/not the reviewed build/);
+    expect(failed.detail).toMatch(/expected sha256-/);
+    expect(chats).toBe(0);
+    expect(fs.readFileSync(choicePath, 'utf8')).toBe(before);
+    reportedDigest = null;
   }, 60_000);
 });

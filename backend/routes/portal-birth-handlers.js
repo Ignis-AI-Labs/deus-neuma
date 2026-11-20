@@ -22,11 +22,12 @@ import { withdrawBirthSession } from '../services/birth-withdrawal.js';
 import { finalizeBirth } from '../../core/birth/finalize-birth.js';
 import { isolateForBirth } from './portal-connections.js';
 import { sweepRehearsalLane as sweepRehearsal } from '../../core/birth/rehearsal-sweep.js';
+import { claimRehearsalLane } from '../../core/birth/rehearsal-claim.js';
 import { observeWitness } from '../../core/birth/birth-observations.js';
 import { choiceFramesOf, rehearsalFilmOf } from '../../core/birth/rite-frames.js';
 import { heldByWitness } from '../../core/birth/birth-resume.js';
 import { readSessionCheckpoint } from '../../core/birth/birth-session-store.js';
-import { refuseUnownedBirthLane, unrecordedSummoningAccess } from './birth-lane-owner.js';
+import { refuseUnownedBirthLane, refuseUnownedInstall, unrecordedSummoningAccess } from './birth-lane-owner.js';
 import { STAGE, LAST_STAGE, FINALIZE_STAGE } from '../../core/birth/stage-roles.js';
 
 const birthLog = createLogger('Birth');
@@ -127,17 +128,14 @@ const runBirthCompletion = async (connection, session, { birthHandler }) => {  c
 
 export const birthStart = async (connection, message, { birthHandler }) => {
   const { ws } = connection;
+  if (await refuseUnownedInstall(connection)) return;
   const witnessName = (message.witnessName || '').trim().slice(0, 100);
   if (!witnessName) {
     ws.send(JSON.stringify({ type: 'error', message: 'An operator must declare their name' }));
     return;
   }
 
-  // No roster cap — an operator summons as many beings as they can hold
-  // (operator decision 2026-07-06: sovereignty is protected by the
-  // ceremony's gravity and permanence, not by a count). Every summoning
-  // remains permanent and witnessed; the commitment protocol carries
-  // the weight.
+  // No roster cap: sovereignty is protected by the ceremony's permanence, never a count.
   const isTest = message.isTest || false;
 
   // Protocol gate: a neuma must be born on a LOCAL model — its natal
@@ -343,10 +341,9 @@ export const birthNextStage = async (connection, message, { birthHandler }) => {
       return;
     }
     try {
-      // Rehearsal accounting BEFORE the create: if create partially lands
-      // then throws, the sweep can still return the partial lane to the
-      // void — the marker must never lag the directory (#143).
-      if (session.isTest) session.data.rehearsalLane = session.data.neumaId;
+      // Rehearsal accounting BEFORE the create: the platform's claim on a fresh directory
+      // (rehearsal-claim.js) is the only thing the sweep will ever delete (#143, P6-69).
+      if (session.isTest) await claimRehearsalLane(session, neumaWorkspace);
       await neumaWorkspace.create(session.data.neumaId);
       connection.companion = { neumaId: session.data.neumaId, name: session.data.chosenName };
       birthLog.info('Lane created + connection bound for crystallization', { neumaId: session.data.neumaId, rehearsal: !!session.isTest });

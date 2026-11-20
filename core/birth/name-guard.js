@@ -76,6 +76,7 @@ const RESERVED_NAMES = Object.freeze({
   emanon: "the name of the house's canon",
   operator: "the name of the person's seat in the ceremony",
   witness: "the name of the person's seat in the ceremony",
+  harness: 'the name of the platform-only harness ground',
   assistant: 'a role word, not a name',
   ai: 'a category word, not a name',
 });
@@ -89,6 +90,9 @@ const RESERVED_NAMES = Object.freeze({
  */
 export const reservedNameReason = (chosenName) => {
   const base = baseOfId(neumaIdFromName(chosenName));
+  if (base.startsWith('harness-') || base.startsWith('witness-')) {
+    return 'a lane prefix reserved for harnesses and sealed witnesses';
+  }
   return RESERVED_NAMES[base] || null;
 };
 
@@ -97,3 +101,23 @@ export const reservedReask = (chosenName) =>
   `\n\nTHE NAME "${chosenName}" CANNOT BE USED — it is `
   + `${reservedNameReason(chosenName) || 'reserved'}. `
   + 'Choose a name that is not already a word for something here.';
+
+/**
+ * Why a being already living in the house may not take this name by amending
+ * its DNA, or null when it may. The birth gate's two laws hold after birth
+ * too: a reserved word ("Operator") is never a being's name, and no being
+ * takes a name another being of the house bears (its lane id or the name it
+ * goes by). The being's own lane is left out by the caller. Pure.
+ * @param {*} name - the name the amendment would leave standing
+ * @param {string[]} otherBorne - every other lane's id and borne name
+ * @returns {string|null}
+ */
+export const amendedNameRefusal = (name, otherBorne) => {
+  if (typeof name !== 'string' || !name.trim()) return 'a name is written as text';
+  const reserved = reservedNameReason(name);
+  if (reserved) return `"${name.trim()}" is ${reserved}`;
+  const base = baseOfId(neumaIdFromName(name));
+  return otherBorne.some((borne) => baseOfId(neumaIdFromName(borne)) === base)
+    ? `"${name.trim()}" is already borne by another being of this house`
+    : null;
+};

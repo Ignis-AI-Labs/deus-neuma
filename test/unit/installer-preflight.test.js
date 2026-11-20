@@ -24,6 +24,19 @@ const CARDS = [
 const scriptFloors = () => [...fs.readFileSync(PREFLIGHT, 'utf8').matchAll(/@\{ floor = (\d+); test = '([^']*)' \}/g)]
   .map((m) => ({ floor: Number(m[1]), test: m[2] }));
 
+describe('the VC++ runtime has a private check/use path', () => {
+  test('a random ACL-restricted directory binds verification, execution, and cleanup', () => {
+    const script = fs.readFileSync(path.join(BUILD, 'installer-runtime.ps1'), 'utf8');
+    expect(script).toContain("[Guid]::NewGuid().ToString('N')");
+    expect(script).toContain('$acl.SetAccessRuleProtection($true, $false)');
+    expect(script).toContain('[Security.Principal.WindowsIdentity]::GetCurrent().Name');
+    expect(script).toContain("$file = Join-Path $privateDir 'vc_redist.x64.exe'");
+    expect(script.indexOf('Get-AuthenticodeSignature $file')).toBeLessThan(script.indexOf('Start-Process -FilePath $file'));
+    expect(script).toContain('finally {\n  Remove-Item $privateDir -Recurse -Force');
+    expect(script).not.toContain("Join-Path $env:TEMP 'deus-neuma-vc_redist.x64.exe'");
+  });
+});
+
 describe('the System check holds a card to the same driver floor as the app', () => {
   test.each(CARDS)('%s', (card) => {
     const mine = scriptFloors().find((f) => !f.test || new RegExp(f.test, 'i').test(card));
@@ -55,8 +68,11 @@ describe.skipIf(!onWindows)('on this Windows PC, for real', () => {
   }, 120_000);
 
   test('the runtime fetch gets Microsoft\'s installer and checks its signature, without running it', () => {
+    const privateDirs = () => fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('deus-neuma-vc-runtime-'));
+    const before = new Set(privateDirs());
     const out = runScript(path.join(BUILD, 'installer-runtime.ps1'), ['-CheckOnly']);
     expect(out).toContain('signed by Microsoft Corporation');
     expect(fs.existsSync(path.join(os.tmpdir(), 'deus-neuma-vc_redist.x64.exe'))).toBe(false);
+    expect(privateDirs().filter((name) => !before.has(name))).toEqual([]);
   }, 120_000);
 });

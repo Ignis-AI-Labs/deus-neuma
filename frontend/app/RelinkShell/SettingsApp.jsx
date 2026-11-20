@@ -34,6 +34,7 @@ import { ModelsSection } from './ModelsSection.jsx';
 import { ModelFoldersSection } from './ModelFoldersSection.jsx';
 import { SecuritySection } from './SecuritySection.jsx';
 import { ConnectionsSection } from './ConnectionsSection.jsx';
+import { ChatLineSection } from './ChatLineSection.jsx';
 import { RemoteSection } from './RemoteSection.jsx';
 import { DocPressSection } from './DocPressSection.jsx';
 import { ApiTab } from './SettingsApiTab.jsx';
@@ -74,6 +75,7 @@ const ModelsTab = ({ focus }) => (
 const SecurityTab = ({ focus }) => (
   <>
     <ConnectionsSection focus={focus} />
+    <ChatLineSection />
     <SecuritySection />
     <RemoteSection />
   </>

@@ -112,10 +112,10 @@ publishes. Each job also writes `signing-<arch>.txt` saying whether Apple signed
 it, because off a Mac an Apple signature and the ad-hoc seal electron-builder
 puts on every arm64 app look the same.
 
-## Unsigned today, on purpose
+## Unsigned today: preview only
 
-Mac builds are **unsigned and not notarized**. Three consequences, none visible
-on the build machine:
+Mac builds are **unsigned and not notarized**. They may be inspected in preview,
+never shipped to production. Three consequences, none visible on the build machine:
 
 - **Gatekeeper refuses the app on another Mac.** The person has to right-click →
   Open, or clear the quarantine attribute by hand.
@@ -126,7 +126,8 @@ on the build machine:
 `check-mac-artifacts.mjs` prints the unsigned state loudly and does not fail on
 it, because failing would mean no build at all today. `npm run check:mac --
 --require-signed` turns that warning into a gate — the switch to flip when the
-credentials arrive.
+credentials arrive. `ship-mac.mjs --unsigned` permits preview only; production
+refuses unsigned artifacts even when that flag is present.
 
 ## What signing will need
 
@@ -148,8 +149,8 @@ everything inside it) and notarizes through Apple's notary service.
 In CI they are repository secrets of the same names (`APPLE_API_KEY` holds the
 `.p8` file's contents; the job writes it to a file only for the build and
 deletes it after). With them present the job signs, notarizes and runs the
-artifact check with `--require-signed`; without them it builds unsigned and
-says so in a warning on the run.
+artifact check with `--require-signed`; without them it builds unsigned for
+preview and says so in a warning on the run. Production remains refused.
 
 The procedure lives with the release runbook (`electron-builder.yml` and
 `electron/release-public-key.cjs` both point at

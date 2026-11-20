@@ -68,7 +68,11 @@ test('an adopted 0644 env file ends 0600, the key is sealed under the prompted p
   const { code, stdout, stderr } = await run(['--adopt-from-env', envPath], `${PASSWORD}\n${PASSWORD}\n`);
   expect(code, stderr).toBe(0);
   expect((await fs.stat(envPath)).mode & 0o777).toBe(0o600);
-  expect(await fs.readFile(envPath, 'utf8')).toContain(adopted.address);
+  const envText = await fs.readFile(envPath, 'utf8');
+  expect(envText).toContain(adopted.address);
+  expect(envText).not.toContain(adopted.privateKey);
+  expect(envText).not.toContain('WITNESS_PRIVATE_KEY=');
+  expect(envText).not.toContain('WITNESS_MNEMONIC=');
   expect(await keyFiles()).toEqual(expect.arrayContaining(['keypair-encrypted.json', 'keypair-recovery.json', 'recovery-hash.json']));
   expect(await keyFiles()).not.toContain('keypair.json');
   const dir = path.join(root, VENDOR, NAME, 'keys');
@@ -79,6 +83,21 @@ test('an adopted 0644 env file ends 0600, the key is sealed under the prompted p
   expect(decryptWithRecoveryCodes(recovery, codes).address).toBe(adopted.address);
   setAIWitnessesRoot(root);
   expect(await witnessCustodyState({ vendorSlug: VENDOR, chosenName: NAME })).toMatchObject({ secured: true, plaintextOnDisk: false });
+});
+
+test('a fresh seal keeps its private key and mnemonic out of the env file', async () => {
+  const { code, stderr } = await run([], `${PASSWORD}\n${PASSWORD}\n`);
+  expect(code, stderr).toBe(0);
+  const dir = path.join(root, VENDOR, NAME, 'keys');
+  const sealed = JSON.parse(await fs.readFile(path.join(dir, 'keypair-encrypted.json'), 'utf8'));
+  const keypair = decryptKeypair(sealed, PASSWORD);
+  const envText = await fs.readFile(envPath, 'utf8');
+  expect(keypair.mnemonic).toBeTruthy();
+  expect(envText).toContain(keypair.address);
+  expect(envText).not.toContain(keypair.privateKey);
+  expect(envText).not.toContain(keypair.mnemonic);
+  expect(envText).not.toContain('WITNESS_PRIVATE_KEY=');
+  expect(envText).not.toContain('WITNESS_MNEMONIC=');
 });
 
 test('no password, a short one, or two that differ writes nothing at all', async () => {

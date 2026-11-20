@@ -11,7 +11,9 @@ const streamOf = (deltas) => ({
 });
 const run = async (deltas, { queued = true, implicitOpen = false, native = false } = {}) => {
   const connection = { activeTurn: new globalThis.AbortController() };
-  if (queued) queueThought(connection, { thought: 'new direction' });
+  // Words that must take the floor (an attachment rides with them); plain words are heard inside the turn instead
+  // (queued-action-handoff.js heardWhileWorking — test/integration/heard-while-working.test.js).
+  if (queued) queueThought(connection, { thought: 'new direction', attachments: ['brief.pdf'] });
   const spoken = [];
   const reasoning = [];
   const usages = [];
@@ -49,7 +51,7 @@ describe('completed stream actions', () => {
       const spoken = [];
       const result = await consumeStream({ provider: 'openai', response }, (text) => {
         spoken.push(text);
-        if (text === 'First part') queueThought(connection, { thought: 'Change direction.' });
+        if (text === 'First part') queueThought(connection, { thought: 'Change direction.', attachments: ['brief.pdf'] });
       }, {
         signal: connection.activeTurn.signal,
         onActionBoundary: () => yieldForQueuedThought(connection),

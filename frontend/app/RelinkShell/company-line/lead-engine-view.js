@@ -15,6 +15,7 @@ export const STATE_WORDS = Object.freeze({
 });
 
 export const UPKEEP_WORDS = Object.freeze({
+  bounced: 'THE ADDRESS BOUNCED — FIND THE RIGHT ONE',
   suppressed: 'ON THE DO-NOT-CONTACT LIST — CLOSE IT',
   sort: 'NOT SORTED YET — SAY WHAT THEY ARE',
   answer: 'REPLIED — WAITING FOR AN ANSWER',
@@ -53,6 +54,7 @@ export const segmentRows = (engine) => {
   return [...(engine?.segments ?? [])].filter((s) => s.state !== 'retired').reverse().map((segment) => {
     const mine = prospects.filter((p) => p.segmentId === segment.id);
     const pool = mine.filter((p) => p.stage === 'found').sort((a, b) => b.match - a.match || meanFit(b) - meanFit(a));
+    const listableIds = segment.state === 'approved' ? mine.filter((p) => p.match >= 2 && p.stage !== 'dropped' && !p.listApproved).map((p) => p.id) : [];
     return {
       segment,
       pool,
@@ -64,7 +66,8 @@ export const segmentRows = (engine) => {
       // WAITING ON YOU row always count the same companies: a weak or strong match not dropped and not yet on an
       // approved list, whether still to judge or already on the lead list (2026-11-16: the rows counted leads the
       // press did not, so a row Founder could not act on never cleared).
-      listable: segment.state === 'approved' ? mine.filter((p) => p.match >= 2 && p.stage !== 'dropped' && !p.listApproved).length : 0,
+      listableIds,
+      listable: listableIds.length,
       counts: { strong: pool.filter((p) => p.match === 3).length, weak: pool.filter((p) => p.match === 2).length, none: pool.filter((p) => p.match === 1).length, onLedger: mine.filter((p) => p.stage === 'promoted').length },
       road: audiencePipeline({ segment, candidates: candidates.filter((c) => c.segmentId === segment.id), prospects: mine, leads: engine?.leads ?? [], searches: (engine?.searches ?? []).filter((x) => x.segmentId === segment.id), held, drafts: engine?.outbox?.drafts ?? [] }),
     };

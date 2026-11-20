@@ -47,6 +47,8 @@ export const quoteRefusal = ({ channelId, text, kind, quote } = {}, maxChars = 2
 };
 
 /** The quote a queue entry keeps: its post id and link, copied only when set. Pure. */
-export const quoteFieldsOf = (draft) => (draft?.quote
-  ? { quote: { postId: String(draft.quote.postId), url: String(draft.quote.url) } }
-  : {});
+export const quoteFieldsOf = (draft) => {
+  if (!draft?.quote) return {};
+  const quote = quoteOf(typeof draft.quote === 'object' ? draft.quote.url : draft.quote);
+  return quote ? { quote } : {};
+};

@@ -15,9 +15,9 @@
 // One of the standing chat modes (tool-policy.js CHAT_MODES), set from the composer's mode menu.
 // Acting tools ask per act as in DEFAULT; reading the web needs no card. impure (connection state,
 // one workspace file)
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { normalizeChatMode } from './tool-policy.js';
+import { writeContainedFile } from './no-follow-write.js';
 import { createLogger } from './logger.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { sendToolEvent } from './portal-tools/tool-events.js';
@@ -175,9 +175,7 @@ export const saveResearchReport = async (connection, report, laneDir) => {
   if (!ledger || ledger.phase !== 'written' || !laneDir || !String(report || '').trim()) return null;
   const name = reportFileName(report);
   const body = `${String(report).trim()}\n\n## Sources\n\n${ledger.sources.map((url, i) => `${i + 1}. ${url}`).join('\n') || '(none read)'}\n`;
-  const dir = path.join(laneDir, 'research');
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, name), body);
+  await writeContainedFile({ root: laneDir, directory: path.join(laneDir, 'research'), name, body });
   log.info('research report saved', { file: `research/${name}`, sources: ledger.sources.length, searches: ledger.searches.size });
   return { file: `research/${name}`, sources: ledger.sources.length, searches: ledger.searches.size };
 };

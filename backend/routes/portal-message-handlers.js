@@ -25,7 +25,7 @@ import { markNotificationsRead, markNotificationsThrough } from '../services/not
 import { isValidId } from '../../core/runtime/notification-record.js';
 import { portalConnections } from './portal-connections.js';
 import { sendToWallet } from './portal-send.js';
-import { settleActiveTurn, runTurnAndDrain, updateToolWorkspace } from './portal-context.js';
+import { settleActiveTurn, runTurnAndDrain, updateToolWorkspace, drainHeldThoughts, afterCompaction } from './portal-context.js';
 import { portalResume, portalNewSession, companionManifest } from './portal-bind-handlers.js';
 import { handleCompactRequest } from '../services/portal-compact.js';
 import {
@@ -74,6 +74,19 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       // one-on-one: 'now' INTERJECTS (cut the reply, take the floor),
       // anything else HOLDS until the next completed action. The old flat refusal
       // made watching a being work read-only: destroy the turn, or wait.
+      if (connection.compacting && !connection.turnPromise) {
+        // EVERYTHING WAITS BEHIND A COMPACTION (Design note, 2026-11-19: it is summing up the very conversation this
+        // word would be added to, so the word is held — even a NOW — and goes the moment it finishes.
+        queueThought(connection, message);
+        ws.send(JSON.stringify({
+          type: 'consciousness:queued',
+          held: connection.pendingThoughts.length,
+          ...(message.holdId ? { holdId: message.holdId } : {}),
+          message: 'Held — it goes as soon as the compaction finishes.',
+        }));
+        afterCompaction(connection);
+        break;
+      }
       if (connection.turnPromise) {
         if (message.urgency === 'now') {
           // Cut the in-flight turn and wait for it to actually settle, so the
@@ -136,7 +149,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         type: message.type, retry, preset: message.preset,
         ...(Array.isArray(message.attachments) && message.attachments.length ? { attachments: message.attachments } : {}),
       };
-      if (connection.turnPromise) {
+      if (connection.turnPromise || connection.compacting) {
         // The same held-words semantics as a thought — the take goes the
         // next completed action in the in-flight turn (interjection is for speech,
         // not versioning).
@@ -260,9 +273,31 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       ws.send(JSON.stringify({ type: 'tool:mode', mode: connection.toolMode }));
       break;
 
+    case 'clone:resume': {
+      // The operator's RESUME on a stopped shadow clone (shadow-clone.js): it carries on in its own sitting.
+      const { resumeShadowClones } = await import('../services/shadow-clone.js');
+      const splitId = String(message.splitId ?? '').slice(0, 80);
+      const out = await resumeShadowClones(connection, { splitId, clones: Array.isArray(message.clones) ? message.clones : null });
+      if (!out.ok) ws.send(JSON.stringify({ type: 'clone:resume', splitId, state: 'refused', reason: out.error }));
+      break;
+    }
+
+    case 'clone:stop': {
+      // The operator's STOP on a shadow clone, or on all of a split's (shadow-clone.js): each ends now, its sitting kept.
+      const { stopShadowClones } = await import('../services/shadow-clone.js');
+      const splitId = String(message.splitId ?? '').slice(0, 80);
+      const out = stopShadowClones({ laneId: connection.companion?.neumaId ?? null, splitId, clones: Array.isArray(message.clones) ? message.clones : null });
+      ws.send(JSON.stringify(out.ok
+        ? { type: 'clone:stop', splitId, state: 'stopping', clones: out.stopping }
+        : { type: 'clone:stop', splitId, state: 'not-running', reason: out.error }));
+      break;
+    }
+
     case 'session:compact':
       // The operator's /compact — the boundary's own torch-passing, on their word.
       await handleCompactRequest(connection);
+      // What was said while it ran goes now, in order.
+      await drainHeldThoughts(connection);
       break;
 
     case 'session:purpose':

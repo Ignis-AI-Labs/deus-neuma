@@ -16,6 +16,11 @@
  *   schema closes the object.
  * - Any other extra field passes, as before; the benchmark trail keeps every
  *   name the model wrote, so a census can say whether that should tighten.
+ * - REFUSED, always: a field named `__proto__`, at any depth. Copied onto the
+ *   repaired arguments it became their prototype — the operator's approval
+ *   card and the safety checks read own fields and saw none of it, while the
+ *   handler read straight through (PR600 audit P6-38). Declared fields are
+ *   the schema's OWN names only.
  *
  * Pure.
  */
@@ -24,6 +29,7 @@ import { distance } from './tool-hud.js';
 
 const MAX_PROBLEMS = 6;
 const MAX_DEPTH = 4;
+const MAX_NESTING = 64;
 
 // What other harnesses and model families name a field we name otherwise —
 // read as ours only when the schema declares OUR name and the call left it out.
@@ -53,6 +59,20 @@ const fits = (type, v) => {
   return type === actual || (type === 'number' && actual === 'integer');
 };
 
+// pure — where the arguments name `__proto__` (JSON.parse makes it an own field), or nest too deep to
+// be read to the bottom; null when neither
+const unreadableIn = (value, where, depth) => {
+  if (value === null || typeof value !== 'object') return null;
+  if (depth > MAX_NESTING) return `${where} is nested deeper than ${MAX_NESTING} levels`;
+  for (const [key, child] of Object.entries(value)) {
+    const here = Array.isArray(value) ? `${where}[${key}]` : at(where, key);
+    if (key === '__proto__') return `${here} is not a field — no argument may be named __proto__`;
+    const deeper = unreadableIn(child, here, depth + 1);
+    if (deeper) return deeper;
+  }
+  return null;
+};
+
 // pure — the value read as `type` when it reads exactly; undefined when it does not
 const coerce = (type, v, prop) => {
   if (typeof v === 'string') {
@@ -70,11 +90,15 @@ const coerce = (type, v, prop) => {
 };
 
 // pure — the declared field an unknown name was meant as, and whether reading it as that is safe
+// pure — has this object no value of its OWN under the name? A field a schema calls `constructor` or
+// `toString` is read on the object itself, never on what every object inherits.
+const unset = (object, name) => !Object.hasOwn(object, name) || object[name] === undefined;
+
 const meantAs = (key, props, args) => {
-  const open = Object.keys(props).filter((name) => args[name] === undefined);
+  const open = Object.keys(props).filter((name) => unset(args, name));
   const same = open.filter((name) => fold(name) === fold(key));
   if (same.length === 1) return { name: same[0], repair: true };
-  const alias = open.filter((name) => (ALIASES[name] ?? []).includes(key.toLowerCase()));
+  const alias = open.filter((name) => (Object.hasOwn(ALIASES, name) ? ALIASES[name] : []).includes(key.toLowerCase()));
   if (alias.length === 1) return { name: alias[0], repair: true };
   const k = fold(key);
   const near = open.filter((name) => {
@@ -114,8 +138,8 @@ function checkObject(schema, args, where, problems, depth) {
   const out = {};
   const unknown = [];
   for (const [key, value] of Object.entries(args)) {
-    if (value === null && !(key in props && typesOf(props[key]).includes('null'))) continue; // null = left out
-    if (key in props) out[key] = value; else unknown.push(key);
+    if (value === null && !(Object.hasOwn(props, key) && typesOf(props[key]).includes('null'))) continue; // null = left out
+    if (Object.hasOwn(props, key)) out[key] = value; else unknown.push(key);
   }
   for (const key of unknown) {
     const meant = meantAs(key, props, out);
@@ -125,10 +149,10 @@ function checkObject(schema, args, where, problems, depth) {
     else out[key] = args[key];
   }
   for (const name of Array.isArray(schema.required) ? schema.required : []) {
-    if (out[name] === undefined && !unknown.some((k) => meantAs(k, props, out)?.name === name)) problems.push(`${at(where, name)} is required`);
+    if (unset(out, name) && !unknown.some((k) => meantAs(k, props, out)?.name === name)) problems.push(`${at(where, name)} is required`);
   }
   for (const [key, value] of Object.entries(out)) {
-    if (key in props) out[key] = checkValue(props[key], value, at(where, key), problems, depth);
+    if (Object.hasOwn(props, key)) out[key] = checkValue(props[key], value, at(where, key), problems, depth);
   }
   // a nested object that did not fit is shown whole, once per shape (edits[] takes {oldText, newText})
   if (where && problems.length > before) problems.push(`${where.replace(/\[\d+\]/g, '[]')} takes ${signatureOf(schema)}`);
@@ -142,6 +166,8 @@ function checkObject(schema, args, where, problems, depth) {
  * @returns {{args: *, problems: string[]}} the repaired arguments, and what does not fit (empty = runs)
  */
 export const fitToolArgs = (inputSchema, args) => {
+  const unreadable = unreadableIn(args, '', 0);
+  if (unreadable) return { args, problems: [unreadable] };
   if (!plain(inputSchema) || !plain(inputSchema.properties) || !plain(args)) return { args, problems: [] };
   const problems = [];
   const repaired = checkObject(inputSchema, args, '', problems, 0);

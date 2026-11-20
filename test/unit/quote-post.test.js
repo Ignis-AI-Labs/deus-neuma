@@ -2,6 +2,7 @@
 // (link-codes.js planLinks). Pure functions on real values.
 import { describe, expect, it } from 'vitest';
 import { X_LINK_CHARS, isXPostLink, quoteFieldsOf, quoteOf, quoteRefusal } from '../../backend/services/social/quote-post.js';
+import { queuedSecretRefusal } from '../../backend/services/social/queue-rules.js';
 import { planLinks } from '../../backend/services/marketing/link-codes.js';
 
 describe('quoteOf', () => {
@@ -24,9 +25,14 @@ describe('quoteRefusal', () => {
     expect(quoteRefusal({ channelId: 'x', text: 'a'.repeat(280 - X_LINK_CHARS), quote: q })).toMatch(/281 characters/);
     expect(quoteRefusal({ channelId: 'x', text: 'hi', quote: { postId: '9', url: q.url } })).toMatch(/link or id/);
   });
-  it('a queue entry keeps only the post id and link', () => {
+  it('a queue entry keeps only the canonical post id and link, and its URL crosses the secret door', () => {
     expect(quoteFieldsOf({ quote: { ...q, extra: 'x' } })).toEqual({ quote: { postId: '1', url: q.url } });
+    expect(quoteFieldsOf({ quote: { postId: '1', url: 'https://twitter.com/a/status/1/?q=fixture-secret#tail' } }))
+      .toEqual({ quote: { postId: '1', url: 'https://x.com/a/status/1' } });
     expect(quoteFieldsOf({})).toEqual({});
+    expect(queuedSecretRefusal({ text: 'ordinary', quote: q }, 'nothing was staged')).toBeNull();
+    expect(queuedSecretRefusal({ text: 'ordinary', quote: { url: `${q.url}?key=${'AKIA'}ABCDEFGHIJKLMNOP` } }, 'nothing was staged'))
+      .toMatch(/looks like a secret/);
   });
 });
 

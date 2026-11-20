@@ -14,7 +14,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 import { startAnvil } from '../helpers/money-in-kit.js';
 import { returnContract } from '../helpers/evm-return-contract.js';
-import { installLpManager, installLpPool } from '../helpers/lp-chain-kit.js';
+import { installLpManager, installLpPool, registerLpIntegrityPins } from '../helpers/lp-chain-kit.js';
 import { startLpReceiptRpc } from '../helpers/lp-receipt-rpc-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
 import { startUmbraeStandIn, POOL } from '../helpers/umbrae-stand-in.js';
@@ -25,6 +25,7 @@ import { _resetConfig } from '../../backend/config.js';
 import { runLpAction } from '../../backend/services/umbrae-lp/lp-run.js';
 import { UMBRAE_BASE } from '../../core/wallet/lp-tx-policy.js';
 import lpRouter from '../../backend/routes/lp-wallet-routes.js';
+import { lpBase } from '../../backend/services/umbrae-lp/lp-base.js';
 
 const NEUMA_ID = 'lproutesecho';
 let app, root, originalRoot, anvil, provider, umbrae, connections, receiptRpc, operator, operatorToken, strangerToken;
@@ -49,8 +50,12 @@ beforeAll(async () => {
   umbrae = await startUmbraeStandIn({ provider });
   await installLpManager(provider, UMBRAE_BASE.positionManager);
   await installLpPool(provider, POOL);
-  for (const [token, units] of [['0x4200000000000000000000000000000000000006', 18], ['0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 6]]) {
-    await provider.send('anvil_setCode', [token, returnContract({ fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]) })]);
+  await registerLpIntegrityPins(await lpBase());
+  for (const [token, units, symbol] of [['0x4200000000000000000000000000000000000006', 18, 'WETH'], ['0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 6, 'USDC']]) {
+    await provider.send('anvil_setCode', [token, returnContract({
+      fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]),
+      routes: { [ethers.id('symbol()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['string'], [symbol]) },
+    })]);
   }
   app = express();
   app.use(express.json());

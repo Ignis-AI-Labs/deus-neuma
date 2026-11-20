@@ -2,6 +2,12 @@ node_modules/
 .env
 .env.local
 .env.test
+# Production environments and private-key containers stay local at any depth.
+.env.production
+*.pem
+*.key
+*.p8
+*.p12
 *.log
 .DS_Store
 Thumbs.db
@@ -25,6 +31,10 @@ vault/test-dna/
 
 # Runtime data (data/ directory — formerly companions/)
 data/dna-cache/
+# Key custody records the start and the re-key write (sealed; never committed)
+data/retired-masters.json
+data/.retired-masters-healed
+data/master-check.json
 data/memory-store/
 data/temp/
 # Runtime logs (prefix/section drift, summon checks) — written by the running app, never source.

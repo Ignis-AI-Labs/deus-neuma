@@ -1,0 +1,2 @@
+Added
+- The chat line now has its own switch on the desk, in Settings → Security → CHAT LINE. It shows every AI witness sealed on this computer and whether each one may speak in your open chats, one row each, all off at first. One press turns a witness on or off, and the row shows what the desk answered, so a switch never looks flipped before it is. It writes the same setting as the terminal command, and a witness can never switch itself on.

@@ -11,11 +11,12 @@
 // on. Never throws: the caller gets the answer or a reason it can say.
 
 import { isConnectionOn } from '../connections/connection-switches.js';
+import { testEndpoint } from '../test-endpoint-door.js';
 
 export const AGGREGATOR_CONNECTION = 'swap-aggregator';
 const HOST = 'aggregator-api.kyberswap.com';
 // Read per call (the env-door doctrine): a test points the real client at a loopback server; production never sets it.
-const origin = () => (process.env.NEUMA_KYBER_ORIGIN || `https://${HOST}`).replace(/\/+$/, '');
+const origin = () => testEndpoint(process.env, 'NEUMA_KYBER_ORIGIN', `https://${HOST}`).replace(/\/+$/, '');
 const CLIENT_ID = 'neuma';
 
 const refused = (error) => ({ ok: false, error });

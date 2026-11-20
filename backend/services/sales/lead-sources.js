@@ -30,14 +30,17 @@
 import process from 'node:process';
 import { PEOPLE_PROVIDERS, peopleOfHunter } from './lead-providers.js';
 import { gatherHunterDiscover, DISCOVER_MAX } from './hunter-discover.js';
+import { gatherTombaReveal, gatherApolloCompanies, TOMBA_PAGE, APOLLO_PAGE, PAID_SEARCH_MAX } from './company-search.js';
 import { searchIndex, indexStats, industriesOf, candidateOfCompany, SIZES } from './company-index.js';
+import { sourceText } from './source-text.js';
+import { testEndpoint } from '../test-endpoint-door.js';
 
 export { peopleOfHunter };
 
 export const GECKO_URL = 'https://api.geckoterminal.com/api/v2';
 export const LLAMA_URL = 'https://api.llama.fi';
 // Each list's address, read per call: a test serves the same list from this machine.
-const urlOf = (name, real) => process.env[`NEUMA_LEAD_SOURCE_${name}`] || real;
+const urlOf = (name, real) => testEndpoint(process.env, `NEUMA_LEAD_SOURCE_${name}`, real);
 export const GATHER_MAX = 25;
 const PACE_MS = 4000;
 const BUSY_WAIT_MS = 20000;
@@ -64,13 +67,13 @@ export const tokensOfPools = (page) => {
     const token = tokens.get(p.relationships?.base_token?.data?.id);
     if (!token || MAJORS.has(String(token.symbol).toUpperCase())) continue;
     const pool = {
-      dex: String(p.relationships?.dex?.data?.id ?? 'unknown'),
-      name: String(p.attributes?.name ?? ''),
+      dex: sourceText(p.relationships?.dex?.data?.id ?? 'unknown', 80),
+      name: sourceText(p.attributes?.name, 120),
       liquidityUsd: Math.round(num(p.attributes?.reserve_in_usd)),
       volume24hUsd: Math.round(num(p.attributes?.volume_usd?.h24)),
     };
     const prior = best.get(token.address);
-    if (!prior || pool.liquidityUsd > prior.pool.liquidityUsd) best.set(token.address, { address: token.address, symbol: token.symbol, name: token.name, pool });
+    if (!prior || pool.liquidityUsd > prior.pool.liquidityUsd) best.set(token.address, { address: sourceText(token.address, 128), symbol: sourceText(token.symbol, 16), name: sourceText(token.name, 80), pool });
   }
   return [...best.values()];
 };
@@ -88,13 +91,13 @@ export const candidateOf = (token, info) => {
   return {
     source: 'base-tokens',
     domain,
-    name: String(a.name || token.name).slice(0, 80),
-    symbol: String(a.symbol || token.symbol).slice(0, 16),
-    description: String(a.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 300),
-    site,
-    twitter: a.twitter_handle || null,
-    telegram: a.telegram_handle || null,
-    categories: (Array.isArray(a.categories) ? a.categories : []).slice(0, 4),
+    name: sourceText(a.name || token.name, 80),
+    symbol: sourceText(a.symbol || token.symbol, 16),
+    description: sourceText(a.description, 300),
+    site: sourceText(site, 2048),
+    twitter: sourceText(a.twitter_handle, 80) || null,
+    telegram: sourceText(a.telegram_handle, 80) || null,
+    categories: (Array.isArray(a.categories) ? a.categories : []).slice(0, 4).map((v) => sourceText(v, 80)),
     holders: num(a.holders?.count),
     verified: a.gt_verified === true,
     pool: token.pool,
@@ -106,10 +109,10 @@ export const candidateOf = (token, info) => {
 
 /** pure — one line a person or a being reads to judge a candidate. */
 export const candidateLine = (c) => [
-  `${c.name}${c.symbol ? ` (${c.symbol})` : ''}`, c.domain, c.signal,
-  ...(c.categories?.length ? [c.categories.join(', ')] : []),
-  ...(c.twitter ? [`X @${c.twitter}`] : []),
-  ...(c.telegram ? [`Telegram ${c.telegram}`] : []),
+  `${sourceText(c.name, 80)}${c.symbol ? ` (${sourceText(c.symbol, 16)})` : ''}`, sourceText(c.domain, 160), sourceText(c.signal, 500),
+  ...(c.categories?.length ? [c.categories.slice(0, 4).map((v) => sourceText(v, 80)).filter(Boolean).join(', ')] : []),
+  ...(c.twitter ? [`X @${sourceText(c.twitter, 80)}`] : []),
+  ...(c.telegram ? [`Telegram ${sourceText(c.telegram, 80)}`] : []),
 ].filter(Boolean).join(' — ');
 
 /**
@@ -124,15 +127,15 @@ export const protocolsOnBase = (list) => (Array.isArray(list) ? list : [])
   .map((p) => ({
     source: 'base-protocols',
     domain: hostOf(p.url),
-    name: String(p.name).slice(0, 80),
-    symbol: p.symbol && p.symbol !== '-' ? String(p.symbol).slice(0, 16) : null,
-    description: String(p.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 300),
-    site: p.url,
-    twitter: p.twitter || null,
+    name: sourceText(p.name, 80),
+    symbol: p.symbol && p.symbol !== '-' ? sourceText(p.symbol, 16) : null,
+    description: sourceText(p.description, 300),
+    site: sourceText(p.url, 2048),
+    twitter: sourceText(p.twitter, 80) || null,
     telegram: null,
-    categories: p.category ? [String(p.category)] : [],
+    categories: p.category ? [sourceText(p.category, 80)] : [],
     signal: `${usd(Math.round(num(p.chainTvls.Base)))} locked on Base, ${Math.round(100 * num(p.chainTvls.Base) / num(p.tvl))}% of all it holds`,
-    sourceUrl: `https://defillama.com/protocol/${encodeURIComponent(String(p.slug ?? p.name).toLowerCase().replace(/\s+/g, '-'))}`,
+    sourceUrl: `https://defillama.com/protocol/${encodeURIComponent(sourceText(p.slug ?? p.name, 160).toLowerCase().replace(/\s+/g, '-'))}`,
   }));
 
 const wait = (ms, signal) => new Promise((resolve, reject) => {
@@ -243,5 +246,8 @@ export const LEAD_SOURCES = Object.freeze({
   'base-tokens': Object.freeze({ kind: 'companies', key: null, label: 'tokens trading on Base (GeckoTerminal, free, about 50 an hour)', gather: gatherBaseTokens }),
   'company-index': Object.freeze({ kind: 'companies', key: null, local: true, max: INDEX_GATHER_MAX, label: `the house's own company database: 22M+ companies with industry, size, country, founding year and traffic rank (free, on this machine, up to ${INDEX_GATHER_MAX} at a time)`, gather: gatherCompanyIndex }),
   'hunter-discover': Object.freeze({ kind: 'companies', key: 'hunter', free: true, max: DISCOVER_MAX, label: `Hunter's company search with your own key: describe the companies in plain words; each comes back with how many people Hunter holds there (FREE, it spends no credits; up to ${DISCOVER_MAX} at a time)`, gather: gatherHunterDiscover }),
+  // The same step through Tomba and Apollo (company-search.js): these SPEND credits, one a page, under PAID LEAD DATA.
+  'tomba-discover': Object.freeze({ kind: 'companies', key: 'tomba', secret: 'tomba-secret', paid: true, perPage: TOMBA_PAGE, max: PAID_SEARCH_MAX, label: `Tomba's company search with your own key and secret: describe the companies in plain words (the audience's countries and your keywords and sizes are added); each comes back with how many addresses Tomba holds there (SPENDS ONE CREDIT A PAGE OF ${TOMBA_PAGE}; a free Tomba plan sees the first page only)`, gather: gatherTombaReveal }),
+  'apollo-discover': Object.freeze({ kind: 'companies', key: 'apollo', paid: true, perPage: APOLLO_PAGE, max: PAID_SEARCH_MAX, label: `Apollo's company search with your own key, by keywords (or industries), in the audience's countries, by size (SPENDS ONE CREDIT A PAGE OF ${APOLLO_PAGE}; a paid Apollo plan only)`, gather: gatherApolloCompanies }),
   ...PEOPLE_PROVIDERS,
 });

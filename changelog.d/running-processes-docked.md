@@ -1,0 +1,2 @@
+Added
+- What your chats leave running now shows at the bottom of the chat, just above where you type: a crawl, a download, a server a being started and let go. Each entry shows what it runs, its folder, how long ago it started, and STOP. Press STOP twice: it asks the process to end, then forces it if it doesn't. ALL CHATS lists everything any of your chats started that is still running, with the being and chat that started it. It's found however the being let it go, including nohup, `&` and setsid. This works on Linux, where the rig runs.

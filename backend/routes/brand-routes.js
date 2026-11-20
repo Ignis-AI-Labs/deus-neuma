@@ -31,7 +31,7 @@
  * first; it is not a button.
  */
 import { Router } from 'express';
-import { requireAuth } from '../services/auth.js';
+import { requireDeskAuth } from '../services/desk-tickets.js';
 import {
   brandNameRefusal, kitSkeleton, listKits, readKit, writeKit,
 } from '../services/branding/kit-store.js';
@@ -44,27 +44,8 @@ import cardRoutes from './brand-card-routes.js';
 const router = Router();
 const log = createLogger('Brands');
 
-// A stylesheet's url() issues the browser's OWN bare GET and can carry no
-// Authorization header — which is the entire reason a type specimen used to
-// render in whatever font the operator's machine happened to have rather than
-// in the face the card will actually use. So for the face bytes ONLY, a
-// ?token= query is mapped into the header BEFORE the blanket requireAuth: the
-// same session token, the same verification, nothing else loosened.
-// gallery-routes.js:45 and user-files-routes.js:37 ride the identical law.
-//
-// A regex, not a prefix: `/faces/grotesk-light/file` opens the door and
-// nothing else does — not `/faces`, not `/umbrae`, not a path that merely
-// starts the same way.
-const HEADERLESS = /^\/faces\/[a-z0-9-]+\/file$/;
-router.use((req, res, next) => {
-  if (HEADERLESS.test(req.path) && !req.headers.authorization
-      && typeof req.query.token === 'string' && req.query.token) {
-    req.headers.authorization = `Bearer ${req.query.token}`;
-  }
-  next();
-});
-
-router.use(requireAuth);
+// A stylesheet's bare GET uses a short-lived ticket bound to this exact face.
+router.use(requireDeskAuth);
 
 // Mounted FIRST among the handlers: Express matches in order, and this file's
 // `/:brand` would otherwise swallow `/form` and `/faces` as brand names. Both

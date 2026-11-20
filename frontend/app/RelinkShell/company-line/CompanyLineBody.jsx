@@ -9,6 +9,7 @@
 import '../SecurityApp.css';
 import './CompanyLine.css';
 import { EmptyState } from '../empty-state.jsx';
+import { safeHttpUrl } from '../safe-url.js';
 import { WorksheetView } from './WorksheetView.jsx';
 import { SalesSection } from './SalesSection.jsx';
 import { BooksSection } from './BooksSection.jsx';
@@ -116,6 +117,7 @@ const YourMove = ({ company, draft, busy, onDraft, onHandOn, onInspect, onEndGap
 // the link with its site shown plainly, and the answer the house asked for.
 const HandsCard = ({ item, names, draft, busy, onDraft, onAnswer }) => {
   const ask = ANSWER_ASKS[item.answer];
+  const href = safeHttpUrl(item.where);
   const text = (draft.text ?? '').trim();
   const stage = item.unblocks ? item.company.stages.find((s) => s.id === item.unblocks) : null;
   return (
@@ -128,7 +130,9 @@ const HandsCard = ({ item, names, draft, busy, onDraft, onAnswer }) => {
           {stage ? `HOLDS ${stage.name}` : 'HOLDS NO STAGE'}{item.cost ? ` · ESTIMATE: ${item.cost}` : ''}{item.by ? ` · BY ${item.by}` : ''}
         </p>
         <p className="cline-co-line label-data">
-          DO IT AT {domainOf(item.where)} — <a className="cline-link" href={item.where} target="_blank" rel="noopener noreferrer">{item.where}</a>
+          DO IT AT {domainOf(item.where)} — {href
+            ? <a className="cline-link" href={href} target="_blank" rel="noopener noreferrer">{item.where}</a>
+            : <span>{item.where}</span>}
         </p>
         <input className="cline-input" aria-label={ask ?? 'Why it will not be done'} disabled={busy} value={draft.text ?? ''}
           placeholder={ask ? `${ask} (or why it will not be done)` : 'Why it will not be done (only if you decline)'}

@@ -8,6 +8,8 @@
 
 import { describe, it, expect } from 'vitest';
 import net from 'net';
+import { startTlsSmtp } from '../helpers/smtp-tls-kit.js';
+import { createTempDir } from '../helpers/temp-fs.js';
 import {
   charsetToString,
   decodeQuotedPrintable,
@@ -222,6 +224,36 @@ describe('smtp sender — runner against a real socket', () => {
     setTimeout(() => controller.abort(), 50);
     expect(await outcome).toEqual({ ok: false, detail: 'interrupted by your operator before sending' });
     server.close();
+  });
+
+  it('a real 250 dialogue succeeds, and a pre-DATA connection refusal is certainly unsent', async () => {
+    const dir = await createTempDir('smtp-success');
+    const server = await startTlsSmtp(dir);
+    try {
+      const sent = await sendEmail({ ...CREDS, smtpHost: 'localhost', smtpPort: String(server.port) }, { to: 'lead@example.com', subject: 'Hello', text: 'A real message' });
+      expect(sent).toMatchObject({ ok: true, to: ['lead@example.com'], from: CREDS.address });
+      expect(server.received).toHaveLength(1);
+      const refused = await sendEmail({ ...CREDS, smtpPort: '1' }, { to: 'lead@example.com', subject: 'No', text: 'Not accepted' });
+      expect(refused.ok).toBe(false);
+      expect(refused.uncertain).toBeUndefined();
+    } finally {
+      await server.close();
+    }
+  });
+
+  it('accepted DATA followed by a real lost acknowledgement is uncertain, with message identity', async () => {
+    const dir = await createTempDir('smtp-uncertain');
+    const server = await startTlsSmtp(dir);
+    server.control.dropAfterData = true;
+    try {
+      const outcome = await sendEmail({ ...CREDS, smtpHost: 'localhost', smtpPort: String(server.port) }, { to: 'lead@example.com', subject: 'Hello', text: 'Perhaps delivered' });
+      expect(outcome).toMatchObject({ ok: false, uncertain: true, to: ['lead@example.com'], from: CREDS.address });
+      expect(outcome.messageId).toMatch(/^<.+@ignislabs\.ai>$/);
+      expect(outcome.detail).toMatch(/after the message data was sent; delivery is uncertain/);
+      expect(server.received).toHaveLength(1);
+    } finally {
+      await server.close();
+    }
   });
 });
 

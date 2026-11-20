@@ -1,6 +1,6 @@
 {
   "name": "neuma",
-  "version": "0.1.180",
+  "version": "0.1.181",
   "license": "FSL-1.1-ALv2",
   "description": "Deus Neuma — sovereign relationships with AI.",
   "homepage": "https://deusneuma.ai",
@@ -133,15 +133,7 @@
     "@electron/universal": {
       "minimatch@9": "11.0.8"
     },
-    "app-builder-lib": {
-      "minimatch@10": "11.0.8"
-    },
-    "@typescript-eslint/typescript-estree": {
-      "minimatch@10": "11.0.8"
-    },
-    "eslint": {
-      "minimatch@10": "11.0.8"
-    }
+    "minimatch@10": "11.0.8"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

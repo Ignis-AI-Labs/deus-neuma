@@ -24,7 +24,8 @@ import { Panel } from './sub-panel.jsx';
 import { HealthStrip } from './HealthStrip.jsx';
 import { BoardPanel } from './BoardPanel.jsx';
 import { CpuPanel, GpuPanel, MemoryPanel, StoragePanel } from './MachinePanels.jsx';
-import { ActivityPanel, FailuresPanel, ModelPanel, VramPanel } from './SubstrateLivePanels.jsx';
+import { ActivityPanel, FailuresPanel, ModelPanel } from './SubstrateLivePanels.jsx';
+import { HoldersPanels } from './HoldersPanels.jsx';
 import { machineHealth, worse } from './machine-health.js';
 import { doubtIn } from './machine-sense.js';
 import { displayModelName } from '../../utils/model-name.js';
@@ -87,13 +88,14 @@ export const SubstrateConsole = ({ tel, loaded, machine, sense, history, acting,
         {machineDown}
         <div className="sub-grid" ref={watchMachine}>
           {machinePanels}
+          <HoldersPanels />
           {controlPanels}
         </div>
       </div>
     );
   }
 
-  const { model, provider, serving, contextLength, adapters, sampling, activity, slots, tokens, gpu, processes, failures } = tel;
+  const { model, provider, serving, contextLength, adapters, sampling, activity, slots, tokens, failures } = tel;
 
   return (
     <div className="sub-body" ref={watch} {...calm}>
@@ -114,7 +116,7 @@ export const SubstrateConsole = ({ tel, loaded, machine, sense, history, acting,
         {gpuPanel}
         <ModelPanel contextLength={contextLength} sampling={sampling} adapters={adapters} span={4} />
         {partPanels}
-        <VramPanel gpu={gpu} processes={processes} span={6} />
+        <HoldersPanels />
         {controlPanels}
         <FailuresPanel failures={failures} span={12} />
       </div>

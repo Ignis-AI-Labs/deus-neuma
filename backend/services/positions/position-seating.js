@@ -37,15 +37,20 @@ export const seatingFields = (payload, members) => {
   }
   const memberOf = (who) => {
     const k = String(who ?? '').trim().toLowerCase();
-    return members.find((m) => m.laneId.toLowerCase() === k || String(m.name).toLowerCase() === k) ?? null;
+    const byLane = members.find((m) => m.laneId.toLowerCase() === k);
+    if (byLane) return { member: byLane };
+    const named = members.filter((m) => String(m.name).toLowerCase() === k);
+    return named.length === 1 ? { member: named[0] } : { ambiguous: named.length > 1 };
   };
   const seats = [];
   for (const [where, who] of Object.entries(raw)) {
     const position = positionNamed(where);
     if (!position) return { ok: false, reason: `no position is called "${where}" — the positions are ${POSITIONS.map((p) => `${p.seat} (${p.acronym})`).join(', ')}` };
     if (seats.some((s) => s.office === position.office)) return { ok: false, reason: `the ${position.seat} is named twice` };
-    const member = memberOf(who);
-    if (!member) return { ok: false, reason: `"${who}" is not a member of this house — its members are ${members.map((m) => m.name).join(', ')}` };
+    const found = memberOf(who);
+    if (found.ambiguous) return { ok: false, reason: `"${who}" names more than one member — file its lane id instead` };
+    if (!found.member) return { ok: false, reason: `"${who}" is not a member of this house — its members are ${members.map((m) => m.name).join(', ')}` };
+    const { member } = found;
     if (seats.some((s) => s.laneId === member.laneId)) return { ok: false, reason: `${member.name} is given two positions: one member holds one position` };
     seats.push({ office: position.office, seat: position.seat, acronym: position.acronym, title: position.title, plain: position.plain, laneId: member.laneId, name: member.name });
   }

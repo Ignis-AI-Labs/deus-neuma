@@ -376,7 +376,7 @@ export const sendStageToLLM = async (connection, stageData) => {
     let buffer = '';
     // Native tool-call deltas (OpenAI shape) are streamed by index; assembled
     // here and handed to the same execution path as text calls at finishStage.
-    const nativeAssembled = {};
+    const nativeAssembled = Object.create(null);
 
     // Filter reasoning channels + detect tool calls in the live stream.
     // Supports both Neuma [TOOL: server/name {json}] and Gemma 4

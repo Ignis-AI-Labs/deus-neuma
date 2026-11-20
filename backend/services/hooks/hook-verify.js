@@ -14,8 +14,9 @@
  *            X-Neuma-Timestamp (seconds) within five minutes — for anything else
  *            (a CI job, a script, Zapier): sign it yourself, the recipe is in the docs.
  *
- * GitHub signs no timestamp, so a captured GitHub delivery could be replayed;
- * its delivery id is remembered (hook-store.js) and a repeat is refused.
+ * GitHub signs no timestamp, so its content hash is remembered permanently
+ * (hook-store.js) and a repeat is refused. Every source dedupes on raw bytes,
+ * never on unsigned delivery headers.
  *
  * Pure: headers, bytes, secret and the clock in; a verdict out.
  */
@@ -44,10 +45,11 @@ const parseJson = (raw) => {
 };
 
 const fresh = (stampMs, now) => Number.isFinite(stampMs) && Math.abs(now - stampMs) <= HOOK_SKEW_MS;
+const EVENT = /^[a-z_.:-]{1,40}$/;
 
 const refuse = (why) => ({ ok: false, why });
 
-// One reader per source: is it signed, is it fresh, what is its id and kind.
+// One reader per source: is it signed, is it fresh, what is its kind.
 const READERS = Object.freeze({
   github: ({ secret, headers, raw }) => {
     const sig = header(headers, 'x-hub-signature-256');
@@ -55,7 +57,7 @@ const READERS = Object.freeze({
     if (!sameText(sig, `sha256=${hmacHex(secret, raw)}`)) return refuse('the signature does not match this hook\'s secret');
     const body = parseJson(raw);
     if (!body) return refuse('the body is not JSON');
-    return { ok: true, deliveryId: header(headers, 'x-github-delivery') || null, event: header(headers, 'x-github-event') || 'unknown', body };
+    return { ok: true, event: header(headers, 'x-github-event') || 'unknown', body };
   },
   slack: ({ secret, headers, raw, now }) => {
     const sig = header(headers, 'x-slack-signature');
@@ -65,7 +67,7 @@ const READERS = Object.freeze({
     if (!sameText(sig, `v0=${hmacHex(secret, Buffer.concat([Buffer.from(`v0:${ts}:`), raw]))}`)) return refuse('the signature does not match this hook\'s secret');
     const body = parseJson(raw);
     if (!body) return refuse('the body is not JSON');
-    return { ok: true, deliveryId: body.event_id || `${ts}:${sig.slice(3, 19)}`, event: body.event?.type || body.type || 'unknown', body };
+    return { ok: true, event: String(body.event?.type || body.type || 'unknown').toLowerCase(), body };
   },
   linear: ({ secret, headers, raw, now }) => {
     const sig = header(headers, 'linear-signature');
@@ -74,7 +76,7 @@ const READERS = Object.freeze({
     const body = parseJson(raw);
     if (!body) return refuse('the body is not JSON');
     if (!fresh(Number(body.webhookTimestamp), now)) return refuse('the webhookTimestamp is more than five minutes from now');
-    return { ok: true, deliveryId: header(headers, 'linear-delivery') || null, event: header(headers, 'linear-event') || body.type || 'unknown', body };
+    return { ok: true, event: String(header(headers, 'linear-event') || body.type || 'unknown').toLowerCase(), body };
   },
   generic: ({ secret, headers, raw, now }) => {
     const sig = header(headers, 'x-neuma-signature');
@@ -83,7 +85,7 @@ const READERS = Object.freeze({
     if (!fresh(Number(ts) * 1000, now)) return refuse('the timestamp is more than five minutes from now');
     if (!sameText(sig, `sha256=${hmacHex(secret, Buffer.concat([Buffer.from(`${ts}.`), raw]))}`)) return refuse('the signature does not match this hook\'s secret');
     const body = parseJson(raw) ?? { text: raw.toString('utf8') };
-    return { ok: true, deliveryId: header(headers, 'x-neuma-delivery') || null, event: header(headers, 'x-neuma-event') || 'event', body };
+    return { ok: true, event: header(headers, 'x-neuma-event') || 'event', body };
   },
 });
 
@@ -99,8 +101,8 @@ export const verifyDelivery = ({ source, secret, headers, raw, now }) => {
   if (!Buffer.isBuffer(raw)) return refuse('no body');
   const verdict = read({ secret, headers: headers ?? {}, raw, now });
   if (!verdict.ok) return verdict;
-  // A delivery with no id of its own is named by its bytes: the same bytes twice are the same delivery.
-  return { ...verdict, deliveryId: String(verdict.deliveryId || createHash('sha256').update(raw).digest('hex').slice(0, 32)) };
+  if (!EVENT.test(String(verdict.event))) return refuse('the event name is not a bounded lowercase identifier');
+  return { ...verdict, deliveryId: createHash('sha256').update(raw).digest('hex') };
 };
 
 /**

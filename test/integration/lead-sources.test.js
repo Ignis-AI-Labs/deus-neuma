@@ -22,7 +22,7 @@ import revenueRouter from '../../backend/routes/revenue-routes.js';
 import { mercatorBriefingSection } from '../../backend/services/revenue/revenue-briefing.js';
 import { readCandidates, noteSites, readSearches } from '../../backend/services/sales/sales-store.js';
 import { tokensOfPools, candidateOf, protocolsOnBase, peopleOfHunter, candidateLine, LEAD_SOURCES } from '../../backend/services/sales/lead-sources.js';
-import { peopleOfTomba, apolloToReveal, personOfApollo } from '../../backend/services/sales/lead-providers.js';
+import { peopleOfTomba, tombaContacts, apolloToReveal, personOfApollo } from '../../backend/services/sales/lead-providers.js';
 import { foldSpend, makeRule, spentThisMonth, spendRefusal, spendLine, spendSwitch } from '../../backend/services/sales/lead-spend.js';
 import { capOk } from '../../frontend/app/RelinkShell/positions/positions-view.js';
 import { getService } from '../../backend/services/provider-registry.js';
@@ -34,7 +34,7 @@ import { readAddressChecks } from '../../backend/services/sales/sales-store.js';
 import { houseCampaigns } from '../../backend/services/positions/campaign-links.js';
 
 const { processToolCalls } = __test;
-const SAVED = Object.fromEntries(['DNA_ENCRYPTION_KEY', 'NEUMA_CONNECTIONS_PATH', 'NEUMA_LEAD_SOURCE_GECKO', 'NEUMA_LEAD_SOURCE_LLAMA', 'NEUMA_LEAD_SOURCE_HUNTER', 'HUNTER_API_KEY', 'NEUMA_LEAD_SOURCE_TOMBA', 'TOMBA_API_KEY', 'NEUMA_LEAD_SOURCE_APOLLO', 'APOLLO_API_KEY'].map((k) => [k, process.env[k]]));
+const SAVED = Object.fromEntries(['DNA_ENCRYPTION_KEY', 'NEUMA_CONNECTIONS_PATH', 'NEUMA_LEAD_SOURCE_GECKO', 'NEUMA_LEAD_SOURCE_LLAMA', 'NEUMA_LEAD_SOURCE_HUNTER', 'HUNTER_API_KEY', 'NEUMA_LEAD_SOURCE_TOMBA', 'TOMBA_API_KEY', 'TOMBA_API_SECRET', 'NEUMA_LEAD_SOURCE_APOLLO', 'APOLLO_API_KEY'].map((k) => [k, process.env[k]]));
 const PRIOR_ROOT = getWorkspacesRoot();
 
 const tok = (address, symbol, name) => ({ id: `base_${address}`, type: 'token', attributes: { address, symbol, name } });
@@ -79,13 +79,13 @@ const APOLLO_MATCH = {
 
 describe('paid lead data: the providers and the rule on spending (pure)', () => {
   test('Tomba offers a person only with a name, a role and the page the address stands on', () => {
-    expect(peopleOfTomba(TOMBA)).toEqual([{ name: 'Roberto Diaz', role: 'Founder', email: 'roberto@olivetree.example', confidence: 91, sourceUrl: 'https://olivetree.example/about', basis: 'published' }]);
-    expect(peopleOfTomba({})).toEqual([]);
+    expect(peopleOfTomba(TOMBA)).toEqual({ people: [{ name: 'Roberto Diaz', role: 'Founder', email: 'roberto@olivetree.example', confidence: 91, sourceUrl: 'https://olivetree.example/about', basis: 'published', seniority: null, department: null, checked: null, linkedin: null, decisionMaker: false }], left: 1 });
+    expect(peopleOfTomba({})).toEqual({ people: [], left: 0 });
   });
 
   test('Apollo reveals only people with a title and an address on file, and keeps only a verified address with a public profile', () => {
     expect(apolloToReveal(APOLLO_SEARCH)).toEqual(['p1', 'p2']);
-    expect(personOfApollo(APOLLO_MATCH.p1)).toEqual({ name: 'Dima Horshkov', role: 'Chief Product Officer', email: 'dima@limitless.exchange', confidence: 100, sourceUrl: 'https://www.linkedin.com/in/dima-h', basis: 'verified' });
+    expect(personOfApollo(APOLLO_MATCH.p1)).toEqual({ name: 'Dima Horshkov', role: 'Chief Product Officer', email: 'dima@limitless.exchange', confidence: 100, sourceUrl: 'https://www.linkedin.com/in/dima-h', basis: 'verified', checked: 'valid', seniority: null });
     expect(personOfApollo(APOLLO_MATCH.p2)).toBe(null);
     expect(personOfApollo({})).toBe(null);
   });
@@ -105,12 +105,12 @@ describe('paid lead data: the providers and the rule on spending (pure)', () => 
     expect(at({ rule: { on: false, cap: 10 } })).toBe('PAID LEAD DATA is off. Your operator turns it on in POSITIONS, CHIEF REVENUE OFFICER, SETTINGS. Until then read each address on the company\'s own pages');
     expect(at({ spent: 8, cost: 5 })).toMatch(/this month's limit is 10 credit\(s\) and 8 are spent; this lookup may spend 5/);
     expect(spendLine({ rule: { on: false, cap: 100 }, spent: 0, attached: [] })).toMatch(/no provider is attached/);
-    expect(spendLine({ rule: { on: true, cap: 100 }, spent: 4, attached: ['hunter', 'apollo'] })).toBe('PAID LEAD DATA (hunter, apollo attached; it spends your operator\'s credits): ON. It is one of the ways you may find a person\'s address. Use what is free first (the company\'s own pages); pay for a lookup when those give none. Spent this month: 4 of 100 credit(s). Hunter\'s company search (sales/gather, source hunter-discover) spends no credits and is always allowed, whatever this setting says.');
+    expect(spendLine({ rule: { on: true, cap: 100 }, spent: 4, attached: ['hunter', 'apollo'] })).toBe('PAID LEAD DATA (hunter, apollo attached; it spends your operator\'s credits): ON. It is one of the ways you may find a person\'s address. Use what is free first (the company\'s own pages); pay for a lookup when those give none. Spent this month: 4 of 100 credit(s). Every address an email goes to is checked before it leaves, ON or OFF, within the limit (address-check.js) — you never ask for that, it runs at staging and at send. Hunter\'s company search (sales/gather, source hunter-discover) spends no credits and is always allowed, whatever this setting says.');
     expect(spendLine({ rule: { on: false, cap: 100 }, spent: 0, attached: ['hunter'] })).toContain('OFF. Do not ask for it');
   });
 
   test('on the position\'s SETTINGS it is one row: its name, on or off, its limit and what the month has used', () => {
-    expect(spendSwitch({ rule: { on: true, cap: 250 }, spent: 4, attached: ['hunter', 'tomba'] })).toEqual({ id: 'paid-lead-data', kind: 'spend', on: true, cap: 250, spent: 4, attached: ['hunter', 'tomba'], note: null, name: 'Paid lead data (Hunter, Tomba)', whileOff: 'your sales seat reads each address on the company\'s own pages and spends none of your credits' });
+    expect(spendSwitch({ rule: { on: true, cap: 250 }, spent: 4, attached: ['hunter', 'tomba'] })).toEqual({ id: 'paid-lead-data', kind: 'spend', on: true, cap: 250, spent: 4, attached: ['hunter', 'tomba'], note: null, name: 'Paid lead data (Hunter, Tomba)', whileOff: 'your sales seat reads each address on the company\'s own pages and spends no credits finding people; every address an email goes to is still checked before it leaves, within this limit' });
     expect(spendSwitch({ rule: { on: false, cap: 100 }, spent: 0, attached: [] })).toMatchObject({ name: 'Paid lead data', on: false, whileOff: 'no provider key is attached yet. A free Hunter account (hunter.io) gives your sales seat a company search that spends nothing and 50 credits a month to look people up; add its key in Settings, API, Lead data' });
     expect([capOk('250'), capOk('2.5'), capOk(''), capOk('-1')]).toEqual([true, false, false, false]);
   });
@@ -142,8 +142,10 @@ describe('the lead sources, read as they answer (pure)', () => {
   });
 
   test('free sources come first and need no key; the people source names the operator\'s own key', () => {
-    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['company-index', 'companies', null], ['hunter-discover', 'companies', 'hunter'], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
-    for (const id of ['hunter', 'tomba', 'apollo']) expect(getService(id), id).toMatchObject({ kind: 'service', group: 'Lead data', requiresKey: true });
+    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['company-index', 'companies', null], ['hunter-discover', 'companies', 'hunter'], ['tomba-discover', 'companies', 'tomba'], ['apollo-discover', 'companies', 'apollo'], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
+    for (const id of ['hunter', 'tomba', 'tomba-secret', 'apollo']) expect(getService(id), id).toMatchObject({ kind: 'service', group: 'Lead data', requiresKey: true });
+    // Tomba's two values are two rows (Design note, 2026-11-18: […]).
+    expect([getService('tomba').keyEnv, getService('tomba-secret').keyEnv]).toEqual(['TOMBA_API_KEY', 'TOMBA_API_SECRET']);
     // Every paid source says the most one lookup may spend.
     expect(Object.values(LEAD_SOURCES).filter((s) => s.kind === 'people').map((s) => s.cost)).toEqual([1, 1, 5]);
   });
@@ -216,7 +218,7 @@ describe('GATHERING through the real stack (gnosis)', () => {
     lists = await new Promise((resolve) => { const s = list.listen(0, '127.0.0.1', () => resolve(s)); });
     const base = `http://127.0.0.1:${lists.address().port}`;
     Object.assign(process.env, { NEUMA_LEAD_SOURCE_GECKO: `${base}/gecko`, NEUMA_LEAD_SOURCE_LLAMA: `${base}/llama`, NEUMA_LEAD_SOURCE_HUNTER: `${base}/hunter`, NEUMA_LEAD_SOURCE_TOMBA: `${base}/tomba`, NEUMA_LEAD_SOURCE_APOLLO: `${base}/apollo` });
-    for (const k of ['HUNTER_API_KEY', 'TOMBA_API_KEY', 'APOLLO_API_KEY']) delete process.env[k];
+    for (const k of ['HUNTER_API_KEY', 'TOMBA_API_KEY', 'TOMBA_API_SECRET', 'APOLLO_API_KEY']) delete process.env[k];
 
     app = express();
     app.use(express.json());
@@ -369,9 +371,14 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(people.content).not.toContain('the-operators-key');
     // TOP FIRST: the company's decision makers are what Hunter is asked for.
     expect(hits.filter((h) => h.startsWith('/hunter/domain-search')).at(-1)).toContain('decision_maker=true');
-    // More providers attached: the seat names one. Tomba takes its key and secret together.
+    // More providers attached: the seat names one. Tomba takes its API key and its secret: the key alone does not attach it.
     expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'tomba' })).toMatchObject({ status: 'error', error: expect.stringMatching(/one of the providers your operator attached \(hunter\)/) });
-    Object.assign(process.env, { TOMBA_API_KEY: 'tk:ts', APOLLO_API_KEY: 'apollo-key' });
+    Object.assign(process.env, { TOMBA_API_KEY: 'tk', APOLLO_API_KEY: 'apollo-key' });
+    expect(await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'tomba' })).toMatchObject({ status: 'error', error: expect.stringMatching(/one of the providers your operator attached \(hunter, apollo\)/) });
+    expect(await tombaContacts({ domain: 'limitless.exchange', apiKey: 'tk' })).toEqual({ ok: false, detail: 'Tomba needs both its API key and its secret — add the secret under SETTINGS, API, Lead data, Tomba' });
+    // A key saved the older way, key:secret in the one row, still reads.
+    expect((await tombaContacts({ domain: 'limitless.exchange', apiKey: 'tk:ts' })).people.map((p) => p.email)).toEqual(['roberto@olivetree.example']);
+    process.env.TOMBA_API_SECRET = 'ts';
     const tomba = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'tomba' });
     expect(tomba.content).toContain('- 0. Roberto Diaz, Founder — roberto@olivetree.example — found on https://olivetree.example/about');
     expect(tomba.content).not.toContain('nopage@');
@@ -381,8 +388,9 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect((await rule('on', 10)).status).toBe(200);
     const apollo = await act('merc', { type: 'sales/contacts', domain: 'limitless.exchange', source: 'apollo' });
     expect(apollo.content).toContain('People at limitless.exchange (apollo, 2 credit(s) spent), top first:');
-    expect(apollo.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange — verified by apollo; their profile: https://www.linkedin.com/in/dima-h');
-    expect(apollo.content).not.toContain('ann@limitless.exchange');
+    expect(apollo.content).toContain('- 0. Dima Horshkov, Chief Product Officer — dima@limitless.exchange (the address exists: checked) — verified by apollo; their profile: https://www.linkedin.com/in/dima-h');
+    // Paid for and not kept is said, with why (no silent cuts).
+    expect(apollo.content).toContain('Returned by apollo and not kept: Ann Lee: Apollo has not verified ann@limitless.exchange (unverified).');
     expect(apollo.content).not.toContain('apollo-key');
     // THE PIPELINE: people are pulled only at a company scored as a fit — verified, researched, scored.
     expect(await act('merc', { type: 'sales/contacts', domain: 'yo.xyz' })).toMatchObject({ status: 'error', error: expect.stringMatching(/^THE PIPELINE: people are pulled only at a company scored as a fit — "yo\.xyz" is not/) });
@@ -449,19 +457,23 @@ describe('GATHERING through the real stack (gnosis)', () => {
     expect(await spend()).toMatchObject({ spent: 6 });
     expect(JSON.stringify(ada)).not.toContain('the-operators-key');
 
-    // THE ADDRESS CHECK BEFORE A FIRST EMAIL (Hunter's verifier, half a credit, once an address).
+    // THE ADDRESS CHECK BEFORE A FIRST EMAIL (Hunter's verifier, half a credit, once an address) — asked LIVE even though
+    // Apollo gave Dima's address as verified from its own records: a live answer outranks a stored flag (2026-11-19).
+    const verifierHits = () => hits.filter((h) => h.startsWith('/hunter/email-verifier')).length;
     expect(await checkBeforeFirstEmail(me.address, ['Dima@limitless.exchange'])).toEqual({ refusal: null, notes: ['dima@limitless.exchange exists (Hunter checked it)'] });
-    expect(await spend()).toMatchObject({ spent: 6.5 });
-    const asked = hits.filter((h) => h.startsWith('/hunter/email-verifier')).length;
+    const asked = verifierHits();
     expect((await checkBeforeFirstEmail(me.address, ['dima@limitless.exchange'])).notes).toEqual(['dima@limitless.exchange exists (Hunter checked it)']);
-    expect(hits.filter((h) => h.startsWith('/hunter/email-verifier')).length).toBe(asked);
+    expect([verifierHits(), (await spend()).spent]).toEqual([asked, 6.5]);
     // An address that does not exist stops the email; one whose server will not say goes.
     expect((await checkBeforeFirstEmail(me.address, ['gone@limitless.exchange'])).refusal).toMatch(/^the address gone@limitless\.exchange does not exist \(Hunter checked it\) — nothing was sent\./);
     expect(await checkBeforeFirstEmail(me.address, ['team@indexcoop.com'])).toMatchObject({ refusal: null, notes: ['team@indexcoop.com could not be confirmed: its server accepts every address'] });
-    expect((await readAddressChecks(me.address)).map((c) => [c.email, c.status]).sort()).toEqual([['dima@limitless.exchange', 'valid'], ['gone@limitless.exchange', 'invalid'], ['team@indexcoop.com', 'accept_all']]);
-    // With paid lead data off nothing is checked and nothing spent, and it says so.
+    expect((await readAddressChecks(me.address)).map((c) => [c.email, c.status, c.checker, c.live]).sort()).toEqual([['ada@limitless.exchange', 'valid', 'Hunter', false], ['dima@limitless.exchange', 'valid', 'Hunter', true], ['gone@limitless.exchange', 'invalid', 'Hunter', true], ['team@indexcoop.com', 'accept_all', 'Hunter', true]]);
+    // EVERY ADDRESS IS CHECKED BEFORE AN EMAIL LEAVES, whatever PAID LEAD DATA says (Design note, 2026-11-19: […]).
     expect((await rule('off', 10)).status).toBe(200);
-    expect(await checkBeforeFirstEmail(me.address, ['new@nmkr.io'])).toEqual({ refusal: null, notes: ['new@nmkr.io was not checked before sending: PAID LEAD DATA is off'] });
+    expect(await checkBeforeFirstEmail(me.address, ['new@nmkr.io'])).toEqual({ refusal: null, notes: ['new@nmkr.io could not be confirmed: its server did not answer'] });
+    // …within the month's limit: past it, the email waits rather than going unchecked.
+    expect((await rule('off', 8)).status).toBe(200);
+    expect((await checkBeforeFirstEmail(me.address, ['later@nmkr.io'])).refusal).toMatch(/^the address later@nmkr\.io could not be checked before sending: this month's limit for paid lead data is reached \(8 of 8 credits\)/);
     expect((await rule('on', 10)).status).toBe(200);
     expect([mayWrite('valid'), mayWrite('invalid'), mayWrite('disposable'), mayWrite('unknown'), checkWords('webmail')]).toEqual([true, false, false, true, 'is a personal mailbox, which Hunter does not confirm']);
 

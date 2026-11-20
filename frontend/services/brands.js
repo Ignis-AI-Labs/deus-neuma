@@ -6,6 +6,7 @@
 // and none of those would fail loudly.
 
 import { apiCall, authTokenOrNull } from '../utils/http.js';
+import { deskTicketUrl } from './desk-tickets.js';
 
 const BASE = '/api/v1/brands';
 
@@ -53,14 +54,10 @@ export const getFaceRegistry = async () => apiCall('GET', `${BASE}/faces`);
 /**
  * The URL for one vendored face's bytes, for an `@font-face` rule.
  *
- * ⚠️ Carries the session token in the QUERY, because CSS `url()` issues the
- * browser's own bare GET and can attach no header. That route accepts `?token=`
- * explicitly, and only that route.
+ * CSS `url()` cannot attach a header, so this issues a short-lived ticket
+ * bound to the exact face path.
  */
-export const faceFileUrl = (id) => {
-  const token = authTokenOrNull();
-  return `${BASE}/faces/${encodeURIComponent(id)}/file${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-};
+export const faceFileUrl = (id) => deskTicketUrl(`${BASE}/faces/${encodeURIComponent(id)}/file`);
 
 /** The marks a brand carries, recoloured onto its own palette, plus the exact
  *  folder to drop a new one into. */

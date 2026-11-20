@@ -15,7 +15,7 @@ export const chatWaitingRows = (access, nowMs) => Object.entries(access).flatMap
   return (record?.pending ?? []).filter((p) => nowMs - Date.parse(p.at) < PAIR_TTL_MS).map((p) => Object.freeze({
     id: `chat-pairing:${accountId}:${p.code}`,
     kind: 'chat-pairing',
-    title: `${p.kind === 'group' ? `The group "${p.name}"` : p.name} asks to talk with the house on ${NAME[channel] ?? channel} — code ${p.code}`.slice(0, 200),
+    title: `${p.kind === 'group' ? `${p.senderName || `Sender ${p.senderId ?? 'not recorded'}`} in the group "${p.name}"` : p.name} asks to talk with the house on ${NAME[channel] ?? channel} — code ${p.code}`.slice(0, 200),
     where: { app: channel, channelId: channel, section: 'chats', accountId, code: p.code },
     at: p.at,
   }));

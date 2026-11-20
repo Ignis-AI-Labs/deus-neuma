@@ -40,7 +40,9 @@ describe('the model Ollama pulls', () => {
     expect(ollamaModelRef(null)).toBeNull();
     expect(ollamaModelRef({ ...REC, source: '../../etc' })).toBeNull();
     expect(ollamaModelRef({ ...REC, source: 'a/b; rm -rf /' })).toBeNull();
+    expect(ollamaModelRef({ ...REC, source: 'unreviewed/repository' })).toBeNull();
     expect(ollamaModelRef({ ...REC, quant: 'Q4 K' })).toBeNull();
+    expect(installPlan(base({ recommendation: { ...REC, source: 'unreviewed/repository' } }))).toMatchObject({ supported: false, reason: /no reviewed revision and SHA-256/ });
   });
 });
 
@@ -53,6 +55,7 @@ describe('the plan for each starting point', () => {
     expect(plan.managed).toBe(true);
     expect(plan.downloadBytes).toBe(ollamaAssetFor('linux', 'x64').size + 2.8e9);
     expect(plan.enoughDisk).toBe(true);
+    expect(plan.model).toMatchObject({ revision: '391fc7d103e3942a408def3e4f51c2f85d464417', sha256: 'dec96e8cf2e11b613bb46513dec485377f9ca5a351e71712ee0e244f287c6790' });
   });
   test('Ollama installed but stopped: start and pull, no download', () => {
     const plan = installPlan(base({ system: { bin: 'ollama', version: '0.41.0' } }));
@@ -158,9 +161,16 @@ describe('a model Ollama cannot pull', () => {
       { model: 'Qwen3.8-27B (6-bit)', quant: 'Q6_K', sizeGB: 22.0, source: 'unsloth/Qwen3.8-27B-GGUF' },
     ],
   });
-  test('the standard llama.cpp schemes are pullable; a custom one is not', () => {
-    for (const q of ['Q4_K_M', 'Q6_K', 'Q8_0', 'IQ3_S', 'IQ3_XXS', 'BF16']) expect(ollamaPullable({ ...REC, quant: q })).toBe(true);
-    expect(ollamaPullable({ ...REC, quant: 'Q8_K_P' })).toBe(false);
+  test('reviewed standard llama.cpp schemes are pullable; custom or unreviewed ones are not', () => {
+    const reviewed = [
+      REC,
+      { ...REC, source: 'unsloth/Qwen3.8-27B-GGUF', quant: 'Q6_K' },
+      { ...REC, source: 'ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF', quant: 'IQ3_S' },
+      { ...REC, source: 'ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF', quant: 'IQ3_XXS' },
+      { ...REC, source: 'IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF', quant: 'IQ4_XS' },
+    ];
+    for (const choice of reviewed) expect(ollamaPullable(choice)).toBe(true);
+    for (const quant of ['Q8_K_P', 'Q8_0', 'BF16']) expect(ollamaPullable({ ...REC, quant })).toBe(false);
   });
   test('the next best pullable option is set up instead, and the person is told why', () => {
     const plan = installPlan(base({ recommendation: HOUSE }));

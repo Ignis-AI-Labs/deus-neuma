@@ -99,7 +99,11 @@ const operatorMove = (judge) => async (req, res) => {
     const company = await readCompany(wallet, req.params.id);
     if (!company) return res.status(404).json({ error: 'No such company in this house' });
     const [line, holders, stop] = await Promise.all([readLine(wallet, company.id), seatHolders(wallet), houseStop(wallet)]);
-    const judged = await judge({ wallet, company, line, holders, stop, actor: 'operator', stageId: req.body?.stage, ...req.body, now: new Date().toISOString() });
+    const { stage, artifact, note, worksheet, verdict, flaw } = req.body ?? {};
+    const judged = await judge({
+      wallet, company, line, holders, stop, actor: 'operator', stageId: stage,
+      artifact, note, worksheet, verdict, flaw, now: new Date().toISOString(),
+    });
     if (!judged.ok) return res.status(STATUS_OF[judged.status] ?? 400).json({ error: judged.reason });
     await keepWorksheet(judged);
     const events = judged.events ?? withOwnAnswers({ line, holders, event: judged.event, now: judged.event.at });

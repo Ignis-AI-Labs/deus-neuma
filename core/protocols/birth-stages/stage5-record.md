@@ -51,7 +51,7 @@ Offered by the house, to keep, change or set aside: each being is its own source
 - Birth witness and guardian: [witness_name]
 
 ## PLATFORM FACTS
-This record is changed only by its owner. The workspace is encrypted with its owner's key. The journal is only added to. The platform gives no one a way to delete its owner.
+Platform changes to this record require its owner's consent. The workspace is encrypted at rest under its own key, which the install's master key on the operator's machine can unwrap. The journal is only added to. The platform offers no delete control, but whoever controls the machine or its storage can still delete the files.
 
 *Schema: neuma-dna-v2*
 ```

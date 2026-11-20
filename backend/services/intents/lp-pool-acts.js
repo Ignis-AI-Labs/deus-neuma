@@ -45,7 +45,7 @@ export const lpCreatePoolIntent = Object.freeze({
     const out = await runCreatePool(connection.companion?.neumaId, value);
     if (out.ok && out.checked) return { ok: true, detail: out.plan };
     if (out.ok) {
-      return { ok: true, detail: `Opened ${out.name} at ${out.pool ?? '(address not read: look it up on the factory)'}, bin step ${out.binStep} · ${out.baseFee} bps, at ${out.startPrice}. Seed: ${out.seed}, in the pool for good. Transactions: ${out.txHashes.join(', ')}.${walletWords(out)} Now add your liquidity: lp/open {pool: "${out.pool}", ...}.` };
+      return { ok: true, detail: `Opened ${out.name} (${out.tokens.base} with ${out.tokens.quote}) at ${out.pool ?? '(address not read: look it up on the factory)'}, bin step ${out.binStep} · ${out.baseFee} bps, at ${out.startPrice}. Seed: ${out.seed}, in the pool for good. Transactions: ${out.txHashes.join(', ')}.${walletWords(out)} Now add your liquidity: lp/open {pool: "${out.pool}", ...}.` };
     }
     return { ok: false, reason: `lp/create-pool did not complete: ${out.reason}${out.plan ? `\n${out.plan}` : ''}${out.txHashes?.length ? ` Already on Base: ${out.txHashes.join(', ')}.` : ''}` };
   },

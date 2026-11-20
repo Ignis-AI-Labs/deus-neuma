@@ -131,12 +131,14 @@ export const createTasksDomain = ({ locks }) => Object.freeze({
 
   /**
    * Read the standing plan of record; missing or unreadable reads as null —
-   * no plan stands.
+   * no plan stands. The record carries the operator's approval and the run's
+   * filesystem root, so only the platform's own encrypted envelope counts: a
+   * plaintext file there was written by someone else and is no plan (P6-121).
    * @param {string} neumaId
    * @returns {Promise<Object|null>}
    */
   async readPlanRecord(neumaId) {
-    const record = await this._readJSON(this._planRecordPath(neumaId)).catch(() => null);
+    const record = await this._readTrustedJSON(this._planRecordPath(neumaId)).catch(() => null);
     return record && typeof record.goal === 'string' && Array.isArray(record.steps) ? record : null;
   },
 

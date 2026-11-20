@@ -69,17 +69,17 @@ export const budgetBar = ({ budgetUsd, inPositionsUsd, waitingUsd }) => {
 };
 
 /**
- * The pool an address names, from the view's pool list. Pure.
+ * The pool an address names, from the view's pool list or a pending action's verified symbols. Pure.
  * @param {Array<{address: string, name: string, tokens: Array<[string, string]>}>} pools
  * @param {string} address
+ * @param {{tokenXSymbol?: string, tokenYSymbol?: string}} [action]
  * @returns {{name: string, symbolX: string, symbolY: string, known: boolean}}
  */
-export const poolNamed = (pools, address) => {
+export const poolNamed = (pools, address, action) => {
   const pool = (pools ?? []).find((p) => same(p.address, address));
-  const short = typeof address === 'string' ? `${address.slice(0, 6)}…${address.slice(-4)}` : '?';
   return pool
     ? { name: pool.name, symbolX: pool.tokens?.[0]?.[1] ?? '', symbolY: pool.tokens?.[1]?.[1] ?? '', known: true }
-    : { name: short, symbolX: '', symbolY: '', known: false };
+    : { name: typeof address === 'string' ? address : '?', symbolX: action?.tokenXSymbol ?? '', symbolY: action?.tokenYSymbol ?? '', known: false };
 };
 
 /**
@@ -109,7 +109,7 @@ export const lpTotals = (lp) => {
 
 /**
  * The one line a waiting deposit stakes its ask on: what goes in, and why it
- * waits. A side of zero is left out; symbols only when the pool is known. Pure.
+ * waits. A side of zero is left out; verified symbols print whenever present. Pure.
  * @param {{action: object, reason: string}} request
  * @param {{name: string, symbolX: string, symbolY: string, known?: boolean}} pool - from poolNamed
  * @param {number|null} budgetUsd
@@ -118,7 +118,7 @@ export const lpTotals = (lp) => {
 export const waitingLine = (request, pool, budgetUsd) => {
   const sides = [[request.action.amountX, pool.symbolX], [request.action.amountY, pool.symbolY]]
     .filter(([amount]) => num(amount) > 0)
-    .map(([amount, symbol]) => (pool.known ? `${amount} ${symbol}` : String(amount)));
+    .map(([amount, symbol]) => (symbol ? `${amount} ${symbol}` : String(amount)));
   const why = /^No budget/.test(request.reason) ? 'no budget set'
     : /could not be sized/.test(request.reason) ? 'could not be sized in dollars'
       : budgetUsd === null ? 'past the budget' : `past the ${usd(budgetUsd)} budget`;

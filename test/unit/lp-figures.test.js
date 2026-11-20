@@ -1,7 +1,10 @@
 import { describe, test, expect } from 'vitest';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import {
   positionRows, budgetBar, poolNamed, heldTokens, lpTotals, waitingLine, usd, nameCase, signedUsd, earnedBack, goalRows, lpPortfolioOf,
 } from '../../frontend/app/RelinkShell/lp-figures.js';
+import { WaitingCard } from '../../frontend/app/RelinkShell/WalletLiquidityCards.jsx';
 
 const POOL = '0x1cc9f4498dc2c12e385bc417658f339acf820293';
 const pool = (positions, active = 100) => [{
@@ -58,10 +61,11 @@ describe('lp-figures — the numbers behind the LIQUIDITY pictures', () => {
     expect(budgetBar({ budgetUsd: null, inPositionsUsd: 0, waitingUsd: 0 })).toMatchObject({ budgetAt: null, scale: 1 });
   });
 
-  test('a pool address is named from the list, or shortened when unknown', () => {
+  test('a listed pool is named from the list; an unlisted one keeps its full address and verified symbols', () => {
     const pools = [{ address: POOL, name: 'WETH-USDC', tokens: [['0xa', 'WETH'], ['0xb', 'USDC']] }];
     expect(poolNamed(pools, POOL.toUpperCase().replace('0X', '0x'))).toEqual({ name: 'WETH-USDC', symbolX: 'WETH', symbolY: 'USDC', known: true });
-    expect(poolNamed([], POOL)).toEqual({ name: '0x1cc9…0293', symbolX: '', symbolY: '', known: false });
+    expect(poolNamed([], POOL, { tokenXSymbol: 'WETH', tokenYSymbol: 'USDC' })).toEqual({ name: POOL, symbolX: 'WETH', symbolY: 'USDC', known: false });
+    expect(poolNamed([], POOL)).toEqual({ name: POOL, symbolX: '', symbolY: '', known: false });
   });
 
   test('a waiting deposit reads as what goes in and why it waits, zero sides left out', () => {
@@ -69,7 +73,8 @@ describe('lp-figures — the numbers behind the LIQUIDITY pictures', () => {
     const req = (reason, amountX = '0', amountY = '25') => ({ action: { amountX, amountY }, reason });
     expect(waitingLine(req('This deposit of $25.0 would take the total past the $10 budget.'), known, 10)).toBe('25 USDC · past the $10.00 budget');
     expect(waitingLine(req('No budget is set for this house member yet.', '0.01', '25'), known, null)).toBe('0.01 WETH + 25 USDC · no budget set');
-    expect(waitingLine(req('The deposit could not be sized in dollars.'), { name: '0x1cc9…0293', symbolX: '', symbolY: '', known: false }, 10)).toBe('25 · could not be sized in dollars');
+    expect(waitingLine(req('No budget is set for this house member yet.', '0.01', '25'), { name: POOL, symbolX: 'WETH', symbolY: 'USDC', known: false }, null)).toBe('0.01 WETH + 25 USDC · no budget set');
+    expect(waitingLine(req('The deposit could not be sized in dollars.'), { name: POOL, symbolX: '', symbolY: '', known: false }, 10)).toBe('25 · could not be sized in dollars');
   });
 
   test('held tokens are the non-zero ones, priced where a price is known', () => {
@@ -144,5 +149,13 @@ describe('what sits in its positions is on the list too', () => {
     const pf = lpPortfolioOf(lp, null);
     expect(pf.rows.map((r) => [r.symbol, r.balance])).toEqual([['ETH', 0.02], ['VIRTUAL · IN POSITIONS', 473], ['WETH · IN POSITIONS', 0.13]]);
     expect(pf.usdTotal).toBeCloseTo(0.02 * 1954.82 + 473 * 0.5187 + 0.13 * 1954.82, 6);
+  });
+
+  test('the real waiting card flags an unlisted pool and renders its full address and token amounts', () => {
+    const request = { action: { type: 'open', pool: POOL, amountX: '0.01', amountY: '25', tokenXSymbol: 'WETH', tokenYSymbol: 'USDC' }, reason: 'No budget is set for this house member yet.', depositUsd: '30' };
+    const html = renderToStaticMarkup(createElement(WaitingCard, { request, pools: [], budgetUsd: null, busy: false, onAnswer: String }));
+    expect(html).toContain(`UNLISTED POOL · ${POOL}`);
+    expect(html).toContain('0.01 WETH + 25 USDC · no budget set');
+    expect(html).not.toContain('0x1cc9…0293');
   });
 });

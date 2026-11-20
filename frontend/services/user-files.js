@@ -6,6 +6,7 @@
 // can show why a folder/open/save failed.
 
 import { apiCall, authHeadersOrNull } from '../utils/http.js';
+import { deskTicketUrl } from './desk-tickets.js';
 
 const BASE = '/api/v1/user/files';
 
@@ -85,14 +86,9 @@ export const uploadFile = async (dirPath, file) => {
 };
 
 /**
- * The authenticated raw-bytes URL for one file (pure given the token) — the
- * browser drag-out's DownloadURL target; the token rides the query because
- * a native download cannot carry the header (the portal's own law).
+ * The authenticated raw-bytes URL for one file, bound by a short-lived ticket.
  */
-export const rawFileUrl = (path) => {
-  const token = sessionStorage.getItem('authToken') || '';
-  return `${BASE}/raw?path=${encodeURIComponent(path)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
-};
+export const rawFileUrl = (path) => deskTicketUrl(`${BASE}/raw`, { path });
 
 /**
  * One file's bytes, for in-app binary READERS (the PDF viewer). Header-auth

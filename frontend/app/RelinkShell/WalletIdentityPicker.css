@@ -17,6 +17,6 @@
   transition: border-color var(--snap);
 }
 .wal-account-who select:hover { border-bottom-color: var(--color-border-hover); }
-.wal-account-who select:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.wal-account-who select:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 .wal-account-who select option, .wal-account-who select optgroup { background: #101719; color: var(--color-text-primary); font-size: 1rem; }
 .wal-account-kind { font-family: var(--font-data); font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }

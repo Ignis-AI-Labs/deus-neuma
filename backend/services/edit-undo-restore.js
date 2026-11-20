@@ -17,9 +17,11 @@
 
 import {
   readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, renameSync, unlinkSync,
+  constants, openSync, closeSync,
 } from 'node:fs';
 import { join, basename, dirname } from 'node:path';
 import { UNDO_SUBDIR, APPLIED_SUBDIR, contentSha256 } from './edit-undo.js';
+import { resolveUndoTarget } from './edit-undo-target.js';
 
 // Halt-on-corrupt is intentional: silently stepping past a corrupt newest
 // snapshot would restore an OLDER (possibly unrelated) edit, clobbering a
@@ -77,9 +79,11 @@ const undoCreate = (snapshot) => {
 const undoToContent = (snapshot) => {
   const existed = existsSync(snapshot.path);
   mkdirSync(dirname(snapshot.path), { recursive: true });
-  writeFileSync(snapshot.path, typeof snapshot.preEditBase64 === 'string'
-    ? Buffer.from(snapshot.preEditBase64, 'base64')
-    : snapshot.preEditContent);
+  const content = typeof snapshot.preEditBase64 === 'string'
+    ? Buffer.from(snapshot.preEditBase64, 'base64') : snapshot.preEditContent;
+  const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | (constants.O_NOFOLLOW ?? 0);
+  const fd = openSync(snapshot.path, flags);
+  try { writeFileSync(fd, content); } finally { closeSync(fd); }
   return existed ? 'restored' : 'recreated';
 };
 
@@ -94,9 +98,10 @@ const undoToContent = (snapshot) => {
 export const restoreLatest = (projectRoot) => {
   const snapshot = readLatestSnapshot(projectRoot);
   if (!snapshot) return { ok: false, undoDir: join(projectRoot, UNDO_SUBDIR) };
-  const action = snapshot.kind === 'create' ? undoCreate(snapshot) : undoToContent(snapshot);
+  const safe = { ...snapshot, path: resolveUndoTarget(projectRoot, snapshot.path) };
+  const action = safe.kind === 'create' ? undoCreate(safe) : undoToContent(safe);
   const appliedPath = archiveSnapshot(projectRoot, snapshot.snapshotPath);
-  return { ok: true, action, path: snapshot.path, appliedAt: snapshot.appliedAt, appliedPath };
+  return { ok: true, action, path: safe.path, appliedAt: safe.appliedAt, appliedPath };
 };
 
 const SAID = Object.freeze({

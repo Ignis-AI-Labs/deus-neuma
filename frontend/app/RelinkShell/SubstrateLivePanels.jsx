@@ -1,11 +1,11 @@
 // SubstrateLivePanels — the serving substrate's live panels: what it is
-// producing, the model it holds, who holds the GPU's memory, and what failed.
+// producing, the model it holds, and what failed. (Who holds the GPU's memory
+// is HoldersPanels.jsx.)
 // Read from /substrate/telemetry by SubstrateApp; every instrument draws only
 // a measured number (hud-instruments.jsx).
 
-import { Chip, Dial, SegRing, StackBar, Trace } from './hud-instruments.jsx';
+import { Chip, Dial, SegRing, Trace } from './hud-instruments.jsx';
 import { ratioOf } from './hud-geometry.js';
-import { vramParts } from './machine-view.js';
 import { Panel } from './sub-panel.jsx';
 import { asText } from '../../utils/as-text.js';
 import { TokenColumns } from './token-performance.jsx';
@@ -60,14 +60,6 @@ export const ModelPanel = ({ contextLength, sampling, adapters, span }) => (
         ? adapters.map((a) => <Chip key={a} k="LORA" v={a.split('/').pop().replace(/\.gguf$/, '')} tone="live" />)
         : <span className="sub-empty-row label-data">none</span>}
     </div>
-  </Panel>
-);
-
-export const VramPanel = ({ gpu, processes, span }) => (
-  <Panel title="GPU MEMORY · HOLDERS" aside={`${(processes ?? []).length} PROCESSES`} span={span}>
-    {Number.isFinite(gpu?.totalMB)
-      ? <StackBar parts={vramParts(gpu, processes ?? [])} total={gpu.totalMB} />
-      : <p className="sub-empty-row label-data">no GPU memory reading</p>}
   </Panel>
 );
 

@@ -69,15 +69,15 @@ const Road = ({ road }) => (
   </div>
 );
 
-const ListApproval = ({ s, listable, busy, onList }) => (listable ? (
+const ListApproval = ({ s, ids, busy, onList }) => (ids.length ? (
   <div className="cline-open" data-list-approve="">
     <p className="cline-move-t">{LIST_WORDS}</p>
-    <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`APPROVE THE LIST of ${listable} for ${s.name}`}
-      onClick={() => onList(s, listable)}>APPROVE THE LIST ({listable})</button>
+    <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`APPROVE THE LIST of ${ids.length} for ${s.name}`}
+      onClick={() => onList(s, ids)}>APPROVE THE LIST ({ids.length})</button>
   </div>
 ) : null);
 
-const Pitch = ({ s }) => (
+export const Pitch = ({ s }) => (
   <>
     <div className="cline-aud-two">
       <div><p className="cline-aud-k label-data">THE OFFER</p><p className="cline-aud-text">{s.offer}</p></div>
@@ -90,6 +90,19 @@ const Pitch = ({ s }) => (
       : <p className="cline-move-t" data-countries="">NO COUNTRY NAMED — NOTHING CAN BE SENT</p>}
     <Chips label="SIZE" items={s.targetCompanySize ? [s.targetCompanySize] : []} />
     <Chips label="LIKE" items={s.exampleClients ?? []} />
+    {/* What MUST be true of a company: a hard condition, proved from its own words, never averaged with the signs below. */}
+    {(s.required ?? []).length ? (
+      <div className="cline-aud-signs is-must" data-required="">
+        <p className="cline-aud-k label-data">MUST BE TRUE — PROVED FROM THE COMPANY&apos;S OWN WORDS, OR IT IS NOT WRITTEN TO</p>
+        <ul aria-label="must be true">
+          {s.required.map((r) => (
+            <li key={r.sign}><span className="cline-aud-mark" aria-hidden="true">■</span>{r.sign}
+              <span className="cline-aud-must-how"> · proved by {r.evidence.map((w) => `“${w}”`).join(' or ')} in its own words{r.otherwise ? ` · if not, it goes to ${r.otherwiseName ? `“${r.otherwiseName}”` : `audience ${r.otherwise}`}` : ''}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null}
     <div className="cline-aud-two">
       <Signs title="FITS IF" items={s.positiveCriteria ?? []} mark="✓" tone="fit" />
       <Signs title="NOT A FIT IF" items={s.negativeCriteria ?? []} mark="✕" tone="misfit" />
@@ -99,12 +112,12 @@ const Pitch = ({ s }) => (
 );
 
 /**
- * @param {{row: {segment: object, pool: object[], leads?: object[], counts: object, listable: number}, busy: boolean, onMove: Function, onList: Function,
+ * @param {{row: {segment: object, pool: object[], leads?: object[], counts: object, listableIds: string[]}, busy: boolean, onMove: Function, onList: Function,
  *   mode?: 'full' | 'nested'}} props — nested: folded under its campaign (one line; a press opens the pitch, the
  *   companies and the leads; it stands open while it waits on the operator)
  */
 export const LeadAudienceCard = ({ row, busy, onMove, onList, onRead = null, mode = 'full' }) => {
-  const { segment: s, pool, leads = [], gathered = [], counts, listable } = row;
+  const { segment: s, pool, leads = [], gathered = [], counts, listableIds } = row;
   if (mode === 'nested') {
     return (
       <li className="cline-aud is-nested" data-segment-id={s.id} data-segment-state={s.state}>
@@ -117,7 +130,7 @@ export const LeadAudienceCard = ({ row, busy, onMove, onList, onRead = null, mod
           <div className="cline-aud-in">
             {row.road ? <Road road={row.road} /> : null}
             <Moves s={s} busy={busy} onMove={onMove} />
-            <ListApproval s={s} listable={listable} busy={busy} onList={onList} />
+            <ListApproval s={s} ids={listableIds} busy={busy} onList={onList} />
             {/* The one list of this audience's companies; a scored one opens to why, and who was read. */}
             <AudienceCompanies segment={s} gathered={gathered} pool={pool} leads={leads} busy={busy} onRead={onRead}
               detailOf={(domain) => { const p = [...leads, ...pool].find((x) => x.domain === domain); return p ? <ul className="cline-ws-src"><Prospect p={p} /></ul> : null; }} />
@@ -141,7 +154,7 @@ export const LeadAudienceCard = ({ row, busy, onMove, onList, onRead = null, mod
           <div key={t.label} className={`cline-tile${t.loud ? ' is-loud' : ''}`}><b className="cline-tile-n">{t.n}</b><span className="cline-tile-l label-data">{t.label}</span></div>
         ))}
       </div>
-      <ListApproval s={s} listable={listable} busy={busy} onList={onList} />
+      <ListApproval s={s} ids={listableIds} busy={busy} onList={onList} />
       <Pitch s={s} />
       {pool.length ? <ul className="cline-ws-src" aria-label={`companies for ${s.name}`}>{pool.map((p) => <Prospect key={p.id} p={p} />)}</ul> : null}
     </li>

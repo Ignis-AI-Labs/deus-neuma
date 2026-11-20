@@ -266,7 +266,7 @@ export const handleNeumaReply = async (ws, connection, neumaPolicy, toolMode, ar
   // An EASY answer needs no card; an AWARENESS one stages for the operator with its reasons.
   const mandated = await replyMandateFor({
     laneId: companion?.neumaId || null, accountId, sessionId: connection.sessionId || null, postId: candidate.postId, answering: candidate.text,
-    category: candidate.category || 'ordinary', text, raised: args?.awareness === true,
+    category: candidate.category || 'ordinary', text, raised: args?.awareness === true, media: media.length,
   });
   const gate = mandated.covered ? { ok: true } : await gateAct(connection, {
     server: 'social', tool: toolName,

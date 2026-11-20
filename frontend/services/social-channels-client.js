@@ -120,10 +120,11 @@ export const stageQueuePost = ({ channelId, accountId, text, scheduledFor, campa
  * refusal and nothing is approved.
  * @param {string} id - any post of the thread
  * @param {Record<string, string>} textsSeen - id → the text as shown
+ * @param {Record<string, Array<?string>>} mediaSeen - id → the media seals as shown (mediaSeenOf)
  */
 // impure
-export const approveQueueThread = (id, textsSeen) =>
-  req(`/queue/${id}/approve-thread`, { method: 'PUT', body: { textsSeen } });
+export const approveQueueThread = (id, textsSeen, mediaSeen) =>
+  req(`/queue/${id}/approve-thread`, { method: 'PUT', body: { textsSeen, mediaSeen } });
 
 /**
  * APPROVE GROUP — every waiting post of a group (one asset on several
@@ -132,19 +133,25 @@ export const approveQueueThread = (id, textsSeen) =>
  * `ownCard` and waits for its own card.
  * @param {string} groupId
  * @param {Record<string, string>} textsSeen
+ * @param {Record<string, Array<?string>>} mediaSeen - id → the media seals as shown (mediaSeenOf)
  * @param {Record<string, object>} [tiktok]
  */
 // impure
-export const approveQueueGroup = (groupId, textsSeen, tiktok = undefined) =>
-  req(`/queue/groups/${encodeURIComponent(groupId)}/approve`, { method: 'PUT', body: { textsSeen, ...(tiktok ? { tiktok } : {}) } });
+export const approveQueueGroup = (groupId, textsSeen, mediaSeen, tiktok = undefined) =>
+  req(`/queue/groups/${encodeURIComponent(groupId)}/approve`, { method: 'PUT', body: { textsSeen, mediaSeen, ...(tiktok ? { tiktok } : {}) } });
 
-// impure — `tiktok` carries the choices made on a TikTok post's card.
-export const approveQueuePost = (id, { scheduledFor, textSeen, tiktok } = {}) =>
+/** The media seals a card showed, in order — its approval sends them back. Pure. */
+export const mediaSeenOf = (entry) => (Array.isArray(entry?.media) ? entry.media.map((m) => m?.sha256 || null) : []);
+
+// impure — `tiktok` carries the choices made on a TikTok post's card;
+// textSeen + mediaSeen are the words and media seals the card showed.
+export const approveQueuePost = (id, { scheduledFor, textSeen, mediaSeen, tiktok } = {}) =>
   req(`/queue/${id}/approve`, {
     method: 'PUT',
     body: {
       ...(scheduledFor ? { scheduledFor } : {}),
       ...(textSeen !== undefined ? { textSeen } : {}),
+      ...(mediaSeen !== undefined ? { mediaSeen } : {}),
       ...(tiktok ? { tiktok } : {}),
     },
   });

@@ -35,6 +35,7 @@ import {
 import { signalWake } from '../services/house-clock/wake-signal.js';
 import { servesLane } from '../services/house-served.js';
 import { ownedLanes } from '../services/house-deadlines.js';
+import { requireLocalScope } from '../services/remote/access-guard.js';
 
 const log = createLogger('Hooks');
 
@@ -111,7 +112,9 @@ router.post('/in/:id', express.raw({ type: () => true, limit: HOOK_BODY_LIMIT })
   return res.status(202).json({ ok: true, accepted: true, ...(ping ? { ping: true } : {}) });
 });
 
-// ── the house's own management, signed in ────────────────────────────────────
+// ── the house's own management, signed in at the local desk ─────────────────
+router.use(requireLocalScope);
+
 const refuse = (res, error) => {
   if (error instanceof HookError) return res.status(400).json({ error: error.message });
   log.error('hook route failed', { error: error.message });

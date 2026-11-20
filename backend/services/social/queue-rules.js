@@ -223,19 +223,20 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
     if (typeof v !== 'string') return `${label} must be a string`;
     if (v.length > 100) return `${label} is too long`;
   }
-  return queuedSecretRefusal({ text: t, media }, 'nothing was staged');
+  return queuedSecretRefusal({ text: t, media, quote }, 'nothing was staged');
 };
 
 /**
- * The outbound secret law over a queued post's leaving words — its text and
- * every alt text (security-seat G5). Every way into the queue (a being's
- * draft, REST, an edit) passes validateDraft above; the store re-asks at
- * approval and at the send claim, for entries staged before the law. Pure.
- * @param {{text?: string, media?: Array<{alt?: string}>|null}} entry
+ * The outbound secret law over a queued post's leaving words and quote URL —
+ * its text, every alt text and quoted link (security-seat G5). Every way into
+ * the queue (a being's draft, REST, an edit) passes validateDraft above; the
+ * store re-asks at approval and at the send claim, for entries staged before
+ * the law. Pure.
+ * @param {{text?: string, media?: Array<{alt?: string}>|null, quote?: {url?: string}}} entry
  * @param {string} outcome what the refusal means here
  * @returns {string|null} the refusal, or null when nothing secret leaves
  */
-export const queuedSecretRefusal = ({ text, media }, outcome) => {
-  const check = checkOutboundSecrets('the post', [text, ...(Array.isArray(media) ? media.map((m) => m?.alt) : [])], outcome);
+export const queuedSecretRefusal = ({ text, media, quote }, outcome) => {
+  const check = checkOutboundSecrets('the post', [text, quote?.url, ...(Array.isArray(media) ? media.map((m) => m?.alt) : [])], outcome);
   return check.ok ? null : check.reason;
 };

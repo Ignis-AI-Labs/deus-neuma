@@ -33,4 +33,4 @@ export const getCompanies = () => positionsCall('GET', '/companies', { errorPref
 export const saveModel = (company, model) => positionsCall('PUT', `/companies/${encodeURIComponent(company)}/model`, { body: model, errorPrefix: 'Could not save the business model' });
 
 /** The operator's answer to a model a member filed: approve it, or return it with a note. impure. */
-export const settleModel = (company, approve, note) => positionsCall('POST', `/companies/${encodeURIComponent(company)}/model/${approve ? 'approve' : 'return'}`, { body: { note }, errorPrefix: 'Could not answer the business model' });
+export const settleModel = (company, approve, note, proposalId) => positionsCall('POST', `/companies/${encodeURIComponent(company)}/model/${approve ? 'approve' : 'return'}`, { body: { note, proposalId }, errorPrefix: 'Could not answer the business model' });

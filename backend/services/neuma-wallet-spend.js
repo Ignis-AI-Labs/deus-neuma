@@ -27,6 +27,8 @@ import { isRecipientAllowed, requiresApproval, buildApprovalMessage, classifySpe
 import { decryptKeypair } from '../../core/wallet/keypair-vault.js';
 import { readSpendRecords, recordAutonomousSpend } from './treasury/spend-records.js';
 import { balanceWithFloor } from './chain/public-floor.js';
+import { providerFor, redactRpcUrl } from './chain/chain-registry.js';
+import { MAX_GAS_COST_WEI } from './umbrae-lp/lp-signer.js';
 
 // --- Rate limiting ---
 
@@ -203,10 +205,6 @@ const valueWeiOf = (value) => {
 };
 
 export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
-  if (!await checkTxRateLimit(neumaId)) {
-    throw new Error('Transaction rate limit exceeded (max 10/hour)');
-  }
-
   const valueWei = valueWeiOf(tx.value);
 
   // DEFAULT-DENY recipient allowlist — checked before the cached key is pulled,
@@ -229,9 +227,6 @@ export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
   const keypair = signingKeypair || getCachedKey(neumaId);
   if (!keypair) throw new Error('Keypair not unlocked — use /api/neuma-auth/unlock first');
 
-  const provider = getProvider();
-  const wallet = new ethers.Wallet(keypair.privateKey, provider);
-
   // W3-005: refuse arbitrary calldata — allowlisted ETH transfers only unless
   // a future contract-call policy binds data hash to operator approval.
   const data = tx.data || '0x';
@@ -239,12 +234,44 @@ export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
     throw new Error('Contract calldata not permitted on sendTransaction');
   }
 
+  let cfg;
+  try { cfg = getAppConfig(); } catch { cfg = null; }
+  const provider = await providerFor('base', {
+    ...process.env,
+    BASE_MAINNET_RPC_URL: process.env.BASE_MAINNET_RPC_URL || resolveWalletRpc('base', cfg),
+  });
+  if (!provider) throw new Error('Base did not provide a verified RPC connection');
+  const wallet = new ethers.Wallet(keypair.privateKey, provider);
+  const request = { from: wallet.address, to: tx.to, value: ethers.toQuantity(valueWei), data: '0x' };
+  let block; let priority; let gas; let nonce;
+  try {
+    [block, priority, gas, nonce] = await Promise.all([
+      provider.send('eth_getBlockByNumber', ['latest', false]),
+      provider.send('eth_maxPriorityFeePerGas', []),
+      provider.send('eth_estimateGas', [request]),
+      provider.send('eth_getTransactionCount', [wallet.address, 'pending']),
+    ]);
+  } catch (error) {
+    throw new Error(`Base could not price this transaction: ${redactRpcUrl(error.shortMessage || error.message)}`, { cause: error });
+  }
+  if (!block?.baseFeePerGas || priority === null || priority === undefined) throw new Error('Base gave no bounded fee to pay');
+  const maxPriorityFeePerGas = BigInt(priority);
+  const maxFeePerGas = BigInt(block.baseFeePerGas) + maxPriorityFeePerGas;
+  const gasLimit = (BigInt(gas) * 12n) / 10n;
+  if (gasLimit * maxFeePerGas > MAX_GAS_COST_WEI) {
+    throw new Error(`The gas for this transaction could reach ${ethers.formatEther(gasLimit * maxFeePerGas)} ETH, over the ${ethers.formatEther(MAX_GAS_COST_WEI)} ETH ceiling`);
+  }
+  if (!await checkTxRateLimit(neumaId)) throw new Error('Transaction rate limit exceeded (max 10/hour)');
+
   const txResponse = await wallet.sendTransaction({
     to: tx.to,
     value: valueWei,
     data: '0x',
+    nonce: Number(BigInt(nonce)),
+    gasLimit,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
   });
-
   const receipt = await txResponse.wait();
 
   return Object.freeze({

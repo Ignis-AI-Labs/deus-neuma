@@ -11,6 +11,8 @@ import { dirname, join } from 'path';
 import { mkdirSync } from 'fs';
 import { loadConfig, getAllowedOrigins, isProduction } from './config.js';
 import { ensureSecrets } from './services/secret-provisioning.js';
+import { admitRetiredMastersAtBoot, standMasterCheckAtBoot } from './services/retired-masters-boot.js';
+import { healStrandedStores } from './services/retired-masters-heal.js';
 import { receiveDeskKeys } from './services/desk-keys.js';
 import { createLogger } from './services/logger.js';
 import {
@@ -19,6 +21,8 @@ import {
 } from '../core/index.js';
 import { listAvatars } from './services/avatar-roster.js';
 import { securityHeaders } from './services/security-headers.js';
+import { parseJsonBody } from './services/http-body-parser.js';
+import { mountContentStatic } from './services/static-mounts.js';
 import { getDataRoot, getVaultRoot, getSettingsDir } from './services/data-root.js';
 import { enforceRootLock } from './services/root-lock.js';
 
@@ -50,6 +54,9 @@ import { waitingPulse } from './services/waiting/waiting-pulse.js';
 // A packaged desk hands the keys over its channel (key-lock); then nothing is provisioned here.
 await receiveDeskKeys();
 const provisionedSecrets = ensureSecrets();
+// A master an earlier re-key retired still opens whatever that re-key did not reach.
+admitRetiredMastersAtBoot();
+standMasterCheckAtBoot();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -68,7 +75,7 @@ await applyWorkspaceSettings();
 // choice file only fills the gap the env leaves.
 {
   const { loadProviderChoice } = await import('./services/provider-choice.js');
-  const { setConfig } = await import('./services/llm-provider.js');
+  const { setConfig, getConfig } = await import('./services/llm-provider.js');
   const { createLogger } = await import('./services/logger.js');
   const choice = await loadProviderChoice();
   if (choice && !process.env.LLM_PROVIDER) {
@@ -80,6 +87,13 @@ await applyWorkspaceSettings();
     createLogger('Boot').info('Provider choice restored', {
       provider: choice.provider, endpoint: choice.endpoint, chosenBy: choice.chosenBy,
     });
+  }
+  // A saved route to this computer is checked for who answers there now, not only at its setup (P6-153).
+  {
+    const { checkSavedRoutes } = await import('./services/loopback-route-owner.js');
+    const { loadRoutes } = await import('./services/neuma-routes-store.js');
+    const routes = await loadRoutes().catch(() => ({}));
+    await checkSavedRoutes([getConfig().endpoint, ...Object.values(routes).map((route) => route?.endpoint)]);
   }
   // A model server the platform set up for this person (managed-ollama.js) starts again with
   // the platform, so the mind is there after a restart. Fire-and-observe: boot never waits on it.
@@ -100,6 +114,8 @@ await applyWorkspaceSettings();
 
 // Apply the witness's persisted data-realm location (their own chat logs) before any exchange is persisted
 await applyRealmSettings();
+// Whatever in the realm an earlier re-key left under a retired master is sealed under this desk's master now
+await healStrandedStores();
 
 // Apply the witness's persisted explorer roots (the folders they've opened)
 // before any file route can resolve a path
@@ -201,26 +217,8 @@ app.use(cors({
 // Neuma Remote: who is on the other end, decided before Host is trusted
 // (docs/security/remote-surface.md). Local requests pass untouched.
 await installRemoteGate(app);
-// A clone-seed offering carries the witness's recording inline as base64 —
-// megabytes by nature. The forge routes parse their OWN bodies with a
-// seed-sized limit BEHIND requireAuth (voice-forge-routes.js), so those
-// paths pass through here unparsed: an unauthenticated 24MB POST dies at
-// the router's auth gate without a byte of it being JSON-parsed.
-// Image attachments take the same shape: the portal WS caps payloads at
-// 64KB (WS-002), so images upload via REST — parsed behind auth in
-// attachment-routes.js with its own wide limit, unparsed here.
-// Every other endpoint keeps the strict default (100kb): wide limits are
-// scoped to the surfaces that need them, never the whole API.
-const jsonDefault = express.json();
-// Segment-boundary match, not a bare prefix: Express routes on '/' segments,
-// so a future sibling like /api/v1/attachments-info must NOT silently skip
-// the parser (echo finding).
-const underPath = (p, base) => p === base || p.startsWith(`${base}/`);
-const selfParsedPath = (p) => underPath(p, '/api/v1/voice/forge') || underPath(p, '/api/v1/attachments') || underPath(p, '/api/v1/doc-press');
-app.use((req, res, next) => {
-  if (selfParsedPath(req.path)) return next(); // parsed behind auth in their routers
-  return jsonDefault(req, res, next);
-});
+// Router-specific limits and signed raw bodies are parsed behind their own gates.
+app.use(parseJsonBody);
 // The global ceiling, minus the routes that only hand back bytes already on
 // disk (THE GALLERY's files) — see isUnmeteredApiPath for why.
 app.use('/api', apiLimiter);
@@ -239,19 +237,6 @@ if (isProduction()) {
 }
 
 app.use('/assets', express.static(join(__dirname, '../frontend/assets')));
-
-app.use('/frontend', express.static(join(__dirname, '../frontend'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-    else if (path.endsWith('.html')) res.setHeader('Content-Type', 'text/html');
-  }
-}));
-
-app.use('/frontend/components', express.static(join(__dirname, '../frontend/components'), {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript');
-  }
-}));
 
 // NO MODEL EVER SHIPS (ruling, 2026-08-06): none of the avatars are ours to
 // distribute, so no .vrm is bundled into any artifact. Production scans a
@@ -274,14 +259,7 @@ app.get('/api/v1/avatars', async (req, res) => {
   }
 });
 
-app.use('/model', express.static(modelPath, {
-  setHeaders: (res, path) => {
-    if (path.endsWith('.vrm')) {
-      res.setHeader('Content-Type', 'application/octet-stream');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-    }
-  }
-}));
+mountContentStatic(app, { frontendRoot: join(__dirname, '../frontend'), modelPath });
 
 app.use(express.static(join(__dirname, 'public'), {
   setHeaders: (res, path) => {

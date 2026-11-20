@@ -34,6 +34,10 @@ import { isWitness } from './house-members.js';
 import { isHarness } from '../harness-mode.js';
 import { isSoundOn, toggleSound, playSound } from '../../services/sound-engine.js';
 import { uiSound } from '../../services/ui-sound.js';
+import { isThinkingNow, acquireThinkingSound, releaseThinkingSound } from './thinking-sound.js';
+import { isRenderingNow, acquireRenderSound, releaseRenderSound } from './render-sound.js';
+import { CloneDock } from './CloneChannels.jsx';
+import { ShellDock } from './ShellDock.jsx';
 import { igniteAndWait } from '../../services/substrate-ignition.js';
 import { getStandby, setStandby } from '../../services/standby.js';
 import { ContextStrip } from './ContextStrip.jsx';
@@ -283,6 +287,20 @@ const ChatBody = () => {
     if (pulled?.text) recallMessage({ text: pulled.text, turnId: null });
   }, [state.pulledDraft, recallMessage]);
   const busy = state.thinking || state.messages.some((m) => m.streaming);
+  // THE THINKING LOOP (thinking-sound.js): while this chat's being is working and nothing is appearing yet —
+  // unless it is making an image, which has its own loop (render-sound.js).
+  const renderingNow = isRenderingNow(state);
+  const thinkingNow = !renderingNow && isThinkingNow(state);
+  useEffect(() => {
+    if (!thinkingNow) return undefined;
+    acquireThinkingSound();
+    return releaseThinkingSound;
+  }, [thinkingNow]);
+  useEffect(() => {
+    if (!renderingNow) return undefined;
+    acquireRenderSound();
+    return releaseRenderSound;
+  }, [renderingNow]);
   // Every witness message on screen (history included), oldest -> newest --
   // ArrowUp walks them CLI-style; adjacent repeats collapse (steps, never
   // stutters). Held STABLE while its contents are unchanged: the transcript
@@ -377,6 +395,10 @@ const ChatBody = () => {
         ) : (
           <>
             {panel}
+            {/* Shadow clones at work, docked above the composer so they follow the chat (CloneChannels.jsx). */}
+            <CloneDock messages={state.messages} />
+            {/* What this chat left running — shells, crawls, servers — and every chat's, one press away (ShellDock.jsx). */}
+            <ShellDock laneId={activeCompanion?.neumaId ?? null} wsService={wsService} />
             <ContextStrip />
             <StreamInput
               connected={state.connected}

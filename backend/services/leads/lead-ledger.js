@@ -26,6 +26,7 @@ import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
 import { createHouseStore } from '../house-office.js';
 import { legacyCmoPath } from '../marketing/cmo-designation.js';
+import { cleanSaid } from '../sales/reply-said.js';
 
 const DEFAULT_LEGACY_PATH = join(getSettingsDir(), 'lead-ledger.json');
 
@@ -58,12 +59,24 @@ export const sourceOf = (lead) => {
 };
 /** pure — the kind a lead is filed under. */
 export const kindOf = (lead) => (LEAD_KINDS.includes(lead?.kind) ? lead.kind : String(lead?.source ?? '').startsWith('lead engine [') ? 'buyer' : UNSORTED);
+// A LEAD MOVES TO ANOTHER PERSON at its company (Design note, 2026-11-17: an address found dead, or the top one silent and
+// the next one up named): its contact changes, and that touch keeps the address it moved from (contactFrom). What
+// was written to the person before is history; the emails to the new one count from the move.
+/** pure — the touches since the lead's current person: a contact change starts them anew. */
+export const personTouches = (lead) => {
+  const touches = lead?.touches || [];
+  const moved = touches.findLastIndex((t) => t.contactFrom);
+  return moved < 0 ? touches : touches.slice(moved + 1);
+};
+/** pure — every address the lead pointed at before its current one. */
+export const formerContacts = (lead) => (lead?.touches || []).map((t) => t.contactFrom).filter(Boolean);
 
 // Where a lead can come from: any social channel the house speaks through,
 // the email lane, or anywhere else the field produced one.
 const KNOWN_LANES = Object.freeze(['email', 'other']);
 const FIELD_MAX = 500;
 const NOTE_MAX = 2000;
+const TEXT_MAX = 6000;
 
 /**
  * Validate the shape of a new or updated lead (pure). Returns an error string
@@ -223,6 +236,10 @@ export const createLeadLedger = ({ path }) => {
      *   direction: which way a message went on this touch — 'out' the house
      *   wrote to them, 'in' they wrote to the house (lead upkeep reads it).
      *   promised: what the house said it would send on a yes (sales/first-email.js).
+     *   from: the actual sending address, for the per-address daily ramp (sales-cover.js).
+     *   messageId: the Message-ID of the email this touch sent — a later bounce or
+     *   "stop" is believed only when it carries one (sales/reply-rules.js).
+     *   delivery: `maybe-sent` when DATA left but the acknowledgement was lost.
      */
     touch(id, change = {}) {
       return serialize(async () => {
@@ -244,6 +261,7 @@ export const createLeadLedger = ({ path }) => {
         if (change.direction !== undefined && !TOUCH_DIRECTIONS.includes(change.direction)) return { ok: false, error: `direction is one of ${TOUCH_DIRECTIONS.join(', ')}` };
         const now = new Date().toISOString();
         const kindBefore = kindOf(lead);
+        const contactBefore = lead.contact;
         Object.assign(lead, {
           name: trimmed(merged.name),
           contact: trimmed(merged.contact),
@@ -267,12 +285,78 @@ export const createLeadLedger = ({ path }) => {
           ...(change.status !== undefined ? { status: merged.status } : {}),
           ...(change.kind !== undefined && change.kind !== kindBefore ? { kindFrom: kindBefore, kindTo: merged.kind } : {}),
           ...(ownerAfter !== ownerBefore ? { ownerFrom: ownerBefore, ownerTo: ownerAfter } : {}),
+          ...(contactBefore && lead.contact !== contactBefore ? { contactFrom: contactBefore } : {}),
           ...(change.direction ? { direction: change.direction } : {}),
           ...(trimmed(change.promised) ? { promised: trimmed(change.promised).slice(0, FIELD_MAX) } : {}),
+          ...(trimmed(change.from) ? { from: trimmed(change.from).toLowerCase() } : {}),
+          ...(trimmed(change.messageId) ? { messageId: trimmed(change.messageId).slice(0, FIELD_MAX) } : {}),
+          ...(change.delivery === 'maybe-sent' ? { delivery: 'maybe-sent' } : {}),
           ...(trimmed(change.note) ? { note: trimmed(change.note).slice(0, NOTE_MAX) } : {}),
+          // What they wrote, kept with the touch that says they wrote (mail-upkeep.js): its subject and their own words.
+          ...(change.direction === 'in' && trimmed(change.subject) ? { subject: trimmed(change.subject).slice(0, FIELD_MAX) } : {}),
+          ...(change.direction === 'in' && trimmed(change.text) ? { text: trimmed(change.text).slice(0, TEXT_MAX) } : {}),
+          // What their reply SAYS (sales/reply-reading.js): read by the mail watch, or said by the operator or a member.
+          ...(cleanSaid(change.said, change.by) ? { said: cleanSaid(change.said, change.by) } : {}),
         });
         await save(leads);
         return { ok: true, lead };
+      });
+    },
+
+    /**
+     * Keep what they wrote on the touch that says they wrote (the watch names it "(mail #uid)"), for a message
+     * recorded before the watch kept the words: read once from the mailbox (sales/their-email.js), then kept. It
+     * fills that touch, never one already filled, and appends nothing — the history says what it said. impure.
+     * @param {string} id
+     * @param {string} ref - "mail #7232"
+     * @param {{subject?: string, text?: string}} words
+     */
+    keepWords(id, ref, { subject, text } = {}) {
+      return serialize(async () => {
+        const leads = await load();
+        const touch = leads.find((l) => l.id === id)?.touches?.find((t) => t.direction !== 'out' && String(t.note ?? '').includes(`(${ref})`));
+        if (!touch) return { ok: false, error: 'no touch on that lead names that message' };
+        if (trimmed(subject) && !touch.subject) touch.subject = trimmed(subject).slice(0, FIELD_MAX);
+        if (trimmed(text) && !touch.text) touch.text = trimmed(text).slice(0, TEXT_MAX);
+        await save(leads);
+        return { ok: true };
+      });
+    },
+
+    /**
+     * Add many leads in ONE write — an import from another tool (leads/lead-import.js). Each is validated as add
+     * validates it and carries its own history: the messages that passed before it came to the house, at the
+     * moments they passed (oldest first), then one touch saying it came. Nothing is written unless every lead
+     * stands. impure.
+     * @param {Array<object>} list - add's fields, plus history?: Array<{at: string, direction: 'in'|'out', note: string, from?: string}>
+     * @returns {Promise<object[]>} the leads written
+     */
+    addMany(list) {
+      const problems = list.map((lead, i) => { const why = validateLead(lead); return why ? `lead ${i + 1}: ${why}` : null; }).filter(Boolean);
+      if (problems.length) return Promise.reject(new Error(`${problems.length} lead(s) refused — ${problems.join('; ')}`));
+      return serialize(async () => {
+        const leads = await load();
+        const now = new Date().toISOString();
+        const entries = list.map((lead) => {
+          const by = String(lead.addedBy || '');
+          const history = (lead.history ?? [])
+            .filter((t) => t && !Number.isNaN(Date.parse(t.at)) && TOUCH_DIRECTIONS.includes(t.direction))
+            .map((t) => ({ at: new Date(Date.parse(t.at)).toISOString(), by, direction: t.direction, ...(trimmed(t.from) ? { from: trimmed(t.from).toLowerCase() } : {}), ...(trimmed(t.note) ? { note: trimmed(t.note).slice(0, NOTE_MAX) } : {}) }))
+            .sort((a, b) => a.at.localeCompare(b.at));
+          return {
+            id: crypto.randomBytes(8).toString('hex'),
+            name: trimmed(lead.name), contact: trimmed(lead.contact), channelId: lead.channelId || 'other', source: trimmed(lead.source),
+            status: lead.status || 'cold', ...(lead.kind ? { kind: lead.kind } : {}),
+            campaignId: trimmed(lead.campaignId) || null, accountId: trimmed(lead.accountId) || null, ownerNeumaId: lead.ownerNeumaId || null,
+            createdAt: now, updatedAt: now,
+            // The touch of its coming carries no status: the messages before it say what happened, and a bare
+            // "contacted" touch would read as one more email sent (lead-upkeep.js isOut).
+            touches: [...history, { at: now, by, ...(trimmed(lead.note) ? { note: trimmed(lead.note).slice(0, NOTE_MAX) } : {}) }],
+          };
+        });
+        leads.push(...entries);
+        await save(leads);
+        return entries;
       });
     },
 

@@ -154,5 +154,5 @@ export const marketQuote = async (ask, { neumaId } = {}) => {
     const after = net === null ? '' : `, about ${net < 0 ? '−' : '+'}$${Math.abs(net).toFixed(4)} after gas at your last swap's size`;
     return `ROUND TRIP ${q.amountIn} ${q.route[0]} → ${q.amountOut} via ${q.route.join(' → ')} · ${gain > 0 ? `profit ${gain.toPrecision(4)} ${q.route[0]} before gas${after}; lp/swap with tokenIn = tokenOut runs it` : 'no profit now'}. ${gasWords}`;
   }
-  return [`QUOTE ${q.amountIn} ${q.symbolIn} → ${q.symbolOut}, two roads:`, ...roadLines(q), `lp/swap takes the road that pays more. ${gasWords}`].join('\n');
+  return [`QUOTE ${q.amountIn} ${q.symbolIn} (${q.tokens.in}) → ${q.symbolOut} (${q.tokens.out}), two roads:`, ...roadLines(q), `lp/swap takes the road that pays more. ${gasWords}`].join('\n');
 };

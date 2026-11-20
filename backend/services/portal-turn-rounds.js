@@ -26,13 +26,13 @@ import { recordBenchmarkExtraCall } from './benchmark-extra-calls.js';
 import { noteRoundRoom } from './read-room.js';
 import { noteToolResultSightings } from './security/injection-sightings.js';
 import { callerCloseTools, callerYielded, processRoundActs, yieldCloseCalls } from './caller-tools.js';
-import { yieldForQueuedThought, QUEUED_ACTION_REASON } from './queued-action-handoff.js';
+import { yieldForQueuedThought, heardWhileWorking, QUEUED_ACTION_REASON } from './queued-action-handoff.js';
 import { createLogger } from './logger.js';
 import { safeSend as _safeSend } from './ws-send.js';
 import { sightForResults, withSight } from './image-forge/image-sight.js';
 import { isFinalToolRound, toolRoundCap, withinToolRounds } from './tool-rounds.js';
 import { neumaWorkspace, buildCompositionEvent } from '../../core/index.js';
-import { wireContextSections } from './turn-context-carry.js';
+import { wireSectionsOf } from './wire-sections.js';
 import { markTurnText, recordThoughtStretch } from './tool-action-record.js';
 import { RESULTS_FOLLOW_UP, formatToolResult, formatToolResults, nativeToolExchange } from './tool-exchange.js';
 import { pastFoldBoundary, foldWorkingContext, workingContextNote } from './working-context.js';
@@ -239,7 +239,7 @@ export const runToolRounds = async ({
     // The gauge's frame on the turn's measured usage so far.
     const sendComposition = (completionText) => _safeSend(ws, {
       ...buildCompositionEvent({
-        sections: [...wireContextSections(contextSections, messages[0]), ...toolContextSections], usage: turnUsage, completionText, standing: standingUsage,
+        sections: [...wireSectionsOf(contextSections, messages[0], connection), ...toolContextSections], usage: turnUsage, completionText, standing: standingUsage,
         toolResults: connection.compositionToolResults || [], budget: contextBudget, cache: latestCacheTelemetry,
       }),
       ...contextScope,
@@ -407,7 +407,7 @@ export const runToolRounds = async ({
       }
       const redirectNote = redirect ? redirectBrief(redirect) : '';
       const baseFollowUp = contextNote ? `${reminded}\n\n${contextNote}` : reminded;
-      const followUp = redirectNote ? (baseFollowUp ? `${baseFollowUp}\n\n${redirectNote}` : redirectNote) : baseFollowUp;
+      const followUp = [baseFollowUp, redirectNote, await heardWhileWorking(connection)].filter(Boolean).join('\n\n'); // + words the operator sent mid-turn
       // THE RETURN — a render this round produced comes back to the being's
       // own eyes before it speaks (image-sight.js). Structural, not elected
       // (Design note, 2026-08-05: a being that must choose to look will skip it. A

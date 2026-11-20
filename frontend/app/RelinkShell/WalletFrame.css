@@ -32,7 +32,7 @@
 .wal-addr.is-on .wal-addr-a { color: var(--signal); }
 .wal-addr-v { font-family: var(--font-data); font-size: 15px; white-space: nowrap; }
 .wal-addr-flag { padding: 0 6px; background: var(--warn); color: #0b0e11; font-size: 13px; letter-spacing: 0.06em; }
-.wal-addr:focus-visible { outline: 2px solid var(--signal); outline-offset: -2px; }
+.wal-addr:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 
 /* --- Main wallet: hero without the old rules around it --- */
 .wal-main { display: flex; flex-direction: column; gap: 20px; }

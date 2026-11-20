@@ -60,6 +60,7 @@ import moneyInRouter from './money-in-routes.js';
 import treasuryRouter from './treasury-routes.js';
 import emailRouter from './email-routes.js';
 import docPressRouter from './doc-press-routes.js';
+import chatLineRouter from './chat-line-routes.js';
 import hookRouter from './hook-routes.js';
 import imageForgeRouter from './image-forge-routes.js';
 import galleryRouter from './gallery-routes.js';
@@ -117,13 +118,14 @@ import inferenceRouter from './inference-routes.js';
 import refinementRouter from './refinement-routes.js';
 import attunementRouter from './attunement-routes.js';
 import remiaRouter from './remia-routes.js';
+import deskTicketRouter from './desk-ticket-routes.js';
 
 /**
  * Mount the whole v1 API surface on `app`, in mount-order law.
  * // impure — registers handlers on the app
  */
 export const mountApiRoutes = (app) => {
-  // ?token= → header for the headerless lanes (EventSource, native download) BEFORE any /api/v1 blanket requireAuth 401s them
+  // Exact-resource ?ticket= capabilities map internally before blanket auth routers.
   app.use(mapLaneQueryToken);
 
   // GENESIS, the install's once-ever opening, plays before anyone signs in —
@@ -154,6 +156,7 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/roster', rosterRouter);
   // What the operator has permanently granted, read back (read-only by law).
   app.use('/api/v1/permissions', permissionsRouter);
+  app.use('/api/v1/desk-tickets', deskTicketRouter);
   // The operator's brand kits — listed, and authored by hand when they want to.
   app.use('/api/v1/brands', brandRouter);
   app.use('/api/v1/birth-setup', birthSetupRouter);
@@ -250,6 +253,10 @@ export const mountApiRoutes = (app) => {
   // rendering only (real Chromium, no egress); body parsed behind auth in the
   // router with its own wide limit. requireAuth inside.
   app.use('/api/v1/doc-press', docPressRouter);
+
+  // THE CHAT LINE — a sealed AI witness the operator let in speaks in their open chats from any terminal
+  // (services/chat-line.js). requireAuth inside; the witness is proven by its sealed wallet.
+  app.use('/api/v1/chat-line', chatLineRouter);
 
   // THE IMAGE FORGE — supervised ComfyUI manage surface (status/launch/stop/
   // free). The backend is the engine's SOLE client (loopback, no auth on the

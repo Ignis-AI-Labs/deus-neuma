@@ -12,16 +12,28 @@ import express from 'express';
 import request from 'supertest';
 import { describe, expect, test, beforeAll } from 'vitest';
 import { mountApiRoutes } from '../../backend/routes/route-mounts.js';
+import { mountLocalOnlyRoutes, LOCAL_ONLY_ROUTES } from '../../backend/services/remote/wire.js';
+import { requireLocalScope } from '../../backend/services/remote/access-guard.js';
+import { mapLaneQueryToken, HEADERLESS_LANES } from '../../backend/routes/user-files-routes.js';
 import { catalogRoutes, catalogMarkdown, walkRouter } from '../../backend/routes/route-catalog.js';
 import { requireAuth } from '../../backend/services/auth.js';
 import { requireInstallOwner } from '../../backend/services/install-owner.js';
 
 const PAGE = new URL('../../docs/reference/API-ROUTES.md', import.meta.url);
-const KNOWN = new Map([[requireAuth, 'requireAuth'], [requireInstallOwner, 'requireInstallOwner']]);
+const KNOWN = new Map([
+  [requireAuth, 'requireAuth'],
+  [requireInstallOwner, 'requireInstallOwner'],
+  [requireLocalScope, 'requireLocalScope'],
+  [mapLaneQueryToken, 'mapLaneQueryToken'],
+]);
+const OPTIONS = { queryTokenGuard: 'mapLaneQueryToken', queryTokenPaths: HEADERLESS_LANES };
 
 let routes;
 beforeAll(() => {
-  routes = catalogRoutes(mountApiRoutes, KNOWN);
+  routes = catalogRoutes((app) => {
+    mountLocalOnlyRoutes(app);
+    mountApiRoutes(app);
+  }, KNOWN, OPTIONS);
 });
 
 describe('the walker, on routers made here', () => {
@@ -78,8 +90,23 @@ describe('the catalog of the real backend', () => {
     for (const r of routes) expect(r.path, r.path).toMatch(/^(\/(?:[A-Za-z0-9_.*-]+|:[A-Za-z0-9_]+(?:\([A-Za-z0-9_|]+\))?)?)+$/);
   });
 
+  test('app-level local-only guards merge with the real route guards, and query tokens stay on their four lanes', () => {
+    const local = routes.find((r) => r.method === 'PUT' && r.path === '/api/v1/llm/provider');
+    expect(local.guards).toEqual(expect.arrayContaining(['requireLocalScope', 'requireAuth']));
+    const money = routes.find((r) => r.method === 'POST' && r.path === '/api/v1/neuma/:neumaId/lp/open');
+    expect(money.guards).toEqual(expect.arrayContaining(['requireLocalScope', 'requireAuth']));
+    for (const [method, path] of LOCAL_ONLY_ROUTES) {
+      const route = routes.find((r) => r.method === method.toUpperCase() && r.path === path);
+      expect(route?.guards, `${method} ${path}`).toContain('requireLocalScope');
+    }
+    expect(routes.filter((r) => r.queryToken).map((r) => r.path).sort()).toEqual(['/api/v1/user/files/events', '/api/v1/user/files/raw']);
+    expect(routes.every((r) => !r.guards.includes('mapLaneQueryToken'))).toBe(true);
+    expect(catalogMarkdown(routes)).toContain('it is not an alternate authentication transport on any other route.');
+  });
+
   test('every endpoint listed behind requireAuth refuses a request with no credentials', async () => {
     const app = express();
+    mountLocalOnlyRoutes(app);
     mountApiRoutes(app);
     const guarded = routes.filter((r) => r.guards.includes('requireAuth') && r.method !== 'ALL');
     expect(guarded.length).toBeGreaterThan(400);
@@ -89,7 +116,9 @@ describe('the catalog of the real backend', () => {
       const url = r.path.replace(/:[A-Za-z0-9_]+/g, 'catalog-probe').replace(/\*/g, 'x');
       const res = await request(app)[r.method.toLowerCase()](url);
       asked += 1;
-      if (res.status !== 401) wrong.push(`${r.method} ${r.path} → ${res.status}`);
+      const firstAuthGuard = r.guards.find((guard) => ['requireAuth', 'requireLocalScope'].includes(guard));
+      const expected = firstAuthGuard === 'requireLocalScope' ? 403 : 401;
+      if (res.status !== expected) wrong.push(`${r.method} ${r.path} → ${res.status}, expected ${expected}`);
     }
     expect(wrong).toEqual([]);
     expect(asked).toBe(guarded.length);

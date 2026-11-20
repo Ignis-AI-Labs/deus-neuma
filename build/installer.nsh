@@ -14,14 +14,12 @@
 ;               kit, a Start menu entry, a desktop shortcut, start Deus Neuma with Windows
 ;   Model location, with Browse (only when the model is chosen): models can be 30+ GB
 ;   Ready to install: everything chosen, before anything is written
-;   Installing, with every step shown; the model step runs the app's own runtime (NEUMA.exe as
-;     Node) with backend/cli/setup-model-server.mjs --home <the chosen folder>, the same code the
-;     app's first run uses. If it cannot finish, the install still succeeds and the app offers it.
+;   Installing, with every step shown; the model step runs backend/cli/setup-model-server.mjs as
+;     an Electron utility child with --home <the chosen folder>, the same code the app's first run
+;     uses. If it cannot finish, the install still succeeds and the app offers it.
 ;   Finish, with Launch Deus Neuma (checked)
-; Every choice is kept (HKCU\Software\Deus Neuma), so an update (electron-updater, --updated) shows no
-; page, installs no component again and keeps them. The uninstaller removes the shortcuts and the
-; start-with-Windows entry, and asks before it removes the model folder (kept by default), which it
-; touches only while it carries the mark setup wrote into it (DnModelHomeVerdict).
+; Updates keep the HKCU choices and show no page. Uninstall removes shortcuts/startup and asks before
+; removing models (kept by default), only in a home carrying setup's mark (DnModelHomeVerdict).
 
 !include "nsDialogs.nsh"
 !include "LogicLib.nsh"
@@ -35,12 +33,9 @@
 ; Written into the model folder by setup (customInstall); the uninstaller touches only a folder that has it.
 !define DN_MODEL_MARK ".deus-neuma-model-home"
 
-; May the uninstaller stop the model server in, and delete, the model folder read back from HKCU? An
-; all-users uninstall runs elevated, but HKCU stays writable by anything the person runs, so the value
-; alone proves nothing. The folder must carry the mark setup wrote into it, must be a full path, and
-; must not be a drive root, nor be or hold Windows, Program Files, the profile or the install folder
-; (so never the install folder's parent), nor lie inside Windows. Sets VERDICT to "" when it may, else
-; to why not. Uses $R0-$R2.
+; HKCU is untrusted during elevated uninstall: require setup's mark, a full non-root path, and no
+; protected place (Windows, Program Files, profile, install folder or its parent). VERDICT names a
+; refusal, or is empty when the home passes. Uses $R0-$R2.
 !macro DnCovers TARGET VERDICT
   ${If} ${VERDICT} == ""
     StrLen $R2 "$R0\"
@@ -519,10 +514,10 @@ Var PfBold
       ${EndIf}
       DetailPrint "Only downloads happen now. Nothing is loaded onto your graphics card until Deus Neuma first opens."
       DetailPrint "This downloads several GB and can take a while. Every step is shown below."
-      System::Call 'Kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", t "1")i'
-      nsExec::ExecToLog '"$appExe" "$INSTDIR\resources\app\backend\cli\setup-model-server.mjs" --yes --home "$ModelHome"'
+      System::Call 'Kernel32::SetEnvironmentVariable(t "NEUMA_SETUP_MODEL_SERVER", t "1")i'
+      nsExec::ExecToLog '"$appExe" --yes --home "$ModelHome"'
       Pop $0
-      System::Call 'Kernel32::SetEnvironmentVariable(t "ELECTRON_RUN_AS_NODE", t "")i'
+      System::Call 'Kernel32::SetEnvironmentVariable(t "NEUMA_SETUP_MODEL_SERVER", t "")i'
       ${If} $0 == 0
         DetailPrint "The local model server and the model are downloaded. The model starts when Deus Neuma first opens."
       ${Else}
@@ -540,6 +535,8 @@ Var PfBold
     DeleteRegValue HKCU "${DN_RUN}" "${APP_ID}"
     ReadRegStr $0 HKCU "${DN_REG}" "ModelHome"
     ${If} $0 != ""
+      InitPluginsDir
+      File "/oname=$PLUGINSDIR\model-home.ps1" "${BUILD_RESOURCES_DIR}\installer-model-home.ps1"
       !insertmacro DnModelHomeVerdict "$0" $2
       ${If} $2 != ""
         DetailPrint "Left the model folder $0 as it is: $2."
@@ -547,23 +544,24 @@ Var PfBold
       ${EndIf}
     ${EndIf}
     ${If} $0 != ""
-      ; The model server the setup started lives in that folder. Stopped first, it cannot hold the folder's
-      ; files open, nor go on running after Deus Neuma is gone. Matched by the folder (read from the
-      ; environment, so no path is ever quoted into the command), never by name alone: the person's own
-      ; Ollama elsewhere is left running. This is 32-bit code on 64-bit Windows: the 64-bit PowerShell and
-      ; WMI are used because a 32-bit one cannot read the path of a 64-bit process.
-      System::Call 'Kernel32::SetEnvironmentVariable(t "DN_MODEL_HOME", t "$0")i'
-      ${DisableX64FSRedirection}
-      nsExec::ExecToLog `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -WindowStyle Hidden -Command "Get-CimInstance Win32_Process -Filter \"Name='ollama.exe'\" | Where-Object { $$_.ExecutablePath -and $$_.ExecutablePath.StartsWith($$env:DN_MODEL_HOME, 'OrdinalIgnoreCase') } | ForEach-Object { Stop-Process -Id $$_.ProcessId -Force }"`
-      ${EnableX64FSRedirection}
-      Pop $1
-      System::Call 'Kernel32::SetEnvironmentVariable(t "DN_MODEL_HOME", t "")i'
+      StrCpy $3 0
       ${If} ${FileExists} "$0\*.*"
         ; /SD IDNO: a silent uninstall keeps the models (a message box would otherwise wait for ever)
         ${If} ${Cmd} `MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 "Also remove the local model server and the downloaded models in:$\r$\n$0$\r$\n$\r$\nThey can be large. Choose No to keep them for a later install." /SD IDNO IDYES`
-          RMDir /r "$0"
-          DetailPrint "Removed the model folder $0."
+          StrCpy $3 1
         ${EndIf}
+      ${EndIf}
+      ; Reparse checks finish before the helper stops setup's server or removes anything.
+      System::Call 'Kernel32::SetEnvironmentVariable(t "DN_MODEL_HOME", t "$0")i'
+      ${DisableX64FSRedirection}
+      nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "$PLUGINSDIR\model-home.ps1" -StopKnownServer -RemoveKnownChildren $3'
+      ${EnableX64FSRedirection}
+      Pop $1
+      System::Call 'Kernel32::SetEnvironmentVariable(t "DN_MODEL_HOME", t "")i'
+      ${If} $1 != 0
+        DetailPrint "Left the model folder $0 as it is: its safety check or managed cleanup failed."
+      ${ElseIf} $3 == 1
+        DetailPrint "Removed setup's model server and models from $0; unrelated files were left alone."
       ${EndIf}
     ${EndIf}
     DeleteRegKey HKCU "${DN_REG}"

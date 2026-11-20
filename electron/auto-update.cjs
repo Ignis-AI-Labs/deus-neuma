@@ -37,9 +37,11 @@
 // feed name THIS app asked for (its own platform + arch — so a signed feed for
 // another platform never verifies), checks the whole signed offer IS what
 // electron-updater parsed, and only then downloads (self) or tells the user
-// (notify). A failed check is asked once more past every cache (a .sig cached
+// (notify). The signed releaseDate must be current and not older than the
+// newest signed feed this install already accepted (update-freshness.cjs).
+// A failed check is asked once more past every cache (a .sig cached
 // apart from a new yml is not a forgery) before it stands. Anything less — no
-// key, no signature, a bad one, a different feed — downloads nothing, logs
+// key, no signature, a bad one, a different or rolled-back feed — downloads nothing, logs
 // why, and shows one quiet […] notice. A self install also
 // downloads only its own file type (AppImage on Linux, exe on Windows).
 
@@ -53,6 +55,7 @@ const {
   unfitForPlatform,
 } = require('./release-signature.cjs');
 const { notesText } = require('./update-notes.cjs');
+const { acceptFreshFeed } = require('./update-freshness.cjs');
 const path = require('path');
 const connections = require('./connections.cjs');
 
@@ -231,11 +234,14 @@ const fetchSignedFeed = async (fetchImpl, feedUrl, channelFile, fresh = false) =
  * @returns {Promise<{ ok: true, signed: object, refreshed: boolean } | { ok: false, reason: string,
  *   firstReason?: string }>}
  */
-const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered }) => {
+const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered, floorFile = null }) => {
   const read = async (fresh) => {
     try {
       const { ymlBytes, sigText } = await fetchSignedFeed(fetchImpl, feedUrl, channelFile, fresh);
-      return checkSignedFeed({ fileName: channelFile, ymlBytes, sigText, publicKey, offered });
+      const verdict = checkSignedFeed({ fileName: channelFile, ymlBytes, sigText, publicKey, offered });
+      if (!verdict.ok) return verdict;
+      const freshVerdict = acceptFreshFeed({ floorFile, signed: verdict.signed, ymlBytes });
+      return freshVerdict.ok ? verdict : freshVerdict;
     } catch (error) {
       return { ok: false, reason: `the signed feed could not be fetched: ${error.message}` };
     }
@@ -261,7 +267,7 @@ const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered
 // impure
 const wireUpdater = ({
   updater, form, feedUrl, Notification, refreshTray, log, publicKeyText, fetchImpl, channelFile,
-  platform = process.platform,
+  platform = process.platform, floorFile = null,
 }) => {
   const publicKeys = releasePublicKeys(publicKeyText);
   state = { form, ready: false, availableVersion: null, notes: null };
@@ -280,7 +286,7 @@ const wireUpdater = ({
   // impure — the verdict on an offer; without a key there is nothing to fetch
   const verdictOn = async (info) => {
     if (publicKeys.length === 0) return { ok: false, reason: 'no release public key is embedded in this build' };
-    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey: publicKeys, offered: info });
+    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey: publicKeys, offered: info, floorFile });
     if (verdict.refreshed) log.info?.(`[neuma] update ${info.version}: the first read was stale (${verdict.firstReason}); the fresh read verified`);
     return verdict;
   };
@@ -391,6 +397,7 @@ const init = ({
     fetchImpl: (url, options) => net.fetch(url, options),
     channelFile: channelFileFor(platform, process.arch),
     platform,
+    floorFile: path.join(app.getPath('userData'), 'update-floor.json'),
   });
 
   live = { form, updater, shell, check, app, stopBackend };

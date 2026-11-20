@@ -25,11 +25,23 @@ export const editReady = (draft, fact) => draft.claim.trim().length >= 10 && dra
 
 const same = (a, b) => a.company === b.company && a.claim === b.claim && a.source === b.source;
 
-/** The facts ticked when the sheet opens: the ones the operator already approved, word for word (a re-filed sheet is not checked twice). */
-export const startChecked = (facts) => (facts?.sheet?.facts ?? []).filter((f) => (facts.approved?.facts ?? []).some((a) => same(a, f))).map((f) => f.n);
+/**
+ * The facts of the sheet the operator approved before (Design note, 2026-11-18: an approved fact is never put up for approval
+ * again): the server carries them (sales-facts.js foldSalesFacts, `carried`); a record from before it did is matched
+ * word for word.
+ */
+export const startChecked = (facts) => (Array.isArray(facts?.carried) ? facts.carried
+  : (facts?.sheet?.facts ?? []).filter((f) => (facts.approved?.facts ?? []).some((a) => same(a, f))).map((f) => f.n));
 
-/** One fact's standing on a reviewed sheet: 'approved', 'held' (sent back to fix), or null while the sheet waits. */
-export const factStanding = (facts, fact) => (!facts?.review || facts.review.verdict !== 'approved' ? null : (facts.review.held ?? []).some((h) => h.n === fact.n) ? 'held' : 'approved');
+/** The facts that wait for the operator: every fact on the sheet but those approved before. */
+export const waitingFacts = (facts) => (facts?.sheet?.facts ?? []).filter((f) => !startChecked(facts).includes(f.n));
+
+/** One fact's standing: 'approved', 'held' (sent back to fix), 'carried' (approved before, while the sheet waits on the rest), or null (it waits). */
+export const factStanding = (facts, fact) => {
+  if (!facts?.review) return startChecked(facts).includes(fact.n) ? 'carried' : null;
+  if (facts.review.verdict !== 'approved') return null;
+  return (facts.review.held ?? []).some((h) => h.n === fact.n) ? 'held' : 'approved';
+};
 
 /** The count line over the sheet. */
 export const checkedWords = (checked, total) => `${checked} OF ${total} CHECKED`;
@@ -46,7 +58,8 @@ export const sheetStats = (facts) => {
   const sheet = facts?.sheet;
   if (!sheet) return [{ text: 'NONE FILED', tone: 'alert' }];
   const held = facts.review?.held?.length ?? 0;
-  const state = !facts.review ? { text: 'WAITS FOR YOUR APPROVAL', tone: 'alert' }
+  const carried = startChecked(facts).length;
+  const state = !facts.review ? { text: carried ? `${sheet.facts.length - carried} NEW WAIT FOR YOUR APPROVAL · ${carried} APPROVED BEFORE` : 'WAITS FOR YOUR APPROVAL', tone: 'alert' }
     : facts.review.verdict === 'returned' ? { text: 'RETURNED', tone: 'alert' }
       : held ? { text: `${sheet.facts.length - held} APPROVED · ${held} SENT BACK`, tone: 'alert' } : { text: 'APPROVED', tone: 'on' };
   return [`${sheet.facts.length} FACT${sheet.facts.length === 1 ? '' : 'S'}`, state];
@@ -56,7 +69,11 @@ export const sheetStats = (facts) => {
 export const groupStats = (group, facts, ticked = []) => {
   const n = group.facts.length;
   const count = `${n} FACT${n === 1 ? '' : 'S'}`;
-  if (!facts?.review) return [count, `${group.facts.filter((f) => ticked.includes(f.n)).length} CHECKED`];
+  if (!facts?.review) {
+    const before = group.facts.filter((f) => startChecked(facts).includes(f.n)).length;
+    const checked = group.facts.filter((f) => ticked.includes(f.n)).length;
+    return before ? [count, `${before} APPROVED BEFORE`, `${checked} OF ${n - before} NEW CHECKED`] : [count, `${checked} CHECKED`];
+  }
   if (facts.review.verdict !== 'approved') return [count];
   const held = group.facts.filter((f) => (facts.review.held ?? []).some((h) => h.n === f.n)).length;
   return [count, held ? { text: `${n - held} APPROVED · ${held} TO FIX`, tone: 'alert' } : { text: 'APPROVED', tone: 'on' }];

@@ -3,7 +3,7 @@ import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import {
-  checkPathAccess, checkWriteBudget, recordWrite, isWriteOperation,
+  checkPathAccess, isWriteOperation,
   collectPathArgs, findUngrantedReadPaths, resolveGrantDir,
   findUngrantedWritePaths, isWithinRoots,
 } from '../../backend/services/tool-sandbox.js';
@@ -137,39 +137,7 @@ describe('resolveGrantDir (real fs)', () => {
   });
 });
 
-describe('checkWriteBudget', () => {
-  it('allows writes under the limit', () => {
-    const conn = { _writeOps: 0 };
-    expect(checkWriteBudget(conn).allowed).toBe(true);
-  });
-
-  it('blocks writes at the limit', () => {
-    const conn = { _writeOps: 10 };
-    expect(checkWriteBudget(conn).allowed).toBe(false);
-    expect(checkWriteBudget(conn).remaining).toBe(0);
-  });
-
-  it('tracks remaining budget', () => {
-    const conn = { _writeOps: 7 };
-    expect(checkWriteBudget(conn).remaining).toBe(3);
-  });
-});
-
-describe('recordWrite', () => {
-  it('increments write counter', () => {
-    const conn = { _writeOps: 0 };
-    recordWrite(conn);
-    expect(conn._writeOps).toBe(1);
-    recordWrite(conn);
-    expect(conn._writeOps).toBe(2);
-  });
-
-  it('initializes counter if missing', () => {
-    const conn = {};
-    recordWrite(conn);
-    expect(conn._writeOps).toBe(1);
-  });
-});
+// The write limit (the operator's rule, counted per message, asking past it) is proven on the real sandbox: test/integration/write-limit.test.js.
 
 describe('isWriteOperation', () => {
   it('identifies write tools', () => {

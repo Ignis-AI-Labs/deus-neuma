@@ -151,6 +151,24 @@ describe('a configured provider that is down must not open the ceremony', () => 
     expect(substrate.status).toBe('fail');
     expect(res.body.verdict).toBe('blocked');
   });
+
+  test('public setup redacts credentials from the real saved provider endpoint after probing it', async () => {
+    const ordinary = `http://127.0.0.1:${ollama.address().port}`;
+    const endpoint = `http://setup-user:${'setup-pass'}@127.0.0.1:${ollama.address().port}/api?access_token=fake-query#fake-fragment`;
+    await setCredential('ollama', { endpoint });
+    try {
+      const res = await request(app).get('/api/v1/preflight/setup');
+      expect(res.status).toBe(200);
+      expect(res.body.providers.ollama.endpoint).toBe(`http://127.0.0.1:${ollama.address().port}/api`);
+      const wire = JSON.stringify(res.body);
+      expect(wire).not.toContain('setup-user');
+      expect(wire).not.toContain('setup-pass');
+      expect(wire).not.toContain('fake-query');
+      expect(wire).not.toContain('fake-fragment');
+    } finally {
+      await setCredential('ollama', { endpoint: ordinary });
+    }
+  });
 });
 
 /**

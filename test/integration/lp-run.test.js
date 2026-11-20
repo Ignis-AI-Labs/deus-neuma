@@ -21,7 +21,7 @@ import { returnContract } from '../helpers/evm-return-contract.js';
 import { installLpManager, installLpPool } from '../helpers/lp-chain-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
-import { startUmbraeStandIn, POOL } from '../helpers/umbrae-stand-in.js';
+import { startUmbraeStandIn, POOL, NEW_TOKEN } from '../helpers/umbrae-stand-in.js';
 import { UMBRAE_BASE } from '../../core/wallet/lp-tx-policy.js';
 import { openLpWallet, lpWalletAddress, readUmbraeKey } from '../../backend/services/umbrae-lp/lp-wallet.js';
 import { writeLpBudget, listPendingDeposits } from '../../backend/services/umbrae-lp/lp-budget.js';
@@ -51,8 +51,11 @@ beforeAll(async () => {
   umbrae = await startUmbraeStandIn({ provider });
   await installLpPool(provider, POOL);
   await installLpManager(provider, UMBRAE_BASE.positionManager);
-  for (const [token, units] of [['0x4200000000000000000000000000000000000006', 18], ['0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 6]]) {
-    await provider.send('anvil_setCode', [token, returnContract({ fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]) })]);
+  for (const [token, units, symbol] of [['0x4200000000000000000000000000000000000006', 18, 'WETH'], ['0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', 6, 'USDC']]) {
+    await provider.send('anvil_setCode', [token, returnContract({
+      fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]),
+      routes: { [ethers.id('symbol()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['string'], [symbol]) },
+    })]);
   }
   seen = umbrae.seen;
 }, 30000);
@@ -86,11 +89,11 @@ describe('getting money out never waits', () => {
     expect(out).toMatchObject({ ok: true, type: 'claim', tokenId: '42', approvals: 1 });
     expect(await minedFrom(out.txHashes)).toEqual([wallet]);
     expect(await readUmbraeKey(NEUMA_ID)).toBe('umbr_testkey_0');
-    // the earnings book's price reads (the public pool list, before and after: lp-book.js) aside
-    expect(seen.map((r) => r.url).filter((u) => u !== '/api/v1/base/pools')).toEqual([
+    // The earnings book's independent pool/market price reads aside.
+    expect(seen.map((r) => r.url).filter((u) => u !== '/api/v1/base/pools' && !u.startsWith('/api/v2/simple/') && !u.startsWith('/token-pairs/'))).toEqual([
       `/api/v1/base/pools/${POOL}`, '/api/auth/challenge', '/api/auth/wallet-auth', '/api/account/api-keys',
-      '/api/v1/base/approvals', '/api/v1/base/send', '/api/v1/base/status',
-      '/api/v1/base/build', '/api/v1/base/send', '/api/v1/base/status', '/api/v1/base/sync',
+      '/api/v1/base/build', '/api/v1/base/approvals', '/api/v1/base/send', '/api/v1/base/status',
+      '/api/v1/base/send', '/api/v1/base/status', '/api/v1/base/sync', '/api/v1/base/send', '/api/v1/base/status',
     ]);
     expect(await audit()).toContain('"type":"claim"');
   }, 60000);
@@ -123,7 +126,7 @@ describe('a deposit runs on its own unless a budget cap holds it', () => {
     expect(out.ok, JSON.stringify(out)).toBe(true);
     expect(out).toMatchObject({ ok: true, type: 'open', tokenId: '77' });
     expect(await minedFrom(out.txHashes)).toEqual([wallet]);
-    expect(sends()).toHaveLength(2); // the token approval, then the deposit
+    expect(sends()).toHaveLength(3); // approval, deposit, zero-allowance cleanup
   }, 60000);
 
   test('the pool fee tier comes from Base, not a false API answer', async () => {
@@ -149,13 +152,31 @@ describe('a deposit runs on its own unless a budget cap holds it', () => {
     expect(manager.parseTransaction({ data: signed.data }).args.amountY).toBe(5_000_000n);
   }, 60000);
 
+  test('a pool whose on-chain tokens differ from the API answer is not signed', async () => {
+    await installLpPool(provider, POOL, 5000, NEW_TOKEN);
+    const out = await run(open);
+    expect(out).toMatchObject({ ok: false });
+    expect(out.reason).toContain('Base shows different tokens');
+    expect(sends()).toEqual([]);
+  });
+
+  test('an open-market pool is refused before any approval or signature', async () => {
+    umbrae.state.mode = 'open-market';
+    const out = await run(open);
+    expect(out).toMatchObject({ ok: false });
+    expect(out.reason).toContain('Only Umbrae-verified pools');
+    expect(sends()).toEqual([]);
+    expect(seen.some((r) => r.url.startsWith('/api/auth/'))).toBe(false);
+  });
+
   test('with a $0 cap, nothing is signed and the deposit waits for the operator', async () => {
     await writeLpBudget(NEUMA_ID, 0);
     const out = await run(open);
     expect(out).toMatchObject({ ok: false, pending: true });
     expect(out.reason).toMatch(/past the \$0 budget/);
     expect(sends()).toEqual([]);
-    expect((await listPendingDeposits(NEUMA_ID)).map((r) => r.id)).toContain(out.requestId);
+    const waiting = (await listPendingDeposits(NEUMA_ID)).find((r) => r.id === out.requestId);
+    expect(waiting.action).toMatchObject({ tokenXSymbol: 'WETH', tokenYSymbol: 'USDC' });
     expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'declined', { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50 })).declined).toBe(true);
     expect((await answerWaitingDeposit(NEUMA_ID, out.requestId, 'approved', { provider, receiptProvider: provider, receiptConfirmations: 1, pollMs: 50 })).reason).toMatch(/no longer waiting/);
     expect(sends()).toEqual([]);
@@ -166,13 +187,13 @@ describe('a deposit runs on its own unless a budget cap holds it', () => {
     const out = await run(open);
     expect(out).toMatchObject({ ok: true, type: 'open', tokenId: '77', approvals: 1 });
     expect(await minedFrom(out.txHashes)).toEqual([wallet]);
-    expect(sends()).toHaveLength(2);
+    expect(sends()).toHaveLength(3);
   }, 60000);
 
   test('past the budget it waits, and the operator\'s yes runs it once', async () => {
     await writeLpBudget(NEUMA_ID, 9);
     umbrae.state.positions = [{ positions: { userPositions: [{ publicKey: '42', positionData: { totalXAmount: '0', totalYAmount: '6' } }] }, poolInfo: { mint_x: '0x4200000000000000000000000000000000000006', mint_y: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', tokenXPriceUsd: 3200, tokenYPriceUsd: 1 } }];
-    await installLpManager(provider, UMBRAE_BASE.positionManager, 1n);
+    await installLpManager(provider, UMBRAE_BASE.positionManager, 1n, { pair: POOL, owner: wallet });
     const out = await run(open);
     expect(out).toMatchObject({ ok: false, pending: true });
     expect(out.reason).toMatch(/\$5\.0 would take the total past the \$9 budget/);
@@ -184,6 +205,51 @@ describe('a deposit runs on its own unless a budget cap holds it', () => {
   }, 60000);
 });
 
+describe('the cap cannot be read away, and the positions it counts are Base\'s (P6-13)', () => {
+  const open = { type: 'open', pool: POOL, amountY: '5' };
+  const budgetFile = () => path.join(workspace._path(NEUMA_ID), 'config', 'lp-budget.json');
+  const listed = (...ids) => [{ positions: { userPositions: ids.map((publicKey) => ({ publicKey })) }, poolInfo: { mint_x: '0x4200000000000000000000000000000000000006', mint_y: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' } }];
+  const heldUnsized = async () => {
+    const out = await run(open);
+    expect(out.reason).toMatch(/could not be independently sized/);
+    expect(out.ok).toBe(false);
+    expect(sends()).toEqual([]);
+  };
+
+  test('a budget file that is plain text or torn reads as $0: the deposit waits, nothing is signed', async () => {
+    for (const forged of [JSON.stringify({ budgetUsd: 1_000_000 }), '{"budgetUsd": 1e']) {
+      await fs.writeFile(budgetFile(), forged);
+      const out = await run(open);
+      expect(out).toMatchObject({ ok: false, pending: true });
+      expect(out.reason).toMatch(/past the \$0 budget/);
+    }
+    expect(sends()).toEqual([]);
+    await writeLpBudget(NEUMA_ID, 100);
+  }, 60000);
+
+  test('one position listed twice to stand for two the wallet holds: the total is not trusted and the deposit waits', async () => {
+    await writeLpBudget(NEUMA_ID, 100);
+    umbrae.state.positions = listed('42', '42');
+    await installLpManager(provider, UMBRAE_BASE.positionManager, 2n, { pair: POOL, owner: wallet });
+    await heldUnsized();
+  }, 60000);
+
+  test('a listed position Base says another wallet owns: the total is not trusted and the deposit waits', async () => {
+    await writeLpBudget(NEUMA_ID, 100);
+    umbrae.state.positions = listed('42');
+    await installLpManager(provider, UMBRAE_BASE.positionManager, 1n, { pair: POOL, owner: '0x2222222222222222222222222222222222222222' });
+    await heldUnsized();
+  }, 60000);
+
+  test('the wallet\'s own positions, each once: counted from Base and the deposit runs inside the cap', async () => {
+    await writeLpBudget(NEUMA_ID, 100);
+    umbrae.state.positions = listed('42');
+    await installLpManager(provider, UMBRAE_BASE.positionManager, 1n, { pair: POOL, owner: wallet });
+    expect(await run(open)).toMatchObject({ ok: true, type: 'open' });
+    await writeLpBudget(NEUMA_ID, 9);
+  }, 60000);
+});
+
 describe('what Umbrae builds is checked before it is signed', () => {
   test('a claim that would pay another wallet is not signed or sent', async () => {
     umbrae.state.mode = 'pays-thief';
@@ -191,7 +257,8 @@ describe('what Umbrae builds is checked before it is signed', () => {
     expect(out.ok).toBe(false);
     expect(out.reason).toMatch(/different wallet/);
     expect(seen.filter((r) => r.url === '/api/v1/base/build')).toHaveLength(1);
-    expect(sends()).toHaveLength(1); // the pool approval only
+    expect(sends()).toEqual([]);
+    expect(seen.some((r) => r.url === '/api/v1/base/approvals')).toBe(false);
   }, 60000);
 
   test('a deposit larger than the one sized against the budget is not signed', async () => {
@@ -200,7 +267,8 @@ describe('what Umbrae builds is checked before it is signed', () => {
     const out = await run({ type: 'open', pool: POOL, amountY: '5' });
     expect(out.ok).toBe(false);
     expect(out.reason).toMatch(/larger than the one that was asked/);
-    expect(sends()).toHaveLength(1); // the token approval, inside its ceiling
+    expect(sends()).toEqual([]);
+    expect(seen.some((r) => r.url === '/api/v1/base/approvals')).toBe(false);
   }, 60000);
 
   test('a response for another pool is refused before anything is signed', async () => {
@@ -216,7 +284,8 @@ describe('what Umbrae builds is checked before it is signed', () => {
     const out = await run({ type: 'claim', pool: POOL, tokenId: '42' });
     expect(out.ok).toBe(false);
     expect(out.reason).toMatch(/exit action/);
-    expect(sends()).toHaveLength(1);
+    expect(sends()).toEqual([]);
+    expect(seen.some((r) => r.url === '/api/v1/base/approvals')).toBe(false);
   });
 
   test('an understated builder price cannot bypass the independent budget', async () => {
@@ -232,8 +301,9 @@ describe('what Umbrae builds is checked before it is signed', () => {
     await writeLpBudget(NEUMA_ID, 100);
     umbrae.state.dexPriceUsd = 0.001;
     const out = await run({ type: 'open', pool: POOL, amountY: '200' });
-    expect(out).toMatchObject({ ok: false, pending: true });
-    expect(out.reason).toMatch(/independently sized|past the \$100 budget/);
+    expect(out.ok).toBe(false);
+    expect(out.pending).not.toBe(true);
+    expect(out.reason).toMatch(/independently sized/);
     expect(sends()).toEqual([]);
   }, 60000);
 
@@ -251,7 +321,7 @@ describe('what Umbrae builds is checked before it is signed', () => {
       expect((await run(action)).ok).toBe(false);
     }
     // public reads only (the pool, and the pool list the earnings book prices by): no sign-in, nothing signed
-    expect(seen.filter((r) => r.url !== `/api/v1/base/pools/${POOL}` && r.url !== '/api/v1/base/pools')).toEqual([]);
+    expect(seen.filter((r) => r.url !== `/api/v1/base/pools/${POOL}` && r.url !== '/api/v1/base/pools' && !r.url.startsWith('/api/v2/simple/') && !r.url.startsWith('/token-pairs/'))).toEqual([]);
   }, 60000);
 
   test('with the connection off, Umbrae hears nothing', async () => {

@@ -15,6 +15,7 @@
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs';
 import fsp from 'fs/promises';
+import http from 'node:http';
 import process from 'node:process';
 import { setTimeout } from 'node:timers';
 import os from 'os';
@@ -25,14 +26,16 @@ import { emailBinding } from '../../backend/services/email/email-binding.js';
 import { setEmailCredential } from '../../backend/services/email/email-credentials.js';
 import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
 import { addSuppression, fileSegment, setSegmentState, addProspects, approveList, settleProspect, readSenders, fileSalesFacts, reviewSalesFacts } from '../../backend/services/sales/sales-store.js';
-import { makeSalesSheet, SALES_DISCLOSURE } from '../../backend/services/sales/sales-facts.js';
+import { formula, OTTO, PLAN_PROMISE, lockedCampaign, leadIn, research as researchVia } from '../helpers/sales-formula-kit.js';
+import { claimsAnswer, rigFor } from '../helpers/sales-mail-kit.js';
+import { makeSalesSheet } from '../../backend/services/sales/sales-facts.js';
 import { makeSegment } from '../../backend/services/sales/segment-shape.js';
 import { makeProspect } from '../../backend/services/sales/prospect-shape.js';
 import { croDesignation } from '../../backend/services/revenue/cro-designation.js';
 import { makeSuppression } from '../../backend/services/sales/suppress-shape.js';
 import { upkeepDue } from '../../backend/services/sales/lead-upkeep.js';
 import { startTlsSmtp } from '../helpers/smtp-tls-kit.js';
-import { readOutbox, setReview, editDraft, returnDraft, sendDraft, outboxText, foldOutbox } from '../../backend/services/sales/email-outbox.js';
+import { readOutbox, setReview, editDraft, returnDraft, sendDraft, stageDraft, withdrawDrafts, outboxText, foldOutbox } from '../../backend/services/sales/email-outbox.js';
 import { salesWaitingItems } from '../../backend/services/sales/sales-waiting.js';
 import { startLocalProvider } from '../helpers/local-provider.js';
 import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
@@ -41,27 +44,14 @@ import workspace from '../../core/workspace/neuma-workspace.js';
 
 const LANE = 'mercmail';
 // A lead's email as the seat writes it: the words, ONE ask, the disclosure line, its name.
-const signed = (words) => `${words} May I send two short written ideas?\n\n${SALES_DISCLOSURE}\nThe Mercator`;
+const signed = (words) => `${words} May I send two short written ideas?\n\nThe Mercator`;
 const PROMISE = 'two short written ideas on finishing their field app';
-const ENV = ['WORKSPACES_ROOT', 'NEUMA_EMAIL_CREDENTIALS_PATH', 'NEUMA_EMAIL_BINDING_PATH'];
-let dir; let position; let smtp; let reader; let priorConfig; let filed = 0;
+const ENV = ['WORKSPACES_ROOT', 'NEUMA_EMAIL_CREDENTIALS_PATH', 'NEUMA_EMAIL_BINDING_PATH', 'NEUMA_LEAD_SOURCE_HUNTER', 'HUNTER_API_KEY', 'TOMBA_API_KEY', 'TOMBA_API_SECRET'];
+let dir; let position; let smtp; let reader; let hunter; let priorConfig; let filed = 0;
 
-// The house's model, stood in on loopback (local-provider.js): it answers the claims reader from the email it is shown.
-const claimsAnswer = (body) => {
-  if (!String(body.messages?.[0]?.content ?? '').startsWith('You are the CLAIMS READER')) return null;
-  const shown = String(body.messages[1].content);
-  if (shown.includes('yield ladder')) return '1 | one-to-one sessions\nNONE | a Base yield ladder that earns on your balances';
-  if (shown.includes('GARBLED')) return 'Looks fine to me.';
-  if (shown.includes('250 dollars')) return '2 | a session costs 250 dollars an hour';
-  return 'NO CLAIMS';
-};
 const saved = {};
-
-const rig = () => {
-  const sent = [];
-  const ws = { readyState: 1, OPEN: 1, send: (s) => sent.push(JSON.parse(s)) };
-  return { sent, connection: { ws, companion: { name: 'Mercator', neumaId: LANE }, walletAddress: POSITION_HOUSE, activeTurn: null } };
-};
+// The house's model answers the claims reader on loopback; the desk keeps every frame (sales-mail-kit.js).
+const rig = () => rigFor(LANE, POSITION_HOUSE);
 const send = async (payload, decision) => {
   filed += 1;
   const intents = path.join(workspace.pathFor(LANE), 'intents');
@@ -92,6 +82,12 @@ beforeAll(async () => {
   await ownLane(LANE);
   smtp = await startTlsSmtp(dir);
   reader = await startLocalProvider({ respond: claimsAnswer });
+  // Every address is checked before an email leaves (address-check.js, Design note, 2026-11-19: […]): the house's checker, Hunter's verifier, stood in on loopback. Each address here exists; without a
+  // checker the house would ask the domain itself, and these .example domains take no mail.
+  hunter = http.createServer((req, res) => { res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ data: { status: 'valid', score: 96, mx_records: true, smtp_check: true } })); });
+  await new Promise((resolve) => { hunter.listen(0, '127.0.0.1', resolve); });
+  process.env.NEUMA_LEAD_SOURCE_HUNTER = `http://127.0.0.1:${hunter.address().port}`;
+  process.env.HUNTER_API_KEY = 'the-houses-hunter-key';
   priorConfig = getConfig();
   setConfig({ provider: 'lm-studio', endpoint: reader.endpoint, model: 'test-model', apiKey: '' });
   await setEmailCredential(POSITION_HOUSE, {
@@ -108,6 +104,7 @@ afterAll(async () => {
   await smtp?.close();
   if (priorConfig) setConfig(priorConfig);
   await reader?.close();
+  await new Promise((resolve) => { if (hunter) hunter.close(resolve); else resolve(); });
   position?.restore();
   for (const k of ENV) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; }
   fs.rmSync(dir, { recursive: true, force: true });
@@ -140,7 +137,8 @@ describe('the mailbox and the lead engine', () => {
     const bad = await send({ to: 'fay@facts.example', subject: 'Act now', text: 'Our 90 minute session doubles output by 300.' });
     expect(bad.receipt.status).toBe('error');
     expect(bad.receipt.error).toMatch(/90 is not on the approved facts sheet[\s\S]*300 is not on the approved facts sheet/);
-    expect(bad.receipt.error).toMatch(/carry the disclosure line, word for word/);
+    // No line is forced into an email's words (Design note, 2026-11-17.
+    expect(bad.receipt.error).not.toMatch(/disclosure/);
     expect(bad.receipt.error).toMatch(/no false urgency/);
     expect(bad.cards).toEqual([]);
     expect(smtp.received.length).toBe(before);
@@ -177,9 +175,9 @@ describe('the mailbox and the lead engine', () => {
       expect(cards).toEqual([]);
     };
     await refused({ text: signed('A short note. '.repeat(60)) }, /first email to a lead: a first email is at most 130 words and this one is 18\d/);
-    await refused({ subject: 'Six plain words are one too many' }, /subject is at most 5 plain words/);
+    await refused({ subject: 'Six plain words are one too many' }, /subject is at most 6 plain words/);
     await refused({ text: signed('Would a call help? Or a demo?') }, /asks ONE thing \(one question\) and this one asks 3/);
-    await refused({ text: `A short note.\n\n${SALES_DISCLOSURE}\nThe Mercator` }, /asks ONE thing \(one question\) and this one asks 0/);
+    await refused({ text: 'A short note.\n\nThe Mercator' }, /asks ONE thing \(one question\) and this one asks 0/);
     await refused({ promise: '' }, /add promise: one line saying exactly what you will send them when they say yes/);
     expect(smtp.received.length).toBe(before);
     await ledger.remove((await ledger.load()).find((l) => l.contact === 'zed@zeta.example').id);
@@ -250,7 +248,7 @@ describe('the sales cover through the real sweep — the operator approved the l
     // Before the list is approved: it asks.
     const unlisted = await send({ to: 'rosa@quay.example', subject: 'Your field app', text: signed('A short note.') }, 'deny');
     expect(unlisted.receipt.status).toBe('denied');
-    expect(await approveList(POSITION_HOUSE, segment.id, 'operator')).toEqual({ ok: true, count: 1 });
+    expect(await approveList(POSITION_HOUSE, segment.id, 'operator', [prospect.id])).toEqual({ ok: true, count: 1 });
 
     const sentBefore = smtp.received.length;
     const first = await send({ to: 'rosa@quay.example', subject: 'Your field app', text: signed('A short note from the Mercator.') });
@@ -261,7 +259,7 @@ describe('the sales cover through the real sweep — the operator approved the l
     expect(smtp.received.at(-1).from).toBe('hello@ignis.example');
     expect(smtp.received.at(-1).data).toContain('From: <hello@ignis.example>');
     expect(first.receipt.content ?? first.receipt.detail ?? JSON.stringify(first.receipt)).toContain('from hello@ignis.example');
-    expect((await ledger.load()).find((l) => l.id === lead.id).touches.at(-1)).toMatchObject({ direction: 'out', status: 'contacted' });
+    expect((await ledger.load()).find((l) => l.id === lead.id).touches.at(-1)).toMatchObject({ direction: 'out', status: 'contacted', from: 'hello@ignis.example' });
     // The sending address's first day writing to leads is noted: its ramp counts from here.
     expect(Object.keys(await readSenders(POSITION_HOUSE)).sort()).toEqual(['hello@ignis.example', 'sales@tidewater.example']);
     // An address the mailbox does not hold is refused before any card, and nothing leaves.
@@ -276,17 +274,46 @@ describe('the sales cover through the real sweep — the operator approved the l
   });
 });
 
+describe('post-DATA uncertainty in the direct send path', () => {
+  test('a lost acknowledgement records maybe sent on the lead instead of inviting a blind retry', async () => {
+    const ledger = await leadLedgerFor(POSITION_HOUSE);
+    const lead = (await ledger.load()).find((l) => l.contact === 'fay@facts.example');
+    expect(lead?.status).toBe('contacted');
+    const before = smtp.received.length;
+    smtp.control.dropAfterData = true;
+    try {
+      const { receipt } = await send({ to: 'fay@facts.example', subject: 'Your field app', text: signed('A short note from the Mercator.') }, 'allow');
+      expect(receipt).toMatchObject({ status: 'uncertain', error: expect.stringMatching(/may have been sent[\s\S]*Do not send it again until delivery is reconciled/) });
+      expect(smtp.received.length).toBe(before + 1);
+      const after = (await ledger.load()).find((l) => l.id === lead.id);
+      expect(after.status).toBe('contacted');
+      expect(after.touches.at(-1)).toMatchObject({ direction: 'out', delivery: 'maybe-sent', note: 'maybe emailed: "Your field app"' });
+    } finally {
+      smtp.control.dropAfterData = false;
+    }
+  });
+});
+
 describe('REVIEW FIRST — the seat stages, the operator reads, and only then does an email leave', () => {
-  const stage = async (payload) => {
+  // One act filed and swept, as the seat does: its receipt, and any card it raised.
+  const file = async (type, payload) => {
     filed += 1;
     const intents = path.join(workspace.pathFor(LANE), 'intents');
     await fsp.mkdir(intents, { recursive: true });
-    await fsp.writeFile(path.join(intents, `draft-${filed}.json`), JSON.stringify({ type: 'sales/draft-email', promise: PROMISE, ...payload }));
+    await fsp.writeFile(path.join(intents, `act-${filed}.json`), JSON.stringify({ type, ...payload }));
     const r = rig();
     const [receipt] = await sweepIntents(r.connection, { mode: 'ask', lanePolicy: null, emit: () => {} });
     return { receipt, cards: r.sent.filter((m) => m.type === 'tool:approval_request') };
   };
+  const stage = (payload) => file('sales/draft-email', { promise: PROMISE, ...payload });
+  const actAs = async (type, payload) => (await file(type, payload)).receipt;
   const GOOD = signed('A 60 minute session is 250 dollars, one to one.');
+  // THE EMAIL FORMULA (Design note, 2026-11-19: every lead here serves a campaign whose email plan is locked in, and each
+  // person is researched and a fit before a first email is written from the formula (sales-formula-kit.js).
+  let segment;
+  const asLead = (name, contact) => leadIn(segment, LANE, name, contact);
+  const research = (...args) => researchVia(actAs, ...args);
+  beforeAll(async () => { await croDesignation.designate(POSITION_HOUSE, LANE); segment = await lockedCampaign({ house: POSITION_HOUSE, lane: LANE, actAs }); }, 60000);
 
   test('it is on until the operator turns it off', () => {
     expect(foldOutbox([])).toEqual({ review: true, drafts: [] });
@@ -297,39 +324,47 @@ describe('REVIEW FIRST — the seat stages, the operator reads, and only then do
     await croDesignation.designate(POSITION_HOUSE, LANE);
     await setReview(POSITION_HOUSE, true);
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    await ledger.add({ name: 'Otto, Owner at Outbox', contact: 'otto@outbox.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
+    await ledger.add(asLead('Otto, Owner at Outbox', 'otto@outbox.example'));
     const before = smtp.received.length;
     // A direct send is refused before any card, and says where the email goes instead.
     const direct = await send({ to: 'otto@outbox.example', subject: 'Your build', text: GOOD });
     expect(direct.receipt.status).toBe('denied');
     expect(direct.receipt.error).toMatch(/REVIEW FIRST is on\): stage this one with sales\/draft-email/);
     expect(direct.cards).toEqual([]);
+    // NO EMAIL BEFORE RESEARCH: nothing is written to someone the seat has not researched, nor written whole.
+    expect((await stage({ to: 'otto@outbox.example', ...formula() })).receipt.error).toMatch(/there is no research on otto@outbox\.example — research them first: sales\/research/);
+    await research('otto@outbox.example', 'Otto Berg', 'Outbox', 'Outbox shipped an offline mode for its field app this month.');
+    expect((await stage({ to: 'otto@outbox.example', subject: 'Your build', text: GOOD })).receipt.error).toMatch(/a first email to a lead is built from the formula, not written whole: give \{to, subject, hook, why, offer, askIndex, ask\}/);
     // A draft that fails a send's checks is refused with the reason, and nothing is staged.
-    const bad = await stage({ to: 'otto@outbox.example', subject: 'Your build', text: signed('Our 90 minute session doubles output.') });
+    const bad = await stage({ to: 'otto@outbox.example', ...formula({ offer: 'Our 90 minute session doubles output for your crews.' }) });
     expect(bad.receipt.error).toMatch(/90 is not on the approved facts sheet/);
     expect((await readOutbox(POSITION_HOUSE)).drafts).toEqual([]);
     expect((await stage({ to: 'Bob@Nope.example', subject: 'Hello', text: GOOD })).receipt.error).toMatch(/do-not-contact list/);
     // One that passes waits: no card, nothing on the wire, the lead untouched.
-    const staged = await stage({ to: 'otto@outbox.example', subject: 'Your build', text: GOOD });
+    const staged = await stage({ to: 'otto@outbox.example', ...formula() });
     expect(staged.receipt.status, staged.receipt.error).toBe('ok');
-    expect(staged.receipt.content).toMatch(/^Staged for your operator's review \[m-[0-9a-f]{8}\]: to otto@outbox\.example, "Your build"\. It has NOT been sent\./);
+    expect(staged.receipt.content).toMatch(/^Staged for your operator's review \[m-[0-9a-f]{8}\]: to otto@outbox\.example, "Ignis AI Labs: Your Build"\. It has NOT been sent\./);
     expect(staged.cards).toEqual([]);
     expect(smtp.received.length).toBe(before);
     expect((await ledger.load()).find((l) => l.contact === 'otto@outbox.example').status).toBe('cold');
     const [draft] = (await readOutbox(POSITION_HOUSE)).drafts;
-    expect(draft).toMatchObject({ to: ['otto@outbox.example'], subject: 'Your build', text: GOOD, promise: PROMISE, by: LANE, state: 'waiting', edited: false });
+    expect(draft).toMatchObject({ to: ['otto@outbox.example'], subject: 'Ignis AI Labs: Your Build', text: OTTO, promise: PLAN_PROMISE, by: LANE, state: 'waiting', edited: false, formula: { askIndex: 0 } });
     // THE SEAT READS EVERY EMAIL IT STAGED, WHOLE (Design note, 2026-11-17: […]).
     filed += 1;
     await fsp.writeFile(path.join(workspace.pathFor(LANE), 'intents', `read-${filed}.json`), JSON.stringify({ type: 'sales/pipeline', step: 'outbox' }));
     const [read] = await sweepIntents(rig().connection, { mode: 'ask', lanePolicy: null, emit: () => {} });
     expect(read.status, read.error).toBe('ok');
-    expect(read.content).toContain(`- [${draft.id}] to otto@outbox.example — WAITING for your operator\n  Subject: Your build\n`);
-    for (const line of GOOD.split('\n')) expect(read.content).toContain(`  | ${line}`);
-    expect(read.content).toContain(`  Promise kept on the lead: ${PROMISE}`);
-    // One email a person at a time.
-    expect((await stage({ to: 'otto@outbox.example', subject: 'Again', text: GOOD })).receipt.error).toMatch(/already waits for your operator \("Your build"\)/);
+    expect(read.content).toContain(`- [${draft.id}] to otto@outbox.example — WAITING for your operator\n  Subject: Ignis AI Labs: Your Build\n`);
+    for (const line of OTTO.split('\n')) expect(read.content).toContain(`  | ${line}`);
+    expect(read.content).toContain(`  Promise kept on the lead: ${PLAN_PROMISE}`);
+    // THE SEAT CHANGES ITS OWN (Design note, 2026-11-17: editing a staged email takes no extra steps): staged again, the new
+    // version replaces the waiting one in place — the same id, checked again, still one email to the person.
+    expect((await stage({ to: 'otto@outbox.example', ...formula({ subject: 'Again, your build', offer: 'Our 90 minute session doubles output for your crews.' }) })).receipt.error).toMatch(/90 is not on the approved facts sheet/);
+    const again = await stage({ to: 'otto@outbox.example', ...formula({ subject: 'Your build, again' }) });
+    expect(again.receipt.content).toMatch(new RegExp(`^Replaced \\[${draft.id}\\] in place \\(it was waiting\\) with this version: to otto@outbox\\.example, "Ignis AI Labs: Your Build, Again"\\. It has NOT been sent\\.`));
+    expect((await readOutbox(POSITION_HOUSE)).drafts).toMatchObject([{ id: draft.id, subject: 'Ignis AI Labs: Your Build, Again', state: 'waiting', revised: 1 }]);
     // It stands where every other decision stands, and the seat is told what waits.
-    expect((await salesWaitingItems(POSITION_HOUSE, new Map([[LANE, 'Mercator']]))).filter((i) => i.kind === 'sales-email').map((i) => [i.title, i.where.tab])).toEqual([['1 email to leads waits for your review', 'leads']]);
+    expect((await salesWaitingItems(POSITION_HOUSE, new Map([[LANE, 'Mercator']]))).filter((i) => i.kind === 'sales-email').map((i) => [i.title, i.where.tab])).toEqual([['1 email to leads waits for your review', 'emails']]);
     expect(outboxText(await readOutbox(POSITION_HOUSE))).toMatch(/^REVIEW FIRST is ON[\s\S]*Staged and waiting for your operator: 1 \(otto@outbox\.example\)/);
   }, 60000);
 
@@ -338,9 +373,11 @@ describe('REVIEW FIRST — the seat stages, the operator reads, and only then do
     expect(await returnDraft(POSITION_HOUSE, draft.id, 'Open with his product, not ours.')).toEqual({ ok: true });
     const box = await readOutbox(POSITION_HOUSE);
     expect(box.drafts[0]).toMatchObject({ state: 'returned', note: 'Open with his product, not ours.' });
-    expect(outboxText(box)).toContain('RETURNED by your operator — to otto@outbox.example, "Your build": Open with his product, not ours. Rewrite it and stage it again.');
+    expect(outboxText(box)).toContain(`RETURNED by your operator [${draft.id}] — to otto@outbox.example, "Ignis AI Labs: Your Build, Again": Open with his product, not ours. Rewrite it and stage it again: it replaces this one.`);
     expect(await sendDraft(POSITION_HOUSE, draft.id)).toMatchObject({ ok: false, reason: 'no such email waits in the outbox' });
-    expect((await stage({ to: 'otto@outbox.example', subject: 'Your field app', text: GOOD })).receipt.status).toBe('ok');
+    // Staged again, it replaces the returned one: waiting once more, under the same id.
+    expect((await stage({ to: 'otto@outbox.example', ...formula({ subject: 'Your field app' }) })).receipt.content).toMatch(new RegExp(`^Replaced \\[${draft.id}\\] in place \\(it was returned by your operator\\)`));
+    expect((await readOutbox(POSITION_HOUSE)).drafts).toMatchObject([{ id: draft.id, subject: 'Ignis AI Labs: Your Field App', state: 'waiting', note: null, revised: 2 }]);
   }, 60000);
 
   test('the operator changes its words, and a send from the outbox is a real send: the mailbox, the lead contacted, once', async () => {
@@ -365,6 +402,92 @@ describe('REVIEW FIRST — the seat stages, the operator reads, and only then do
     expect((await sendDraft(POSITION_HOUSE, draft.id)).ok).toBe(false);
     expect(smtp.received.length).toBe(before + 1);
     expect((await salesWaitingItems(POSITION_HOUSE, new Map())).filter((i) => i.kind === 'sales-email')).toEqual([]);
+  }, 60000);
+
+  test('the seat fixes its own without the operator: a lead moved to another person at its company, an email taken back, the do-not-contact list withdrawing what waits', async () => {
+    const act = actAs;
+    const stateOf = async (id) => (await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === id);
+    const ledger = await leadLedgerFor(POSITION_HOUSE);
+    const pia = await ledger.add(asLead('Pier info, team at Pier', 'info@pier.example'));
+    await research('info@pier.example', 'Pier Desk', 'Pier', 'Pier opened online bookings for its harbour tours.');
+    const PIER = formula({ subject: 'Your pier', hook: 'Pier just opened online bookings for its harbour tours.', why: 'Running bookings yourself is where one to one help pays.', offer: 'One to one with the founder, a 60 minute session is 250 dollars.' });
+    const first = await stage({ to: 'info@pier.example', ...PIER });
+    const [staged] = /m-[0-9a-f]{8}/.exec(first.receipt.content);
+    // The address turned out dead: the lead moves to the founder at the same company, and what was staged to the old address is withdrawn.
+    expect((await act('sales/lead', { lead: pia.id.slice(0, 8), person: { name: 'Pia Lund', role: 'Founder' }, email: 'pia@elsewhere.example', emailSource: 'https://pier.example/team' })).error).toMatch(/pia@elsewhere\.example is not at pier\.example — a lead moves to another person at the SAME company/);
+    const moved = await act('sales/lead', { lead: pia.id.slice(0, 8), person: { name: 'Pia Lund', role: 'Founder' }, email: 'pia@pier.example', emailSource: 'https://pier.example/team' });
+    expect(moved.status, moved.error).toBe('ok');
+    expect(moved.content).toBe(`Lead [${pia.id.slice(0, 8)}] now points at Pia Lund, Founder — pia@pier.example; cold again, the first email to them still to write. The email staged to info@pier.example [${staged}] is withdrawn — stage the new one to pia@pier.example with sales/draft-email.`);
+    const lead = (await ledger.load()).find((l) => l.id === pia.id);
+    expect(lead).toMatchObject({ name: 'Pia Lund, Founder at pier.example', contact: 'pia@pier.example', status: 'cold' });
+    expect(lead.touches.at(-1)).toMatchObject({ contactFrom: 'info@pier.example', by: LANE });
+    expect(await stateOf(staged)).toMatchObject({ state: 'withdrawn', why: 'the lead moved to pia@pier.example' });
+    // An email from the outbox goes to a lead: the old address is no lead now, and the refusal names the lead and the way.
+    expect((await stage({ to: 'info@pier.example', ...PIER })).receipt.error).toMatch(new RegExp(`info@pier\\.example is not on the lead list — the lead at pier\\.example is \\[${pia.id.slice(0, 8)}\\] Pia Lund, Founder at pier\\.example <pia@pier\\.example>\\. Move that lead`));
+    // A field the act does not read is refused by name, never ignored (Design note, 2026-11-18: the seat filed `campaign` and took the silence for success).
+    expect((await stage({ to: 'pia@pier.example', ...PIER, campaign: 'k-1' })).receipt.error).toMatch(/campaign is not a field of sales\/draft-email — it reads \{to, subject, hook, why, offer, askIndex, ask, id\} for a first email to a lead/);
+    await research('pia@pier.example', 'Pia Lund', 'Pier', 'Pier opened online bookings for its harbour tours.');
+    // The seat takes back one it staged, by its id.
+    const second = /m-[0-9a-f]{8}/.exec((await stage({ to: 'pia@pier.example', ...PIER })).receipt.content)[0];
+    expect(second).not.toBe(staged);
+    expect((await act('sales/withdraw-email', { id: second, why: 'the wrong angle' })).content).toBe(`Withdrawn [${second}]: it will not be sent (the wrong angle).`);
+    expect(await stateOf(second)).toMatchObject({ state: 'withdrawn', why: 'the wrong angle' });
+    expect((await act('sales/withdraw-email', { id: second })).error).toMatch(/no email \[m-[0-9a-f]{8}\] waits in your outbox/);
+    // The do-not-contact list withdraws what waits for its people by itself.
+    const third = /m-[0-9a-f]{8}/.exec((await stage({ to: 'pia@pier.example', ...PIER })).receipt.content)[0];
+    const suppressed = await act('sales/suppress', { target: 'pier.example', reason: 'competitor' });
+    expect(suppressed.content).toBe(`pier.example is on the do-not-contact list (competitor). The email staged for them [${third}] withdrawn.`);
+    expect(await stateOf(third)).toMatchObject({ state: 'withdrawn', why: 'pier.example is on the do-not-contact list' });
+  }, 60000);
+
+  test('never the same first email twice (Design note, 2026-11-18', async () => {
+    // Otto's email went out above. Staging him a new first email is refused, naming the one he got.
+    const again = await stage({ to: 'otto@outbox.example', subject: 'Your build, once more', text: GOOD });
+    expect(again.receipt.error).toMatch(/otto@outbox\.example was already emailed on \d{4}-\d{2}-\d{2} \("Your field app, Otto"\)[\s\S]*stage it with followUp: true/);
+    // A follow-up, staged as one, stands.
+    const follow = await stage({ to: 'otto@outbox.example', subject: 'Re: your field app', text: signed('One thing I left out: the sessions are recorded for you to keep.'), followUp: true });
+    expect(follow.receipt.status, follow.receipt.error).toBe('ok');
+    const [followId] = /m-[0-9a-f]{8}/.exec(follow.receipt.content);
+    expect((await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === followId)).toMatchObject({ state: 'waiting', followUp: true });
+    // A second first email that slipped into the outbox before the first went (staged straight, not by the act) is refused at SEND.
+    await withdrawDrafts(POSITION_HOUSE, { id: followId, why: 'test', by: 'operator' });
+    const dup = await stageDraft(POSITION_HOUSE, { to: ['otto@outbox.example'], subject: 'Your build', text: GOOD, by: LANE });
+    const before = smtp.received.length;
+    expect(await sendDraft(POSITION_HOUSE, dup.id)).toMatchObject({ ok: false, reason: expect.stringMatching(/otto@outbox\.example was already emailed on [\d-]+ \("Your field app, Otto"\) — this would be a second first email/) });
+    expect(smtp.received.length).toBe(before);
+    // The operator deletes it: never sent, off the list.
+    expect(await withdrawDrafts(POSITION_HOUSE, { id: dup.id, why: 'deleted by the operator', by: 'operator' })).toEqual({ ok: true, ids: [dup.id] });
+    expect((await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === dup.id)).toMatchObject({ state: 'withdrawn', why: 'deleted by the operator' });
+  }, 60000);
+
+  test('a member with its own address on the mailbox sends from it (Design note, 2026-11-18', async () => {
+    await setEmailCredential(POSITION_HOUSE, {
+      address: 'sales@tidewater.example', username: 'sales@tidewater.example', password: 'test-app-password', sendAs: `ignis = hello@ignis.example, ${LANE} = merc@tidewater.example`,
+      smtpHost: 'localhost', smtpPort: String(smtp.port), imapHost: 'localhost', imapPort: '1',
+    });
+    await (await leadLedgerFor(POSITION_HOUSE)).add(asLead('Una, Owner at Unit', 'una@unit.example'));
+    await research('una@unit.example', 'Una Vale', 'Unit', 'Unit moved its crew scheduling onto phones this quarter.');
+    const staged = await stage({ to: 'una@unit.example', ...formula({ subject: 'Your unit', hook: 'Unit moved its crew scheduling onto phones this quarter.', why: 'A move like that sticks when someone walks the crew through it.', offer: 'Each one to one session runs 60 minutes, at 250 dollars.' }) });
+    const [id] = /m-[0-9a-f]{8}/.exec(staged.receipt.content ?? staged.receipt.error);
+    expect(await sendDraft(POSITION_HOUSE, id)).toMatchObject({ ok: true, from: 'merc@tidewater.example' });
+    expect(smtp.received.at(-1).from).toBe('merc@tidewater.example');
+  }, 60000);
+
+  test('an uncertain outbox send leaves no waiting draft, so a second press cannot duplicate it', async () => {
+    const staged = await stageDraft(POSITION_HOUSE, { to: ['uncertain@outbox.example'], subject: 'Hello uncertain', text: 'A real note for the uncertain outbox case.', by: LANE });
+    expect(staged.ok).toBe(true);
+    const before = smtp.received.length;
+    smtp.control.dropAfterData = true;
+    try {
+      const outcome = await sendDraft(POSITION_HOUSE, staged.id);
+      expect(outcome).toMatchObject({ ok: false, uncertain: true, reason: expect.stringMatching(/may have been sent/) });
+      expect((await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === staged.id)).toMatchObject({ state: 'uncertain' });
+      expect(smtp.received.length).toBe(before + 1);
+      expect(await sendDraft(POSITION_HOUSE, staged.id)).toMatchObject({ ok: false, reason: 'no such email waits in the outbox' });
+      expect(smtp.received.length).toBe(before + 1);
+    } finally {
+      smtp.control.dropAfterData = false;
+    }
   }, 60000);
 });
 

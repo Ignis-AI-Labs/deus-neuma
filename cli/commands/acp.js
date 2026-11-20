@@ -23,6 +23,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { openAcpWire, RpcError, RPC } from '../lib/acp-wire.js';
+import { createAcpTurnQueue } from '../lib/acp-turn-queue.js';
 import { createAcpPortal } from '../lib/acp-portal.js';
 import { mountSeat } from '../lib/seat-mount.js';
 import { resolveChainConfig } from '../lib/chain-config.js';
@@ -68,6 +69,7 @@ export const promptText = (blocks) => (Array.isArray(blocks) ? blocks : []).map(
 export const runAcp = async ({ cwd, input, output, stderr, argv }) => {
   const log = (line) => stderr.write(`${line}\n`);
   const sessions = new Map();
+  const queueTurn = createAcpTurnQueue();
   let ready = null; // the operator and the house, read once on first need
 
   // impure — who the operator is and which being sits; errors become the editor's error text.
@@ -154,10 +156,13 @@ export const runAcp = async ({ cwd, input, output, stderr, argv }) => {
       const thought = promptText(params.prompt);
       if (!thought.trim()) throw new RpcError(RPC.INVALID_PARAMS, 'the prompt has no words in it');
       const { connection } = session;
-      // Relative paths in the being's acts resolve against the process folder (agent.js, #531).
-      if (process.cwd() !== session.ground) process.chdir(session.ground);
-      connection.interruptRequested = false;
-      session.turn = session.h.streamConsciousness(connection, { thought, memoryContext: {} });
+      // The wire stays concurrent for cancel; prompt turns serialize because cwd is process-global.
+      session.turn = queueTurn(async () => {
+        if (connection.interruptRequested) return;
+        if (process.cwd() !== session.ground) process.chdir(session.ground);
+        connection.interruptRequested = false;
+        await session.h.streamConsciousness(connection, { thought, memoryContext: {} });
+      });
       try {
         await session.turn;
       } catch (error) {

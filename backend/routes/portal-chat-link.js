@@ -21,6 +21,7 @@ import { getChatLabels } from '../services/user-chat-labels.js';
 import {
   setChatLinkDoors, openChatsFor, chatAt, isOpenChat, addressOf, linkThought, linkRunFull,
 } from '../services/chat-link.js';
+import { noteLinkWords } from '../services/security/injected-value-gate.js';
 import { portalConnections } from './portal-connections.js';
 import { runTurnAndDrain } from './portal-context.js';
 
@@ -62,6 +63,7 @@ const deliver = async (wallet, address, link) => {
   // frame, origin and turn with NO await between: a message landing in a gap would start a second turn
   chat.ws.send(JSON.stringify({ type: 'chatlink:arrived', from: link.from, text: link.thought, at: Date.now() }));
   chat._turnOrigin = 'link';
+  noteLinkWords(chat, link.body); // a housemate's values are not this chat's operator's (P6-41)
   chat._linkRun = (chat._linkRun || 0) + 1;
   log.info('chat link delivered — the chat takes a turn', { from: link.from.chat, to: address });
   await runTurnAndDrain(chat, { thought: link.thought });
@@ -81,7 +83,7 @@ const send = async (self, address, { body, re }) => {
   const chat = addressOf(self);
   const from = { chat, name: self.companion.name || self.companion.neumaId, title: labels[chat] || null };
   const busy = Boolean(target.turnPromise);
-  deliver(wallet, address, { from, thought: linkThought({ from, body, re }) })
+  deliver(wallet, address, { from, body, thought: linkThought({ from, body, re }) })
     .catch((err) => log.warn('chat link turn failed', { to: address, error: err?.message }));
   return { name: target.companion.name || target.companion.neumaId, busy };
 };

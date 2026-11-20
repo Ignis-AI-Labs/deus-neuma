@@ -39,7 +39,8 @@ a trailing \\ continues the line; anything that is not a command is a turn.`);
 export const checkOnNote = (command) =>
   `check on: ${command}\n`
   + '  runs after every turn that changes files here; a failure goes back to the being (3 fix turns at most).\n'
-  + '  it runs as you, outside the being\'s sandbox — it runs what the files say, including what the being just wrote.';
+  + '  it runs as you, outside the being\'s sandbox — it runs what the files say, including what the being just wrote.\n'
+  + '  so you are asked before each run, with the files that turn changed; it never gets the platform\'s own keys.';
 
 const setCheck = (checks, argText) => {
   const asked = parseCheckArg(argText);
@@ -112,9 +113,13 @@ export const runWorkCommand = async ({ cmd, argText, connection, ground, runTurn
  * @param {{ connection: object|null }} opts.live
  * @param {(thought: string) => Promise<void>} opts.workTurn - a turn with the check
  * @param {(thought: string) => Promise<void>} opts.runTurn - a bare turn
+ * @param {(question: string) => Promise<boolean>} opts.confirm - the operator's yes or no at the prompt
  * @returns {{ stop: () => void, ready: Promise<object> }}
  */
-export const startCommentWatch = ({ ground, stderr, enqueue, seated, live, workTurn, runTurn }) => {
+export const startCommentWatch = ({ ground, stderr, enqueue, seated, live, workTurn, runTurn, confirm }) => {
+  // A comment is file content: the first one of the session is shown to the
+  // operator and runs only on their yes. A no drops that comment and the next asks again.
+  let confirmed = false;
   const watch = watchAiComments({
     ground,
     onError: (error) => stderr.write(`  watch: ${error.message}\n`),
@@ -122,7 +127,14 @@ export const startCommentWatch = ({ ground, stderr, enqueue, seated, live, workT
       const what = instruction.kind === 'do' ? 'instruction' : 'question';
       if (!seated()) { stderr.write(`  watch: ${what} in ${instruction.file} — seat a being first\n`); return; }
       stderr.write(`  watch: ${what} in ${instruction.file}\n`);
-      enqueue(() => runInstruction({ instruction, connection: live.connection, turn: workTurn, runTurn }));
+      enqueue(async () => {
+        if (!confirmed) {
+          const lines = instruction.comments.map((c) => `    line ${c.line}: ${c.text}`).join('\n');
+          confirmed = await confirm(`  the first AI comment of this session — is it yours?\n${lines}\n  act on AI comments saved here? [y/N] `);
+          if (!confirmed) { stderr.write(`  watch: not acted on — ${instruction.file}\n`); return; }
+        }
+        await runInstruction({ instruction, connection: live.connection, turn: workTurn, runTurn });
+      });
     },
   });
   void watch.ready.then(({ dirs, capped }) => stderr.write(capped

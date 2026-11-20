@@ -119,7 +119,7 @@ export const zonosAdapter = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal,
-    });
+    }, 'zonos');
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');

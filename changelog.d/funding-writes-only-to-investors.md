@@ -1,0 +1,11 @@
+Added
+- A funding campaign now writes only to investors. A company "AI and Robotics Ventures", which builds robots, had been scored a fit for a funding audience because of the word "Ventures" in its name, and a raise email was staged to it.
+  - **One record per company, kept for good and used by every campaign** (sales/entity): what the company is (a fund, a venture arm, an angel group, an accelerator, a grant program, a product company, a service company, or other), a quote of its own words, and the page on its own site the quote comes from.
+  - **The quote must show it invests** ("we invest", "portfolio", "fund", "AUM", "LPs", "we back", "seed"), with the company's own name removed first, so a name with Ventures, Capital, Holdings or Partners in it proves nothing.
+  - **The page is checked.** The desk reads it again, and a quote that isn't on it is refused. A page that blocks automated readers keeps the record, marked unchecked.
+- How the rule applies to funding audiences:
+  - Scoring a company for a funding audience needs its record. Anything that isn't an investor is filed as no fit, and its research stays for other campaigns.
+  - A company scored before this rule needs its record before it can become a lead.
+  - A first email for a funding campaign is refused unless the company is an investor.
+  - A company found not to be an investor leaves every funding audience on its own, and the funding email waiting for it is withdrawn. Its lead can then be placed under a customer campaign.
+  - Your sales agent's briefing lists the funding companies still missing a record until each one has one.

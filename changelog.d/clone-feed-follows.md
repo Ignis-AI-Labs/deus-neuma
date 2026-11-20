@@ -1,0 +1,2 @@
+Fixed
+- A long-running shadow clone no longer looks frozen in the dock. A clone's feed keeps its last 160 steps, and it used to decide whether to scroll by counting them. Once a clone passed 160 steps the count stopped changing, and so did the view: new work arrived below the visible area until you switched tabs and the feed was redrawn. Now the feed scrolls to the newest step on every update while you're following it. If you scroll up to read, it still stays where you are.

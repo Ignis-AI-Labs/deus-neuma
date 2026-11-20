@@ -244,9 +244,11 @@ router.put('/queue/:id/approve', async (req, res) => {
     // judged against the account as TikTok describes it right now.
     const tiktok = target?.channelId === 'tiktok' ? await tiktokApproval(req.walletAddress, target, req.body?.tiktok) : null;
     if (tiktok && !tiktok.ok) return res.status(409).json({ error: tiktok.detail });
+    // A yes names the words and the media seals its card showed (approval-seal.js, P6-124).
+    if (typeof req.body?.textSeen !== 'string') return res.status(409).json({ error: 'an approval names the copy it read — read the post again, then approve' });
     const result = await postQueue.approve(req.params.id, {
-      decidedBy: req.walletAddress, scheduledFor: req.body?.scheduledFor,
-      ...(tiktok ? { tiktokConsent: tiktok.consent, textSeen: req.body?.textSeen } : {}),
+      decidedBy: req.walletAddress, scheduledFor: req.body?.scheduledFor, textSeen: req.body.textSeen, mediaSeen: req.body?.mediaSeen,
+      ...(tiktok ? { tiktokConsent: tiktok.consent } : {}),
     });
     if (!result.ok) return res.status(409).json({ error: result.error });
     log.info('Post approved', { id: req.params.id, wallet: req.walletAddress });

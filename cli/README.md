@@ -230,8 +230,8 @@ Allow once / Allow for this session / Reject.
 
 The editor starts Neuma inside whatever project you have open, so tell it where
 your operator wallet's env file is with `NEUMA_WALLET_ENV` (the path to the
-file, never the key itself). Without it, Neuma looks for a `.env` in the open
-project, which an ordinary project does not have.
+file, never the key itself). Without it, Neuma refuses to sign: it never reads
+the open project's `.env` as your operator wallet.
 
 Zed, in `settings.json`:
 
@@ -451,10 +451,11 @@ chosen for a fresh checkout on the same machine as the daemon.
 |--------------------------------|------------------------------------------|----------------------------------------------------------------|
 | `NEUMA_BEING`                  | reads `<projectRoot>/.neuma/active`       | force a specific active being for the whole CLI session         |
 | `NEUMA_OPERATOR_NAME`          | `"your witness"`                          | the name the being addresses you by (honest-speaker descriptor) |
-| `NEUMA_WALLET_ENV`             | `<projectRoot>/.env`                      | wallet env file — override for vendor / per-being files         |
+| `NEUMA_WALLET_ENV`             | required for wallet-signing commands      | explicit wallet env path; never defaults to the open project    |
 | `OPERATOR_WALLET_PRIVATE_KEY`  | —                                         | preferred private key name (one of three allowlisted)           |
 | `NEUMA_PRIVATE_KEY`            | —                                         | preferred private key name (fallback)                           |
 | `PRIVATE_KEY`                  | —                                         | preferred private key name (last fallback)                      |
+| `NEUMA_WALLET_ALLOW_GENERIC_KEY` | off                                     | set to `1` to select one generic `*_PRIVATE_KEY` explicitly     |
 
 ### Wallet key resolution
 
@@ -469,13 +470,14 @@ private key from the wallet env file:
    falling through to a different key. The fix is in the error message
    (commonly a quoted value — use the unquoted form).
 3. **Generic `*_PRIVATE_KEY` fallback** only when no preferred name is
-   present at all: exactly one well-formed line is used; multiple aborts
-   with the conflicting names so you can disambiguate.
+   present and you explicitly set `NEUMA_WALLET_ALLOW_GENERIC_KEY=1`.
+   Without that opt-in, one generic key refuses; multiple always abort with
+   the conflicting names so you can disambiguate.
 
-This rule exists because the simplest "first `*_PRIVATE_KEY=…` match wins"
-strategy would silently pick `CONTRACT_DEPLOYER_PRIVATE_KEY` if that line
-appeared above `OPERATOR_WALLET_PRIVATE_KEY` — and would sign for the
-wrong identity. The allowlist removes that footgun.
+Every successful selection prints its variable and derived address to stderr,
+never the private key. This makes a deployer or other unintended identity
+visible before it is used. The allowlist and explicit opt-in remove the silent
+"first `*_PRIVATE_KEY=…` match wins" footgun.
 
 ## Daemon
 

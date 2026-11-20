@@ -16,12 +16,13 @@
 
 import { randomBytes } from 'crypto';
 import process from 'node:process';
+import { testEndpoint } from '../test-endpoint-door.js';
 
 export const LINKEDIN_CALLBACK_PORT = 53682;
 export const LINKEDIN_CALLBACK_PATH = '/linkedin/callback';
 export const LINKEDIN_REDIRECT_URI = `http://127.0.0.1:${LINKEDIN_CALLBACK_PORT}${LINKEDIN_CALLBACK_PATH}`;
 export const LINKEDIN_SCOPES = Object.freeze(['openid', 'profile', 'w_member_social']);
-const oauthRoot = () => process.env.NEUMA_LINKEDIN_OAUTH_ROOT || 'https://www.linkedin.com';
+const oauthRoot = () => testEndpoint(process.env, 'NEUMA_LINKEDIN_OAUTH_ROOT', 'https://www.linkedin.com');
 
 /** The state for one consent. LinkedIn's web flow carries no PKCE: the client secret proves the app. */
 export const mintLinkedInState = () => ({ verifier: null, challenge: null, state: randomBytes(24).toString('base64url') });

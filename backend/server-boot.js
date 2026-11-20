@@ -324,7 +324,7 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     settleCutTurns().then((landed) => { if (landed) log.info('cut turns are back on the record', { landed }); })
       .catch((err) => log.warn('cut turns were not swept at start', { err: err.message }));
     // Shadow clones working in the background when the app closed: their chat is told, never left waiting (shadow-clone.js).
-    fireLostWatches('clones', () => 'They were cut off when the app closed before they finished. Each one\'s sitting is filed under this chat with whatever it had done; nothing was reported back.')
+    fireLostWatches('clones', (w) => `They were cut off when the app closed before they finished. Each one's sitting is filed under this chat with whatever it had done; nothing was reported back. Resume them where they left off — shadow_clone {resume: "${String(w.ref).split(':')[0]}"} — or your operator presses RESUME on their tabs.`)
       .catch((err) => log.warn('lost clone splits were not told at start', { err: err.message }));
     // The house clock — the house wakes itself for its own work, inside the
     // charter its operator approved (house-clock.js).

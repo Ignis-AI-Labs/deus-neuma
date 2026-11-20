@@ -28,7 +28,6 @@ const APPLY = args.includes('--apply');
 const extraRoots = args.flatMap((a, i) => (a === '--root' && args[i + 1] ? [path.resolve(args[i + 1])] : []));
 
 const say = (line) => process.stdout.write(`${line}\n`);
-const fingerprint = (secret) => crypto.createHash('sha256').update(`rekey-fp:${secret}`).digest('hex').slice(0, 12);
 
 // impure (fs) — the env file's lines with the two key lines replaced in place (or added), everything else kept
 const writeEnvKeys = async (current, previous) => {
@@ -71,11 +70,16 @@ const main = async () => {
   Object.assign(process.env, Object.fromEntries(['WORKSPACES_ROOT', 'WITNESSES_ROOT', 'HARNESS_ROOT', 'NEUMA_DATA_ROOT', 'NEUMA_VAULT_ROOT']
     .filter((k) => env[k] && !process.env[k]).map((k) => [k, env[k]])));
   const { applyWorkspaceSettings } = await import('../backend/services/workspace-settings.js');
+  const { applyRealmSettings } = await import('../backend/services/user-realm-settings.js');
+  const { getRealmRoot } = await import('../backend/services/user-realm.js');
   const { getDataRoot, getVaultRoot } = await import('../backend/services/data-root.js');
   const { getWorkspacesRoot, getWitnessesRoot } = await import('../core/workspace/neuma-workspace.js');
   const { getHarnessRoot } = await import('../core/workspace/lane-grounds.js');
   const engine = await import('../core/workspace/rekey-house.js');
+  const { masterFingerprint: fingerprint, retiredMastersPath, readRetiredMasters, retireMasters } = await import('../core/workspace/retired-masters.js');
   await applyWorkspaceSettings();
+  await applyRealmSettings();
+  const realmRoot = getRealmRoot();
 
   const stateFile = path.join(getDataRoot(), '.rekey-state.json');
   const state = await fs.readFile(stateFile, 'utf8').then(JSON.parse).catch(() => null);
@@ -91,6 +95,9 @@ const main = async () => {
     newSecret = crypto.randomBytes(32).toString('hex');
     oldSecrets = [env.DNA_ENCRYPTION_KEY, ...previous];
   }
+  // Masters earlier re-keys retired are old keys of this run too: whatever still sits under one is moved now.
+  const ringFile = retiredMastersPath(getDataRoot());
+  oldSecrets = [...new Set([...oldSecrets, ...readRetiredMasters(ringFile, [newSecret, ...oldSecrets])])].filter((s) => s !== newSecret);
   const house = path.resolve(getWorkspacesRoot());
   // The env file's own root counts even when the desk's saved choice wins over it: its beings are under this key.
   const named = [...new Set([...(env.WORKSPACES_ROOT ? [env.WORKSPACES_ROOT] : []), ...extraRoots].map((r) => path.resolve(r)))].filter((r) => r !== house);
@@ -123,7 +130,7 @@ const main = async () => {
   const backends = await liveBackends();
   say(`${APPLY ? 'RE-KEY' : 'DRY RUN — nothing is changed'} · env file ${ENV_FILE}`);
   for (const g of grounds) say(`  ground ${g}`);
-  say(`  data ${getDataRoot()} · vault ${path.join(getVaultRoot(), 'dna')}`);
+  say(`  data ${getDataRoot()} · realm ${realmRoot} · vault ${path.join(getVaultRoot(), 'dna')}`);
   if (missing.length) {
     say('  «STOP» beings in these houses also open with this key and are not in the run — add each with --root, or they are locked out:');
     missing.forEach((m) => say(`    --root ${m}`));
@@ -162,25 +169,30 @@ const main = async () => {
     }
   }
   const data = await engine.resealTree(getDataRoot(), oldMasters, newMaster, { dryRun: !APPLY, skip: inGround });
+  const realm = await engine.resealTree(realmRoot, oldMasters, newMaster, { dryRun: !APPLY, skip: inGround });
   const vault = await engine.rekeyVault(path.join(getVaultRoot(), 'dna'), beingKeys, { oldSecrets, newSecret, dryRun: !APPLY });
-  say(`  beings with their own key: ${totals.lanes} · lanes on the master: ${totals.masterLanes} · files to re-seal: ${totals.moved + data.moved + vault.moved}`);
-  say(`  install stores sealed by the master: ${data.moved} · DNA vault records: ${vault.moved} · old migration backups to drop: ${totals.staleBackups + data.staleBackups}`);
+  say(`  beings with their own key: ${totals.lanes} · lanes on the master: ${totals.masterLanes} · files to re-seal: ${totals.moved + data.moved + realm.moved + vault.moved}`);
+  say(`  install stores sealed by the master: ${data.moved + realm.moved} · DNA vault records: ${vault.moved} · old migration backups to drop: ${totals.staleBackups + data.staleBackups + realm.staleBackups}`);
   if (totals.closedDirs) say(`  ${totals.closedDirs} folder(s) this user cannot open were passed over (no record the platform writes lives there).`);
   const foreign = totals.unreadable;
   if (foreign.length) { say(`  ${foreign.length} being file(s) hold records no key here opens — unreadable before this run, kept exactly as they are:`); foreign.slice(0, 20).forEach((f) => say(`    ${f}`)); }
-  if (data.unreadable.length || vault.unreadable.length) say(`  ${data.unreadable.length + vault.unreadable.length} install file(s) this master never sealed (other keys, fixtures) — left as they are.`);
+  if (data.unreadable.length || realm.unreadable.length || vault.unreadable.length) say(`  ${data.unreadable.length + realm.unreadable.length + vault.unreadable.length} install file(s) this master never sealed (other keys, fixtures) — left as they are.`);
   if (!APPLY) { say('Run again with --apply once every backend on this house is stopped.'); return; }
 
-  const stillOld = (await Promise.all([...grounds, getDataRoot()].map((d) => engine.stillOpenedByOld(d, oldMasters)))).flat();
+  const stillOld = (await Promise.all([...grounds, getDataRoot(), realmRoot].map((d) => engine.stillOpenedByOld(d, oldMasters)))).flat();
   if (stillOld.length) {
     say(`  NOT FINISHED — ${stillOld.length} file(s) still open with the old key. The old key stays as PREVIOUS; run --apply again after looking.`);
     stillOld.slice(0, 20).forEach((f) => say(`    ${f}`));
     process.exitCode = 1;
     return;
   }
+  // The old master is never destroyed: it leaves the env file only once it stands in the keyring, sealed
+  // under the new one — a store this run did not reach still opens (2026-10-26 and 2026-11-17 it did not).
+  retireMasters(ringFile, oldSecrets, newSecret);
   await writeEnvKeys(newSecret, previous.filter((p) => !oldSecrets.includes(p)));
   await fs.unlink(stateFile);
   say('  DONE — every being holds a fresh key of its own; the old master opens nothing on these grounds and is gone from the env file.');
+  say(`  The old master is kept in ${ringFile}, sealed under the new one: a store this run did not reach still opens.`);
   say('  Backups made before today were sealed under the old key: make a fresh backup now, then delete the old ones.');
 };
 

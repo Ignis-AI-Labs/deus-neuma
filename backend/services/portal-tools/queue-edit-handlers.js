@@ -30,6 +30,12 @@ const _editTarget = (entries, id, channel) => {
 // Did this lane draft the entry itself? pure.
 const isOwn = (entry, companion) => Boolean(entry?.authorNeumaId) && entry.authorNeumaId === companion?.neumaId;
 
+// May this edit skip the card as the being's own work? Only when the operator still decides the
+// result afterwards: its own draft, or its own approved post that the edit returns to DRAFT. An edit
+// that leaves a post APPROVED (a new slot, a new campaign) is carded, own post or not (audit P6-100). pure.
+const skipsCard = (entry, companion, preview) =>
+  isOwn(entry, companion) && (entry.status !== 'approved' || preview.resetsApproval);
+
 // The diff the operator DECIDES on (pure): every changed field as {was, now} —
 // the chip shows what the copy WAS, never just the patch.
 const _diffForChip = (preview) => Object.fromEntries(
@@ -60,8 +66,9 @@ const _queueEditCrewGate = async (ws, connection, tool, toolName, channel, accou
 // an ALWAYS granted on staging never unlocks editing, nor the reverse.
 // Returns the refusal, or null when the edit may proceed.
 // A being revising only ITS OWN staged posts raises no card (Design note, 2026-11-12:
-// […]) — words that change still return the post to
-// DRAFT, so nothing it rewrites goes out unseen.
+// […]) — new words or images on an approved post return
+// it to DRAFT, and an edit that keeps the approval is carded (skipsCard), so
+// nothing it rewrites or re-times goes out unseen.
 const _queueEditActsGate = async (ws, connection, neumaPolicy, toolMode, tool, toolName, chipArgs, ownWork = false) => {
   const gate = await gateAct(connection, {
     server: 'social', tool: toolName, toolLabel: tool, cardArgs: chipArgs, ownWork,
@@ -131,7 +138,7 @@ export const handleNeumaQueueUpdate = async (ws, connection, neumaPolicy, toolMo
     ...(preview.resetsApproval
       ? { renewsApproval: 'the words or images change — this edit returns the post to DRAFT for a fresh decision' }
       : {}),
-  }, isOwn(target.entry, companion));
+  }, skipsCard(target.entry, companion, preview));
   if (actsRefusal) return actsRefusal;
 
   _sendToolEvent(ws, companion, { tool, status: 'executing' });
@@ -208,7 +215,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
       results[i] = { id, ok: false, error: preview.error };
       continue;
     }
-    viable.push({ index: i, id, patch, preview, accountId: entryAccountId(target.entry), own: isOwn(target.entry, companion) });
+    viable.push({ index: i, id, patch, preview, accountId: entryAccountId(target.entry), own: skipsCard(target.entry, companion, preview) });
   }
 
   const verdict = () => {

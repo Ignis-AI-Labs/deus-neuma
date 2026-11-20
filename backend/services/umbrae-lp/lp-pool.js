@@ -17,6 +17,7 @@
 import { ethers } from 'ethers';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { UMBRAE_FACTORY, binIdFor, orientPair } from '../../../core/wallet/pool-policy.js';
+import { checkLpIntent, classifyLpTransaction } from '../../../core/wallet/lp-tx-policy.js';
 import { lpBase } from './lp-base.js';
 import { callUmbrae } from './umbrae-lp-client.js';
 import { umbraeKeyFor } from './lp-enroll.js';
@@ -26,8 +27,11 @@ import { keyedCaller, signSendWait } from './lp-run.js';
 import { reserveCapitalAssets } from './lp-capital-controls.js';
 import { readAgentVault } from '../agent-vault/vault-store.js';
 import { bookAct } from './lp-book.js';
+import { independentTokenPrice } from './lp-budget-independent.js';
+import { tokenDecimalsOnChain } from './lp-quotes.js';
+import { resolveToken } from './lp-tokens.js';
 
-const ERC20 = new ethers.Interface(['function balanceOf(address) view returns (uint256)', 'function symbol() view returns (string)']);
+const ERC20 = new ethers.Interface(['function balanceOf(address) view returns (uint256)', 'function symbol() view returns (string)', 'function approve(address spender, uint256 amount)']);
 const FACTORY = new ethers.Interface([
   'function getPair(address tokenX, address tokenY, uint16 binStep, uint16 baseFactor) view returns (address)',
   'function getAllFeeConfigs() view returns (uint16[] binSteps, uint16[] baseFees, uint16[] caps)',
@@ -38,15 +42,15 @@ const SEED_USD = 10;
 
 const refuse = (reason, extra = {}) => Object.freeze({ ok: false, reason, ...extra });
 
-// pure — the ask checked: tokens by symbol (from Umbrae's book) or address, a whole fee tier, optional price and seed.
+// pure — the ask checked: tokens by address, or by a symbol that names ONE token of Umbrae's book
+// (lp-tokens.js), a whole fee tier, optional price and seed.
 const readAsk = (ask, book) => {
-  const tokenOf = (said) => {
-    const s = String(said ?? '').trim();
-    if (ethers.isAddress(s)) return ethers.getAddress(s);
-    return [...book].find(([, t]) => t.symbol.toLowerCase() === s.toLowerCase())?.[0] ?? null;
-  };
-  const base = tokenOf(ask?.baseToken);
-  const quote = tokenOf(ask?.quoteToken);
+  const listed = [...book].map(([address, t]) => [address, t.symbol]);
+  const resolved = [ask?.baseToken, ask?.quoteToken].map((said) => (ethers.isAddress(String(said ?? '').trim())
+    ? { ok: true, address: ethers.getAddress(String(said).trim()) } : resolveToken(listed, said)));
+  const ambiguous = resolved.find((n) => !n.ok && n.ambiguous);
+  if (ambiguous) return refuse(ambiguous.reason);
+  const [base, quote] = resolved.map((n) => (n.ok ? n.address : null));
   if (!base) return refuse('Name the new pool\'s token (baseToken) by its address, or by symbol if Umbrae already trades it.');
   if (!quote || !book.has(quote)) return refuse(`The pool's other side (quoteToken) is a token Umbrae's pools trade: ${[...book.values()].map((t) => t.symbol).join(', ')}.`);
   if (base === quote) return refuse('A pool is two different tokens.');
@@ -97,6 +101,7 @@ const planWords = (plan) => {
   const q = plan.quoteToken?.symbol ?? 'quote';
   return [
     `PLAN for a ${b}-${q} pool at bin step ${plan.feeTier?.binStep} · ${plan.feeTier?.baseFee} bps:`,
+    `  tokens: ${b} ${plan.baseToken?.address ?? '?'} · ${q} ${plan.quoteToken?.address ?? '?'}`,
     `  fee tiers the factory allows: ${(plan.feeTiers ?? []).map((t) => `${t.binStep}·${t.baseFee}${t.existingPool ? ' (exists)' : ''}`).join(', ') || '?'}`,
     `  market: ${plan.market ? `${plan.market.price} ${q} per ${b}${plan.market.established ? ', established' : ', NOT established (thin outside pair)'}` : 'nothing prices this pair'}`,
     `  start price: ${plan.startPrice?.price ?? '?'} (${plan.startPrice?.check?.kind ?? '?'})`,
@@ -147,8 +152,16 @@ const createOnce = async (neumaId, a, { provider, pollMs = 3000, receiptProvider
     return refuse(`Umbrae will not open it as planned: ${(plan.problems ?? []).map((p) => `${p.code}: ${p.error}`).join(' ') || 'the plan has no price or seed yet'}`, { plan: planWords(plan) });
   }
   const { tokenX, tokenY, baseIsX } = orientPair(a.base, a.quote);
-  const dBase = Number(plan.baseToken.decimals);
-  const dQuote = Number(plan.quoteToken.decimals);
+  const [dBase, dQuote, baseUsd, quoteUsd] = await Promise.all([
+    tokenDecimalsOnChain(base, a.base), tokenDecimalsOnChain(base, a.quote),
+    independentTokenPrice(a.base), independentTokenPrice(a.quote),
+  ]);
+  if (!(baseUsd > 0) || !(quoteUsd > 0)) return refuse('Independent prices are unavailable or disagree, so the pool seed and start price cannot be verified.');
+  const price = Number(plan.startPrice.price);
+  const fair = baseUsd / quoteUsd;
+  if (!(price > 0) || Math.abs(price - fair) > fair * 0.02) {
+    return refuse(`The proposed start price ${price} is more than 2% from the independent market price ${fair}. Nothing was signed.`);
+  }
   const raw = { base: ethers.parseUnits(plan.seed.amountBase, dBase), quote: ethers.parseUnits(plan.seed.amountQuote, dQuote) };
   const [haveBase, haveQuote] = await Promise.all([balanceOf(base, a.base, funds), balanceOf(base, a.quote, funds)]);
   if (haveBase === null || haveQuote === null) return refuse('Base did not answer for the seed tokens, so nothing was signed.');
@@ -160,41 +173,60 @@ const createOnce = async (neumaId, a, { provider, pollMs = 3000, receiptProvider
   const admitted = await reserveCapitalAssets(neumaId, [
     { token: a.base, amount: raw.base, decimals: dBase },
     { token: a.quote, amount: raw.quote, decimals: dQuote },
-  ].filter((asset) => BigInt(asset.amount) > 0n));
+  ].filter((asset) => BigInt(asset.amount) > 0n), { maxActionUsd: 20 });
   if (!admitted.ok) return admitted;
   const ctx = { signer, provider: base, keyed, pollMs, neumaId, receiptProvider, receiptConfirmations, vault };
   const txHashes = [];
+
+  const built = await keyed('buildPool', plan.next.buildPool);
+  if (!built.ok) return refuse(built.error, { txHashes });
+  const asked = {
+    kind: 'create-pool', tokenX, tokenY, binStep: a.binStep, baseFactor: a.baseFee,
+    amountX: amountX.toString(), amountY: amountY.toString(), activeId: binIdFor(baseIsX ? price : 1 / price, a.binStep),
+  };
+  const verdict = classifyLpTransaction(built.payload?.transaction, { wallet: vault?.safe ?? signer.address });
+  const fits = verdict.ok ? checkLpIntent(verdict, asked) : verdict;
+  if (!fits.ok) return refuse(`Umbrae's pool action was refused before any approval was signed: ${fits.reason}`);
 
   const approvals = await keyed('approvals', plan.next.approvals);
   if (!approvals.ok) return refuse(approvals.error);
   // An allowance to the factory is never more than twice that token's seed (Umbrae's own rule).
   const maxApprove = { [tokenX]: (amountX * 2n).toString(), [tokenY]: (amountY * 2n).toString() };
+  const granted = [];
+  const finish = async (result) => {
+    if (result.uncertain || !granted.length) return result;
+    const approvalCleanup = { txHashes: [], warnings: [] };
+    for (const step of granted) {
+      const token = ethers.getAddress(step.transaction.to);
+      const revoked = await signSendWait(ctx,
+        { to: token, chainId: 8453, data: ERC20.encodeFunctionData('approve', [UMBRAE_FACTORY, 0n]) },
+        { kind: 'approval', spender: UMBRAE_FACTORY, token, revoke: true }, { [token]: '0' }).catch((error) => refuse(error.message));
+      if (revoked.ok) approvalCleanup.txHashes.push(revoked.txHash);
+      else approvalCleanup.warnings.push(revoked.reason);
+    }
+    return Object.freeze({ ...result, txHashes: [...txHashes, ...approvalCleanup.txHashes], approvalCleanup });
+  };
   for (const step of approvals.payload?.steps ?? []) {
-    const approved = await signSendWait(ctx, step.transaction, { kind: 'approval' }, maxApprove);
-    if (!approved.ok) return Object.freeze({ ...approved, txHashes });
+    const approved = await signSendWait(ctx, step.transaction, { kind: 'approval', spender: UMBRAE_FACTORY }, maxApprove);
+    if (!approved.ok) return finish(Object.freeze({ ...approved, txHashes }));
     txHashes.push(approved.txHash);
+    granted.push(step);
   }
 
-  const built = await keyed('buildPool', plan.next.buildPool);
-  if (!built.ok) return refuse(built.error, { txHashes });
-  const price = Number(plan.startPrice.price);
-  const asked = {
-    kind: 'create-pool', tokenX, tokenY, binStep: a.binStep, baseFactor: a.baseFee,
-    amountX: amountX.toString(), amountY: amountY.toString(), activeId: binIdFor(baseIsX ? price : 1 / price, a.binStep),
-  };
   const created = await signSendWait(ctx, built.payload?.transaction, asked);
-  if (!created.ok) return Object.freeze({ ...created, txHashes });
+  if (!created.ok) return finish(Object.freeze({ ...created, txHashes }));
   txHashes.push(created.txHash);
 
   const pair = await base.send('eth_call', [{ to: UMBRAE_FACTORY, data: FACTORY.encodeFunctionData('getPair', [tokenX, tokenY, a.binStep, a.baseFee]) }, 'latest'])
     .then((r) => FACTORY.decodeFunctionResult('getPair', r)[0], () => null);
   const pool = pair && pair !== ethers.ZeroAddress ? ethers.getAddress(pair) : null;
   const name = `${plan.baseToken.symbol}-${plan.quoteToken.symbol}`;
-  await neumaWorkspace.audit(neumaId, 'LP_ACTION', { type: 'create-pool', pool, name, binStep: a.binStep, baseFee: a.baseFee, startPrice: price, txHashes });
-  return Object.freeze({
-    ok: true, pool, name, txHashes, startPrice: price, binStep: a.binStep, baseFee: a.baseFee,
+  const completed = await finish(Object.freeze({
+    ok: true, pool, name, tokens: { base: a.base, quote: a.quote }, startPrice: price, binStep: a.binStep, baseFee: a.baseFee,
     seed: `${plan.seed.amountBase} ${plan.baseToken.symbol} + ${plan.seed.amountQuote} ${plan.quoteToken.symbol}`,
-  });
+  }));
+  await neumaWorkspace.audit(neumaId, 'LP_ACTION', { type: 'create-pool', pool, name, binStep: a.binStep, baseFee: a.baseFee, startPrice: price, txHashes: completed.txHashes });
+  return completed;
 };
 
 /**

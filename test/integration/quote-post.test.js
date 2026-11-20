@@ -55,7 +55,9 @@ test('a quote post goes out as X builds one: the words, then the quoted post\'s 
   process.env.NEUMA_X_API_ROOT = `http://127.0.0.1:${server.address().port}/2`;
   const { schedulerTick } = await import('../../backend/services/social/post-scheduler.js');
 
-  const entry = await postQueue.add({ channelId: 'x', text: 'The Space today was worth an hour.', quote: quoteOf(QUOTED), queuedBy: SERVED_WALLET });
+  await expect(postQueue.add({ channelId: 'x', text: 'hostile quote', quote: { postId: '1988776655443322110', url: `${QUOTED}?key=${'AKIA'}ABCDEFGHIJKLMNOP` }, queuedBy: SERVED_WALLET }))
+    .rejects.toThrow(/looks like a secret/);
+  const entry = await postQueue.add({ channelId: 'x', text: 'The Space today was worth an hour.', quote: { postId: '1988776655443322110', url: `${QUOTED}?fixture=tail` }, queuedBy: SERVED_WALLET });
   expect(entry.quote).toEqual({ postId: '1988776655443322110', url: QUOTED });
   await postQueue.approve(entry.id, { decidedBy: SERVED_WALLET });
   await schedulerTick();

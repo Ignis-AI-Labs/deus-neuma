@@ -15,6 +15,7 @@ import { setRoots } from '../../backend/services/user-files.js';
 import { stopFilesWatchers } from '../../backend/services/files-watcher.js';
 import router from '../../backend/routes/user-files-routes.js';
 import { makeInstallOwner } from '../helpers/install-owner-kit.js';
+import { ticketedUrl } from '../helpers/desk-ticket-kit.js';
 
 const WALLET = '0x2222222222222222222222222222222222222222';
 
@@ -50,8 +51,8 @@ test('a real write reaches a live SSE subscriber as a files:changed frame', asyn
   await makeInstallOwner(WALLET);
   const token = createSessionToken(WALLET);
   const abort = new AbortController();
-  // The token rides the QUERY — the exact path an EventSource must use.
-  const res = await fetch(`${base}/events?token=${encodeURIComponent(token)}`, {
+  // The exact-lane ticket rides the query an EventSource must use.
+  const res = await fetch(ticketedUrl(`${base}/events`, token, '/api/v1/user/files/events'), {
     signal: abort.signal,
   });
   expect(res.status).toBe(200);

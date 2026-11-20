@@ -18,6 +18,7 @@ import { campaignStoreFor } from '../marketing/campaign-store.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { readCampaigns, readSegments, readProspects, readCandidates } from '../sales/sales-store.js';
 import { campaignBoard } from '../sales/campaign-shape.js';
+import { frameUntrustedBriefing } from '../untrusted-briefing.js';
 import { positionOf } from './position-map.js';
 
 const serialize = createWriteChain();
@@ -66,7 +67,9 @@ export const linkedText = (offices, campaigns) => {
     `- Your campaign "${c.name}" works with the ${positionOf(l.office)?.seat ?? l.office}'s campaign "${l.name}" (${l.state}): ${l.summary}${l.note ? ` — why they are linked: ${l.note}` : ''}`));
   return lines.length ? [
     '## LINKED CAMPAIGNS — keep these in step',
-    ...lines,
+    frameUntrustedBriefing('linked campaign names, goals, angles and notes', [
+      { lead: 'LINKED CAMPAIGN RECORDS', text: lines.join('\n') },
+    ]),
     'The two sides say the same offer to the same people at the same time. Before you change your campaign\'s offer, audience or timing, tell the other campaign\'s holder by house post; when theirs has changed (the line above is its state now), bring yours in step.',
   ].join('\n') : '';
 };

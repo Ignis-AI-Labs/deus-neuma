@@ -95,7 +95,7 @@ const MediaMenuHostView = () => {
       if (player) actOnPlayer(player, 'full-screen').catch(() => setNote('Full screen was refused here.'));
       else setLoupe({ src: media.src, alt: media.alt || media.name || 'image' });
     } else if (id === 'download') {
-      downloadFrom(media.src, downloadNameOf(media));
+      if (!downloadFrom(media.src, downloadNameOf(media))) setNote('That media address is not safe to download.');
     } else if (id === 'copy-image') {
       copyImageFrom(media.src).then(() => setNote(null), (err) => setNote(`The clipboard refused the image — ${err?.message || 'not allowed here'}`));
     } else if (id === 'copy-path') {

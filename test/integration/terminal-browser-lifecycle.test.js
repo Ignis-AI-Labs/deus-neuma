@@ -68,7 +68,8 @@ describe('HR-TERMINAL browser lifecycle (no GPU)', () => {
   test('REST rejection unmount, signed reauth, reload, wallet switch and explicit window close', async () => {
     const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
     const errors = [];
-    page.on('pageerror', (err) => errors.push(err.message));
+    // Vite's own HMR retry is not the terminal transport under test (same filter as brand-cards-browser).
+    page.on('pageerror', (err) => { if (err.message !== 'WebSocket closed without opened.') errors.push(err.message); });
     let idA, idB;
     try {
       // Establish the origin without mounting a terminal before authentication.

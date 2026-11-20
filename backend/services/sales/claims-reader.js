@@ -13,7 +13,6 @@ import { createStreamRequest, consumeStream, getConfig, getThinkBehavior } from 
 import { resolveNeumaRoute, isSovereigntyRefusal } from '../neuma-route-resolver.js';
 import { isSovereignProvider } from '../provider-registry.js';
 import { frameUntrustedContent } from '../untrusted-content.js';
-import { SALES_DISCLOSURE } from './sales-facts.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('Sales.ClaimsReader');
@@ -39,7 +38,7 @@ export const claimsMessages = ({ facts, subject, text }) => [
       'APPROVED FACTS:',
       ...facts.map((f) => `${f.n}. ${f.claim}${f.figure ? ` [${f.figure.value} ${f.figure.unit}]` : ''}`),
       '',
-      frameUntrustedContent('the email to judge', `Subject: ${subject}\n\n${String(text).split(SALES_DISCLOSURE).join('')}`),
+      frameUntrustedContent('the email to judge', `Subject: ${subject}\n\n${String(text)}`),
     ].join('\n'),
   },
 ];

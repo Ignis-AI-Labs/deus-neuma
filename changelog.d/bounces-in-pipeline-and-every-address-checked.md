@@ -1,0 +1,6 @@
+Added
+- Bounced emails now show in the pipeline. A lead whose email bounced leads the SENT list, marked BOUNCED with the date and the dead address, and SENT shows how many bounced. Your sales agent is asked to find the right address, either the same person or the next one up at the company, and move the lead to it. The new address is checked before anything is sent. Before, a bounce just closed the lead, and a closed lead couldn't be moved to a new address.
+- EMAILS has an ADDRESS CHECK column that shows what each address's check said before you send: VALID, WILL BOUNCE, RISKY, or NOT CHECKED YET. CHECK ADDRESSES asks every address not yet checked, right away.
+
+Changed
+- Every address an email goes to is now checked before the email leaves, not only first emails, and whether Paid lead data is on or off. Each address is checked once and the result kept, so later emails to the same person cost nothing. An address that won't receive mail is never sent to. If an address can't be checked, for example because the month's credit limit is reached, the email waits instead of going out unchecked. With no Hunter or Tomba key attached, the check confirms the address's domain takes mail. Someone who has written to you isn't checked.

@@ -13,12 +13,14 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { isSecretFile } from './secret-path-classifier.js';
+import { requestablePattern } from './sensitive-grants.js';
 import { secretsFilePath } from './secret-provisioning.js';
 import { secretLinkReason } from './secret-inodes.js';
 // Re-exported for the filesystem organ, which is at the size cap and keeps one policy import.
 export { secretLinkReason };
 import { platformWallWriteReason, platformWriteWalls } from './platform-write-walls.js';
 import { foldName, wallSpelling } from './wall-spelling.js';
+import { windowsPathShapeRefusal } from './windows-path-shape.js';
 
 // Denied path patterns — tools cannot access these (reads OR writes). Split in
 // two on 2026-07-26 (THE FOCUS GROUND) because a single substring list cannot
@@ -32,7 +34,7 @@ import { foldName, wallSpelling } from './wall-spelling.js';
 // (`.git/config` carries remote tokens), and the dependency tree nobody means
 // to hand a model.
 const SECRET_PATTERNS = [
-  '.env', 'vault/', '.git/', 'node_modules/', '.ssh/',
+  '.env', 'vault/', '.git/', '.neuma/edit-undo/', 'node_modules/', '.ssh/',
   'keys/keypair', 'keys/', 'owner.json',
   // Other neumas' sovereign state stays denied EVERYWHERE, deliberately not
   // install-anchored: the workspaces root is relocatable (setWorkspacesRoot),
@@ -80,7 +82,8 @@ export const deniedPatternsFor = (resolvedPath) => {
 // being's work stays ordinary source. keys/ and owner.json are walls everywhere
 // already (SECRET_PATTERNS). Writes only: reading its own policy is fine.
 const LANE_STATE_DIRS = Object.freeze(['config', 'identity', 'audit']);
-const LANE_STATE_FILES = Object.freeze(['lane.json', 'allocation.json', 'voice/seal.json']);
+// tasks/plan.json is the operator-approved plan of record (P6-121): the rest of tasks/ stays the being's.
+const LANE_STATE_FILES = Object.freeze(['lane.json', 'allocation.json', 'voice/seal.json', 'tasks/plan.json']);
 // A house's founding records stand beside its lanes, at the ground itself.
 const GROUND_STATE_FILE = /^house-founding\..+\.json$/;
 // A lane id, folded (neuma-workspace `_path`); a dot never appears in one, so
@@ -290,16 +293,19 @@ export const normalizeToolArgs = (toolName, args, defaultRoot = null, readRoots 
  * for the hard-link law (a path that does not exist costs nothing more).
  * @param {string} filePath - Path to check
  * @param {string[]} allowedRoots - Allowed root directories (absolute paths)
- * @param {{ requireRoot?: boolean }} [opts] - requireRoot: a write with no root fails closed
+ * @param {{ requireRoot?: boolean, platform?: string }} [opts] - requireRoot: a write with no root fails closed;
+ *   platform: the host's by default (on Windows a stream or short-name spelling is refused outright, P6-119)
  * @returns {{ allowed: boolean, reason: string|null, grantable?: boolean, deniedPattern?: string }}
  *   `grantable` marks the ONE root denial the operator may lift (a READ outside
  *   its roots). `deniedPattern` names the matched secret pattern/extension so
  *   the sensitive-grant door can consult the lane's grants.
  */
-export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = false } = {}) => {
+export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = false, platform = process.platform } = {}) => {
   if (!filePath || typeof filePath !== 'string') {
     return { allowed: false, reason: 'Invalid path' };
   }
+  const shape = windowsPathShapeRefusal(filePath, platform);
+  if (shape) return { allowed: false, reason: shape };
 
   const normalized = foldName(path.normalize(filePath));
 
@@ -309,11 +315,10 @@ export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = fal
   // do, so a focused repository's own config/ is ordinary source. The install
   // test runs on the case-correct resolved path — the lowercased form above is
   // for substring matching only.
-  for (const denied of deniedPatternsFor(path.resolve(filePath))) {
-    if (matchesDeniedPattern(normalized, denied)) {
-      return { allowed: false, reason: `Access denied: ${denied}`, deniedPattern: denied };
-    }
-  }
+  const denied = deniedPatternsFor(path.resolve(filePath))
+    .filter((pattern) => matchesDeniedPattern(normalized, pattern))
+    .sort((a, b) => Number(requestablePattern(a)) - Number(requestablePattern(b)))[0];
+  if (denied) return { allowed: false, reason: `Access denied: ${denied}`, deniedPattern: denied };
 
   // Check denied extensions
   for (const ext of DENIED_EXTENSIONS) {

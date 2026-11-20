@@ -14,6 +14,7 @@ import { WebSocketServer } from 'ws';
 import WebSocket from 'ws';
 import { promises as fsp } from 'fs';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import { setConfig } from '../../backend/services/llm-provider.js';
 import { setupPortalRoutes } from '../../backend/routes/portal-routes.js';
 import { __test as portalSeam } from '../../backend/routes/portal-connections.js';
@@ -60,6 +61,7 @@ describe('birth:start resets the connection a prior being held', () => {
     setWorkspacesRoot(house);
     prevDataRoot = process.env.NEUMA_DATA_ROOT;
     process.env.NEUMA_DATA_ROOT = house;
+    await makeInstallOwner('0x00000000000000000000000000000000000000a1');
     provider = await startProvider();
     setConfig({ provider: 'lm-studio', endpoint: `http://127.0.0.1:${provider.address().port}`, model: 'openai/gpt-oss-120b', apiKey: '' });
     httpServer = createServer();

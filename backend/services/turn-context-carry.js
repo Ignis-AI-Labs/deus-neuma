@@ -22,6 +22,7 @@
  */
 import { createHash, randomUUID } from 'node:crypto';
 import { CHARS_PER_TOKEN, SAFETY_RESERVE_TOKENS, MIN_COMPLETION_TOKENS } from './context-budget.js';
+import { sanitizeHarnessText, wrapHarnessContext } from './harness-context-frame.js';
 
 const CHATS_MAX = 8;
 /** An unknown window carries at most this many characters of earlier blocks. */
@@ -36,7 +37,6 @@ export const CARRY_NOTE = 'The harness\'s standing context for this turn — the
 export const CARRY_NOTE_SHORT = 'Harness context for this turn — not the operator\'s words. Unchanged sections and lines stand from earlier blocks.';
 
 const fingerprint = (text) => createHash('sha256').update(String(text)).digest('hex').slice(0, 16);
-const wrap = (body, note = CARRY_NOTE) => `<harness-context>\n${note}\n\n${body}\n</harness-context>`;
 
 // The clock section's fixed guidance lines stand from the block that last
 // carried them: a later block sends its heading and the lines that changed
@@ -97,7 +97,8 @@ const blockForTurn = (state, { turnId, turnKey, sections, carried }) => {
   const bySection = new Map();
   const shown = new Map(state.shown);
   for (const section of sections) {
-    const fp = fingerprint(section.text);
+    const text = sanitizeHarnessText(section.text);
+    const fp = fingerprint(text);
     const prior = state.shown.get(section.id);
     const priorStands = Boolean(prior) && carried.has(prior.turnId);
     if (section.id !== 'present' && priorStands && prior.fp === fp) {
@@ -106,14 +107,14 @@ const blockForTurn = (state, { turnId, turnKey, sections, carried }) => {
     }
     if (section.id === 'present' && priorStands) {
       // Its fixed lines still stand where they were last sent: the carrier keeps them.
-      const moved = changedLines(section.text, prior.text);
+      const moved = changedLines(text, prior.text);
       parts.push(moved);
       bySection.set(section.id, moved);
       continue;
     }
-    parts.push(section.text);
-    bySection.set(section.id, section.text);
-    shown.set(section.id, { fp, turnId, label: section.label || section.id, ...(section.id === 'present' ? { text: section.text } : {}) });
+    parts.push(text);
+    bySection.set(section.id, text);
+    shown.set(section.id, { fp, turnId, label: section.label || section.id, ...(section.id === 'present' ? { text } : {}) });
   }
   const now = new Set(sections.map((section) => section.id));
   for (const [id, prior] of state.shown) {
@@ -122,7 +123,7 @@ const blockForTurn = (state, { turnId, turnKey, sections, carried }) => {
     shown.delete(id);
   }
   if (standing.length) parts.unshift(`Still standing from earlier in this chat (unchanged): ${standing.join(', ')}.`);
-  const block = wrap(parts.join('\n\n'), carried.size ? CARRY_NOTE_SHORT : CARRY_NOTE);
+  const block = wrapHarnessContext(parts.join('\n\n'), carried.size ? CARRY_NOTE_SHORT : CARRY_NOTE, turnKey);
   state.shown = shown;
   state.byTurn.delete(turnId);
   state.byTurn.set(turnId, { turnKey, block, bySection });

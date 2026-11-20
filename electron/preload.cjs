@@ -115,8 +115,8 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   // main answers the desk's own top frame only.
   ownerClaim: () => ipcRenderer.invoke('app:ownerClaim'),
   // Open a LOCAL HTML file in the default browser (the FILES tree's OPEN IN
-  // BROWSER). Main gates: absolute .html/.htm path that exists as a file.
-  openInBrowser: (filePath) => ipcRenderer.invoke('app:openInBrowser', filePath),
+  // BROWSER). Main gates: contained absolute .html/.htm path that exists as a file.
+  openInBrowser: (filePath, roots) => ipcRenderer.invoke('app:openInBrowser', filePath, roots),
   showInFolder: (filePath) => ipcRenderer.invoke('app:showInFolder', filePath),
   // THE DRAG-OUT: an Explorer row dragged toward the OS starts a REAL
   // OS-level drag of the file itself (Dolphin, the desktop, another app).
@@ -210,6 +210,8 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
     tryRemembered: () => ipcRenderer.invoke('wallet:tryRemembered'),
     canKeepMadeKey: () => ipcRenderer.invoke('wallet:canKeepMadeKey'),
     createForMe: () => ipcRenderer.invoke('wallet:createForMe'),
+    createShown: (password) => ipcRenderer.invoke('wallet:createShown', password),
+    createForMeShown: () => ipcRenderer.invoke('wallet:createForMeShown'),
     revealMade: (id) => ipcRenderer.invoke('wallet:revealMade', id),
     lock: () => ipcRenderer.invoke('wallet:lock'),
     reveal: (id, password) => ipcRenderer.invoke('wallet:reveal', id, password),

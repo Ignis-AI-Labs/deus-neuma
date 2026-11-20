@@ -14,6 +14,9 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const vaultCrypto = require('./vault-crypto.cjs');
 const vaultStore = require('./vault-store.cjs');
+const { normalizeTxRequest } = require('./tx-content.cjs');
+const { readMessage } = require('./message-content.cjs');
+const { writeFileAtomic } = require('../key-lock/atomic-file.cjs');
 
 const DEFAULT_IDLE_MS = 15 * 60 * 1000; // auto-lock after 15 min with no signing
 const MIN_PASSWORD_LEN = 12;
@@ -73,7 +76,7 @@ const createWalletService = (config) => {
   let signer = null; // the unlocked ethers wallet — main-process memory only
   let unlockedId = null; // which wallet the in-memory signer belongs to
   let idleTimer = null;
-
+  let rememberedActivationAvailable = true;
 
   // --- registry (non-secret: id + address + the active id) ---
   const readRegistry = () => {
@@ -86,13 +89,7 @@ const createWalletService = (config) => {
     return { activeId: null, wallets: [] };
   };
   const writeRegistry = (reg) => {
-    fs.mkdirSync(walletDir, { recursive: true });
-    fs.writeFileSync(registryPath, JSON.stringify(reg), { mode: 0o600 });
-    try {
-      fs.chmodSync(registryPath, 0o600);
-    } catch {
-      /* best effort */
-    }
+    writeFileAtomic(registryPath, JSON.stringify(reg));
   };
 
   // one-time migration: a pre-multi single vault becomes the first wallet
@@ -119,6 +116,7 @@ const createWalletService = (config) => {
   const lock = () => {
     signer = null;
     unlockedId = null;
+    rememberedActivationAvailable = false;
     clearIdle();
   };
   // EVERY lock transition notifies — idle, explicit, switch, and removal.
@@ -210,9 +208,7 @@ const createWalletService = (config) => {
   // (`strong`: never Linux basic_text); an older blob still opens on `available`.
   const writeRemember = (id, password) => {
     if (outerSeal.strong !== true) return;
-    const blob = outerSeal.encrypt(JSON.stringify({ id, password }));
-    fs.writeFileSync(rememberPath, blob, { mode: 0o600 });
-    try { fs.chmodSync(rememberPath, 0o600); } catch { /* non-posix */ }
+    writeFileAtomic(rememberPath, outerSeal.encrypt(JSON.stringify({ id, password })));
   };
 
   // impure — decrypt one wallet and adopt it as the active signer; upgrades v0→v1
@@ -261,7 +257,7 @@ const createWalletService = (config) => {
     }
     const password = ethers.hexlify(ethers.randomBytes(32)).slice(2);
     const made = create(password);
-    fs.writeFileSync(madePath(made.id), outerSeal.encrypt(password), { mode: 0o600 });
+    writeFileAtomic(madePath(made.id), outerSeal.encrypt(password));
     unlock(made.id, password, true);
     return { id: made.id, address: made.address, mnemonic: made.mnemonic };
   };
@@ -283,11 +279,10 @@ const createWalletService = (config) => {
     try { return unlock(id, password, false); } catch { return null; }
   };
 
-  // impure — unlock from the OS-sealed remember blob. No-op without a
-  // keychain. A stale/corrupt blob is forgotten, never retried; a key made
-  // for the operator still opens from its own kept password.
+  // impure — one remembered activation per launch. Any later lock needs a typed password.
   const tryRememberedUnlock = () => {
-    if (!outerSeal.available) return null;
+    if (!rememberedActivationAvailable || !outerSeal.available) return null;
+    rememberedActivationAvailable = false;
     let remembered;
     try {
       remembered = JSON.parse(outerSeal.decrypt(fs.readFileSync(rememberPath)));
@@ -366,30 +361,31 @@ const createWalletService = (config) => {
     }
   };
 
-  const signMessage = (message) =>
-    // personal_sign semantics: a 0x string signs raw bytes, otherwise UTF-8 text
-    guardedSign({ type: 'sign', message }, (s) =>
-      s.signMessage(typeof message === 'string' && message.startsWith('0x') ? ethers.getBytes(message) : message)
-    );
+  // What is shown is what is signed (audit PR600 P6-09): each request is read
+  // into one normal form first, and that same form goes to the window and to
+  // the signer. A request that cannot be read or shown in full never reaches a
+  // signature (the readers and the view throw).
+  const signMessage = async (message) => {
+    // personal_sign semantics: a 0x string or a byte list signs raw bytes, any other string UTF-8 text
+    const { sign } = readMessage(message);
+    const shown = typeof sign === 'string' ? sign : ethers.hexlify(sign);
+    return guardedSign({ type: 'sign', message: shown, address: signer?.address }, (s) => s.signMessage(sign));
+  };
 
-  const signTypedData = (domain, types, value) =>
-    guardedSign({ type: 'signTypedData', domain, types, value }, (s) => s.signTypedData(domain, types, value));
+  const signTypedData = async (domain, types, value) =>
+    guardedSign({ type: 'signTypedData', domain, types, value, chainId: getChainId() }, (s) => s.signTypedData(domain, types, value));
 
-  const sendTransaction = (tx) => {
+  const sendTransaction = async (tx) => {
     // Resolve the pinned chain BEFORE the confirm dialog so the CHAIN field
     // the witness reads is the chain the signature will actually bind — the
     // display and the pin must never diverge (a Base Sepolia seal used to
-    // read "8453" while correctly signing for 84532).
-    const chainId = getChainId();
-    return guardedSign({ type: 'transaction', to: tx.to, value: tx.value, data: tx.data, chainId }, async (s) => {
+    // read "8453" while correctly signing for 84532). Pinned, the signature
+    // binds our chain and a lying or wrong-chain RPC fails safe.
+    const request = normalizeTxRequest(tx, getChainId());
+    return guardedSign({ type: 'transaction', ...request }, async (s) => {
       const rpc = await getRpcProvider();
       if (!rpc) throw new Error('No RPC provider available.');
-      // Pin the tx to the app's SELECTED chain. Without this, ethers fills
-      // chainId from whatever the RPC claims — a lying or wrong-chain RPC
-      // could then obtain a signature valid on ITS chain. Pinned, the
-      // signature binds our chain and a mismatched RPC fails safe.
-      const pinned = chainId ? { ...tx, chainId } : tx;
-      return (await s.connect(rpc).sendTransaction(pinned)).hash;
+      return (await s.connect(rpc).sendTransaction(request)).hash;
     });
   };
 

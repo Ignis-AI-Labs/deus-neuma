@@ -13,7 +13,7 @@
  * including when a round throws mid-turn. Everything else on ctx is
  * turn-constant and destructured once below.
  */
-import { yieldForQueuedThought } from './queued-action-handoff.js';
+import { yieldForQueuedThought, heardWhileWorking } from './queued-action-handoff.js';
 import { createStreamRequest, consumeStream, consumeStreamWithTools } from './llm-provider.js';
 import { withProviderRetry } from './provider-retry.js';
 import { safeSend } from './ws-send.js';
@@ -44,6 +44,7 @@ import { createLogger } from './logger.js';
 import { openTurnOperations } from './turn-operation-checkpoint.js';
 import { unwrapCalls } from './tool-hud.js';
 import { withSpokenContent } from './turn-failure-record.js';
+import { keepToolsOnWire } from './wire-sections.js';
 
 // The parent stream's log lane, kept: these lines are the witness turn path's
 // own record, and readers grep them under the name they have always carried.
@@ -72,9 +73,9 @@ export const runWitnessToolRounds = async (ctx) => {
   // hands only; a tool_search's matches join the wire on the NEXT round. The
   // set is a THUNK, evaluated at each round's request build, because the
   // disclosure state moves between rounds, never inside one.
-  const nativeToolsForRound = () => (routeCapabilities.tools
+  const nativeToolsForRound = () => keepToolsOnWire(connection, routeCapabilities.tools
     ? toOpenAITools(disclosedNativeTools(connection))
-    : []);
+    : []); // counted on the CONTEXT MAP (wire-sections.js)
   const contextRecovery = contextRecoveryOptions(wireHead, (recovery) => { ctx.messages = recovery.messages; ctx.foldedRounds += recovery.foldedRounds; });
   const closeToolLoop = async (reason) => {
     const closeMessage = {
@@ -279,7 +280,8 @@ export const runWitnessToolRounds = async (ctx) => {
     // window facts every round — working-context.js, silent when unmeasured.
     const exchange = withWorkingContextNote(
       withSight(baseExchange, sight, composeVisionTurn),
-      workingContextNote(ctx.turnUsage, contextBudget, { foldedRounds: ctx.foldedRounds }),
+      // …and the words the operator sent while it worked (queued-action-handoff.js heardWhileWorking).
+      [workingContextNote(ctx.turnUsage, contextBudget, { foldedRounds: ctx.foldedRounds }), await heardWhileWorking(connection)].filter(Boolean).join('\n\n'),
     );
     toolContextSections.push(Object.freeze({
       id: `toolRound${round + 1}`,

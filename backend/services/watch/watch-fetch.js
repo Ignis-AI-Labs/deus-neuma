@@ -4,8 +4,8 @@
 //
 // A link is asked about first (what it is, and its captions: seconds, and for a talk or a podcast
 // with captions, all that listening needs). The recording itself is fetched only when it is needed:
-// the picture to watch, the sound to hear when there are no captions. When a site will not answer,
-// yt-dlp updates itself once and the fetch is tried again; when the picture cannot be fetched but the
+// the picture to watch, the sound to hear when there are no captions. A stale site failure is
+// returned without replacing the pinned downloader; when the picture cannot be fetched but the
 // captions were, the neuma still gets every word, and is told plainly what it could not see. Kept for
 // a week, and the oldest go first past 12 GB. impure (network through the guarded proxy, fs)
 import crypto from 'node:crypto';
@@ -16,7 +16,7 @@ import { createLogger } from '../logger.js';
 import { readablePath } from '../fs-read-clearance.js';
 import { checkPathAccess, isWithinRoots } from '../sandbox-path-policy.js';
 import { startWatchEgress } from './watch-egress.js';
-import { ensureFfmpeg, ensureYtDlp, jsRuntime, runTool, updateYtDlp, watchHome } from './watch-tools.js';
+import { ensureFfmpeg, ensureYtDlp, jsRuntime, runTool, watchHome } from './watch-tools.js';
 import { fetchFailure, isWatchableUrl, ytDlpArgs } from './watch-plan.js';
 import { probeMedia } from './watch-media.js';
 
@@ -87,29 +87,17 @@ const runYtDlp = async (want, url, dir) => {
   }
 };
 
-// impure — a run that, failing because the site changed, updates yt-dlp once and tries again
-const fetchWithUpdate = async (want, url, dir) => {
-  const first = await runYtDlp(want, url, dir);
-  if (first.ok || !first.stale || first.refusedInside) return first;
-  const egress = await startWatchEgress();
-  let updated;
-  try { updated = await updateYtDlp({ proxy: egress.url }); } finally { await egress.close(); }
-  if (!updated) return first;
-  log.info('trying the fetch again on the updated yt-dlp', { want });
-  return runYtDlp(want, url, dir);
-};
-
 // pure — what a being is told about a link, from yt-dlp's own record of it
-const describe = (info, url) => ({
-  title: info.title || info.fulltitle || url,
-  uploader: info.uploader || info.channel || info.creator || null,
-  url: info.webpage_url || url,
-  site: info.extractor_key || info.extractor || null,
+export const describeSource = (info, url) => ({
+  title: String(info.title || info.fulltitle || url).slice(0, 200),
+  uploader: info.uploader || info.channel || info.creator ? String(info.uploader || info.channel || info.creator).slice(0, 120) : null,
+  url: String(info.webpage_url || url).slice(0, 2000),
+  site: info.extractor_key || info.extractor ? String(info.extractor_key || info.extractor).slice(0, 80) : null,
   uploaded: info.upload_date ? `${info.upload_date.slice(0, 4)}-${info.upload_date.slice(4, 6)}-${info.upload_date.slice(6, 8)}` : null,
   views: Number.isFinite(info.view_count) ? info.view_count : null,
   duration: Number.isFinite(info.duration) ? info.duration : null,
   description: String(info.description || '').slice(0, 4000),
-  chapters: (info.chapters || []).map((c) => ({ start: c.start_time, title: c.title })).filter((c) => Number.isFinite(c.start)),
+  chapters: (info.chapters || []).slice(0, 50).map((c) => ({ start: c.start_time, title: String(c.title || '').slice(0, 200) })).filter((c) => Number.isFinite(c.start)),
   live: info.is_live === true,
 });
 
@@ -130,18 +118,18 @@ const readyLink = async (url, need) => {
   prune(dir).catch((err) => log.warn('the watch cache could not be pruned', { error: err.message }));
   let entry = loadEntry(dir);
   if (!entry) {
-    const info = await fetchWithUpdate('info', url, dir);
+    const info = await runYtDlp('info', url, dir);
     if (!info.ok) return { ok: false, why: info.why, line: info.line };
     let record = {};
     try { record = JSON.parse(await fsp.readFile(path.join(dir, 'media.info.json'), 'utf8')); } catch { /* the fetch below still tries */ }
     const { captions } = await filesIn(dir);
-    entry = { kind: 'link', source: url, dir, ...describe(record, url), captions, file: null, media: null, hasVideo: null, misses: [] };
+    entry = { kind: 'link', source: url, dir, ...describeSource(record, url), captions, file: null, media: null, hasVideo: null, misses: [] };
     await saveEntry(entry);
   }
   if (entry.live) return { ok: false, why: 'it is a live stream that is still going; it can be watched once it has ended' };
   const wanted = need === 'video' ? entry.media !== 'video' : (!entry.captions && !entry.file);
   if (wanted) {
-    const got = await fetchWithUpdate(need === 'video' ? 'video' : 'audio', url, dir);
+    const got = await runYtDlp(need === 'video' ? 'video' : 'audio', url, dir);
     if (got.ok) {
       const { media, captions } = await filesIn(dir);
       if (media) {

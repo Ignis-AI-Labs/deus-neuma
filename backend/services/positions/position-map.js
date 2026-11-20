@@ -43,7 +43,7 @@ export const POSITIONS = Object.freeze([
     functions: [
       fn('model', 'COMPANY', 'What is true of each company, in one place: its business model (what it sells, who pays, what it costs, what objectively changes for the buyer) and the facts a buyer may be told. Everything said for a company starts here.', ['company/model']),
       fn('campaigns', 'CAMPAIGNS', 'One flow per push: its goal and numbers, then each audience that serves it (the offer, who it reaches and where) with the companies found for it and the leads it produced, then the campaigns of other positions it works with.', ['sales/campaign', 'campaigns/link', 'sales/segment']),
-      fn('leads', 'LEADS', 'What belongs to no one campaign: what is due on the lead list, the do-not-contact list, and when paid lead data may be spent.', ['sales/pipeline', 'sales/discover', 'sales/gather', 'sales/candidates', 'sales/shortlist', 'sales/read-sites', 'sales/find-address', 'sales/draft-email', 'sales/contacts', 'sales/prospect', 'sales/drop', 'sales/lead', 'sales/facts', 'sales/suppress', 'sales/mail-scan', 'sales/inbound', 'sales/kind']),
+      fn('leads', 'LEADS', 'What belongs to no one campaign: what is due on the lead list, the do-not-contact list, and when paid lead data may be spent.', ['sales/pipeline', 'sales/discover', 'sales/gather', 'sales/candidates', 'sales/shortlist', 'sales/read-sites', 'sales/find-address', 'sales/confirm-address', 'sales/research', 'sales/email-plan', 'sales/entity', 'sales/draft-email', 'sales/withdraw-email', 'sales/contacts', 'sales/prospect', 'sales/drop', 'sales/lead', 'sales/facts', 'sales/suppress', 'sales/mail-scan', 'sales/inbound', 'sales/kind', 'sales/place']),
       fn('deals', 'DEALS', 'The pipeline, each open deal with its next step, and what was delivered.', ['revenue/deal', 'revenue/move', 'delivery/publish']),
       fn('mailbox', 'MAILBOX', 'The house email account: who holds it, what was sent and what came back, kept in order under labels.', ['email/send'], ['check_email_inbox', 'read_email', 'list_email_labels', 'label_email']),
     ],
@@ -122,5 +122,7 @@ export const positionMapText = (offices) => {
     'Your operator opens this same position in the POSITIONS window and sees what you see. Work for your position belongs in these functions; your office briefing below is their state right now.',
     // What a member names, the chat makes a door (frontend doors/record-door.js).
     `When you need your operator to do something, name the exact place as "POSITIONS → ${held[0].seat} → <the tab>", and name a record by its id (an audience s-…, a facts sheet fs-…, a campaign k-…). In their chat each becomes one press that opens it. Ask for one action at a time.`,
+    // The sales hub is one straight line of stages (frontend company-line/SalesPipeline.jsx, Design note, 2026-11-18.
+    ...(held.some((p) => p.office === 'cro') ? ['On the CHIEF REVENUE OFFICER hub your operator sees the sale as one line of stages, in order: SETUP, DISCOVER, FILTER, VALIDATE, EMAILS, SENT, REPLIES, DEALS (and under MORE: CAMPAIGNS, ALL PEOPLE, COMPANY FACTS, MAILBOX, SETTINGS). Name the stage: "POSITIONS → CHIEF REVENUE OFFICER → EMAILS" for staged emails to review, VALIDATE for a list to approve, DISCOVER for an audience to approve.'] : []),
   ].join('\n');
 };

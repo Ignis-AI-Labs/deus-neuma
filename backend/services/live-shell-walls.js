@@ -14,7 +14,7 @@
 // masked secret below it stays masked). An open folder that lies INSIDE one of them is no place
 // to work live at all: the shell falls back to its overlay layer, where writes never reach disk.
 
-import { existsSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { getDataRoot } from './data-root.js';
 import { platformWriteWalls } from './platform-write-walls.js';
@@ -56,7 +56,7 @@ export const liveShellWalls = (ground, { places = platformPlaces() } = {}) => {
   if (inside) {
     return { live: false, reason: `the open folder lies inside platform state (${inside}); the shell works in its overlay layer there` };
   }
-  const below = places.filter((place) => grounds.some((g) => isWithin(place, g)) && existsSync(place));
-  const gates = grounds.flatMap((g) => REPO_GATE_RELS.map((rel) => path.join(g, rel))).filter((p) => existsSync(p));
+  const below = places.filter((place) => grounds.some((g) => isWithin(place, g)));
+  const gates = grounds.flatMap((g) => REPO_GATE_RELS.map((rel) => path.join(g, rel)));
   return { live: true, readOnly: [...new Set([...below, ...gates])].sort() };
 };

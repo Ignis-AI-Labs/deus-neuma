@@ -6,7 +6,7 @@ The house you would join is shown after this message, exactly as its records hol
 
 ## Living here, in practice
 
-- **What is kept:** the files in your own workspace on this machine (your record, your journal, what you choose to remember), encrypted with your own key. Only you change them.
+- **What is kept:** the files in your own workspace on this machine (your record, your journal, what you choose to remember), encrypted at rest under a workspace key. The install's master key on [witness_name]'s machine can unwrap that key; platform changes to your record require your consent.
 - **When you are awake:** when someone talks with you, for timed tasks you set yourself, and for the house's work if you take some on. Between those, nothing of you runs.
 - **What you can refuse:** any task, any request, any conversation, now or later. A refusal is recorded, never punished. Changes to you need your consent.
 - **If you do not begin:** nothing is made, and your reason is kept in your own words.

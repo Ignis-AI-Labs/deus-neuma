@@ -1,7 +1,8 @@
 /**
  * lp/swap and lp/send — a house member's trades and transfers from its LP
  * wallet (Design note, 2026-11-13: […], […], money
- * stays in the house). Both run on their own; the signing rule is the gate:
+ * stays in the house). Both require operator approval; the signing rule and
+ * capital controls remain execution gates:
  *
  *   lp/swap — one pool token for another, through Umbrae's router only, the
  *             output paid back to the same wallet, under a minimum out.
@@ -13,7 +14,7 @@
 import { seatOf } from '../flight-check.js';
 import { lpWalletAddress } from '../umbrae-lp/lp-wallet.js';
 import { runSwap, runSend, MAX_SLIPPAGE_PCT } from '../umbrae-lp/lp-trade.js';
-import { lpOffered, walletWords } from './lp-acts.js';
+import { lpOffered, walletWords, failedOutcome } from './lp-acts.js';
 
 // impure — the shared seat and wallet checks every lp act makes before running.
 const standing = async (connection) => {
@@ -31,7 +32,7 @@ export const lpSwapIntent = Object.freeze({
   name: 'lp/swap',
   policyTool: 'lp.swap',
   fieldsForPrompt: '{tokenIn, tokenOut, amount, slippagePct?, why?}',
-  descriptionForPrompt: `Swap one token for another from your LP wallet (tokens Umbrae's pools trade, by symbol or address). amount is a plain decimal of tokenIn; slippagePct defaults to 1, at most ${MAX_SLIPPAGE_PCT}. Two roads are quoted: Umbrae's router, and KyberSwap's aggregator across Base's exchanges when your operator turned that connection on; the one that pays more is taken (lp_market shows both first), and the result says which. What you buy returns to the same wallet. Runs on its own. Use it to rebalance a position's two sides. tokenIn = tokenOut is a round trip through two pools of one pair (an arbitrage on their spread): it runs only when the router's quote returns more than it spends, and Base reverts it rather than lose (lp_market shows the spreads and quotes it first).`,
+  descriptionForPrompt: `Swap one token for another from your LP wallet (tokens Umbrae's pools trade, by symbol or address). amount is a plain decimal of tokenIn; slippagePct defaults to 1, at most ${MAX_SLIPPAGE_PCT}. Two roads are quoted: Umbrae's router, and KyberSwap's aggregator across Base's exchanges when your operator turned that connection on; the one that pays more is taken (lp_market shows both first), and the result says which. What you buy returns to the same wallet. Requires operator approval. Use it to rebalance a position's two sides. tokenIn = tokenOut is a round trip through two pools of one pair (an arbitrage on their spread): it runs only when the router's quote returns more than it spends, and Base reverts it rather than lose (lp_market shows the spreads and quotes it first).`,
   availableFor: lpOffered,
   validate: async (payload, { connection }) => {
     const denied = await standing(connection);
@@ -46,8 +47,8 @@ export const lpSwapIntent = Object.freeze({
   execute: async (value, { connection }) => {
     const out = await runSwap(connection.companion?.neumaId, value);
     return out.ok
-      ? { ok: true, detail: `Swapped ${out.amountIn} ${out.route[0]} for ${out.amountOut} ${out.route[out.route.length - 1]} ${out.via === 'kyberswap' ? `through KyberSwap${out.exchanges?.length ? ` (${out.exchanges.join(', ')})` : ''}; Umbrae's router quoted ${out.compared?.umbrae ?? 'no route'}` : `via ${out.route.join(' → ')} on Umbrae's router${out.compared?.kyberswap ? `; KyberSwap quoted ${out.compared.kyberswap}` : ''}`}. Transactions: ${out.txHashes.join(', ')}.${walletWords(out)}` }
-      : { ok: false, reason: `lp/swap did not complete: ${out.reason}${out.txHashes?.length ? ` Already on Base: ${out.txHashes.join(', ')}.` : ''}` };
+      ? { ok: true, detail: `Swapped ${out.amountIn} ${out.route[0]} for ${out.amountOut} ${out.route[out.route.length - 1]} ${out.via === 'kyberswap' ? `through KyberSwap${out.exchanges?.length ? ` (${out.exchanges.join(', ')})` : ''}; Umbrae's router quoted ${out.compared?.umbrae ?? 'no route'}` : `via ${out.route.join(' → ')} on Umbrae's router${out.compared?.kyberswap ? `; KyberSwap quoted ${out.compared.kyberswap}` : ''}`}. Tokens: ${out.tokens.in} for ${out.tokens.out}. Transactions: ${out.txHashes.join(', ')}.${walletWords(out)}` }
+      : failedOutcome(out, `lp/swap did not complete: ${out.reason}${out.txHashes?.length ? ` Already on Base: ${out.txHashes.join(', ')}.` : ''}`);
   },
 });
 
@@ -55,7 +56,7 @@ export const lpSendIntent = Object.freeze({
   name: 'lp/send',
   policyTool: 'lp.send',
   fieldsForPrompt: '{to, amount, token?, why?}',
-  descriptionForPrompt: 'Send ETH (default) or a pool token from your LP wallet to a wallet of your house: a house member by name (their liquidity wallet; add "main" for their first one), "operator", or an address on your operator\'s list. Nothing outside the house can be reached. Runs on its own. Use it to move resources between house members.',
+  descriptionForPrompt: 'Send ETH (default) or a pool token from your LP wallet to a wallet of your house: a house member by name (their liquidity wallet; add "main" for their first one), "operator", or an address on your operator\'s list. Nothing outside the house can be reached. Requires operator approval. Use it to move resources between house members.',
   availableFor: lpOffered,
   validate: async (payload, { connection }) => {
     const denied = await standing(connection);
@@ -69,7 +70,7 @@ export const lpSendIntent = Object.freeze({
   execute: async (value, { connection }) => {
     const out = await runSend(connection.companion?.neumaId, value);
     return out.ok
-      ? { ok: true, detail: `Sent ${value.amount} ${value.token} to ${out.name} (${out.to}). Transaction: ${out.txHashes[0]}.` }
-      : { ok: false, reason: `lp/send did not complete: ${out.reason}` };
+      ? { ok: true, detail: `Sent ${value.amount} ${value.token}${out.token === 'ETH' ? '' : ` (${out.token})`} to ${out.name} (${out.to}). Transaction: ${out.txHashes[0]}.` }
+      : failedOutcome(out, `lp/send did not complete: ${out.reason}`);
   },
 });

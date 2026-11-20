@@ -9,7 +9,7 @@
 //
 // The record is append-only events in the revenue office:
 //   { type: 'filed', company, model, by, at }     by 'operator' stands at once
-//   { type: 'approved', company, at }             { type: 'returned', company, note, at }
+//   { type: 'approved', company, proposalId, at }  { type: 'returned', company, proposalId, note, at }
 // The shape, the fold and the text are PURE; the reads and writes are impure.
 
 import { officeFile } from '../house-office.js';
@@ -45,19 +45,22 @@ export const makeModel = (input) => {
 
 /**
  * pure — each company's model from its events.
- * @returns {Map<string, {approved: ?object, proposal: ?object, by: ?string, at: ?string, returned: ?string}>}
+ * @returns {Map<string, {approved: ?object, proposal: ?object, proposalId: ?string, by: ?string, at: ?string, returned: ?string}>}
  *   approved: the model that stands · proposal: one a member filed, waiting on the operator
  */
 export const foldModels = (events) => {
   const by = new Map();
-  for (const e of events) {
+  for (const [index, e] of events.entries()) {
     if (!e?.company) continue;
-    const row = by.get(e.company) ?? { approved: null, proposal: null, by: null, at: null, returned: null };
+    const row = by.get(e.company) ?? { approved: null, proposal: null, proposalId: null, by: null, at: null, returned: null };
     if (e.type === 'filed' && e.model) {
-      if (e.by === 'operator') Object.assign(row, { approved: e.model, proposal: null, by: null, at: e.at, returned: null });
-      else Object.assign(row, { proposal: e.model, by: e.by ?? null, at: e.at, returned: null });
-    } else if (e.type === 'approved' && row.proposal) Object.assign(row, { approved: row.proposal, proposal: null, at: e.at });
-    else if (e.type === 'returned' && row.proposal) Object.assign(row, { proposal: null, returned: e.note ?? 'returned' });
+      if (e.by === 'operator') Object.assign(row, { approved: e.model, proposal: null, proposalId: null, by: null, at: e.at, returned: null });
+      else Object.assign(row, { proposal: e.model, proposalId: `filed-${index}`, by: e.by ?? null, at: e.at, returned: null });
+    } else if (e.type === 'approved' && row.proposal && (!e.proposalId || e.proposalId === row.proposalId)) {
+      Object.assign(row, { approved: row.proposal, proposal: null, proposalId: null, at: e.at });
+    } else if (e.type === 'returned' && row.proposal && (!e.proposalId || e.proposalId === row.proposalId)) {
+      Object.assign(row, { proposal: null, proposalId: null, returned: e.note ?? 'returned' });
+    }
     by.set(e.company, row);
   }
   return by;
@@ -81,9 +84,13 @@ export const fileModel = (wallet, company, input, { by }) => serialize(async () 
   }
 });
 
-/** The operator's answer to a member's model: it stands, or it goes back with what should change. */
-export const settleModel = (wallet, company, { approve, note }) => serialize(async () => {
-  if (!(await readModels(wallet)).get(String(company))?.proposal) return { ok: false, reason: 'no business model waits for this company' };
-  await append(wallet, approve ? { type: 'approved', company: String(company) } : { type: 'returned', company: String(company), note: clean(note, NOTE_MAX) || 'returned without a note' });
+/** The operator's answer to the exact member proposal they read: it stands, or it goes back with what should change. */
+export const settleModel = (wallet, company, { approve, note, proposalId }) => serialize(async () => {
+  const current = (await readModels(wallet)).get(String(company));
+  if (!current?.proposal) return { ok: false, reason: 'no business model waits for this company' };
+  if (!proposalId || current.proposalId !== String(proposalId)) return { ok: false, reason: 'that business model proposal is no longer waiting; read the current one and answer it' };
+  await append(wallet, approve
+    ? { type: 'approved', company: String(company), proposalId: current.proposalId }
+    : { type: 'returned', company: String(company), proposalId: current.proposalId, note: clean(note, NOTE_MAX) || 'returned without a note' });
   return { ok: true };
 });

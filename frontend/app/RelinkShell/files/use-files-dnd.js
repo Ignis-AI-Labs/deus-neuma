@@ -6,7 +6,7 @@
 import { useCallback, useState } from 'react';
 import { baseName } from '../../../utils/path.js';
 import { uploadFile, rawFileUrl } from '../../../services/user-files.js';
-import { dropDirForRow, dragCarriesFiles, downloadUrlFor } from './files-drop.js';
+import { dropDirForRow, dragCarriesFiles } from './files-drop.js';
 
 export const useFilesDnd = ({ rootsRef, setNote, refreshDir, refreshGit }) => {
   const [dropPath, setDropPath] = useState(null); // the folder a hovering OS drag would land in
@@ -20,15 +20,19 @@ export const useFilesDnd = ({ rootsRef, setNote, refreshDir, refreshGit }) => {
       window.neuma.startFileDrag(entry.path);
       return;
     }
-    // A plain browser: Chromium's DownloadURL — the drop downloads the file.
-    const payload = downloadUrlFor(entry, rawFileUrl);
-    if (!payload) {
-      e.preventDefault();
+    // A plain browser downloads through a fresh exact-file ticket; a folder
+    // still needs the desktop's real OS drag.
+    e.preventDefault();
+    if (!entry || entry.type === 'dir' || !entry.path) {
       setNote('Dragging a folder out needs the desktop shell.');
       return;
     }
-    e.dataTransfer.setData('DownloadURL', payload);
-    e.dataTransfer.effectAllowed = 'copy';
+    rawFileUrl(entry.path).then((url) => {
+      const a = Object.assign(document.createElement('a'), { href: url, download: entry.name || 'download' });
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }).catch((err) => setNote(`The file download was refused: ${err.message}`));
   }, [setNote]);
 
   const onDragOverRow = useCallback((e, entry) => {

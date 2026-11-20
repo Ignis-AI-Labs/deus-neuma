@@ -5,10 +5,10 @@
 // A later email is not held to this shape: an answer is as long as it needs.
 // PURE.
 
-import { SALES_DISCLOSURE } from './sales-facts.js';
 
 export const FIRST_WORDS_MAX = 130;
-export const SUBJECT_WORDS_MAX = 5;
+// The formula's subject gives its reason in six words at most, after the company's name (email-formula.js subjectLine).
+export const SUBJECT_WORDS_MAX = 6;
 export const PROMISE_MAX = 300;
 const PROMISE_MIN = 10;
 
@@ -26,12 +26,14 @@ export const writtenBefore = (lead) => (lead.touches || []).some((t) => t.direct
  * @returns {string[]} what must change (empty: it may go)
  */
 export const checkFirstEmail = ({ subject, text, promise }) => {
-  const body = String(text ?? '').split(SALES_DISCLOSURE).join(' ');
+  // The words they read before the sign-off: the last paragraph, when it asks nothing, is the signature (email-formula.js).
+  const paragraphs = String(text ?? '').trim().split(/\n\s*\n/);
+  const body = paragraphs.length > 1 && !paragraphs.at(-1).includes('?') ? paragraphs.slice(0, -1).join('\n\n') : String(text ?? '');
   const length = words(body).length;
   const asks = (body.match(/\?/g) || []).length;
   return [
     ...(length > FIRST_WORDS_MAX ? [`a first email is at most ${FIRST_WORDS_MAX} words and this one is ${length} — cut it to what they need to say yes`] : []),
-    ...(words(subject).length > SUBJECT_WORDS_MAX ? [`a first email's subject is at most ${SUBJECT_WORDS_MAX} plain words`] : []),
+    ...(words(String(subject ?? '').replace(/^[^:]{1,60}:\s+/, '')).length > SUBJECT_WORDS_MAX ? [`a first email's subject is at most ${SUBJECT_WORDS_MAX} plain words after the company's name`] : []),
     ...(asks === 1 ? [] : [`a first email asks ONE thing (one question) and this one asks ${asks}`]),
     ...(cleanPromise(promise).length < PROMISE_MIN ? ['add promise: one line saying exactly what you will send them when they say yes (it is kept on the lead, and you deliver exactly that when they reply)'] : []),
   ];

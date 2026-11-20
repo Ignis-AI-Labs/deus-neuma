@@ -5,8 +5,6 @@
 //   - the operator has approved a facts sheet;
 //   - every number in it stands on that sheet (dates and bare years aside) —
 //     the house cannot hallucinate a figure into a buyer's inbox;
-//   - it carries the disclosure line, word for word: it is from an AI, and
-//     "stop" ends it;
 //   - it applies no false urgency.
 // Every problem is named at once. Words without numbers are not machine-
 // checked: the sheet rides the Mercator's briefing, and the operator approved
@@ -19,7 +17,6 @@ import crypto from 'crypto';
 import { figuresIn, URGENCY } from '../raise/facts-gate.js';
 import { sourceLaw } from '../company-line/source-law.js';
 
-export const SALES_DISCLOSURE = 'I am an AI, writing for the company. Reply "stop" and I will not write again.';
 const { isSource, words: SOURCE_WORDS } = sourceLaw(['document', 'customer', 'operator']);
 const FACTS_MAX = 40;
 
@@ -61,18 +58,38 @@ export const makeSalesSheet = ({ facts, by, now }) => {
 export const factsFor = (approved, company) => (!approved || !company ? approved
   : { ...approved, facts: approved.facts.filter((f) => !f.company || f.company === company) });
 
-/** The latest sheet, its review, and the sheet the operator last approved. pure. */
+// AN APPROVED FACT STAYS APPROVED (Design note, 2026-11-18: […]). A fact is the same fact while its company, its words and
+// its figure are — what a buyer reads; a fresh date in its source is not a new fact. On a new sheet, every fact the
+// operator approved before is CARRIED, already approved; only the new or reworded ones wait. A sheet with nothing new
+// on it (a fact taken off, the same facts filed again) stands approved the moment it is filed.
+export const factKey = (f) => [f.company || '', String(f.claim ?? '').replace(/\s+/g, ' ').trim().toLowerCase(), f.figure ? `${f.figure.value} ${String(f.figure.unit).toLowerCase()}` : ''].join('|');
+
+/**
+ * The latest sheet, its review, the sheet the operator last approved, and which facts of the latest sheet were
+ * approved before (carried: their numbers). pure.
+ */
 export const foldSalesFacts = (events) => events.reduce((s, e) => {
-  if (e?.type === 'facts' && e.sheet?.id) return { ...s, sheet: e.sheet, review: null };
+  if (e?.type === 'facts' && e.sheet?.id) {
+    const before = new Set((s.approved?.facts ?? []).map(factKey));
+    const carried = e.sheet.facts.filter((f) => before.has(factKey(f))).map((f) => f.n);
+    if (carried.length && carried.length === e.sheet.facts.length) {
+      return { ...s, sheet: e.sheet, carried, approved: e.sheet, review: { verdict: 'approved', note: null, at: e.sheet.filedAt ?? null, held: [], carried: true } };
+    }
+    return { ...s, sheet: e.sheet, carried, review: null };
+  }
   if (e?.type === 'reviewed' && s.sheet?.id === e.sheetId) {
-    // Approved in part (`only`: the facts the operator checked): those stand; the rest are HELD for the seat to fix.
-    const only = e.verdict === 'approved' && Array.isArray(e.only) ? new Set(e.only) : null;
+    // Approved in part (`only`: the facts the operator checked): those stand, with every fact carried as approved
+    // before; the rest are HELD for the seat to fix.
+    const only = e.verdict === 'approved' && Array.isArray(e.only) ? new Set([...e.only, ...(s.carried ?? [])]) : null;
     const held = only ? s.sheet.facts.filter((f) => !only.has(f.n)) : [];
     const approved = e.verdict !== 'approved' ? s.approved : only ? { ...s.sheet, facts: s.sheet.facts.filter((f) => only.has(f.n)) } : s.sheet;
     return { ...s, review: { verdict: e.verdict, note: e.note, at: e.at, held }, approved };
   }
   return s;
-}, { sheet: null, review: null, approved: null });
+}, { sheet: null, review: null, approved: null, carried: [] });
+
+/** The facts of the latest sheet that wait for the operator: all but those carried as approved before. pure. */
+export const factsToReview = (state) => (state?.sheet?.facts ?? []).filter((f) => !(state.carried ?? []).includes(f.n));
 
 /**
  * The operator changes ONE fact of the sheet on screen: rewrites it, or takes
@@ -104,11 +121,13 @@ export const judgeSheetReview = (state, { sheetId, verdict, note, only, now }) =
   if (!['approved', 'returned'].includes(verdict)) return { ok: false, reason: 'the verdict is approved or returned' };
   const n = clean(note, 600);
   if (verdict === 'returned' && n.length < 5) return { ok: false, reason: 'say what should change' };
-  // `only`: approve just the facts checked; the others go back to the seat. Every fact checked is a plain approval.
+  // `only`: approve just the facts checked; the others go back to the seat. Every fact that waits checked is a plain
+  // approval (the facts carried as approved before stand either way).
   const all = state.sheet.facts.map((f) => f.n);
+  const waits = factsToReview(state).map((f) => f.n);
   const picked = verdict === 'approved' && Array.isArray(only) ? [...new Set(only.map(Number))].filter((x) => all.includes(x)).sort((a, b) => a - b) : null;
-  if (picked && !picked.length) return { ok: false, reason: 'check at least one fact to approve, or return the sheet' };
-  const part = picked && picked.length < all.length ? { only: picked } : {};
+  if (picked && !picked.some((x) => waits.includes(x))) return { ok: false, reason: 'check at least one fact to approve, or return the sheet' };
+  const part = picked && !waits.every((x) => picked.includes(x)) ? { only: picked.filter((x) => waits.includes(x)) } : {};
   return { ok: true, event: { type: 'reviewed', sheetId, verdict, ...part, note: n || null, by: 'operator', at: now } };
 };
 
@@ -122,10 +141,9 @@ export const checkSalesEmail = ({ subject, text, approved }) => {
   if (!approved) return { ok: false, problems: ['the operator has not approved a facts sheet — file one with sales/facts; no lead is written to before it is approved'] };
   const all = `${subject}\n${text}`;
   const allowed = new Set(approved.facts.filter((f) => f.figure).map((f) => f.figure.value));
-  const strays = [...new Set(figuresIn(all.replace(SALES_DISCLOSURE, '')).filter((v) => !allowed.has(v)))];
+  const strays = [...new Set(figuresIn(all).filter((v) => !allowed.has(v)))];
   const problems = [
     ...strays.map((v) => `${v} is not on the approved facts sheet — a buyer reads no figure the sheet does not hold (write dates as 2026-11-14)`),
-    ...(String(text).includes(SALES_DISCLOSURE) ? [] : [`carry the disclosure line, word for word, above your name: "${SALES_DISCLOSURE}"`]),
     ...(URGENCY.test(all) ? ['no false urgency (MAKOTO) — a buyer decides in their own time'] : []),
   ];
   return problems.length ? { ok: false, problems } : { ok: true };

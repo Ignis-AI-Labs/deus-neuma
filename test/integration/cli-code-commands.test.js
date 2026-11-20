@@ -186,6 +186,11 @@ describe('neuma code --watch — a comment saved in the ground reaches the real 
       expect(err).not.toContain('watch: instruction in old.js');
       await fs.writeFile(path.join(ground, 'math.js'), 'export const half = (n) => n / 2; // guard against NaN AI!\n');
       expect(await until(() => err.includes('watch: instruction in math.js')), err).toBe(true);
+      // P6-60: the session's first comment is shown and waits for the operator's yes.
+      expect(await until(() => out.includes('act on AI comments saved here? [y/N]')), out).toBe(true);
+      expect(out).toContain('line 1: guard against NaN');
+      expect(out).not.toContain("This being's identity could not be loaded.");
+      child.stdin.write('y\n');
       // The DNA-less lane is refused by the real identity gate: the turn was opened.
       expect(await until(() => out.includes("This being's identity could not be loaded. Its turn was refused.")), out).toBe(true);
     } finally {

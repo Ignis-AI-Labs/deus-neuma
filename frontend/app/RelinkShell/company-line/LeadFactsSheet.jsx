@@ -11,13 +11,13 @@
 import { useState } from 'react';
 import { Fold } from '../fold/Fold.jsx';
 import { Sheet } from '../sheet/Sheet.jsx';
-import { sheetState, factsByCompany, factAsk, editReady, startChecked, factStanding, checkedWords, reviewWords, sheetStats, groupStats } from './lead-facts-view.js';
+import { sheetState, factsByCompany, factAsk, editReady, startChecked, waitingFacts, factStanding, checkedWords, reviewWords, sheetStats, groupStats } from './lead-facts-view.js';
 
 const SourceOf = ({ source }) => (/^https:\/\//.test(source)
   ? <a className="cline-link" href={source} target="_blank" rel="noreferrer noopener">{source}</a>
   : <span className="cline-exact">{source}</span>);
 
-const STANDING = Object.freeze({ approved: 'APPROVED', held: 'NOT APPROVED — TO FIX' });
+const STANDING = Object.freeze({ approved: 'APPROVED', held: 'NOT APPROVED — TO FIX', carried: 'APPROVED BEFORE' });
 
 // One company's facts as a sheet (sheet/Sheet.jsx): one fact a line; its words read whole in their own column, and
 // its figure, its source, where it stands and the operator's hands each have a column of their own. EDIT turns that
@@ -28,7 +28,9 @@ const FactSheet = ({ group, sheet, facts, busy, holder, ticked, onCheck, onChang
   const editing = (fact) => edit?.n === fact.n;
   const columns = [
     { head: '#', cell: (fact) => fact.n },
-    ...(onCheck ? [{ head: 'OK', cell: (fact) => <input type="checkbox" className="cline-fact-tick" aria-label={`Approve fact ${fact.n}`} disabled={busy} checked={ticked.includes(fact.n)} onChange={() => onCheck(fact.n)} /> }] : []),
+    ...(onCheck ? [{ head: 'OK', check: true, cell: (fact) => (factStanding(facts, fact) === 'carried'
+      ? <input type="checkbox" className="cline-fact-tick" aria-label={`Fact ${fact.n} was approved before`} title="Approved before — it is not up for approval again" disabled checked readOnly />
+      : <input type="checkbox" className="cline-fact-tick" aria-label={`Approve fact ${fact.n}`} disabled={busy} checked={ticked.includes(fact.n)} onChange={() => onCheck(fact.n)} />) }] : []),
     { head: 'WHAT MAY BE SAID', wrap: true, cell: (fact) => (editing(fact)
       ? <textarea className="cline-input cline-fact-edit" rows={3} maxLength={400} aria-label={`Fact ${fact.n}, the words`} disabled={busy} value={edit.claim} onChange={(e) => setEdit({ ...edit, claim: e.target.value })} />
       : <span className="cline-fact-claim">{fact.claim}</span>) },
@@ -36,7 +38,7 @@ const FactSheet = ({ group, sheet, facts, busy, holder, ticked, onCheck, onChang
     { head: 'SOURCE', exact: true, title: (fact) => fact.source, cell: (fact) => (editing(fact)
       ? <input className="cline-input" maxLength={300} aria-label={`Fact ${fact.n}, where it comes from`} disabled={busy} value={edit.source} onChange={(e) => setEdit({ ...edit, source: e.target.value })} />
       : <span className="cline-fact-source"><SourceOf source={fact.source} /></span>) },
-    { head: 'STANDS', tone: (fact) => ({ approved: 'on', held: 'alert' }[factStanding(facts, fact)] ?? null), cell: (fact) => STANDING[factStanding(facts, fact)] ?? null },
+    { head: 'STANDS', tone: (fact) => ({ approved: 'on', carried: 'on', held: 'alert' }[factStanding(facts, fact)] ?? null), cell: (fact) => STANDING[factStanding(facts, fact)] ?? null },
     ...(onChange ? [{ head: 'CHANGE', cell: (fact) => (editing(fact) ? (
       <span className="cline-fact-hands">
         <button type="button" className="sec-scan cline-mini label-data" disabled={busy || !editReady(edit, fact)} aria-label={`SAVE fact ${fact.n}`}
@@ -65,10 +67,12 @@ const FactSheet = ({ group, sheet, facts, busy, holder, ticked, onCheck, onChang
  */
 export const LeadFactsSheet = ({ facts, companies = [], busy, onReview, onChange = null, holder = null, onHand = null }) => {
   const [note, setNote] = useState('');
-  const [ticked, setTicked] = useState(() => startChecked(facts));
+  // Only the facts that wait are ticked here; the ones approved before stand (startChecked) and are not asked again.
+  const [ticked, setTicked] = useState([]);
   const sheet = facts?.sheet ?? null;
   const open = Boolean(sheet) && !facts.review; // the sheet waits: the ticks and the bar are live
-  const all = sheet?.facts.map((f) => f.n) ?? [];
+  const all = waitingFacts(facts).map((f) => f.n);
+  const before = startChecked(facts).length;
   const toggle = (n) => setTicked((t) => (t.includes(n) ? t.filter((x) => x !== n) : [...t, n]));
   const setMany = (ns, on) => setTicked((t) => (on ? [...new Set([...t, ...ns])] : t.filter((x) => !ns.includes(x))));
   return (
@@ -81,7 +85,7 @@ export const LeadFactsSheet = ({ facts, companies = [], busy, onReview, onChange
           {open ? (
             <div className="cline-fact-bar" data-facts-bar="">
               <label className="cline-fact-all label-data"><input type="checkbox" className="cline-fact-tick" disabled={busy} checked={ticked.length === all.length} onChange={(e) => setMany(all, e.target.checked)} /> CHECK ALL · <span data-facts-checked="">{checkedWords(ticked.length, all.length)}</span></label>
-              <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`APPROVE ALL (${all.length}) — every fact on the sheet`} onClick={() => onReview(sheet, 'approved')}>APPROVE ALL ({all.length})</button>
+              <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`APPROVE ALL${before ? ' NEW' : ''} (${all.length}) — every fact that waits`} onClick={() => onReview(sheet, 'approved')}>APPROVE ALL{before ? ' NEW' : ''} ({all.length})</button>
               <button type="button" className="sec-scan label-data" disabled={busy || !ticked.length || ticked.length === all.length} aria-label={`APPROVE CHECKED (${ticked.length}) · REST GO BACK — the other ${all.length - ticked.length} go to the sales seat to fix`}
                 title="The facts you ticked stand. The rest go back to the sales seat to fix." onClick={() => onReview(sheet, 'approved', note.trim() || undefined, ticked)}>APPROVE CHECKED ({ticked.length}) · REST GO BACK</button>
               <input className="cline-input" aria-label="What should change before you approve" placeholder="What should change" disabled={busy}
@@ -91,12 +95,12 @@ export const LeadFactsSheet = ({ facts, companies = [], busy, onReview, onChange
             </div>
           ) : null}
           {factsByCompany(sheet, companies).map((group) => {
-            const ns = group.facts.map((f) => f.n);
-            const on = ns.every((n) => ticked.includes(n));
+            const ns = group.facts.map((f) => f.n).filter((n) => all.includes(n));
+            const on = ns.length > 0 && ns.every((n) => ticked.includes(n));
             return (
               <section key={group.id} className="cline-fact-group" aria-label={`facts about ${group.name}`} data-fact-company={group.id}>
                 <Fold id={`facts:${group.id}`} level={2} title={group.name.toUpperCase()} waits={open} stats={groupStats(group, facts, ticked)}>
-                {open ? (
+                {open && ns.length ? (
                   <label className="cline-fact-all label-data">
                     <input type="checkbox" className="cline-fact-tick" aria-label={`Check every fact about ${group.name}`} disabled={busy} checked={on} onChange={(e) => setMany(ns, e.target.checked)} />
                     CHECK ALL OF {group.name.toUpperCase()}

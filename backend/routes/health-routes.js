@@ -6,6 +6,7 @@
  */
 
 import { Router } from 'express';
+import { createHmac } from 'node:crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { requireAuth } from '../services/auth.js';
@@ -76,12 +77,20 @@ const pipelineStatus = () => {
   });
 };
 
+const deskProof = (challenge) => {
+  const token = process.env.NEUMA_DESK_HEALTH_TOKEN;
+  if (!token || !challenge) return null;
+  return createHmac('sha256', token).update(`neuma-desk-health-v1\0${String(challenge)}`).digest('base64url');
+};
+
 /**
  * GET / — Public liveness check.
  * Returns 200 if core systems (workspace, memory) are operational.
  * Returns 503 if either is unhealthy.
  */
 router.get('/', async (req, res) => {
+  const proof = deskProof(req.get('x-neuma-desk-challenge'));
+  if (proof) res.set('x-neuma-desk-proof', proof);
   const workspace = await checkWorkspaceWritable();
 
   const coreHealthy = workspace.status === 'healthy';

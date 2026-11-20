@@ -75,8 +75,8 @@ describe('envelope v2 (compressed)', () => {
   });
 
   it('fails closed on an unsupported envelope version', () => {
-    const envelope = { ...encryptEnvelope({ a: 1 }, { key: KEY }), _enc: 3 };
-    expect(() => decryptEnvelope(envelope, { key: KEY })).toThrow('unsupported envelope version 3');
+    const envelope = { ...encryptEnvelope({ a: 1 }, { key: KEY }), _enc: 99 };
+    expect(() => decryptEnvelope(envelope, { key: KEY })).toThrow('unsupported envelope version 99');
   });
 
   it('fails closed when _enc: 2 carries an unknown compression marker', () => {

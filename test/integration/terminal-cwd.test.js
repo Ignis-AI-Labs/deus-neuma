@@ -25,6 +25,7 @@ import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setupTerminalRoutes } from '../../backend/routes/terminal-routes.js';
 import { setRoots } from '../../backend/services/user-files.js';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { ticketedWsUrl } from '../helpers/desk-ticket-kit.js';
 
 // Real challenge-sign-verify session token (the repo's integration auth flow).
 const makeAuthToken = async () => {
@@ -41,9 +42,10 @@ const makeAuthToken = async () => {
  * has been seen. A terminal:error or silence rejects loudly (RULE 0: a cwd
  * "verified" without a live shell behind it proves nothing).
  */
+let sessionToken;
 const shellPwd = (baseUrl, cwdParam) =>
   new Promise((resolve, reject) => {
-    const url = cwdParam === undefined ? baseUrl : `${baseUrl}&cwd=${encodeURIComponent(cwdParam)}`;
+    const url = ticketedWsUrl(baseUrl, sessionToken, '/terminal-ws', cwdParam === undefined ? {} : { cwd: cwdParam });
     const ws = new WebSocket(url);
     let output = '';
     let asked = false;
@@ -107,10 +109,10 @@ describe('terminal ?cwd= focus containment (D3/D4)', () => {
     wss = new WebSocketServer({ server: httpServer, maxPayload: 1048576 });
     setupTerminalRoutes(wss);
     await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
-    const token = await makeAuthToken();
+    sessionToken = await makeAuthToken();
     // The shell is the install owner's (terminal-routes.js): this wallet owns the test's install.
-    await makeInstallOwner(verifySessionToken(token).address);
-    baseUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws?token=${encodeURIComponent(token)}`;
+    await makeInstallOwner(verifySessionToken(sessionToken).address);
+    baseUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws`;
   });
 
   afterAll(async () => {

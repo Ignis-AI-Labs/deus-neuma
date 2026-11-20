@@ -6,9 +6,9 @@
 // (path-menu.js). Relative paths resolve against this window's focused folder.
 //
 // FILE OPENING NEVER MOVES FOCUS (Design note, 2026-10-06: […] uses the
-// file's viewer; a file outside every open Files root brings its folder in as
-// a ROOT (the server's containment law), never as the window's focus. Opening
-// a folder, or choosing […], deliberately moves the Files lens.
+// file's viewer; a file outside every open Files root asks before bringing its
+// folder in as a ROOT, never as the window's focus. Opening a folder, or
+// choosing […], asks before deliberately moving the Files lens.
 //
 // It lives INSIDE both FocusContext and WindowManager because it needs the
 // window's focus lens and the window registry. Mounted once at the desk host,
@@ -26,6 +26,7 @@ import { isImagePath } from './files/image-view-model.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { CtxMenu } from './CtxMenu.jsx';
 import { pathMenuItems, isWebAddress, openWebLink } from './path-menu.js';
+import { relativeCandidates } from './path-bases.js';
 
 // How long a refusal stays on screen. Long enough to read, short enough that
 // it never becomes furniture.
@@ -48,7 +49,7 @@ const PathOpenerView = () => {
     return baseDir ? `${baseDir.replace(/[\\/]$/, '')}/${path}` : null;
   }, [baseDir]);
 
-  const [menu, setMenu] = useState(null); // { path, at } | null
+  const [menu, setMenu] = useState(null); // { path, at, bases } | null
 
   // Folder or file? `browseDir` is the picker's own un-contained walk, so it
   // answers for a path that is not yet an open root.
@@ -63,15 +64,18 @@ const PathOpenerView = () => {
     }
   }, []);
 
-  // A file the desk may read: its folder joins the open Files ROOTS when no
-  // root holds it yet (the server reads only inside roots) — never the focus.
+  // A contained file opens directly. Widening Files to its folder is a named grant.
   const readableFile = useCallback(async (path) => {
     const kind = await kindOf(path);
     if (kind.error) { setNote(`Could not open ${path} — ${kind.error}`); return false; }
     if (kind.isDir) { setNote(`${path} is a folder — use Show in file manager or Focus this folder.`); return false; }
     try {
       const roots = await getRoots();
-      if (!roots.some((root) => within(path, root))) await openFilesRoot(dirOf(path));
+      if (!roots.some((root) => within(path, root))) {
+        const folder = dirOf(path);
+        if (!window.confirm(`OPEN FILE AND ADD ITS FOLDER TO FILES?\n\n${path}\n\nFolder added: ${folder}`)) return false;
+        await openFilesRoot(folder);
+      }
       return true;
     } catch (err) {
       setNote(`Could not open ${path} — ${err?.message || 'its folder was refused'}`);
@@ -110,25 +114,36 @@ const PathOpenerView = () => {
     }
   }, [readableFile]);
 
-  // The deliberate lens move: the folder (or the file's folder) becomes this
-  // window's focus.
+  // The deliberate lens move always names the exact folder before mutating roots/focus.
   const focusFolder = useCallback(async (path) => {
     const kind = await kindOf(path);
     if (kind.error) { setNote(`Could not open ${path} — ${kind.error}`); return; }
     const folder = kind.isDir ? path : dirOf(path);
+    if (!window.confirm(`FOCUS THIS FOLDER?\n\n${folder}\n\nThis adds it to Files if needed and changes this window's focus.`)) return;
     const opened = await openFolder(folder);
     if (opened.status !== 'opened') { setNote(`Could not focus ${folder} — ${opened.message || 'the folder was refused'}`); return; }
     uiSound('activate');
   }, [kindOf, openFolder]);
 
-  const openPath = useCallback(async (raw) => {
-    const path = resolvePath(raw);
-    if (!path) { setNote(`A relative path needs a focused folder: ${raw}`); return; }
+  // A RELATIVE PATH FINDS ITS FOLDER (Design note, 2026-11-19: […]): under the window's focused folder first, then under the folders the message's own acts worked in
+  // (path-bases.js) — the first place it exists is the one opened, and every place tried is said when none is.
+  const findPath = useCallback(async (raw, bases = []) => {
+    if (typeof raw !== 'string') return { path: null, tried: [] };
+    if (isAbsolutePath(raw)) return { path: raw, tried: [raw] };
+    const tried = [...new Set([resolvePath(raw), ...relativeCandidates(raw, bases)].filter(Boolean))];
+    for (const path of tried) if (!(await kindOf(path)).error) return { path, tried };
+    return { path: null, tried };
+  }, [resolvePath, kindOf]);
+  const notFound = (raw, tried) => (tried.length ? `${raw} is not in this window's focused folder nor in the folders this message worked in — looked in: ${tried.join(' · ')}` : `A relative path needs a focused folder: ${raw}`);
+
+  const openPath = useCallback(async (raw, bases = []) => {
+    const { path, tried } = await findPath(raw, bases);
+    if (!path) { setNote(notFound(raw, tried)); return; }
     const kind = await kindOf(path);
     if (kind.error) { setNote(`Could not open ${path} — ${kind.error}`); return; }
     if (kind.isDir) await focusFolder(path);
     else await openFile(path);
-  }, [resolvePath, kindOf, focusFolder, openFile]);
+  }, [findPath, kindOf, focusFolder, openFile]);
 
   const onAct = useCallback(async (id) => {
     // A web address never touches the folder in focus: it opens in the browser, or its address is copied.
@@ -137,13 +152,15 @@ const PathOpenerView = () => {
       else if (id === 'copy-link') { try { await navigator.clipboard.writeText(menu.path); } catch { setNote('The clipboard refused the link.'); } }
       return;
     }
-    const path = resolvePath(menu?.path);
-    if (!path) { setNote('A relative path needs a focused folder.'); return; }
+    const { path, tried } = await findPath(menu?.path, menu?.bases ?? []);
+    if (!path) { setNote(notFound(menu?.path, tried)); return; }
     if (id === 'open-file') await openFile(path);
     else if (id.startsWith('press:')) await pressFile(path, id.slice('press:'.length));
     else if (id === 'focus-folder') await focusFolder(path);
     else if (id === 'open-browser') {
-      const r = await desktopShell()?.openInBrowser?.(path);
+      if (!window.confirm(`OPEN IN BROWSER?\n\n${path}`)) return;
+      const roots = await getRoots();
+      const r = await desktopShell()?.openInBrowser?.(path, roots);
       if (!r?.ok) setNote(`The browser would not take ${path}.`);
     } else if (id === 'show-in-folder') {
       const r = await desktopShell()?.showInFolder(path);
@@ -151,24 +168,24 @@ const PathOpenerView = () => {
     } else if (id === 'copy-path') {
       try { await navigator.clipboard.writeText(path); } catch { setNote('The clipboard refused the path.'); }
     }
-  }, [menu, resolvePath, openFile, pressFile, focusFolder]);
+  }, [menu, findPath, openFile, pressFile, focusFolder]);
 
   // The press's brand kits, read the first time a path menu opens (load on
   // demand) and kept; a machine that cannot press offers no Make PDF.
   const [kits, setKits] = useState(null);
   useEffect(() => {
     const onPathMenu = async (e) => {
-      const { path, x, y } = e.detail || {};
+      const { path, x, y, bases } = e.detail || {};
       if (typeof path !== 'string' || path.length < 2) return;
       if (kits === null) {
         const board = await getPressBoard().catch(() => null);
         setKits(board?.chromium?.available === false ? [] : (board?.kits || []));
       }
-      setMenu({ path, at: { x: Number(x) || 0, y: Number(y) || 0 } });
+      setMenu({ path, at: { x: Number(x) || 0, y: Number(y) || 0 }, bases: Array.isArray(bases) ? bases : [] });
     };
     const onPathOpen = (e) => {
       const path = e.detail?.path;
-      if (typeof path === 'string' && path.length >= 2) openPath(path);
+      if (typeof path === 'string' && path.length >= 2) openPath(path, Array.isArray(e.detail?.bases) ? e.detail.bases : []);
     };
     window.addEventListener('neuma:path-menu', onPathMenu);
     window.addEventListener('neuma:path-open', onPathOpen);

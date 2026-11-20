@@ -25,6 +25,14 @@ describe('a network\'s pools, read whole', () => {
     expect(poolLine(rows[0], Date.parse('2026-11-14T08:00:00Z'))).toMatch(/^cbBTC \/ WETH 0\.16% on aero-slipstream-base · 24h volume \$204\.\dM · TVL \$3\.8M · fees ~\$327\.\dK\/day to its LPs/);
   });
 
+  test('fee parsing stays bounded on a hostile pool name and keeps ordinary fees', () => {
+    const name = `${'1'.repeat(100000)}.x`;
+    const hostile = poolRow({ attributes: { name } });
+    expect(hostile.name).toBe(name);
+    expect(hostile.feePct).toBeNull();
+    expect(poolRow({ attributes: { name: 'TOKEN / WETH 0.3%   ' } }).feePct).toBe(0.3);
+  });
+
   test('volume made by a few huge trades is marked SUSPECT; real demand is not', () => {
     const pons = rows.find((r) => r.name.startsWith('PONS'));
     expect(suspectOf(pons)).toMatch(/a trade over 234 trades: wash trading or a trap/);

@@ -20,7 +20,12 @@ import { startUmbraeStandIn, USDC, WETH } from '../helpers/umbrae-stand-in.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { openLpWallet } from '../../backend/services/umbrae-lp/lp-wallet.js';
 import { houseRecipients, resolveRecipient } from '../../backend/services/umbrae-lp/lp-house.js';
-import { runSend, runSwap } from '../../backend/services/umbrae-lp/lp-trade.js';
+import { runSend, runSwap, quoteSwap } from '../../backend/services/umbrae-lp/lp-trade.js';
+import { preflightCreatePool } from '../../backend/services/umbrae-lp/lp-pool.js';
+import { resolveToken, tokenLabel } from '../../backend/services/umbrae-lp/lp-tokens.js';
+import { UMBRAE_ROUTER } from '../../core/wallet/trade-policy.js';
+import { returnContract } from '../helpers/evm-return-contract.js';
+import { startLyingRpc } from '../helpers/lying-rpc.js';
 
 const OPERATOR = ethers.Wallet.createRandom().address;
 const STRANGER_OPERATOR = ethers.Wallet.createRandom().address;
@@ -87,6 +92,36 @@ describe('the house, as the places a send may reach', () => {
     expect(resolveRecipient(await houseRecipients('tenekom'), 'cold storage')).toMatchObject({ address: ethers.getAddress(OUTSIDER), wallet: 'allowlist' });
     await workspace.writeSpendAllowlist('tenekom', { version: 1, entries: [] });
   });
+
+  test('a member that goes by "Operator" never answers to that word, and a name two members answer to names neither (PR600 P6-22)', async () => {
+    await workspace.create('mallory');
+    await claimOwner(root, 'mallory', OPERATOR);
+    await workspace.writeEncryptedKeypair('mallory', { address: ethers.Wallet.createRandom().address });
+    lp.mallory = (await openLpWallet('mallory')).address;
+    await workspace.writeDNA('mallory', { neumaId: 'mallory', identity: { name: 'Operator' } });
+    const house = await houseRecipients('tenekom');
+    expect(house.filter((r) => r.lane === 'mallory').map((r) => r.name)).toEqual(['mallory', 'mallory']);
+    // The list as it read before the fix, with the word on the member's wallets: the role still wins.
+    const worded = house.map((r) => (r.lane === 'mallory' ? { ...r, name: 'Operator' } : r));
+    for (const list of [house, worded]) {
+      expect(resolveRecipient(list, 'operator')).toMatchObject({ address: ethers.getAddress(OPERATOR), wallet: 'operator' });
+      expect(resolveRecipient(list, 'Operator')).toMatchObject({ address: ethers.getAddress(OPERATOR), wallet: 'operator' });
+    }
+    const [operatorBefore, malloryBefore] = [await balance(OPERATOR), await balance(lp.mallory)];
+    const out = await runSend('tenekom', { to: 'operator', amount: '0.002' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
+    expect(out).toMatchObject({ ok: true, to: ethers.getAddress(OPERATOR), name: 'operator' });
+    expect((await balance(OPERATOR)) - operatorBefore).toBe(ethers.parseEther('0.002'));
+    expect(await balance(lp.mallory)).toBe(malloryBefore);
+
+    await workspace.writeDNA('mallory', { neumaId: 'mallory', identity: { name: 'Rugevil' } });
+    const doubled = await houseRecipients('tenekom');
+    expect(resolveRecipient(doubled, 'rugevil')).toBeNull();
+    expect(resolveRecipient(doubled, 'rugevil main')).toBeNull();
+    expect(resolveRecipient(doubled, 'mallory')).toMatchObject({ address: lp.mallory, wallet: 'liquidity' });
+    expect(resolveRecipient(doubled, main.rugevil)).toMatchObject({ address: main.rugevil, wallet: 'main' });
+    await workspace.writeDNA('mallory', { neumaId: 'mallory', identity: { name: 'Mallory' } });
+    expect(resolveRecipient(await houseRecipients('tenekom'), 'rugevil')).toMatchObject({ address: lp.rugevil });
+  }, 60000);
 });
 
 describe('sends', () => {
@@ -138,5 +173,113 @@ describe('swaps (the refusals a plain node can show)', () => {
     connections.restore();
     connections = connectionsOn([]);
     expect((await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '1' }, { provider, receiptProvider: provider, receiptConfirmations: 1 })).reason).toMatch(/pool list did not answer/);
+  }, 60000);
+});
+
+describe('a token named by symbol is one address, never the first match (P6-14)', () => {
+  // A look-alike listed FIRST under WETH's symbol, and one symbol two listed tokens share.
+  const FAKE_WETH = ethers.getAddress('0x5555555555555555555555555555555555555555');
+  const DUP_A = ethers.getAddress('0x6666666666666666666666666666666666666666');
+  const DUP_B = ethers.getAddress('0x7777777777777777777777777777777777777777');
+  const pair = (address, x, y) => ({ address, mint_x: x, mint_y: y, bin_step: 25, liquidity: '9000000' });
+  beforeEach(() => {
+    umbrae.state.leadGroups = [
+      { name: 'WETH-DUP', mint_x: FAKE_WETH, mint_y: DUP_A, tokenX: 'WETH', tokenY: 'DUP', tokenXPrice: 1, tokenYPrice: 1, pairs: [pair('0x8888888888888888888888888888888888888888', FAKE_WETH, DUP_A)] },
+      { name: 'DUP-USDC', mint_x: DUP_B, mint_y: USDC, tokenX: 'DUP', tokenY: 'USDC', tokenXPrice: 1, tokenYPrice: 1, pairs: [pair('0x9999999999999999999999999999999999999999', DUP_B, USDC)] },
+    ];
+  });
+
+  test('"WETH" sends Base\'s own WETH though a look-alike is listed first, and the answer names the address', async () => {
+    const out = await runSend('tenekom', { to: 'rugevil', token: 'WETH', amount: '0.000002' }, { provider, receiptProvider: provider, receiptConfirmations: 1 });
+    expect(out).toMatchObject({ ok: true, token: WETH });
+    expect((await provider.getTransaction(out.txHashes[0])).to).toBe(WETH);
+    const quoted = await quoteSwap({ tokenIn: 'WETH', tokenOut: 'USDC', amount: '1' }, { provider });
+    expect(quoted.reason ?? '').not.toMatch(/tokens Umbrae's pools trade/);
+  }, 60000);
+
+  test('a symbol two listed tokens share is refused with both addresses; nothing is signed, for a send, a swap, a quote or a new pool', async () => {
+    const before = await nonce(lp.tenekom);
+    const opts = { provider, receiptProvider: provider, receiptConfirmations: 1 };
+    const both = new RegExp(`"DUP" names 2 different tokens in Umbrae's pools \\((${DUP_A}, ${DUP_B}|${DUP_B}, ${DUP_A})\\)\\. Name the one you mean by its address`, 'i');
+    expect((await runSend('tenekom', { to: 'rugevil', token: 'DUP', amount: '1' }, opts)).reason).toMatch(both);
+    expect((await runSwap('tenekom', { tokenIn: 'dup', tokenOut: 'USDC', amount: '1' }, opts)).reason).toMatch(both);
+    expect((await quoteSwap({ tokenIn: 'USDC', tokenOut: 'DUP', amount: '1' }, { provider })).reason).toMatch(both);
+    expect((await preflightCreatePool({ baseToken: '0x3333333333333333333333333333333333333333', quoteToken: 'DUP', check: true }, { provider })).reason).toMatch(both);
+    expect(await nonce(lp.tenekom)).toBe(before);
+  }, 60000);
+
+  test('the rule itself: a pinned symbol is its pinned contract or nothing, and a look-alike is shown with its address', () => {
+    const listed = [[FAKE_WETH, 'WETH'], [DUP_A, 'DUP'], [USDC, 'usdc']];
+    expect(resolveToken(listed, 'weth')).toMatchObject({ ok: false, ambiguous: false });
+    expect(resolveToken([...listed, [WETH, 'WETH']], 'weth')).toEqual({ ok: true, address: WETH });
+    expect(resolveToken(listed, 'USDC')).toEqual({ ok: true, address: USDC });
+    expect(resolveToken(listed, FAKE_WETH.toLowerCase())).toEqual({ ok: true, address: FAKE_WETH });
+    expect(resolveToken(listed, 'DUP')).toEqual({ ok: true, address: DUP_A });
+    expect(tokenLabel(WETH, 'anything')).toBe('WETH');
+    expect(tokenLabel(FAKE_WETH, 'WETH')).toBe('WETH@0x5555…5555');
+    expect(tokenLabel(DUP_A, 'DUP')).toBe('DUP');
+  });
+});
+
+describe('a swap\'s price is two Base nodes\' word, not one (P6-11)', () => {
+  const QUOTE = new ethers.Interface(['function getDetailedSwapQuote(uint256 amountIn, address[] path, uint16[] binSteps, address[] pools) view returns (uint256 amountOut, uint256 consumedAmountIn, uint256[] feesPerHop, uint256 priceImpact, uint256[] amountsPerHop, uint24[] activeBinsPerPair, bool liquidityExhausted)']);
+  const SWAP = new ethers.Interface(['function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] path, uint16[] binSteps, address[] pools, address to, uint256 deadline)']);
+  const selector = QUOTE.getFunction('getDetailedSwapQuote').selector;
+  const quoteOf = (amountOut) => QUOTE.encodeFunctionResult('getDetailedSwapQuote', [amountOut, 1n, [], 0n, [], [], false]);
+  const ask = { tokenIn: 'USDC', tokenOut: 'WETH', amount: '0.000001' };
+  let liar;
+  let lying;
+  let lie = () => undefined;
+
+  beforeAll(async () => {
+    // A router that quotes 1,000,000 out for any route and takes any swap: the real node's word.
+    await provider.send('anvil_setCode', [UMBRAE_ROUTER, returnContract({ fallback: ethers.ZeroHash, routes: { [selector]: quoteOf(1_000_000n) } })]);
+    lying = await startLyingRpc(anvil.url, (request, honest) => lie(request, honest));
+    liar = new ethers.JsonRpcProvider(lying.url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 100 });
+  });
+  afterAll(async () => {
+    liar?.destroy();
+    await lying?.close();
+    await provider.send('anvil_setCode', [UMBRAE_ROUTER, '0x']);
+  });
+  beforeEach(() => { lie = () => undefined; });
+
+  test('two nodes that agree: the swap is signed with its floor under the price both gave', async () => {
+    const out = await runSwap('tenekom', ask, { provider: liar, receiptProvider: provider, receiptConfirmations: 1 });
+    expect(out).toMatchObject({ ok: true, via: 'umbrae', tokens: { in: USDC, out: WETH } });
+    const tx = (await Promise.all(out.txHashes.map((hash) => provider.getTransaction(hash)))).find((sent) => sent.to === UMBRAE_ROUTER);
+    expect(SWAP.decodeFunctionData('swapExactTokensForTokens', tx.data).amountOutMin).toBe(990_000n);
+  }, 60000);
+
+  test('a node that quotes almost nothing, so the floor it would sign is almost nothing: refused, nothing signed', async () => {
+    lie = (request) => (request.method === 'eth_call' && String(request.params[0]?.data ?? request.params[0]?.input).startsWith(selector) ? quoteOf(2n) : undefined);
+    const before = await nonce(lp.tenekom);
+    const out = await runSwap('tenekom', ask, { provider: liar, receiptProvider: provider, receiptConfirmations: 1 });
+    expect(out.ok).toBe(false);
+    expect(out.reason).toMatch(/Two Base nodes disagree about what this swap would pay, so nothing was signed/);
+    expect(await nonce(lp.tenekom)).toBe(before);
+  }, 60000);
+
+  test('a node that names a gas figure the second node does not: refused, nothing signed; the send goes out when they agree', async () => {
+    const send = (amount) => runSend('tenekom', { to: 'operator', amount }, { provider: liar, receiptProvider: provider, receiptConfirmations: 1 });
+    const honest = await provider.estimateGas({ from: lp.tenekom, to: lp.tenekom, value: 1n });
+    lie = (request) => (request.method === 'eth_estimateGas' ? ethers.toQuantity(honest * 3n) : undefined);
+    const before = await nonce(lp.tenekom);
+    const out = await send('0.0001');
+    expect(out.ok).toBe(false);
+    expect(out.reason).toMatch(/Two Base nodes disagree about the gas this transaction needs, so nothing was signed/);
+    expect(await nonce(lp.tenekom)).toBe(before);
+    lie = () => undefined;
+    // another amount: the client keeps a node's answer to the very same question for a moment
+    expect(await send('0.0002')).toMatchObject({ ok: true });
+    expect(await nonce(lp.tenekom)).toBe(before + 1);
+  }, 60000);
+
+  test('a node that takes the signed bytes and keeps them: the second node still gets the transaction', async () => {
+    lie = (request) => (request.method === 'eth_sendRawTransaction' ? ethers.keccak256(request.params[0]) : undefined);
+    const before = await balance(lp.rugevil);
+    const out = await runSend('tenekom', { to: 'Rugevil', amount: '0.003' }, { provider: liar, receiptProvider: provider, receiptConfirmations: 1 });
+    expect(out.ok).toBe(true);
+    expect((await balance(lp.rugevil)) - before).toBe(ethers.parseEther('0.003'));
   }, 60000);
 });

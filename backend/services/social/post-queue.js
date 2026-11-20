@@ -31,7 +31,7 @@ import { createWriteChain } from '../write-chain.js';
 import { validateDraft, queuedSecretRefusal, quoteFieldsOf, REPLY_LIVE_STANDINGS, REPLY_TTL_MS } from './queue-rules.js';
 import { previewUpdate, appendRevision, EDITABLE_STANDINGS } from './queue-edit.js';
 import { approveThreadIn } from './queue-thread.js';
-import { tiktokApproveRefusal } from './tiktok-metadata.js';
+import { approveRefusal, sealQueueMedia } from './approval-seal.js';
 import { channelOfAccountId, firstAccountId } from './account-shape.js';
 import { disclosed, markedMedia, IN_METADATA } from './disclosure-line.js';
 import { restageFailed } from './queue-retry.js';
@@ -94,6 +94,7 @@ export const createPostQueue = (opts = {}) => {
 
   const save = async (entries) => {
     const file = target();
+    await sealQueueMedia(entries); // every attached file's bytes are sealed the first time they are saved (P6-124)
     await fs.mkdir(dirname(file), { recursive: true, mode: 0o700 });
     const tmp = `${file}.${process.pid}.tmp`;
     await fs.writeFile(tmp, `${JSON.stringify(entries, null, 2)}\n`, { mode: 0o600 });
@@ -255,23 +256,16 @@ export const createPostQueue = (opts = {}) => {
     /**
      * The operator approves a draft (optionally re-timing it). impure.
      * @param {string} id
-     * @param {{decidedBy: string, scheduledFor?: string|null, tiktokConsent?: object|null, textSeen?: string, under?: string}} decision
+     * @param {{decidedBy: string, scheduledFor?: string|null, tiktokConsent?: object|null, textSeen?: string,
+     *   mediaSeen?: Array<?string>, under?: string}} decision - textSeen + mediaSeen: what the card showed (approval-seal.js)
      */
-    approve(id, { decidedBy, scheduledFor, tiktokConsent, textSeen, under } = {}) {
+    approve(id, { decidedBy, scheduledFor, tiktokConsent, textSeen, mediaSeen, under } = {}) {
       if (scheduledFor != null && Number.isNaN(Date.parse(scheduledFor))) {
         return Promise.resolve({ ok: false, error: 'scheduledFor must be an ISO-8601 time' });
       }
       return transition(id, ['draft'], (entry) => {
-        const secret = queuedSecretRefusal(entry, 'nothing was approved');
-        if (secret) return { error: secret };
-        // A reply is sent BY approval, never armed by it (ruling, 2026-08-06).
-        // Arming one here would strand it: the scheduler refuses the kind, so
-        // an approved reply is a promise the system can no longer keep.
-        if (entry.kind === 'reply') {
-          return { error: 'a reply goes out the moment it is approved — decide it through the reply approval (approve-and-send), not the schedule lane' };
-        }
-        const tiktok = tiktokApproveRefusal(entry, { consent: tiktokConsent, textSeen });
-        if (tiktok) return { error: tiktok };
+        const refusal = approveRefusal(entry, { tiktokConsent, textSeen, mediaSeen });
+        if (refusal) return { error: refusal };
         if (entry.channelId === 'tiktok') entry.tiktokConsent = tiktokConsent ?? null;
         entry.status = 'approved';
         entry.decidedBy = String(decidedBy || '');
@@ -286,17 +280,18 @@ export const createPostQueue = (opts = {}) => {
      * The operator approves a whole THREAD at once — every draft from its root
      * down, all or nothing, in one atom (queue-thread.js holds the law). impure.
      * @param {string} id - any post of the thread
-     * @param {{decidedBy: string, textsSeen: Record<string, string>}} decision
+     * @param {{decidedBy: string, textsSeen: Record<string, string>, mediaSeen?: Record<string, Array<?string>>}} decision
      */
-    approveThread(id, { decidedBy, textsSeen } = {}) {
-      return approveAll((entries, now) => approveThreadIn(entries, id, { decidedBy, textsSeen, now }));
+    approveThread(id, { decidedBy, textsSeen, mediaSeen } = {}) {
+      return approveAll((entries, now) => approveThreadIn(entries, id, { decidedBy, textsSeen, mediaSeen, now }));
     },
 
     /**
      * The operator approves a GROUP — one asset on several accounts — in one
      * atom (queue-group.js holds the law); `ids` are the house's own members. impure.
      * @param {string} groupId
-     * @param {{ids: ReadonlySet<string>, decidedBy: string, textsSeen: Record<string, string>, consents?: object}} decision
+     * @param {{ids: ReadonlySet<string>, decidedBy: string, textsSeen: Record<string, string>,
+     *   mediaSeen?: Record<string, Array<?string>>, consents?: object}} decision
      */
     approveGroup(groupId, decision = {}) {
       return approveAll((entries, now) => approveGroupIn(entries, groupId, { ...decision, now }));

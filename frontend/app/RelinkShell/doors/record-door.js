@@ -17,16 +17,20 @@ const OFFICES = Object.freeze({
   MANAGEMENT: 'cos', SALES: 'cro', MARKETING: 'cmo', LAW: 'clo', SECURITY: 'cso', TREASURY: 'cfo', BOOKS: 'cao',
 });
 const SEAT_OF = Object.freeze({ cos: 'CHIEF OF STAFF', cro: 'CHIEF REVENUE OFFICER', cmo: 'CHIEF MARKETING OFFICER', clo: 'CHIEF LEGAL OFFICER', cso: 'CHIEF SECURITY OFFICER', cfo: 'CHIEF FINANCIAL OFFICER', cao: 'CHIEF ACCOUNTING OFFICER' });
-const TABS = Object.freeze({ COMPANY: 'model', 'BUSINESS MODEL': 'model', CAMPAIGNS: 'campaigns', LEADS: 'leads', DEALS: 'deals', MAILBOX: 'mailbox', SETTINGS: '_switches', SWITCHES: '_switches', SETUP: '_setup', 'THEIR EYES': '_eyes' });
+// The sales hub's stages are places too (company-line/sales-pipeline-view.js): […].
+const TABS = Object.freeze({ COMPANY: 'model', 'BUSINESS MODEL': 'model', 'COMPANY FACTS': 'model', CAMPAIGNS: 'campaigns', LEADS: 'leads', 'ALL PEOPLE': 'leads', DEALS: 'deals', MAILBOX: 'mailbox', SETTINGS: '_switches', SWITCHES: '_switches', SETUP: '_setup', 'THEIR EYES': '_eyes',
+  DISCOVER: 'discover', FILTER: 'filter', VALIDATE: 'validate', EMAILS: 'emails', OUTBOX: 'emails', SENT: 'sent', REPLIES: 'replies' });
 const STEP = '\\s*(?:→|->|>|,|/)\\s*';
 const PLACE = new RegExp(`POSITIONS${STEP}(${Object.keys(OFFICES).join('|')})(?:${STEP}(${Object.keys(TABS).join('|')}))?`, 'i');
-// The lead engine's own ids: an audience, a scored company, a facts sheet, a sales campaign.
+// The lead engine's own ids: an audience, a scored company, a facts sheet, a sales campaign. Each opens on the stage of
+// the sales pipeline it stands at, and names itself by what it IS, never by its id (Design note, 2026-11-18: […]). The
+// record's own name is read by record-names.js; `kind` is what it is when that name is not known yet.
 const RECORD = /\b(fs|s|p|k)-[0-9a-f]{8}\b/;
 const RECORDS = Object.freeze({
-  s: (id) => ({ tab: 'campaigns', reveal: `[data-segment-id="${id}"]`, words: 'the audience' }),
-  p: (id) => ({ tab: 'campaigns', reveal: `[data-prospect-id="${id}"]`, words: 'the company' }),
-  fs: () => ({ tab: 'model', reveal: '[data-facts-sheet]', words: 'the facts sheet' }),
-  k: (id) => ({ tab: 'campaigns', reveal: `[data-campaign-id="${id}"]`, words: 'the campaign' }),
+  s: (id) => ({ tab: 'discover', reveal: `[data-segment-id="${id}"]`, words: 'the audience', kind: 'AUDIENCE', place: 'DISCOVER' }),
+  p: (id) => ({ tab: 'validate', reveal: `[data-prospect-id="${id}"]`, words: 'the company', kind: 'COMPANY', place: 'VALIDATE' }),
+  fs: () => ({ tab: 'model', reveal: '[data-facts-sheet]', words: 'the facts sheet', kind: 'FACTS SHEET', place: 'COMPANY FACTS' }),
+  k: (id) => ({ tab: 'campaigns', reveal: `[data-campaign-id="${id}"]`, words: 'the campaign', kind: 'CAMPAIGN', place: 'CAMPAIGNS' }),
 });
 
 /**
@@ -38,8 +42,8 @@ export const recordDoor = (text) => {
   const t = String(text ?? '').trim();
   const record = new RegExp(`^${RECORD.source}$`).exec(t);
   if (record) {
-    const { tab, reveal, words } = RECORDS[record[1]](t);
-    return { kind: 'position', office: 'cro', tab, reveal, words: `Open ${words} in POSITIONS, ${SEAT_OF.cro}` };
+    const { tab, reveal, words, kind, place } = RECORDS[record[1]](t);
+    return { kind: 'position', office: 'cro', tab, reveal, words: `Open ${words} in POSITIONS, ${SEAT_OF.cro}, ${place}`, record: { id: t, kind } };
   }
   const place = new RegExp(`^${PLACE.source}$`, 'i').exec(t);
   if (!place) return null;

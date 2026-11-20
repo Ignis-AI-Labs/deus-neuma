@@ -15,6 +15,7 @@
 // impure (sends on the wire, resolves approvals on the connection).
 
 import { classifyFrame } from './terminal-portal.js';
+import { readApproval, approvalEditorText } from './approval-text.js';
 
 /** The ACP tool kind for one of our tool names. Pure. */
 export const acpToolKind = (tool) => {
@@ -51,11 +52,6 @@ export const PERMISSION_OPTIONS = Object.freeze([
   Object.freeze({ optionId: 'allow-always', name: 'Allow for this session', kind: 'allow_always' }),
   Object.freeze({ optionId: 'reject-once', name: 'Reject', kind: 'reject_once' }),
 ]);
-
-const parseArgs = (args) => {
-  if (typeof args !== 'string') return args ?? {};
-  try { return JSON.parse(args); } catch { return { preview: args }; }
-};
 
 /**
  * A ws-shaped sink for one ACP session.
@@ -99,10 +95,22 @@ export const createAcpPortal = ({ wire, sessionId, connection, resolveToolApprov
     // The act that follows the yes runs under the same call id.
     open.set(frame.tool, id);
     let decision = 'deny';
+    // The editor has no "show full": it is given the reach, the scope and every
+    // word of the act, or the act is refused unasked (approval-text.js).
+    const ask = readApproval(frame);
+    const shown = approvalEditorText(ask);
     try {
+      if (!ask.showable) throw new Error(ask.why);
       const answer = await wire.request('session/request_permission', {
         sessionId,
-        toolCall: { toolCallId: id, title: frame.tool, kind: acpToolKind(frame.tool), status: 'pending', rawInput: parseArgs(frame.args) },
+        toolCall: {
+          toolCallId: id,
+          title: ask.scope ? `${ask.name} — ${ask.scope}` : ask.name,
+          kind: acpToolKind(frame.tool),
+          status: 'pending',
+          rawInput: ask.input,
+          ...(shown ? { content: [{ type: 'content', content: { type: 'text', text: shown } }] } : {}),
+        },
         options: PERMISSION_OPTIONS,
       });
       decision = decisionFor(answer?.outcome);

@@ -8,6 +8,7 @@
 import { Router } from 'express';
 import { default as workspace } from '../../core/workspace/neuma-workspace.js';
 import { readContextMapField } from '../services/context-map.js';
+import { readAtlasMemory, readMemoryAtlasPage, searchMemoryAtlas } from '../services/memory-atlas.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Workspace');
@@ -62,6 +63,44 @@ export const createWorkspaceMemoryRouter = (requireOwnership) => {
     } catch (error) {
       log.error('Memory graph', { error: error.message });
       res.status(500).json({ error: 'Failed to compute memory graph' });
+    }
+  });
+
+  // --- Memory atlas (CONTEXT MAP · MEMORY): the whole memory by topic, people
+  // and period; one memory opened with its source and nearest memories; and a
+  // plain every-word search. Counts and bounded lines only on the atlas page —
+  // a memory's full text crosses only when that one memory is opened.
+
+  router.get('/:id/memory/atlas', async (req, res) => {
+    try {
+      res.json(await readMemoryAtlasPage(req.params.id));
+    } catch (error) {
+      log.error('Memory atlas', { error: error.message });
+      res.status(500).json({ error: 'Failed to lay out the memory atlas' });
+    }
+  });
+
+  router.get('/:id/memory/atlas/search', async (req, res) => {
+    try {
+      const result = await searchMemoryAtlas(req.params.id, typeof req.query.q === 'string' ? req.query.q : '');
+      if (!result.ok) return res.status(400).json({ error: result.reason });
+      return res.json({ ids: result.ids, words: result.words });
+    } catch (error) {
+      log.error('Memory atlas search', { error: error.message });
+      return res.status(500).json({ error: 'Failed to search memory' });
+    }
+  });
+
+  router.get('/:id/memory/atlas/memory/:memoryId', async (req, res) => {
+    try {
+      if (!/^[a-f0-9]{16}$/.test(req.params.memoryId)) return res.status(400).json({ error: 'not a memory id' });
+      const result = await readAtlasMemory(req.params.id, req.params.memoryId);
+      if (!result.ok) return res.status(404).json({ error: result.reason });
+      const { ok: _ok, ...memory } = result;
+      return res.json(memory);
+    } catch (error) {
+      log.error('Memory atlas read', { error: error.message });
+      return res.status(500).json({ error: 'Failed to open that memory' });
     }
   });
 

@@ -57,7 +57,7 @@ export const readySpeakTarget = async () => {
  */
 export async function* synthesize({ text, voice, context = [], signal }) {
   const target = await readySpeakTarget();
-  yield* speak({ endpoint: target.endpoint, text, voice, context: target.context ? context : [], signal });
+  yield* speak({ endpoint: target.endpoint, engine: target.engine, text, voice, context: target.context ? context : [], signal });
 }
 
 /**
@@ -73,6 +73,6 @@ export async function* synthesize({ text, voice, context = [], signal }) {
 export const warmVoice = async (voice, { signal, timeoutMs } = {}) => {
   const target = await readySpeakTarget();
   const signals = [signal, Number.isFinite(timeoutMs) ? AbortSignal.timeout(timeoutMs) : null].filter(Boolean);
-  const prepared = warmSpeakVoice({ endpoint: target.endpoint, voice, signal: signals.length ? AbortSignal.any(signals) : undefined });
+  const prepared = warmSpeakVoice({ endpoint: target.endpoint, engine: target.engine, voice, signal: signals.length ? AbortSignal.any(signals) : undefined });
   return { endpoint: target.endpoint, prepared };
 };

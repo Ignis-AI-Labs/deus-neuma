@@ -31,21 +31,41 @@ describe('the facts gate', () => {
     expect(figuresIn('12 months of runway')).toEqual([12]);
   });
 
+  test('a number that is part of a name is no figure: the words Layer 2 once refused an honest email (Design note, 2026-11-17', () => {
+    expect(figuresIn('Elysium, a Hyperliquid Layer 2; an L2 for web3 on Qwen3 and H100s; an ERC-20 token under EIP-1559')).toEqual([]);
+    expect(figuresIn('a top-10 exchange, 95% of every fee, from 12 GB')).toEqual([10, 95, 12]);
+  });
+
   test('a message of facts, marked, disclosed and without payment details passes', () => {
     expect(gate(body('We expect thirty harbours within a year (forward-looking).'))).toEqual({ ok: true });
   });
 
-  test('every problem is named at once: a stray figure, an unmarked promise, no disclosure, wire details, false urgency', () => {
+  test('every problem is named at once: a stray figure, an unmarked promise, wire details, false urgency — and no line is forced into the words (Design note, 2026-11-17', () => {
     const bad = 'We have 12 harbours. We will triple revenue. Act now — wire to routing number 021000021, or send to 0x' + 'ab'.repeat(20) + '.';
     const { problems } = gate(bad);
     expect(problems).toEqual(expect.arrayContaining([
       expect.stringMatching(/^12 is not on the facts sheet counsel approved/),
       expect.stringMatching(/^mark this forward-looking sentence "\(forward-looking\)": "We will triple revenue\."/),
-      expect.stringMatching(/^carry the disclosure line, word for word/),
       expect.stringMatching(/^a wallet address — no payment detail is ever written by a being/),
       expect.stringMatching(/^bank details — no payment detail/),
       'no false urgency (MAKOTO) — an investor decides in their own time',
     ]));
+    expect(problems.join(' ')).not.toMatch(/disclosure/);
+    expect(gate('Tidewater makes tide sheets for small harbours.')).toEqual({ ok: true });
+  });
+
+  test('P6-39: a payment page, an ENS name, an email address or a handle stops the message; only a link the approved sheet holds passes', () => {
+    const honest = 'We expect thirty harbours within a year (forward-looking).';
+    const found = (extra) => gate(body(`${honest} ${extra}`)).problems ?? [];
+    expect(found('Reserve your allocation at https://tidewater-invest.example/pay today.')).toEqual([expect.stringMatching(/^"https:\/\/tidewater-invest\.example\/pay" is a link the approved facts sheet does not hold/)]);
+    expect(found('Send your commitment to tidewater-raise.eth when ready.')).toEqual([expect.stringMatching(/^"tidewater-raise\.eth" is an ENS name/)]);
+    expect(found('Details are at pay.tidewater-invest.example/now for you.')).toEqual([expect.stringMatching(/is a web address the approved facts sheet does not hold/)]);
+    expect(found('Write to treasurer@elsewhere.example for the wire details.')).toEqual([expect.stringMatching(/^"treasurer@elsewhere\.example" is an email address/)]);
+    expect(found('Message @tidewater_treasury for the details.')).toEqual([expect.stringMatching(/^"@tidewater_treasury" is a handle/)]);
+    const pinned = makeFactsSheet({ facts: sheet.facts.map((f) => ({ ...f })), dataRoom: ['https://tidewater.example/data-room'], by: 'numer', now: NOW });
+    const withRoom = (b) => checkMessage({ subject: 'Tidewater', body: b, sheet: pinned, mandate: mandate(), companyName: 'Tidewater' });
+    expect(withRoom(body(`${honest} The data room is at https://tidewater.example/data-room.`))).toEqual({ ok: true });
+    expect(withRoom(body(`${honest} The data room is at https://tidewater.example.evil.example/data-room.`)).ok).toBe(false);
   });
 
   test('the platform\'s payment line comes from the signed mandate\'s account alone', () => {

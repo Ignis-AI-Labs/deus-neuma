@@ -275,7 +275,7 @@ const ready = (engineId) => ensureReady(engineId).catch((err) => {
 // impure — POST a sidecar endpoint on its loopback serve address.
 const postSidecar = async (engineId, route, init, timeoutMs) => {
   const { host, port } = resolveServe(engineId);
-  const res = await sidecarFetch(`http://${host}:${port}${route}`, { method: 'POST', ...init, signal: AbortSignal.timeout(timeoutMs) });
+  const res = await sidecarFetch(`http://${host}:${port}${route}`, { method: 'POST', ...init, signal: AbortSignal.timeout(timeoutMs) }, engineId);
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     let detail = body.slice(0, 200);

@@ -1,4 +1,5 @@
 import { parseFunctionGemmaCalls } from './functiongemma-call-parser.js';
+import { gptOssChannelSegments } from './gpt-oss-channel.js';
 
 /**
  * Tool Call Parser
@@ -364,15 +365,12 @@ const parseQwenNative = (text) => {
  */
 const parseGptOssChannel = (text) => {
   const calls = [];
-  const re = /<\|channel\|>[\s\S]*?\bto=([^\s<]+)[\s\S]*?<\|message\|>([\s\S]*?)(?=<\|channel\|>|<\|end\|>|$)/g;
-  for (const m of text.matchAll(re)) {
-    const target = m[1];
-    const rest = m[2];
+  for (const { target, rest } of gptOssChannelSegments(text)) {
     const braceStart = rest.indexOf('{');
     if (braceStart < 0) continue;
     const obj = scanBalancedJson(rest, braceStart);
     if (!obj) continue;
-    // `rest` is already bounded at the next channel by the outer regex.
+    // `rest` is already bounded at the next channel by the segment reader.
     const args = tryParseArgs(obj, rest.slice(braceStart));
     if (!args) continue;
     const [server, toolName] = target.includes('/') ? target.split('/') : [null, target];

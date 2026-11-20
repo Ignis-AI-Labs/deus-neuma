@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
-  channelItem, credentialItems, emailItem, groupItems, passesState, serviceItem, stateCounts,
+  channelItem, credentialItems, emailItem, groupItems, passesState, serviceItem, stateCounts, withParts,
 } from '../../frontend/app/RelinkShell/credential-view.js';
 import { CredentialMap } from '../../frontend/app/RelinkShell/CredentialMap.jsx';
 
@@ -43,6 +43,18 @@ describe('a credential state is only what the board proves', () => {
     expect(BOARD.services.map(serviceItem).map((i) => [i.state, i.detail])).toEqual([
       ['set', 'saved here'], ['missing', null], ['set', 'from the env file'], ['keyless', null],
     ]);
+  });
+
+  test('a service that takes two values is ONE row: SET only with both, half set it names what is missing (Design note, 2026-11-18', () => {
+    const tomba = (key, secret) => [
+      { id: 'tomba', name: 'Tomba', label: 'API key', group: 'Lead data', hasKey: key, source: key ? 'stored' : null },
+      { id: 'tomba-secret', partOf: 'tomba', name: 'Tomba secret', label: 'Secret', group: 'Lead data', hasKey: secret, source: secret ? 'stored' : null },
+    ];
+    expect(withParts(tomba(false, false)).map((s) => [s.id, s.parts.map((p) => p.id)])).toEqual([['tomba', ['tomba-secret']]]);
+    expect([[false, false], [true, false], [false, true], [true, true]].map(([k, s]) => withParts(tomba(k, s)).map(serviceItem).map((i) => [i.id, i.state, i.detail])[0]))
+      .toEqual([['tomba', 'missing', null], ['tomba', 'missing', 'secret not set'], ['tomba', 'missing', 'api key not set'], ['tomba', 'set', 'saved here']]);
+    expect(credentialItems({ services: tomba(true, true) }).map((i) => i.id)).toEqual(['tomba']);
+    expect(withParts(undefined)).toEqual([]);
   });
 
   test('the mailbox: set when connected, its holder the detail; absent board = no item', () => {

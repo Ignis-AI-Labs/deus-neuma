@@ -3,7 +3,7 @@
  * sender builds for it (nothing faked: the house's own MIME and SMTP dialogue).
  */
 import { describe, test, expect } from 'vitest';
-import { parseSendAs, fromFor } from '../../backend/services/email/send-as.js';
+import { parseSendAs, fromFor, memberAddress } from '../../backend/services/email/send-as.js';
 import { EMAIL_ACCOUNT } from '../../backend/services/email/email-registry.js';
 import { resolveChannelCredentials } from '../../backend/services/social/channel-registry.js';
 
@@ -24,6 +24,17 @@ describe('send as', () => {
     expect(fromFor(ACCOUNT, { company: 'ignis' })).toEqual({ ok: true, from: 'owner@example.org' });
     expect(fromFor(ACCOUNT)).toEqual({ ok: true, from: 'owner@example.org' });
     expect(fromFor({ address: 'a@b.co', sendAs: 'none' }, { company: 'umbrae' })).toEqual({ ok: true, from: 'a@b.co' });
+  });
+
+  test('a member has its own address (Design note, 2026-11-18: what it writes leaves from it, over its company\'s', () => {
+    const house = { address: 'founder@example.com', sendAs: 'umbrae = sales@umbrae.io, firepos = Firepos@IgnisLabs.ai' };
+    expect(memberAddress(house, 'firepos')).toBe('firepos@example.com');
+    expect(memberAddress(house, 'metidar')).toBe(null);
+    expect(fromFor(house, { company: 'umbrae', member: 'firepos' })).toEqual({ ok: true, from: 'firepos@example.com' });
+    expect(fromFor(house, { company: 'umbrae', member: 'metidar' })).toEqual({ ok: true, from: 'sales@umbrae.io' });
+    expect(fromFor(house, { member: 'metidar' })).toEqual({ ok: true, from: 'founder@example.com' });
+    // An address asked for by name still wins, when the mailbox holds it.
+    expect(fromFor(house, { from: 'sales@umbrae.io', member: 'firepos' })).toEqual({ ok: true, from: 'sales@umbrae.io' });
   });
 
   test('an address asked for by name must be one the mailbox holds; a stranger is refused, with the list', () => {

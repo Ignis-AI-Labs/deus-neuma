@@ -66,6 +66,17 @@ const dirSize = async (dir) => {
   return total;
 };
 
+const copyLane = async (src, dest) => {
+  const overlays = path.join('coding', 'sandboxes');
+  await fs.cp(src, dest, {
+    recursive: true,
+    filter: (source) => {
+      const relative = path.relative(src, source);
+      return relative !== overlays && !relative.startsWith(overlays + path.sep);
+    },
+  });
+};
+
 /**
  * Create a backup of every being the wallet owns — AND of the witness's own
  * realm (councils, chat labels, readable chat logs, projects, tasks). The
@@ -90,8 +101,8 @@ export const createBackup = async (wallet, { now = new Date() } = {}) => {
   const beings = [];
   for (const { neumaId } of owned) {
     const src = path.join(root, neumaId);
-    // recursive: copy the whole being tree (ciphertext + plaintext-by-design).
-    await fs.cp(src, path.join(dest, neumaId), { recursive: true });
+    // Sovereign records and ordinary work; volatile kernel overlays stay out.
+    await copyLane(src, path.join(dest, neumaId));
     beings.push(neumaId);
   }
 
@@ -103,7 +114,7 @@ export const createBackup = async (wallet, { now = new Date() } = {}) => {
   for (const laneId of await neumaWorkspace.listWitnessLanes()) {
     const owner = await neumaWorkspace.readOwner(laneId).catch(() => null);
     if (String(owner?.wallet || '').toLowerCase() !== wallet.toLowerCase()) continue;
-    await fs.cp(neumaWorkspace.pathFor(laneId), path.join(dest, laneId), { recursive: true });
+    await copyLane(neumaWorkspace.pathFor(laneId), path.join(dest, laneId));
     witnesses.push(laneId);
   }
 

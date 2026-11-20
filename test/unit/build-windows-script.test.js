@@ -37,4 +37,15 @@ describe('scripts/build-windows.ps1', () => {
     expect(lock.packages['node_modules/better-sqlite3/node_modules/prebuild-install']).toBeUndefined();
     expect(script).toContain("Run (Join-Path $PWD 'node_modules\\.bin\\electron-builder.cmd') @('--win', '--publish', 'never', '-c.npmRebuild=false')");
   });
+
+  test('a downloaded prebuild is accepted only after its reviewed SHA-256 holds', () => {
+    const download = lineOf(/prebuild-install\\bin\.js/);
+    const verify = lineOf(/Run node .*verify-native-prebuild\.mjs/);
+    const accepted = lineOf(/official prebuild, SHA-256 verified/);
+    expect(download).toBeGreaterThan(-1);
+    expect(verify).toBeGreaterThan(download);
+    expect(accepted).toBeGreaterThan(verify);
+    const pins = JSON.parse(fs.readFileSync(path.join(REPO, 'scripts/native-prebuild-pins.json'), 'utf8'));
+    expect(pins[lock.packages['node_modules/electron'].version]['win32-x64']).toBeNull();
+  });
 });

@@ -30,12 +30,12 @@ import { composeFailedRecord, failureLeavesTake, spokenThrough } from './turn-fa
  * @returns {Promise<void>}
  */
 export const settleUnfinishedTurn = async ({
-  connection, companionName, thought, fullResponse, images, docs, sessionId, companion, take, interrupt, error, route,
+  connection, companionName, thought, fullResponse, images, docs, sessionId, companion, take, interrupt, error, route, origin = null,
 }) => {
   const { ws } = connection;
   const tools = turnRecordFor(ws);
   const said = spokenThrough(fullResponse, error);
-  const target = { target: { sessionId, companion } };
+  const target = { target: { sessionId, companion }, origin };
   // An abort that lands between rounds (or before the provider answers)
   // surfaces as a fetch AbortError — an interrupted turn, not a failure.
   if (interrupt.signal.aborted) {

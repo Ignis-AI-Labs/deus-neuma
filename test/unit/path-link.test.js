@@ -73,10 +73,10 @@ describe('openablePath — which code spans are doors', () => {
 
   // #227 — every path a being named on Windows was unclickable, because this
   // guard read `startsWith('/')`.
-  it('a Windows path is a door too', () => {
+  it('a Windows drive path is a door; a UNC network share is not', () => {
     expect(openablePath('C:\\repos\\Neuma Testing')).toBe('C:\\repos\\Neuma Testing');
     expect(openablePath('C:\\repos\\Neuma Testing\\')).toBe('C:\\repos\\Neuma Testing');
-    expect(openablePath('\\\\srv\\share\\docs')).toBe('\\\\srv\\share\\docs');
+    expect(openablePath('\\\\srv\\share\\docs')).toBeNull();
   });
 
   it('still refuses what is not a place', () => {

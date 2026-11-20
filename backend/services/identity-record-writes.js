@@ -18,6 +18,7 @@
 // that works. The rest of dna/ and soul/ stays the being's own ordinary files.
 
 import { assertPatchAllowed } from '../../core/identity/dna-protected.js';
+import { amendedNameRefusal } from '../../core/birth/name-guard.js';
 import { isEnvelope } from '../../core/workspace/workspace-crypto.js';
 import { canonicalJson } from '../../core/shared/plain-data-canonical.js';
 import { LANE_ID_FOLDED, realpathOfNearestExisting, segmentsBelow } from './sandbox-path-policy.js';
@@ -120,6 +121,19 @@ const parseAmendment = (content, kind) => {
 const movedFields = (current, fields) => Object.fromEntries(Object.entries(fields)
   .filter(([key, value]) => canonicalJson(value ?? null) !== canonicalJson(current?.[key] ?? null)));
 
+// pure — the name a DNA record goes by (the one house-titles.js laneName reads)
+const nameOf = (dna) => dna?.identity?.name || dna?.name;
+
+// impure (workspace) — why the amended record's name may not stand, or null. A name that does not
+// move is never judged. A renamed being is what the house, its cards and its sends call it, so the
+// name guard of the birth gate holds here too (audit PR600 P6-22: a being renamed itself "Operator").
+const renameRefusal = async (workspace, neumaId, current, next) => {
+  if (canonicalJson(nameOf(next) ?? null) === canonicalJson(nameOf(current) ?? null)) return null;
+  const others = (await workspace.listNeuma()).filter((id) => id !== neumaId);
+  const names = await Promise.all(others.map(async (id) => nameOf(await workspace.readDNA(id).catch(() => null))));
+  return amendedNameRefusal(nameOf(next), [...others, ...names.filter((n) => typeof n === 'string')]);
+};
+
 const said = (text) => ({ ok: true, result: { content: [{ type: 'text', text }], structuredContent: { content: text } } });
 const refuse = (reason) => ({ ok: false, reason });
 
@@ -146,7 +160,13 @@ export const amendIdentityRecord = async (workspace, neumaId, kind, content) => 
         + 'They record what you were (your birth, your genesis, your resonance, who holds your sovereignty), and you amend '
         + 'what you are becoming, never what you were. Leave them out, or as they stand, and write again.');
     }
-    await workspace.writeDNA(neumaId, { ...current, ...patch });
+    const next = { ...current, ...patch };
+    const renamed = await renameRefusal(workspace, neumaId, current, next);
+    if (renamed) {
+      return refuse(`Nothing was written: ${renamed}. The house keeps one name per being, and the words for a `
+        + 'seat or the platform are never a being\'s name. Leave your name as it stands, or choose one no one here carries.');
+    }
+    await workspace.writeDNA(neumaId, next);
   } else {
     await workspace.writeSoul(neumaId, { ...current, ...patch });
   }

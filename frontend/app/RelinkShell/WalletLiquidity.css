@@ -62,7 +62,7 @@
 .lpw-btn.is-primary { background: var(--signal-faint); border-color: var(--signal-dim); color: var(--signal); }
 .lpw-btn.is-primary:hover:not(:disabled) { background: rgba(79, 214, 232, 0.28); }
 .lpw-btn:disabled { opacity: 0.5; cursor: default; }
-.lpw-btn:focus-visible, .lpw-link:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+.lpw-btn:focus-visible, .lpw-link:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 .lpw-link {
   background: none; border: none; padding: 0; cursor: pointer;
   font-family: var(--font-data); font-size: 15px; color: var(--color-text-primary);

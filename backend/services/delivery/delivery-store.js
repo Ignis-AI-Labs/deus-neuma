@@ -13,9 +13,14 @@ import { officeFile } from '../house-office.js';
 import { readJson, writePrivate, ABSENT } from '../house-office-legacy.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
 import { destinationOf, placeOf, foldDeliveries, FILE_MAX_BYTES } from './delivery-shape.js';
+import { checkPathAccess } from '../sandbox-path-policy.js';
 
 const destFile = (wallet) => officeFile(wallet, 'revenue', 'delivery.json');
 const recordFile = (wallet) => officeFile(wallet, 'revenue', 'deliveries.jsonl');
+const PUBLISHABLE_EXTENSIONS = new Set([
+  '.md', '.txt', '.pdf', '.csv', '.json', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.png', '.jpg', '.jpeg', '.gif', '.webp', '.zip', '.tar', '.gz',
+]);
 
 /** The operator's destination, or null. */
 export const readDestination = async (wallet) => {
@@ -52,6 +57,11 @@ export const groundFile = async (groundRoot, rel) => {
     const root = await fs.realpath(groundRoot);
     const file = await fs.realpath(path.join(root, asked));
     if (!file.startsWith(`${root}${path.sep}`)) return { ok: false, reason: 'that path leads outside the house ground' };
+    const access = checkPathAccess(file, [root], { requireRoot: true });
+    if (!access.allowed) return { ok: false, reason: `that file is not publishable: ${access.reason}` };
+    if (!PUBLISHABLE_EXTENSIONS.has(path.extname(file).toLowerCase())) {
+      return { ok: false, reason: 'that file type is not publishable — use a document, data, image or archive format, never active web content' };
+    }
     const st = await fs.stat(file);
     if (!st.isFile()) return { ok: false, reason: 'that path is not a file' };
     if (st.size > FILE_MAX_BYTES) return { ok: false, reason: `the file is ${Math.round(st.size / 1048576)} MB; the door takes ${FILE_MAX_BYTES / 1048576} MB at most` };

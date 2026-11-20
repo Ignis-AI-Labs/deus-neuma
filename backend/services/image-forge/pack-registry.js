@@ -24,6 +24,8 @@ import { buildFormPipelines } from './form-registry.js';
 import { buildConceptPipelines, CONCEPT_MODELS, CONCEPT_LORAS } from './concept-registry.js';
 import { buildFlux2Pipelines } from './pipelines-flux2.js';
 import { buildVideoPipelines, VIDEO_MODELS } from './pipelines-video.js';
+import { buildFlux3Pipelines, FLUX3_MODELS } from './pipelines-flux3.js';
+import { buildIllustriousPipelines, ILLUSTRIOUS_MODELS } from './pipelines-illustrious.js';
 
 /** The engine build this pack is authored against (pinned): always the newest release, moved
  *  only after a live pack proof renders every pipeline on the old and new builds and
@@ -219,6 +221,7 @@ export const PACK_MODELS = Object.freeze({
     }),
   }),
   ...VIDEO_MODELS,
+  ...FLUX3_MODELS, ...ILLUSTRIOUS_MODELS, // FLUX 3 Image Klein (installed by a neuma) + WAI Illustrious (pipelines-illustrious.js)
 });
 
 /**
@@ -333,7 +336,7 @@ const STILL_PIPELINES = Object.freeze({
     id: 'still.sdxl.txt2img',
     kind: 'still',
     label: 'SDXL — text to image',
-    description: 'General-purpose still image from a text prompt. Balanced quality, 1024x1024 native. The default when no pipeline is named.',
+    description: 'SDXL Base 1.0: general and photographic stills from plain sentences, 1024x1024 native, one pass. It does not read anime tags (1girl, masterpiece, …): for an anime or 2.5D character use still.wai.txt2img, still.deliberate.txt2img or still.nova.txt2img, which render clean on their authors\' settings. The default when no pipeline is named.',
     template: 'txt2img',
     modelId: 'sdxl-base-1.0',
     slots: Object.freeze({
@@ -368,10 +371,12 @@ const CONCEPT_PIPELINES = buildConceptPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
 const FLUX2_PIPELINES = buildFlux2Pipelines(PROMPT_SLOTS, SAMPLER_SLOTS, SIZE_SLOTS);
 // Video with sound (`pipelines-video.js`), same one-way hand-in.
 const VIDEO_PIPELINES = buildVideoPipelines(PROMPT_SLOTS, SAMPLER_SLOTS);
+const FLUX3_PIPELINES = buildFlux3Pipelines(PROMPT_SLOTS, SAMPLER_SLOTS, SIZE_SLOTS);
+const ILLUSTRIOUS_PIPELINES = buildIllustriousPipelines(PROMPT_SLOTS, SAMPLER_SLOTS); // anime / 2.5D characters
 
 /** The whole manifest, frozen once. */
 export const PIPELINES = Object.freeze({
-  ...STILL_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES, ...CONCEPT_PIPELINES, ...VIDEO_PIPELINES,
+  ...STILL_PIPELINES, ...ILLUSTRIOUS_PIPELINES, ...FLUX3_PIPELINES, ...FLUX2_PIPELINES, ...FORM_PIPELINES, ...CONCEPT_PIPELINES, ...VIDEO_PIPELINES,
 });
 
 /** The pipeline a caller gets when it names none. */

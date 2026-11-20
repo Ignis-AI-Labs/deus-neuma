@@ -43,6 +43,7 @@ import { servedInstance, keptShape, keepShape } from './think-shape-store.js';
 import { capsCacheFresh, runtimeModelCaches } from './llm-runtime-cache.js';
 import { visionSettings } from './vision-settings.js';
 import { isContextOverflow, recoverContextOverflow } from './context-overflow.js';
+import { assertRouteOwned } from './loopback-route-owner.js';
 export { CAPS_CACHE_TTL_MS, capsCacheFresh, _resetCapsCache, _expireCapsCache, expireRuntimeModelCaches } from './llm-runtime-cache.js';
 
 // The extracted seams' public surface, re-exported so every importer of
@@ -212,6 +213,7 @@ export const createStreamRequest = async (messages, options = {}) => {
   // sampling still falls back to the global config so a preset behaves
   // identically to the default path. Absent a route, nothing changes.
   const config = options.route ? configFromRoute(options.route, getConfig()) : getConfig();
+  assertRouteOwned(config.endpoint); // a saved route found in another account's hands at start (P6-153)
   // A HARNESS lane rides the server its person chose (harness-lane.js) — never
   // the house's supervised model: it is not booted, reloaded or clocked for it.
   if (options.superviseLlamaServer !== false && options.route?.source !== 'harness') {
@@ -505,14 +507,20 @@ export const consumeStream = async (streamResult, onContent, options = {}) => {
   return stripThinkTags(fullResponse);
 };
 
+const MAX_TOOL_CALLS_PER_TURN = 64;
+
 /**
  * Merge one OpenAI delta.tool_calls fragment into an assembled-by-index map.
  * The function name arrives on the first fragment; arguments stream across
  * many fragments and are concatenated. Mutates `assembled` in place (caller
- * owns the map); shared by the chat consumer and the birth ceremony loop.
+ * owns the map, made with Object.create(null)); shared by the chat consumer
+ * and the birth ceremony loop. `index` is the model server's word: anything
+ * but a small whole number is dropped — `"__proto__"` named Object.prototype
+ * and wrote id/name/args onto every object in the process (PR600 audit P6-154).
  */
 export const mergeToolCallDelta = (assembled, delta) => {
-  const idx = delta.index ?? 0;
+  const idx = delta?.index ?? 0;
+  if (!delta || !Number.isInteger(idx) || idx < 0 || idx >= MAX_TOOL_CALLS_PER_TURN) return;
   if (!assembled[idx]) assembled[idx] = { id: null, name: '', args: '' };
   if (delta.id && !assembled[idx].id) assembled[idx].id = delta.id;
   if (delta.function?.name) assembled[idx].name = delta.function.name;
@@ -566,7 +574,7 @@ export const decodeToolCallDeltas = (assembled) =>
  * contracts as consumeStream.
  */
 export const consumeStreamWithTools = async (streamResult, onContent, options = {}) => {
-  const assembled = {};
+  const assembled = Object.create(null);
   const onToolDelta = (deltas) => {
     for (const d of deltas) mergeToolCallDelta(assembled, d);
   };

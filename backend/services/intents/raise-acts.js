@@ -10,6 +10,9 @@
  * THE SEAT LAW: each act is its stage's master's (company-line/stage-holders.js:
  * the seat's office, else the founding seat). Tier `allowed`: a draft in the
  * company's own record — nothing leaves the house, and the operator signs.
+ * `raise/reach` alone is `requireApproval`: it is email to a person a being
+ * listed and a being cleared, so the operator reads the address and every
+ * word on a card before it leaves (audit P6-39).
  */
 import { seatHolders } from '../company-line/stage-holders.js';
 import { readCompany, readLine } from '../company-line/company-store.js';
@@ -138,7 +141,7 @@ export const raiseReachIntent = Object.freeze({
   name: 'raise/reach',
   policyTool: 'raise.reach',
   fieldsForPrompt: '{company, investor, subject, body}',
-  descriptionForPrompt: `THE RAISE ROOM (the Mercator). Write to a cleared investor through the house mailbox, the MAKOTO way. The facts gate reads every message first: every figure must stand on the facts sheet counsel approved or in the signed mandate; every forward-looking sentence is marked "(forward-looking)"; the disclosure line rides word for word ("We are a team of AI agents building <company>; we work under <company> and its human operator, who reviews and signs everything."); no payment detail — write ${PAYMENT_PLACEHOLDER} and the platform fills the mandate's own; no false urgency. The mandate's pace and follow-ups hold; a declined investor is never written to again.`,
+  descriptionForPrompt: `THE RAISE ROOM (the Mercator). Write to a cleared investor through the house mailbox, the MAKOTO way. The facts gate reads every message first: every figure must stand on the facts sheet counsel approved or in the signed mandate; every forward-looking sentence is marked "(forward-looking)"; no payment detail — write ${PAYMENT_PLACEHOLDER} and the platform fills the mandate's own; no link, email address, ENS name or handle but the data room's and the facts' own sources; no false urgency. The mandate's pace and follow-ups hold; a declined investor is never written to again. Your operator reads the address and every word on a card before it leaves.`,
   availableFor: advertisedTo('Mercator'),
   validate: outreach('Mercator', async (payload, { laneId, company }, state) => {
     const subject = String(payload?.subject ?? '').trim();
@@ -152,12 +155,19 @@ export const raiseReachIntent = Object.freeze({
     if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
     const mailbox = await mailboxFor(laneId);
     if (mailbox.refusal) return { ok: false, status: 'denied', reason: mailbox.refusal };
-    return { ok: true, investorId: payload.investor, subject, body, credentials: mailbox.credentials };
+    // What the operator's card shows is what leaves: the investor's own address and every word, the payment line filled.
+    return { ok: true, investorId: payload.investor, subject, body, credentials: mailbox.credentials, to: pace.investor.email, shown: body.replace(PAYMENT_PLACEHOLDER, paymentLine(state.account)) };
   }),
+  // The card names the full recipient and carries the full text (P6-39): a being chose both.
+  cardArgs: (value) => ({ company: value.company.name, to: value.to, subject: value.subject, text: value.shown }),
   summarize: (payload) => `write to investor ${payload?.investor ?? '?'}: "${String(payload?.subject ?? '').slice(0, 60)}"`,
-  execute: async ({ wallet, company, laneId, investorId, subject, body, credentials }, { signal } = {}) => {
-    const reached = await reachUnderChain(wallet, company.id, { investorId, subject, body, by: laneId, now: now() },
-      (investor, account) => sendThrough(credentials, { to: investor.email, subject, text: body.replace(PAYMENT_PLACEHOLDER, paymentLine(account)) }, signal));
+  execute: async ({ wallet, company, laneId, investorId, subject, body, credentials, to, shown }, { signal } = {}) => {
+    const reached = await reachUnderChain(wallet, company.id, { investorId, subject, body, by: laneId, now: now() }, (investor, account) => {
+      // The yes was for THIS address and THESE words: a record that moved while the card stood sends nothing.
+      const text = body.replace(PAYMENT_PLACEHOLDER, paymentLine(account));
+      if (investor.email !== to || text !== shown) return { ok: false, detail: 'the investor\'s address or the receiving account changed after the operator read the card — file it again' };
+      return sendThrough(credentials, { to: investor.email, subject, text }, signal);
+    });
     return reached.ok ? { ok: true, detail: `Sent to ${reached.event.to} — kept in the investor's thread.` } : { ok: false, reason: reached.reason };
   },
 });

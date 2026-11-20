@@ -28,8 +28,8 @@ describe('the sales office\'s decisions wait where every decision waits', () => 
   test('a facts sheet, a draft audience, a list to approve and a filed business model each make one row, opening its own tab', () => {
     expect(rows.map((r) => [r.kind, r.title, r.where.tab])).toEqual([
       ['sales-facts', '3 facts a buyer may be told wait for your approval', 'model'],
-      ['sales-audience', 'Audience "Crypto teams needing an audit" waits for your approval', 'campaigns'],
-      ['sales-list', '2 companies found for "Base token teams" wait for your list approval', 'campaigns'],
+      ['sales-audience', 'Audience "Crypto teams needing an audit" waits for your approval', 'discover'],
+      ['sales-list', '2 companies found for "Base token teams" wait for your list approval', 'validate'],
       ['business-model', 'The business model of Ignis AI Labs waits for your approval', 'model'],
     ]);
     expect(rows.every((r) => r.where.app === 'positions' && r.where.office === 'cro' && r.who?.name === 'Firepos' && r.at === NOW)).toBe(true);

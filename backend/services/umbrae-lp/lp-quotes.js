@@ -9,10 +9,17 @@ const MANAGER = new ethers.Interface([
 ]);
 const POOL = new ethers.Interface([
   'function getActiveId() view returns (uint24)',
+  'function getTokenX() view returns (address)',
+  'function getTokenY() view returns (address)',
+  'function getBinStep() view returns (uint16)',
   'function getQuoteState() view returns (tuple(uint16 baseFactor, uint16 filterPeriod, uint16 decayPeriod, uint16 reductionFactor, uint16 variableFeeControl, uint24 maxVolatilityAccumulator, uint16 minSwapBps) feeParams, uint128 volatilityAccumulator, uint24 volatilityReference, uint40 lastVolatilityUpdate, uint256 scaleX, uint256 scaleY, address factory)',
 ]);
-const POSITIONS = new ethers.Interface(['function balanceOf(address wallet) view returns (uint256)']);
-const TOKEN = new ethers.Interface(['function decimals() view returns (uint8)']);
+const POSITIONS = new ethers.Interface([
+  'function balanceOf(address wallet) view returns (uint256)',
+  'function ownerOf(uint256 tokenId) view returns (address)',
+  'function getPosition(uint256 tokenId) view returns (address pairAddress)',
+]);
+const TOKEN = new ethers.Interface(['function decimals() view returns (uint8)', 'function symbol() view returns (string)']);
 const percentFloor = (value) => (value * 9900n) / 10000n;
 
 const read = async (provider, to, iface, name, args, from) => iface.decodeFunctionResult(
@@ -25,11 +32,40 @@ export const poolBaseFactorOnChain = async (provider, pool) => {
   return Number(state.feeParams.baseFactor);
 };
 
+export const poolTokensOnChain = async (provider, pool) => {
+  const [x, y, step] = await Promise.all([
+    read(provider, pool, POOL, 'getTokenX', []),
+    read(provider, pool, POOL, 'getTokenY', []),
+    read(provider, pool, POOL, 'getBinStep', []),
+  ]);
+  return { tokenX: ethers.getAddress(x[0]), tokenY: ethers.getAddress(y[0]), binStep: Number(step[0]) };
+};
+
 export const tokenDecimalsOnChain = async (provider, token) => {
   const answer = await read(provider, token, TOKEN, 'decimals', []);
   const decimals = Number(answer[0]);
   if (!Number.isInteger(decimals) || decimals < 0 || decimals > 36) throw new Error('Unreadable token decimals');
   return decimals;
+};
+
+export const tokenSymbolOnChain = async (provider, token) => {
+  const answer = await read(provider, token, TOKEN, 'symbol', []);
+  const symbol = String(answer[0]);
+  if (!symbol || symbol.length > 80) throw new Error('Unreadable token symbol');
+  return symbol;
+};
+
+// impure — pairAddress is getPosition's first word; ownerOf is an independent ERC-721 read.
+export const positionOnChain = async (provider, tokenId) => {
+  const [positionAnswer, ownerAnswer] = await Promise.all([
+    provider.call({ to: UMBRAE_BASE.positionManager, data: POSITIONS.encodeFunctionData('getPosition', [tokenId]) }),
+    provider.call({ to: UMBRAE_BASE.positionManager, data: POSITIONS.encodeFunctionData('ownerOf', [tokenId]) }),
+  ]);
+  if (ethers.dataLength(positionAnswer) < 32 || ethers.dataLength(ownerAnswer) < 32) throw new Error('Unreadable LP position');
+  return {
+    pairAddress: ethers.getAddress(ethers.dataSlice(positionAnswer, 12, 32)),
+    owner: ethers.getAddress(ethers.dataSlice(ownerAnswer, 12, 32)),
+  };
 };
 
 export const quoteDepositOnChain = async (provider, fields, asked, raw) => {

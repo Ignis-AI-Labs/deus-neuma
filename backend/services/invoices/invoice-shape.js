@@ -7,7 +7,13 @@
 // NO BEING WRITES PAYMENT DETAILS: where an invoice is paid is the operator's
 // own setting, snapshotted onto the invoice when it is issued; the Quaestor
 // names only the deal, the lines and the due date. The invoice's document is
-// rendered here from the record, never from a file a being could edit.
+// rendered here from the record, never from a file a being could edit. The
+// words a being DOES write on it (each line's `what`, the `note`) are screened
+// (security/payment-screen.js): no account, link, email address, ENS name or
+// handle — "pay 0x… instead" beside the real address is the swap this law exists
+// to stop (audit P6-40). What is billed may be named (default set 2026-11-19): a
+// bare domain that is not a link ("Hosting for acme.com"), and a long number
+// (an order or licence number) that stands beside no banking word.
 //
 // Paid is a fact, not a claim: a receipt the house's money-in ledger holds, at
 // the invoice's address, on its network, in its money, for at least its total
@@ -17,6 +23,7 @@
 // PURE, but for the random ids.
 
 import crypto from 'crypto';
+import { paymentShapesIn, pointersIn } from '../security/payment-screen.js';
 
 export const INVOICE_CURRENCIES = Object.freeze(['USD', 'ETH']);
 const DOLLARS = Object.freeze(['USDC', 'USDT', 'DAI']);
@@ -24,6 +31,18 @@ const LINES_MAX = 20;
 const clean = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '').slice(0, max);
 const round = (n) => Math.round(n * 1e6) / 1e6;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Why an invoice's own words may not reach a customer, or null: a line or the
+ * note carrying payment details or pointing somewhere. pure.
+ * @param {{lines: Array<{what: string}>, note?: ?string}} invoice
+ * @returns {?string}
+ */
+export const invoiceWordsRefusal = ({ lines, note }) => {
+  const words = [...(lines ?? []).map((l, i) => [`lines[${i}].what`, l?.what]), ['note', note]];
+  const found = words.flatMap(([where, text]) => [...paymentShapesIn(text, { loneNumbers: false }), ...pointersIn(text, { bareDomains: false }).map((p) => `${p.kind} ("${p.found.slice(0, 60)}")`)].map((what) => `${where} carries ${what}`));
+  return found.length ? `${found.join('; ')} — an invoice says what is billed, never where or how to pay: the operator's own payment address is printed on it by the platform` : null;
+};
 
 /** The invoice's number, from how many the house issued before it. pure. */
 export const invoiceNumber = (issuedBefore) => `INV-${String(issuedBefore + 1).padStart(4, '0')}`;
@@ -49,6 +68,8 @@ export const makeInvoice = ({ deal, company, lines, due, note, payTo, number, bi
     if (!Number.isFinite(amount) || amount <= 0) throw new Error(`lines[${i}].amount: above zero, in ${currency}`);
     return Object.freeze({ what, amount: round(amount) });
   });
+  const words = invoiceWordsRefusal({ lines: billedLines, note: clean(note, 600) });
+  if (words) throw new Error(words);
   const total = round(billedLines.reduce((sum, l) => sum + l.amount, 0));
   if (round(billed + total) > deal.value.amount) {
     throw new Error(`the deal was won at ${deal.value.amount} ${currency}; ${billed} is already billed — this invoice would bill past it`);
@@ -94,6 +115,7 @@ export const judgePaid = (invoices, { invoiceId, receipt, by, now }) => {
   if (!v) return { ok: false, reason: 'no such invoice in this house' };
   if (v.status !== 'open') return { ok: false, reason: `${v.number} is ${v.status === 'paid' ? 'already paid' : 'void'}` };
   if (!receipt) return { ok: false, reason: 'no such receipt in the house\'s money-in ledger — the money has not landed' };
+  if (receipt.internal === true) return { ok: false, reason: 'house-internal transfers are not customer payments' };
   if (invoices.some((x) => x.paid?.receipt === receipt.key)) return { ok: false, reason: 'that receipt already paid another invoice — one receipt, one invoice' };
   if (String(receipt.to).toLowerCase() !== v.payTo.address.toLowerCase() || receipt.network !== v.payTo.network) {
     return { ok: false, reason: `that receipt landed at ${receipt.to} on ${receipt.network}, not ${v.number}'s ${v.payTo.address} on ${v.payTo.network}` };
@@ -115,6 +137,21 @@ export const judgeVoid = (invoices, { invoiceId, reason, by, now }) => {
 /** Receipts at an open invoice's address that pay no invoice yet: the ones that may be its. pure. */
 export const unmatchedFor = (invoice, receipts, invoices) => receipts.filter((r) => String(r.to).toLowerCase() === invoice.payTo.address.toLowerCase()
   && r.network === invoice.payTo.network && sameMoney(invoice, r) && !invoices.some((x) => x.paid?.receipt === r.key));
+
+/**
+ * The invoice as plain text, word for word what its page says — what the
+ * operator reads on the publish card before it leaves. pure.
+ * @param {object} v - a folded invoice
+ * @returns {string}
+ */
+export const invoiceText = (v) => [
+  `${v.company} — invoice ${v.number}`,
+  `Issued ${v.issuedAt.slice(0, 10)} · Due ${v.due} · Billed to ${v.buyer}`,
+  ...v.lines.map((l) => `${l.what} — ${money(l.amount, v.currency)}`),
+  `Total — ${money(v.total, v.currency)}`,
+  ...(v.note ? [`Note: ${v.note}`] : []),
+  `Pay on ${v.payTo.network === 'ethereum' ? 'Ethereum mainnet' : v.payTo.network} to ${v.payTo.address}`,
+].join('\n');
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = (n, currency) => `${Number(n).toLocaleString('en-US', { maximumFractionDigits: 6, minimumFractionDigits: currency === 'USD' ? 2 : 0 })} ${currency}`;

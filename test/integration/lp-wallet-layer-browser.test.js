@@ -27,16 +27,19 @@ import { resetChainProviders } from '../../backend/services/chain/chain-registry
 import walletRouter from '../../backend/routes/neuma-wallet-routes.js';
 import lpRouter from '../../backend/routes/lp-wallet-routes.js';
 import { runLpAction } from '../../backend/services/umbrae-lp/lp-run.js';
+import { lpBase } from '../../backend/services/umbrae-lp/lp-base.js';
 import { UMBRAE_BASE } from '../../core/wallet/lp-tx-policy.js';
 import { fullAuth, writeOwner } from '../helpers/audit-auth.js';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { startAnvil, miniErc20Initcode, MINI_ERC20_ABI } from '../helpers/money-in-kit.js';
 import { returnContract } from '../helpers/evm-return-contract.js';
-import { installLpManager, installLpPool } from '../helpers/lp-chain-kit.js';
+import { installLpManager, installLpPool, registerLpIntegrityPins } from '../helpers/lp-chain-kit.js';
 import { startLpReceiptRpc } from '../helpers/lp-receipt-rpc-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
-import { startUmbraeStandIn, POOL, USDC } from '../helpers/umbrae-stand-in.js';
+import { startUmbraeStandIn, POOL, USDC, WETH } from '../helpers/umbrae-stand-in.js';
 import { setGoal, requestReward } from '../../backend/services/umbrae-lp/lp-rewards.js';
+import { binIdFor } from '../../core/wallet/pool-policy.js';
+import { clearMarketCache } from '../../backend/services/market-map/market-data.js';
 import { axeScan } from '../helpers/a11y-scan.js';
 
 const LANE = 'lp-layer-being';
@@ -78,8 +81,12 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
     umbrae = await startUmbraeStandIn({ provider });
     await installLpManager(provider, UMBRAE_BASE.positionManager);
     await installLpPool(provider, POOL);
-    for (const [token, units] of [['0x4200000000000000000000000000000000000006', 18], [USDC, 6]]) {
-      await provider.send('anvil_setCode', [token, returnContract({ fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]) })]);
+    await registerLpIntegrityPins(await lpBase());
+    for (const [token, units, symbol] of [['0x4200000000000000000000000000000000000006', 18, 'WETH'], [USDC, 6, 'USDC']]) {
+      await provider.send('anvil_setCode', [token, returnContract({
+        fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]),
+        routes: { [ethers.id('symbol()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['string'], [symbol]) },
+      })]);
     }
     connections = connectionsOn(['umbrae-liquidity', 'market-data']);
 
@@ -130,8 +137,8 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
     await page.getByRole('button', { name: 'Back' }).click();
     await expect(page.getByRole('region', { name: 'Waiting for you' })).toHaveCount(0);
 
-    // No cap yet: deposits would run on their own; setting a cap folds the field to a figure.
-    await expect(page.getByText('No cap: deposits run on their own')).toBeVisible();
+    // No cap yet: the budget field is clear; the action approval remains a separate gate.
+    await expect(page.getByText('No budget cap: the action approval is still required')).toBeVisible();
     await page.getByLabel('Budget in dollars').fill('10');
     await page.getByRole('button', { name: 'SET', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Change budget' })).toContainText('$10.00');
@@ -171,9 +178,12 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
     await expect(page.getByText(/^Done: 1 transaction\(s\) on Base, position #77\.$/)).toBeVisible({ timeout: 30000 });
     await expect(page.getByRole('region', { name: 'Waiting for you' })).toHaveCount(0);
     const sent = umbrae.seen.filter((r) => r.url === '/api/v1/base/send');
-    vexpect(sent).toHaveLength(2); // the token approval, then the deposit
+    vexpect(sent).toHaveLength(3); // approval, deposit, zero-allowance cleanup
     const last = ethers.Transaction.from(sent[1].body.signedTransaction);
     vexpect((await provider.getTransactionReceipt(last.hash)).from).toBe(ethers.getAddress(lpAddress));
+    const cleanup = ethers.Transaction.from(sent[2].body.signedTransaction);
+    const approval = new ethers.Interface(['function approve(address spender,uint256 amount)']);
+    vexpect(approval.decodeFunctionData('approve', cleanup.data).toArray()).toEqual([UMBRAE_BASE.positionManager, 0n]);
 
     // EARNED, ROUND THE CLOCK and GOALS. A real token is placed at USDC's address only now (the deposit's
     // approval above went to a USDC with no code); 50 USDC arrive from outside, then WETH's price rises.
@@ -188,12 +198,16 @@ test('the operator opens the LP wallet, sets its budget, and approves a deposit 
     await expect(page.getByRole('list', { name: 'Token holdings' })).toContainText('USDC');
     await expect(page.getByRole('list', { name: 'Token holdings' })).toContainText('50');
     umbrae.state.wethPrice = 3400;
+    umbrae.state.marketWethPrice = 3400;
+    clearMarketCache();
+    await installLpPool(provider, POOL, 5000, WETH, USDC, 25, binIdFor(3400, 25));
     const clock = page.getByRole('region', { name: 'Round the clock' });
     await expect(clock).toContainText('CANNOT WAKE');
     await expect(clock.getByRole('button', { name: 'OPEN CHARTER →' })).toBeVisible();
     await clock.getByLabel('Portfolio round').selectOption('30');
     const gpu = (await setGoal(LANE, { what: 'A new GPU', costUsd: 20, why: 'faster portfolio rounds' })).goal;
-    vexpect((await requestReward(LANE, gpu.id)).ok).toBe(true);
+    const reward = await requestReward(LANE, gpu.id);
+    vexpect(reward.ok, JSON.stringify(reward)).toBe(true);
     await page.getByRole('button', { name: 'Refresh balance' }).click();
     await expect(earned.locator('.lpw-earn')).toHaveText(/^\+\$\d+\.\d\d$/);
     await expect(clock.getByLabel('Portfolio round')).toHaveValue('30');

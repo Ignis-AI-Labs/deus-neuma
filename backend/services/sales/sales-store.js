@@ -13,6 +13,8 @@ import { foldProspects, poolRefusal, listable } from './prospect-shape.js';
 import { foldSuppressions, suppressionMatcher } from './suppress-shape.js';
 import { foldSalesFacts, judgeSheetReview, editSheetFact } from './sales-facts.js';
 import { foldCampaigns, openRefusal, judgeMove } from './campaign-shape.js';
+import { verdictOf } from './address-verdict.js';
+import { partnerOf } from './lead-provenance.js';
 
 const serialize = createWriteChain();
 const SEGMENTS = 'segments.jsonl';
@@ -74,6 +76,25 @@ export const addProspects = (wallet, prospects) => serialize(async () => {
 export const addProspectPerson = (wallet, id, person, by) => serialize(() =>
   appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'people', id, people: [person], by, at: new Date().toISOString() }));
 
+/**
+ * The operator's hands on one scored company (Design note, 2026-11-18: […]): dropped (off the pool, or off the lead list — the caller closes its lead), unlisted (off
+ * the approved list), or moved under another audience of this house. One event, the fold says the rest.
+ * @param {{type: 'dropped'|'unlisted'|'moved', reason?: string, segmentId?: string, by: string}} event
+ * @returns {Promise<{ok: true, prospect: object} | {ok: false, reason: string}>}
+ */
+export const handProspect = (wallet, id, event) => serialize(async () => {
+  const prospect = (await readProspects(wallet)).find((p) => p.id === id);
+  if (!prospect) return { ok: false, reason: `"${id}" is not a scored company of this house` };
+  if (prospect.stage === 'dropped') return { ok: false, reason: `${prospect.name} was already taken off` };
+  if (event.type === 'unlisted' && !prospect.listApproved) return { ok: false, reason: `${prospect.name} is not on an approved list` };
+  if (event.type === 'moved') {
+    if (event.segmentId === prospect.segmentId) return { ok: false, reason: `${prospect.name} already stands under that audience` };
+    if (!(await readSegments(wallet)).some((s) => s.id === event.segmentId)) return { ok: false, reason: `"${event.segmentId}" is not an audience of this house` };
+  }
+  await appendJsonLine(fileOf(wallet, PROSPECTS), { ...event, id, at: new Date().toISOString() });
+  return { ok: true, prospect };
+});
+
 /** Mark a prospect dropped (with why) or promoted (with its lead). Only a prospect still in the pool moves. */
 export const settleProspect = (wallet, id, event) => serialize(async () => {
   const prospect = (await readProspects(wallet)).find((p) => p.id === id);
@@ -83,18 +104,42 @@ export const settleProspect = (wallet, id, event) => serialize(async () => {
   return { ok: true, prospect };
 });
 
+/** Keep a company's proofs for what its audience requires (required-signs.js), whatever its stage. impure. */
+export const proveProspect = (wallet, id, proofs, by) => serialize(async () => {
+  if (!(await readProspects(wallet)).some((p) => p.id === id)) return { ok: false, reason: `prospect "${id}" is not in the pool` };
+  await appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'proved', id, proofs, by, at: new Date().toISOString() });
+  return { ok: true };
+});
+
+/**
+ * Put a lead already on the ledger under an audience (prospect-shape.js `placed`): the lead and the emails
+ * staged to it read that audience's campaign from then on. Refused when the audience is not this house's, or
+ * the lead already stands under it.
+ * @returns {Promise<{ok: true} | {ok: false, reason: string}>}
+ */
+export const placeLead = (wallet, { leadId, segmentId, name, domain, by }) => serialize(async () => {
+  if (!(await readSegments(wallet)).some((s) => s.id === segmentId)) return { ok: false, reason: `audience "${segmentId}" is not in this house` };
+  if ((await readProspects(wallet)).some((p) => p.leadId === leadId && p.segmentId === segmentId)) return { ok: false, reason: `that lead already stands under audience [${segmentId}]` };
+  await appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'placed', leadId, segmentId, name: String(name ?? '').slice(0, 120), domain: domain || null, by, at: new Date().toISOString() });
+  return { ok: true };
+});
+
 /**
  * The operator approves an approved segment's list as it stands: every weak or
  * strong match in its pool not yet on the list. Its leads' emails may then go
  * within the sales cover (sales-cover.js) without a card each.
  * @returns {Promise<{ok: true, count: number} | {ok: false, reason: string}>}
  */
-export const approveList = (wallet, segmentId, by) => serialize(async () => {
+export const approveList = (wallet, segmentId, by, expectedIds) => serialize(async () => {
   const segment = (await readSegments(wallet)).find((s) => s.id === segmentId);
   if (!segment) return { ok: false, reason: 'no such segment' };
   if (segment.state !== 'approved') return { ok: false, reason: 'approve the pitch first — a list is approved only under an approved pitch' };
   const ids = listable(await readProspects(wallet), segmentId).map((p) => p.id);
+  const asked = Array.isArray(expectedIds) ? expectedIds.map(String) : [];
   if (!ids.length) return { ok: false, reason: 'nothing new to approve on this list' };
+  if (!asked.length || asked.length !== ids.length || new Set(asked).size !== asked.length || asked.some((id) => !ids.includes(id))) {
+    return { ok: false, reason: 'the list changed — read it again and approve exactly the companies on screen' };
+  }
   await appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'listed', segmentId, ids, by, at: new Date().toISOString() });
   return { ok: true, count: ids.length };
 });
@@ -104,6 +149,18 @@ export const addSuppression = (wallet, entry) => serialize(async () => {
   const known = (await readSuppressions(wallet)).some((e) => e.kind === entry.kind && e.value === entry.value);
   if (!known) await appendJsonLine(fileOf(wallet, SUPPRESS), { type: 'suppressed', entry, at: entry.at });
   return { ok: true, already: known };
+});
+
+/**
+ * The operator takes one entry off the do-not-contact list. The leads it closed stay closed until reopened.
+ * @returns {Promise<{ok: true, entry: object} | {ok: false, reason: string}>}
+ */
+export const liftSuppression = (wallet, value, by) => serialize(async () => {
+  const key = String(value ?? '').trim().toLowerCase();
+  const entry = (await readSuppressions(wallet)).find((e) => e.value === key);
+  if (!entry) return { ok: false, reason: `${key || 'that'} is not on the do-not-contact list` };
+  await appendJsonLine(fileOf(wallet, SUPPRESS), { type: 'lifted', kind: entry.kind, value: entry.value, by, at: new Date().toISOString() });
+  return { ok: true, entry };
 });
 
 /** Each sending address and the first time it wrote to a lead: { address: iso }. */
@@ -194,26 +251,70 @@ export const noteShortlist = (wallet, { segmentId, domains, verdict, why, by }) 
   appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'shortlist', segmentId, domains, verdict: verdict === 'passed' ? 'passed' : 'kept', why: String(why ?? '').slice(0, 300), by, at: new Date().toISOString() }));
 
 /** Keep one search run for an audience (the pipeline's DISCOVER step, lead-pipeline.js): where, how it was asked, what it found. */
-export const noteSearch = (wallet, { segmentId, source, asked, matched, gathered, by }) => serialize(() =>
-  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'searched', segmentId, source, asked: String(asked ?? '').slice(0, 400), matched: Number(matched) || 0, gathered: Number(gathered) || 0, by, at: new Date().toISOString() }));
+export const noteSearch = (wallet, { segmentId, source, asked, matched, gathered, spent = 0, by }) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'searched', segmentId, source, asked: String(asked ?? '').slice(0, 400), matched: Number(matched) || 0, gathered: Number(gathered) || 0, ...(Number(spent) > 0 ? { spent: Number(spent) } : {}), by, at: new Date().toISOString() }));
 
 /** Every search run, oldest first: { segmentId, source, asked, matched, gathered, at }. */
 export const readSearches = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'searched')
-  .map((e) => ({ segmentId: e.segmentId, source: e.source, asked: e.asked, matched: e.matched, gathered: e.gathered, at: e.at }));
+  .map((e) => ({ segmentId: e.segmentId, source: e.source, asked: e.asked, matched: e.matched, gathered: e.gathered, spent: e.spent ?? 0, at: e.at }));
 
 /** Keep what a contact-data provider returned for a company (the people, each with the page its address was found on). */
 export const noteContacts = (wallet, domain, source, people, by, spent = 1) => serialize(() =>
   appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain, source, people, spent, by, at: new Date().toISOString() }));
 
 /** Keep what Hunter's verifier said about one address (address-check.js); its cost counts toward the month like any lookup. */
+const VERIFY_SOURCE = Object.freeze({ Tomba: 'tomba-verify', Apollo: 'apollo-verify' });
 export const noteAddressCheck = (wallet, { email, check, spent, by }) => serialize(() =>
-  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain: String(email).split('@')[1] ?? '', source: 'hunter-verify', people: [], spent, check: { email, ...check }, by, at: new Date().toISOString() }));
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'contacts', domain: String(email).split('@')[1] ?? '', source: VERIFY_SOURCE[check?.checker] ?? 'hunter-verify', people: [], spent, check: { email, ...check }, by, at: new Date().toISOString() }));
 
-/** Every address check on record, the latest for each address: { email, status, score, at }. */
-export const readAddressChecks = async (wallet) => [...new Map((await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts' && e.check?.email).map((e) => [e.check.email, { ...e.check, at: e.at }])).values()];
+/**
+ * Every address check on record, one row an address: each database's latest answer (`checks`), and what they add up to
+ * (address-verdict.js) — status, the checker it stands on, which databases confirmed it and which were asked.
+ * @returns {Promise<Array<{email: string, status: string, checker: string, confirmedBy: string[], checkedBy: string[], checks: object[], at: string}>>}
+ */
+export const readAddressChecks = async (wallet) => {
+  const byEmail = new Map();
+  const settled = new Map();
+  const keep = (email, key, check) => {
+    const each = byEmail.get(email) ?? new Map();
+    each.delete(key); // the latest answer of each database, in the order they came
+    each.set(key, check);
+    byEmail.set(email, each);
+  };
+  for (const e of await events(wallet, CANDIDATES)) {
+    if (e?.type === 'address-settled' && e.email) { settled.set(e.email, e); continue; }
+    if (e?.type !== 'contacts') continue;
+    if (e.check?.email) { const checker = e.check.checker ?? 'Hunter'; keep(e.check.email, checker, { ...e.check, checker, at: e.at }); continue; }
+    // VERIFIED WHEN FOUND (2026-11-19: 195 addresses a provider handed over verified, re-asked live and refused): an
+    // address a provider gave as one it verified is that database's confirmation, kept beside any later live answer —
+    // a later "could not confirm" never erases it (a "will bounce" still wins, address-verdict.js).
+    const checker = partnerOf(e.source);
+    for (const p of checker ? (e.people ?? []) : []) {
+      const email = String(p?.email ?? '').trim().toLowerCase();
+      if (email && p.checked === 'valid') keep(email, `${checker}|found`, { email, status: 'valid', checker, found: true, at: e.at });
+    }
+  }
+  return [...byEmail].map(([email, each]) => {
+    const checks = [...each.values()];
+    const verdict = verdictOf(checks);
+    // SETTLED (address-confirm.js): no database could confirm it and no other address for them was found — until one
+    // confirms it after all.
+    const mark = verdict.status !== 'valid' ? settled.get(email) : null;
+    return { ...checks.find((c) => c.checker === verdict.checker), email, ...verdict, checks, at: checks.at(-1).at,
+      settled: mark ? { outcome: mark.outcome, checkedBy: mark.checkedBy ?? [], findersAsked: mark.findersAsked ?? [], tried: mark.tried ?? [], why: mark.why ?? null, at: mark.at } : null };
+  });
+};
 
-/** Every paid lookup on record: which provider, for which company, what it spent and when (lead-spend.js counts the month). */
-export const readContactLookups = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts').map((e) => ({ domain: e.domain, source: e.source, spent: e.spent, found: (e.people ?? []).length, at: e.at }));
+/** Keep that an address is SETTLED (address-confirm.js): every database was asked and none could confirm it, and no
+ *  other address for the person confirmed either — so nobody asks again. */
+export const noteAddressSettled = (wallet, { email, outcome, checkedBy, findersAsked, tried, why, by }) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'address-settled', email, outcome, checkedBy, findersAsked, tried, why: why ? String(why).slice(0, 300) : null, by, at: new Date().toISOString() }));
+
+/** Every paid lookup on record: which provider, for which company, what it spent and when (lead-spend.js counts the month).
+ * A paid company search (Tomba's, Apollo's) is one too: no company, the companies it gathered as found. */
+export const readContactLookups = async (wallet) => (await events(wallet, CANDIDATES))
+  .filter((e) => e?.type === 'contacts' || (e?.type === 'searched' && Number(e.spent) > 0))
+  .map((e) => (e.type === 'searched' ? { domain: null, source: e.source, spent: Number(e.spent), found: Number(e.gathered) || 0, at: e.at } : { domain: e.domain, source: e.source, spent: e.spent, found: (e.people ?? []).length, at: e.at }));
 
 /** The people each lookup returned, with the company's domain and the provider (the contact book reads them). */
 export const readContactPeople = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'contacts').map((e) => ({ domain: e.domain, source: e.source, people: e.people ?? [], at: e.at }));
@@ -237,6 +338,24 @@ export const openCampaign = (wallet, campaign) => serialize(async () => {
  * no audience.
  * @param {{move: string, name?: unknown, goal?: unknown, by: string}} change
  */
+/** A campaign's email variables, proposed (email-formula.js makeEmailPlan shaped them); they wait for the operator. */
+export const fileEmailPlan = (wallet, id, plan, by) => serialize(async () => {
+  const campaign = (await readCampaigns(wallet)).find((c) => c.id === id);
+  if (!campaign) return { ok: false, reason: `no campaign [${id}]` };
+  await appendJsonLine(fileOf(wallet, CAMPAIGNS), { type: 'email-plan', id, plan, by, at: new Date().toISOString() });
+  return { ok: true };
+});
+
+/** The operator locks a campaign's proposed email variables in, or sends them back with what should change. */
+export const reviewEmailPlan = (wallet, id, { verdict, note, by }) => serialize(async () => {
+  const campaign = (await readCampaigns(wallet)).find((c) => c.id === id);
+  if (!campaign?.emailPlan?.proposed) return { ok: false, reason: 'this campaign has no email plan waiting for you' };
+  if (!['approved', 'returned'].includes(verdict)) return { ok: false, reason: 'verdict is approved or returned' };
+  if (verdict === 'returned' && String(note ?? '').trim().length < 5) return { ok: false, reason: 'say what should change' };
+  await appendJsonLine(fileOf(wallet, CAMPAIGNS), { type: 'email-plan-review', id, verdict, note: String(note ?? '').trim().slice(0, 600), by, at: new Date().toISOString() });
+  return { ok: true, campaign: (await readCampaigns(wallet)).find((c) => c.id === id) };
+});
+
 export const moveCampaign = (wallet, id, { move, name, goal, by }) => serialize(async () => {
   const campaigns = await readCampaigns(wallet);
   const audiences = (await readSegments(wallet)).filter((s) => s.campaign === id && s.state !== 'retired').length;

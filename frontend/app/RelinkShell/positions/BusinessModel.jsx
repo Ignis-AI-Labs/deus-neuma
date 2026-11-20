@@ -101,7 +101,7 @@ export const BusinessModel = ({ names = {}, holder = null, onHand = () => {}, on
           // Keyed by what stands and waits: when either changes (a save, an approval, a member's filing) the form starts from it again.
           <Company key={`${c.id}:${JSON.stringify([c.model, c.modelProposal])}`} company={c} fields={read.fields} names={names} holder={holder} busy={busy} onHand={onHand}
             onSave={(company, draft) => move(() => saveModel(company.id, draft), `The business model of ${company.name} is saved and stands.`)}
-            onSettle={(company, approve, note) => move(() => settleModel(company.id, approve, note), approve ? `The business model of ${company.name} is approved.` : `The business model of ${company.name} went back.`)} />
+            onSettle={(company, approve, note) => move(() => settleModel(company.id, approve, note, company.modelProposal?.id), approve ? `The business model of ${company.name} is approved.` : `The business model of ${company.name} went back.`)} />
         ))}
       </ul>
       </Fold>

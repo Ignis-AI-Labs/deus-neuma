@@ -1,8 +1,6 @@
 // Read the OPERATOR's wallet — the human at the terminal, signing on their
-// own behalf. Default source is the repo-root .env (matches the existing
-// DNA_ENCRYPTION_KEY convention); NEUMA_WALLET_ENV overrides for installers
-// pointing at a vendor / per-being file (env.<slug>, gitignored per
-// .gitignore line 54).
+// own behalf. NEUMA_WALLET_ENV explicitly names the file; no working-project
+// .env is consulted implicitly.
 //
 // Distinct from .claude/skills/neuma/lib/wallet.js, which reads claude.env
 // because that skill speaks AS Claude-the-peer. This file reads the
@@ -25,12 +23,14 @@
 //      present-but-malformed → THROW (this is the intent the operator typed);
 //      if absent → continue to the next preferred key.
 //   2. Only when NO preferred name is present at all, scan generic
-//      *_PRIVATE_KEY lines: exactly one well-formed = use; multiple = error
-//      with all names listed so the operator disambiguates explicitly.
+//      *_PRIVATE_KEY lines: one requires NEUMA_WALLET_ALLOW_GENERIC_KEY=1;
+//      multiple remain ambiguous and fail closed.
 //
-// impure (filesystem read)
+// impure (filesystem read + selection report on stderr)
 
 import { readFileSync } from 'node:fs';
+import process from 'node:process';
+import console from 'node:console';
 import { ethers } from 'ethers';
 
 const PREFERRED_KEYS = Object.freeze([
@@ -48,10 +48,16 @@ const presencePattern = (keyName) => new RegExp(`^${keyName}=`, 'm');
 const valuePattern = (keyName) =>
   new RegExp(`^${keyName}=(0x[0-9a-fA-F]{64})\\s*$`, 'm');
 
+const selected = (keyName, privateKey) => {
+  const address = new ethers.Wallet(privateKey).address;
+  console.error(`neuma wallet: using ${keyName} for ${address}`);
+  return { privateKey, keyName, address };
+};
+
 /**
  * Resolve the operator's private key from a wallet env file.
  * @param {string} envPath - absolute path to the wallet env file
- * @returns {{ privateKey: string }}
+ * @returns {{ privateKey: string, keyName: string, address: string }}
  */
 export const readOperatorWallet = (envPath) => {
   let text;
@@ -70,7 +76,7 @@ export const readOperatorWallet = (envPath) => {
   for (const keyName of PREFERRED_KEYS) {
     if (!presencePattern(keyName).test(text)) continue;
     const valueMatch = text.match(valuePattern(keyName));
-    if (valueMatch) return { privateKey: valueMatch[1] };
+    if (valueMatch) return selected(keyName, valueMatch[1]);
     throw new Error(
       `${keyName} is present in ${envPath} but its value is malformed `
       + '(expected `0x` + 64 hex chars). Fix the value or remove the line — '
@@ -80,10 +86,17 @@ export const readOperatorWallet = (envPath) => {
     );
   }
 
-  // Strategy step 2: generic *_PRIVATE_KEY fallback. Exactly one = use;
-  // multiple = error with names so the operator picks explicitly.
+  // A generic name is never an ambient wallet election.
   const generics = [...text.matchAll(GENERIC_PRIVATE_KEY)];
-  if (generics.length === 1) return { privateKey: generics[0][2] };
+  if (generics.length === 1 && process.env.NEUMA_WALLET_ALLOW_GENERIC_KEY === '1') {
+    return selected(generics[0][1], generics[0][2]);
+  }
+  if (generics.length === 1) {
+    throw new Error(
+      `Refusing implicit wallet key ${generics[0][1]} in ${envPath}. `
+      + 'Set NEUMA_WALLET_ALLOW_GENERIC_KEY=1 to select it explicitly, or rename it to OPERATOR_WALLET_PRIVATE_KEY.',
+    );
+  }
   if (generics.length > 1) {
     const names = generics.map((g) => g[1]).join(', ');
     throw new Error(
@@ -105,5 +118,4 @@ export const readOperatorWallet = (envPath) => {
  * @param {string} envPath - absolute path to the wallet env file
  * @returns {string} checksummed address
  */
-export const operatorAddress = (envPath) =>
-  new ethers.Wallet(readOperatorWallet(envPath).privateKey).address;
+export const operatorAddress = (envPath) => readOperatorWallet(envPath).address;

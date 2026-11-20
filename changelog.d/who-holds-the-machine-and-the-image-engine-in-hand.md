@@ -1,0 +1,8 @@
+Added
+- The Substrate window now shows who holds the machine, by name. Three lists side by side: the graphics card, system memory and the processor. Each holder is named by what it is (the mind and the model file it serves, the image engine, a voice engine, dictation, a browser, this app itself), and anything this app started is marked. The processor list shows every core as a cell with its load, which holder is on the busy ones, and the heaviest users. Before, the card's largest holder was shown as a process number.
+- The Substrate window has an Image Engine panel: whether it is up, how much of the card its models hold, how much the whole engine holds, its system memory, what is rendering and waiting, when it will unload and stop by itself, and which models it has loaded, each with its kind, size and file. UNLOAD MODELS gives the card memory back and keeps the engine up; STOP ENGINE returns everything.
+- A being can read the same map of the machine (machine_map) before starting anything heavy or when something will not fit.
+- A being can read the image engine whole (forge_status), including which models it has loaded and every model file it could load, and can steer it (forge_control): unload its models, stop it, start it, cancel one job, or cancel every waiting job. Each answer says what changed, measured. Steering works for beings of the house that owns this computer; a being of another house can still read the engine's state.
+
+Fixed
+- Which models the image engine has loaded can now be told. The engine has no way to list them, so the app reads them from the engine's own record of what it loaded, beside a live measure of how much is on the card. When nothing is on the card, the list is shown as what was last loaded.

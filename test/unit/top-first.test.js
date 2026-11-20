@@ -52,7 +52,18 @@ describe('when the top one stays silent, the next one up', () => {
   it('three emails unanswered at the top: the next person up at the company is named, not the company closed', () => {
     const [item] = upkeepDue({ leads: [silent('ari@x.io')], now: NOW, held });
     expect(item).toMatchObject({ kind: 'next-up', domain: 'x.io', next: { name: 'Bea', role: 'CTO', email: 'bea@x.io' } });
-    expect(UPKEEP_ASK['next-up']).toMatch(/write to the next person at their company/);
+    expect(UPKEEP_ASK['next-up']).toMatch(/move this lead to the next person at their company, named here, top first — sales\/lead \{lead, person: \{name, role\}, email, emailSource\}/);
+  });
+
+  it('moved to the next person, the lead starts its sequence anew with them, and the one it left is never named again', () => {
+    // Design note, 2026-11-17: a lead moves to another person at its company — its touch keeps the address it moved from.
+    const moved = { ...silent('ari@x.io'), contact: 'bea@x.io', status: 'cold', touches: [...silent('ari@x.io').touches, { status: 'cold', contactFrom: 'ari@x.io', at: new Date(NOW - 2 * DAY).toISOString() }] };
+    expect(upkeepDue({ leads: [moved], now: NOW, held })).toEqual([]);
+    const later = (days) => new Date(NOW + days * DAY).toISOString();
+    const written = { ...moved, status: 'contacted', touches: [...moved.touches, { direction: 'out', at: later(0) }] };
+    expect(upkeepDue({ leads: [written], now: NOW + 3 * DAY, held })).toMatchObject([{ kind: 'follow-up', touches: 1 }]);
+    const silentAgain = { ...moved, status: 'contacted', touches: [...moved.touches, ...[0, 3, 6].map((d) => ({ direction: 'out', at: later(d) }))] };
+    expect(upkeepDue({ leads: [silentAgain], now: NOW + 9 * DAY, held })).toMatchObject([{ kind: 'next-up', next: { name: 'Cal' } }]);
   });
 
   it('nobody already on the list is named twice; nobody left, or nobody held, closes it out', () => {

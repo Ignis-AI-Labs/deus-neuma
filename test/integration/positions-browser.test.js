@@ -109,21 +109,29 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     const hub = page.locator('[data-position="cro"]');
     await hub.waitFor();
     expect(await hub.locator('.pos-holder').textContent()).toBe('HELD BY MERC');
-    expect(await hub.getByRole('tab').allTextContents()).toEqual(['SETUP · 1/12', 'COMPANY', 'CAMPAIGNS', 'LEADS', 'DEALS', 'MAILBOX', 'SETTINGS · 1/4', 'THEIR EYES']);
-    // SETUP leads while the seat is not ready: each step says who does it, and an open one says exactly how.
+    // THE SALES HUB IS ITS PIPELINE (Design note, 2026-11-18: […]):
+    // eight stages in one line, in order, and what is not a stage in one quiet row; no tabs.
+    const line = hub.locator('[data-sales-pipeline]');
+    await line.waitFor();
+    expect(await line.locator('.spl-stage-n').allTextContents()).toEqual(['1 SETUP', '2 DISCOVER', '3 FILTER', '4 VALIDATE', '5 EMAILS', '6 SENT', '7 REPLIES', '8 DEALS']);
+    expect(await line.locator('[data-more]').allTextContents()).toEqual(['CAMPAIGNS', 'ALL PEOPLE', 'COMPANY FACTS', 'MAILBOX', 'SETTINGS', 'THEIR EYES']);
+    expect(await hub.getByRole('tab').count()).toBe(0);
+    // It opens on SETUP while the seat is not ready: each step says who does it, and an open one says exactly how.
+    expect(await line.locator('[data-stage="setup"]').getAttribute('aria-current')).toBe('step');
+    expect(await line.locator('[data-stage="setup"] .spl-stage-head').textContent()).toBe('1/12');
     const setup = hub.locator('[data-setup-step]');
     expect(await setup.count()).toBe(14);
     expect(await hub.locator('[data-setup-step="seat"] .pos-step-h').textContent()).toBe('DONE — Seat a member as CHIEF REVENUE OFFICER');
     expect(await hub.locator('[data-setup-step="mailbox"]').textContent()).toContain('YOURS — Connect the mailbox the house sends from');
     expect(await hub.locator('[data-setup-step="mailbox"]').textContent()).toContain('myaccount.google.com/apppasswords');
-    // A step is one press from its place: GO TO MAILBOX lands on the mailbox tab, and SETUP is still there to come back to.
+    // A step is one press from its place: GO TO MAILBOX lands on the mailbox, and SETUP stays first on the line to come back to.
     await hub.getByRole('button', { name: /^GO TO 2 · ENTER IT IN MAILBOX — Connect the mailbox/ }).click();
-    expect(await hub.getByRole('tab', { name: 'MAILBOX' }).getAttribute('aria-selected')).toBe('true');
-    await hub.getByRole('tab', { name: /^SETUP/ }).click();
+    expect(await line.locator('[data-more="mailbox"]').getAttribute('aria-current')).toBe('page');
+    await line.locator('[data-stage="setup"]').click();
     expect(await hub.locator('[data-setup-step="mailbox"] a').getAttribute('href')).toBe('https://myaccount.google.com/apppasswords');
     await page.screenshot({ path: path.join(SHOTS, 'sales-setup-1280.png'), fullPage: true });
-    await hub.getByRole('tab', { name: 'CAMPAIGNS' }).click();
-    // CAMPAIGNS opens first: the operator opens one, and it stands on disk with every count at zero.
+    // + NEW opens CAMPAIGNS: the operator opens one, it stands on disk, and it becomes a campaign the line can be read for.
+    await line.getByRole('button', { name: 'OPEN A NEW CAMPAIGN' }).click();
     const campaigns = hub.locator('[data-sales-campaigns]');
     await campaigns.waitFor({ timeout: 60000 });
     expect(await campaigns.getByRole('button', { name: 'OPEN the campaign' }).isDisabled()).toBe(true);
@@ -132,16 +140,23 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     await page.getByRole('listbox', { name: 'company the campaign is for' }).getByText('Umbrae', { exact: true }).click();
     await campaigns.getByLabel('What the campaign is meant to bring in').fill('Teams with a token on Base opening a pool on Umbrae');
     await campaigns.getByRole('button', { name: 'OPEN the campaign' }).click();
-    const card = campaigns.locator('[data-campaign-id]');
-    await card.waitFor();
-    expect(await card.locator('.cline-h').textContent()).toBe('User acquisition · FOR UMBRAE · OPEN');
-    expect(await card.locator('[data-campaign-funnel] .cline-tile-l').allTextContents()).toEqual(['GATHERED', 'SCORED', 'LEADS', 'WRITTEN', 'REPLIED', 'QUALIFIED', 'WON']);
-    expect(await card.locator('[data-campaign-funnel] .cline-tile-n').allTextContents()).toEqual(['0', '0', '0', '0', '0', '0', '0']);
+    const row = campaigns.locator('[data-campaign-id]');
+    await row.waitFor();
+    expect(await row.textContent()).toContain('User acquisition');
+    expect(await row.locator('[data-campaign-audiences]').textContent()).toBe('NONE YET');
     expect((await readCampaigns(auth.address)).map((c) => [c.name, c.company, c.state])).toEqual([['User acquisition', 'umbrae', 'open']]);
+    // Every sheet sorts by any column (Design note, 2026-11-18: one press orders it, the next turns it.
+    await campaigns.locator('[data-sort="CAMPAIGN"]').click();
+    expect(await campaigns.locator('th[aria-sort="ascending"] [data-sort="CAMPAIGN"]').count()).toBe(1);
+    await campaigns.locator('[data-sort="CAMPAIGN"]').click();
+    expect(await campaigns.locator('th[aria-sort="descending"] [data-sort="CAMPAIGN"]').count()).toBe(1);
+    await line.locator('[data-campaign-view]').filter({ hasText: 'User acquisition' }).click();
+    expect(await line.locator('[data-campaign-view][aria-pressed="true"]').textContent()).toBe('User acquisition');
+    expect(await line.locator('[data-stage="discover"] .spl-stage-head').textContent()).toBe('0FOUND');
     await page.screenshot({ path: path.join(SHOTS, 'sales-campaigns-1280.png'), fullPage: true });
 
-    // COMPANY (the business model, then the facts a buyer may be told): the operator who knows the model types it; it stands at once and the setup count is measured again.
-    await hub.getByRole('tab', { name: 'COMPANY' }).click();
+    // COMPANY FACTS (the business model, then the facts a buyer may be told): the operator who knows the model types it; it stands at once and the setup count is measured again.
+    await line.locator('[data-more="model"]').click();
     const umbrae = hub.locator('[data-model-company="umbrae"]');
     await umbrae.waitFor();
     expect(await umbrae.locator('summary .fold-title').textContent()).toBe('Umbrae');
@@ -158,50 +173,51 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     expect(await umbrae.locator('[data-model-read] dd').first().textContent()).toBe('A swap venue on Base where anyone opens a pool');
     expect(await hub.locator('[data-model-notice]').textContent()).toBe('The business model of Umbrae is saved and stands.');
     expect((await readModels(auth.address)).get('umbrae').approved.value).toBe('Their token trades with less slippage, shown on the pool page');
-    await hub.getByRole('tab', { name: 'SETUP · 3/12' }).waitFor();
+    await line.locator('[data-stage="setup"] .spl-stage-head').filter({ hasText: '3/12' }).waitFor();
     const modelScan = await a11yCheck(page, 'positions-model', { include: '.pos' });
     expect(modelScan.grown, modelScan.detail).toEqual([]);
     await page.screenshot({ path: path.join(SHOTS, 'business-model-1280.png'), fullPage: true });
 
-    // Each tab carries only its own data: the facts stand on COMPANY, the audiences on CAMPAIGNS, and LEADS holds leads.
+    // Each place carries only its own data: the facts stand on COMPANY FACTS, the campaigns on CAMPAIGNS, people on ALL PEOPLE,
+    // the staged emails on EMAILS — nothing twice.
     await hub.locator('[data-lead-engine="facts"]').waitFor({ timeout: 60000 });
     expect(await hub.locator('[data-facts-sheet]').count()).toBe(1);
-    // CAMPAIGNS is one flow: a campaign's audiences stand under it, never as a second list of cards.
-    await hub.getByRole('tab', { name: 'CAMPAIGNS' }).click();
+    await line.locator('[data-more="campaigns"]').click();
     await hub.locator('[data-campaign-id] [data-campaign-audiences]').waitFor({ timeout: 60000 });
-    expect(await hub.locator('[data-campaign-id] [data-campaign-audiences]').textContent()).toBe('NO AUDIENCE YET — THE SALES SEAT FILES ONE UNDER THIS CAMPAIGN');
-    expect(await hub.locator('[data-facts-sheet], [data-paid-lead], [data-suppress-form], [data-lead-engine], [data-campaign-links]').count()).toBe(0);
-    await hub.getByRole('tab', { name: 'LEADS' }).click();
-    await hub.locator('[data-lead-engine="leads"]').waitFor({ timeout: 60000 });
-    expect(await hub.locator('[data-facts-sheet], [data-business-model], [data-sales-campaigns], [data-segment-id]').count()).toBe(0);
+    expect(await hub.locator('[data-facts-sheet], [data-paid-lead], [data-suppress-form], [data-lead-engine], [data-campaign-funnel], [data-pipeline]').count()).toBe(0);
+    await line.locator('[data-more="leads"]').click();
+    await hub.locator('[data-lead-engine="people"]').waitFor({ timeout: 60000 });
+    expect(await hub.locator('[data-facts-sheet], [data-business-model], [data-sales-campaigns], [data-segment-id], [data-outbox]').count()).toBe(0);
     // A setting is not a lead: paid lead data stands on SETTINGS as one switch, never here.
     await hub.locator('[data-people]').waitFor({ timeout: 60000 });
     expect(await hub.locator('[data-switch-limit], [data-paid-lead]').count()).toBe(0);
-    // LEADS is one list of people and the do-not-contact list: no second list, nothing nested.
+    // ALL PEOPLE is one list of people and the do-not-contact list: no second list, nothing nested.
     expect(await hub.locator('[data-suppress-form], [data-people]').count()).toBe(2);
-    // …with the outbox over it (emails staged for review) and do-not-contact under it: two folded lines, nothing nested.
-    expect(await hub.locator('[data-lead-engine="leads"] details').count()).toBe(2);
+    // EMAILS is the outbox, and how many leads the seat still has to write.
+    await line.locator('[data-stage="emails"]').click();
+    await hub.locator('[data-outbox]').waitFor({ timeout: 60000 });
     expect(await hub.locator('[data-outbox] .fold-stat').allTextContents()).toEqual(['NOTHING WAITS', '0 SENT']);
+    expect(await hub.locator('[data-emails-to-write]').textContent()).toBe('0 TO WRITE — YOUR SALES MEMBER WRITES THEM AND STAGES EACH HERE');
 
-    await hub.getByRole('tab', { name: 'DEALS' }).click();
+    await line.locator('[data-stage="deals"]').click();
     await hub.locator('[data-sales]').waitFor();
     expect(await hub.locator('[data-sales]').getByRole('button', { name: 'SEAT' }).count()).toBe(0);
 
     // SETTINGS: everything the position may be switched on or off to use, each one ON/OFF. Paid lead data is one of
     // them, with its monthly limit beside it, and nothing else to choose.
-    await hub.getByRole('tab', { name: /SETTINGS/ }).click();
+    await line.locator('[data-more="_switches"]').click();
     expect(await hub.locator('[data-switch]').evaluateAll((rows) => rows.map((r) => r.dataset.switch))).toEqual(['mail-watch', 'lead-sources', 'paid-lead-data', 'email-review']);
-    // REVIEW FIRST stands ON until the operator turns it off: every sales email waits for them in LEADS.
+    // REVIEW FIRST stands ON until the operator turns it off: every sales email waits for them in EMAILS.
     expect(await hub.getByRole('button', { name: 'ON — Review every sales email before it goes' }).count()).toBe(1);
     expect(isConnectionOn('mail-watch')).toBe(false);
     await hub.getByRole('button', { name: 'OFF — House mailbox watch' }).click();
-    await hub.getByRole('tab', { name: 'SETTINGS · 2/4' }).waitFor();
+    await hub.getByRole('button', { name: 'ON — House mailbox watch' }).waitFor();
     expect(isConnectionOn('mail-watch')).toBe(true);
     const paid = hub.locator('[data-switch="paid-lead-data"]');
     expect(await paid.locator('.pos-switch-name').textContent()).toBe('Paid lead data');
     expect(await paid.locator('[data-switch-limit]').textContent()).toBe('USED 0 OFCREDITS THIS MONTHSET LIMIT');
     await paid.getByRole('button', { name: 'OFF — Paid lead data' }).click();
-    await hub.getByRole('tab', { name: 'SETTINGS · 3/4' }).waitFor();
+    await paid.getByRole('button', { name: 'ON — Paid lead data' }).waitFor();
     expect(await readSpend(auth.address)).toMatchObject({ mode: 'on', on: true, cap: 100, chosen: true });
     await paid.getByLabel('Paid lead data: the most credits a month').fill('250');
     await paid.getByRole('button', { name: 'SET LIMIT for Paid lead data' }).click();
@@ -209,7 +225,7 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     await expect.poll(async () => (await readSpend(auth.address)).cap).toBe(250);
     expect((await readSpend(auth.address)).on).toBe(true);
 
-    await hub.getByRole('tab', { name: 'THEIR EYES' }).click();
+    await line.locator('[data-more="_eyes"]').click();
     const eyes = hub.locator('.pos-eyes');
     await eyes.waitFor();
     expect(await eyes.textContent()).toMatch(/^## YOUR POSITION/);

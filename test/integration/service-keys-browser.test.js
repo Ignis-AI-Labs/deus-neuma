@@ -21,7 +21,8 @@ let tmp; let vite; let server; let browser; let saved;
 
 beforeAll(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'service-keys-browser-'));
-  saved = { creds: process.env.NEUMA_PROVIDER_CREDENTIALS_PATH, base: process.env.BASE_MAINNET_RPC_URL };
+  saved = { creds: process.env.NEUMA_PROVIDER_CREDENTIALS_PATH, base: process.env.BASE_MAINNET_RPC_URL, tk: process.env.TOMBA_API_KEY, ts: process.env.TOMBA_API_SECRET };
+  delete process.env.TOMBA_API_KEY; delete process.env.TOMBA_API_SECRET;
   process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = path.join(tmp, 'creds.json');
   process.env.BASE_MAINNET_RPC_URL = 'https://env-node.example/v2/from-env';
   const { strangerWitness } = await import('../helpers/witness.js');
@@ -54,6 +55,7 @@ afterAll(async () => {
   await vite?.close();
   if (saved.creds === undefined) delete process.env.NEUMA_PROVIDER_CREDENTIALS_PATH; else process.env.NEUMA_PROVIDER_CREDENTIALS_PATH = saved.creds;
   if (saved.base === undefined) delete process.env.BASE_MAINNET_RPC_URL; else process.env.BASE_MAINNET_RPC_URL = saved.base;
+  for (const [k, v] of [['TOMBA_API_KEY', saved.tk], ['TOMBA_API_SECRET', saved.ts]]) { if (v === undefined) delete process.env[k]; else process.env[k] = v; }
   if (tmp) await fs.rm(tmp, { recursive: true, force: true });
 }, 30000);
 
@@ -94,6 +96,32 @@ describe('Settings → API — keys without an env file', () => {
     await card.getByRole('button', { name: 'REMOVE' }).click();
     await card.locator('.is-danger, button', { hasText: 'REMOVE' }).last().click();
     await card.getByText('In use from the env file (BASE_MAINNET_RPC_URL)', { exact: false }).waitFor({ timeout: 15000 });
+    expect(errors).toEqual([]);
+    await page.close();
+  }, 120000);
+
+  it('Tomba is ONE row: its API key and, under it, its secret; SET only with both (Design note, 2026-11-18', async () => {
+    const page = await browser.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto(`http://127.0.0.1:${server.address().port}/`);
+    const row = page.locator('.cred-item', { hasText: 'Tomba' });
+    await row.waitFor({ timeout: 60000 });
+    expect(await row.count()).toBe(1);
+    expect(await row.locator('.cred-row-state').textContent()).toBe('NOT SET');
+    await row.locator('.cred-row').click();
+    const key = row.getByLabel('Tomba API key'); const secret = row.getByLabel('Tomba Secret');
+    expect([await key.count(), await secret.count()]).toEqual([1, 1]);
+    expect(await row.textContent()).toMatch(/API KEY.*TOMBA_API_KEY.*SECRET.*TOMBA_API_SECRET/s);
+    await key.fill('tomba-key-1234');
+    await row.getByRole('button', { name: 'SAVE' }).first().click();
+    await row.locator('.cred-row-detail', { hasText: 'secret not set' }).waitFor({ timeout: 15000 });
+    expect(await row.locator('.cred-row-state').textContent()).toBe('NOT SET');
+    await secret.fill('tomba-secret-5678');
+    await row.getByRole('button', { name: 'SAVE' }).last().click();
+    await row.locator('.cred-row-state', { hasText: /^SET$/ }).waitFor({ timeout: 15000 });
+    expect(await row.locator('.cred-row-detail').textContent()).toBe('saved here');
+    expect(await page.content()).not.toContain('tomba-secret-5678');
     expect(errors).toEqual([]);
     await page.close();
   }, 120000);

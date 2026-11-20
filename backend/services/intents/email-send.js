@@ -73,12 +73,12 @@ export const emailSendIntent = Object.freeze({
     // The address it leaves from: one the mailbox really sends as, decided before the operator's card.
     const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
     const company = wallet ? await companyOfRecipients(wallet, to).catch(() => null) : null;
-    const sender = fromFor(credentials ?? {}, { from: payload.from, company });
+    const sender = fromFor(credentials ?? {}, { from: payload.from, company, member: connection.companion?.neumaId });
     if (!sender.ok) return { ok: false, status: 'invalid', reason: sender.detail };
     return { ok: true, value: { to: payload.to, subject: payload.subject, text: payload.text, ...(typeof payload.promise === 'string' && payload.promise.trim() ? { promise: payload.promise } : {}), from: sender.from } };
   },
   // The card shows the address the email leaves from: it is chosen here, not filed.
-  cardArgs: (value) => ({ from: value.from, to: value.to, subject: value.subject, text: value.text }),
+  cardArgs: (value) => ({ from: value.from, to: value.to, subject: value.subject, text: value.text, ...(value.promise ? { promise: value.promise } : {}) }),
   summarize: (payload) => {
     const to = Array.isArray(payload?.to) ? payload.to.join(', ') : String(payload?.to ?? '?');
     return `send email to ${to}: "${String(payload?.subject ?? '').slice(0, 100)}"`;
@@ -92,11 +92,14 @@ export const emailSendIntent = Object.freeze({
     await journalEmailCall(
       connection, 'email/send',
       outcome.ok ? `to ${outcome.to.join(', ')} — "${String(value.subject).slice(0, 120)}"` : outcome.detail,
-      outcome.ok ? 'ok' : 'error',
+      outcome.ok ? 'ok' : outcome.uncertain ? 'uncertain' : 'error',
     );
-    const leads = outcome.ok && connection.walletAddress
-      ? await recordSent(connection.walletAddress, { to: outcome.to, subject: value.subject, promise: value.promise, by: connection.companion?.neumaId, from: outcome.from })
+    const leads = (outcome.ok || outcome.uncertain) && connection.walletAddress
+      ? await recordSent(connection.walletAddress, { to: outcome.to, subject: value.subject, promise: value.promise, by: connection.companion?.neumaId, from: outcome.from, messageId: outcome.messageId, uncertain: outcome.uncertain === true })
       : [];
+    if (outcome.uncertain) {
+      return { ok: false, uncertain: true, reason: `The email may have been sent: ${outcome.detail}.${leads.length ? ` Recorded as maybe sent on ${leads.length} lead(s).` : ''} Do not send it again until delivery is reconciled.` };
+    }
     return outcome.ok
       ? { ok: true, detail: `Email sent from ${outcome.from} to ${outcome.to.join(', ')} (message id ${outcome.messageId}).${leads.length ? ` Recorded on ${leads.length} lead(s) as contacted.` : ''}` }
       : { ok: false, reason: `The email was not sent: ${outcome.detail}.` };

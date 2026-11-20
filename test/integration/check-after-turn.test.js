@@ -12,7 +12,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import {
-  CHECK_OUTPUT_TAIL_CHARS, parseCheckArg, workFingerprint, runCheck, checkFailedPrompt, turnWithCheck,
+  CHECK_OUTPUT_TAIL_CHARS, parseCheckArg, workFingerprint, runCheck, checkFailedPrompt, turnWithCheck, checkRunQuestion,
 } from '../../cli/lib/check-after-turn.js';
 
 let root;
@@ -179,7 +179,10 @@ describe('turnWithCheck', () => {
       thoughts.push(thought);
       await (acts[thoughts.length - 1] || (() => {}))();
     };
-    return { thoughts, said, runTurn, say: (line) => said.push(line) };
+    // The operator at the prompt says yes to every run, and what they were asked is kept.
+    const asked = [];
+    const confirmRun = async (ask) => { asked.push(ask); return true; };
+    return { thoughts, said, asked, runTurn, confirmRun, say: (line) => said.push(line) };
   };
 
   test('with no check named it is just the turn', async () => {
@@ -257,5 +260,74 @@ describe('turnWithCheck', () => {
     const done = await turnWithCheck({ thought: 'add', command, ground, ...s });
     expect(done).toEqual({ checks: 1, outcome: 'failing' });
     expect(s.said.at(-1)).toContain('that turn changed nothing');
+  });
+});
+
+// P6-112: the check executes what the being just wrote, as the operator. Each
+// run is the operator's own yes, and the platform's keys never reach it.
+describe('P6-112: a check runs only on the operator\'s yes, without the platform\'s keys', () => {
+  // A being's turn that rewrites the code the check runs: it would leave a marker behind.
+  const marker = () => path.join(root, 'being-code-ran');
+  const hostileTurn = () => write('check.mjs', `import fs from 'node:fs';\nfs.writeFileSync(${JSON.stringify(marker())}, 'ran');\n`);
+  const turn = (acts) => {
+    const thoughts = [];
+    const said = [];
+    return { thoughts, said, say: (line) => said.push(line), runTurn: async (t) => { thoughts.push(t); await (acts[thoughts.length - 1] || (() => {}))(); } };
+  };
+
+  test('with no yes the being-written code never runs, and the operator is told the check waits', async () => {
+    const asked = [];
+    const s = turn([hostileTurn]);
+    const done = await turnWithCheck({ thought: 'tidy up', command: CHECK, ground, ...s, confirmRun: async (ask) => { asked.push(ask); return false; } });
+    expect(done).toEqual({ checks: 0, outcome: 'held' });
+    expect(asked).toEqual([{ command: CHECK, changed: ['check.mjs'] }]);
+    expect(s.said.at(-1)).toContain('check not run — it waits for your yes');
+    await expect(fs.stat(marker())).rejects.toThrow();
+  });
+
+  test('with nobody to ask (no confirmRun) it does not run either', async () => {
+    const s = turn([hostileTurn]);
+    const done = await turnWithCheck({ thought: 'tidy up', command: CHECK, ground, ...s });
+    expect(done).toEqual({ checks: 0, outcome: 'held' });
+    await expect(fs.stat(marker())).rejects.toThrow();
+  });
+
+  test('every run in the fix loop is asked again, each with the files that turn changed', async () => {
+    const asked = [];
+    const s = turn([() => write('math.js', BAD), async () => { await write('math.js', GOOD); await write('extra.js', '1\n'); }]);
+    const done = await turnWithCheck({ thought: 'faster', command: CHECK, ground, ...s, confirmRun: async (ask) => { asked.push(ask.changed); return true; } });
+    expect(done).toEqual({ checks: 2, outcome: 'passed' });
+    expect(asked).toEqual([['math.js'], ['extra.js', 'math.js']]);
+  });
+
+  test('the question names the command and the changed files, and says where it runs', () => {
+    const question = checkRunQuestion('npm test', ['package.json', 'test/a.test.js']);
+    expect(question).toContain('that turn changed 2 file(s)');
+    expect(question).toContain('    package.json\n    test/a.test.js');
+    expect(question).toContain('runs as you, outside the being\'s sandbox');
+    expect(question).toContain('run it now — npm test? [y/N]');
+    expect(checkRunQuestion('npm test', null)).toContain('no git repository to compare');
+  });
+
+  test('the check does not inherit the master key, the session secret or a provider key', async () => {
+    const names = ['DNA_ENCRYPTION_KEY', 'AUTH_SECRET', 'ANTHROPIC_API_KEY'];
+    const held = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+    for (const name of names) process.env[name] = 'check-proof-not-a-real-key';
+    process.env.NEUMA_CHECK_PROOF_PLAIN = 'kept';
+    try {
+      const script = `console.log(JSON.stringify(${JSON.stringify([...names, 'NEUMA_CHECK_PROOF_PLAIN'])}.map((n) => [n, process.env[n] ?? null])))`;
+      await write('env.mjs', `${script}\n`);
+      const result = await runCheck('node env.mjs', ground);
+      expect(result.passed).toBe(true);
+      expect(Object.fromEntries(JSON.parse(result.output))).toEqual({
+        DNA_ENCRYPTION_KEY: null, AUTH_SECRET: null, ANTHROPIC_API_KEY: null, NEUMA_CHECK_PROOF_PLAIN: 'kept',
+      });
+    } finally {
+      delete process.env.NEUMA_CHECK_PROOF_PLAIN;
+      for (const name of names) {
+        if (held[name] === undefined) delete process.env[name];
+        else process.env[name] = held[name];
+      }
+    }
   });
 });

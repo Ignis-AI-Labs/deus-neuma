@@ -17,6 +17,7 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { UNTRUSTED_GIT_ARGS, repoConfigIsInert, untrustedGitEnv } from '../../backend/services/untrusted-git.js';
 
 const run = promisify(execFile);
 
@@ -45,7 +46,9 @@ export const parseReviewTarget = (argText) => {
 };
 
 const git = async (ground, args) =>
-  (await run('git', args, { cwd: ground, maxBuffer: 64 * 1024 * 1024 })).stdout;
+  (await run('git', [...UNTRUSTED_GIT_ARGS, ...args], {
+    cwd: ground, env: untrustedGitEnv(), maxBuffer: 64 * 1024 * 1024,
+  })).stdout;
 
 // The platform's own undo records live in .neuma/ at the repository root. In
 // a repository that does not ignore that folder they would show up as "new
@@ -59,7 +62,7 @@ const untrackedFiles = async (root) =>
 // differ, so its output is read off the error.
 const untrackedDiff = async (root, file) => {
   try {
-    return await git(root, ['diff', '--no-index', '--', '/dev/null', file]);
+    return await git(root, ['diff', '--no-ext-diff', '--no-index', '--', '/dev/null', file]);
   } catch (error) {
     if (error.code === 1 && typeof error.stdout === 'string') return error.stdout;
     throw error;
@@ -67,7 +70,7 @@ const untrackedDiff = async (root, file) => {
 };
 
 const uncommittedDiff = async (root) => {
-  const tracked = await git(root, ['diff', 'HEAD']);
+  const tracked = await git(root, ['diff', '--no-ext-diff', 'HEAD']);
   const fresh = await Promise.all((await untrackedFiles(root)).map((file) => untrackedDiff(root, file)));
   return [tracked, ...fresh].filter(Boolean).join('');
 };
@@ -83,8 +86,11 @@ export const collectReviewDiff = async (ground, target) => {
   // Every command runs from the repository's top, so a review opened from a
   // subfolder still sees the whole change and names files the same way.
   const root = (await git(ground, ['rev-parse', '--show-toplevel'])).trim();
-  if (target.kind === 'commit') return git(root, ['show', '--format=%H%n%an%n%s%n%n%b', target.ref, '--']);
-  if (target.kind === 'base') return git(root, ['diff', `${target.ref}...HEAD`, '--']);
+  if (!(await repoConfigIsInert(root))) {
+    throw new Error("this repository's own git config names programs git could run, so its change is not read");
+  }
+  if (target.kind === 'commit') return git(root, ['show', '--no-ext-diff', '--format=%H%n%an%n%s%n%n%b', target.ref, '--']);
+  if (target.kind === 'base') return git(root, ['diff', '--no-ext-diff', `${target.ref}...HEAD`, '--']);
   return uncommittedDiff(root);
 };
 

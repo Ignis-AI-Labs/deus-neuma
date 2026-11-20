@@ -17,7 +17,7 @@ import { resolveChainConfig } from '../lib/chain-config.js';
 import { findProjectRoot } from '../lib/project-root.js';
 import { HELP, runWorkCommand, checkOnNote, commitOnNote, startCommentWatch } from '../lib/code-commands.js';
 import { committedTurn, isRepository } from '../lib/turn-commits.js';
-import { turnWithCheck } from '../lib/check-after-turn.js';
+import { turnWithCheck, checkRunQuestion } from '../lib/check-after-turn.js';
 import { peekActiveBeing } from '../lib/active-being.js';
 import { mountSeat } from '../lib/seat-mount.js';
 import { stageAttachments } from '../lib/attachments.js';
@@ -183,6 +183,15 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
   // EOF closed the interface — prompting then throws; guard every late call.
   const safePrompt = () => { if (!closed) rl.prompt(true); };
   rl.prompt(true);
+  // The operator's yes or no to one question at the prompt; anything but yes, or a closed terminal, is no.
+  const confirm = (question) => new Promise((resolve) => {
+    if (closed) { resolve(false); return; }
+    rl.question(question, (answer) => {
+      const yes = /^y(es)?$/i.test(String(answer || '').trim());
+      if (!yes) safePrompt();
+      resolve(yes);
+    });
+  });
   let pending = '';
   let lastCtrlC = 0;
   let inTurn = false;
@@ -270,7 +279,8 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
   // The ordinary turn: the operator's words, then their check if one is on.
   const workTurn = async (thought) => {
     const say = (text) => stderr.write(`${text}\n`);
-    const run = () => turnWithCheck({ thought, command: checks.command, ground, runTurn, say, interrupted: () => turnInterrupted });
+    const confirmRun = ({ command, changed }) => confirm(checkRunQuestion(command, changed));
+    const run = () => turnWithCheck({ thought, command: checks.command, ground, runTurn, say, interrupted: () => turnInterrupted, confirmRun });
     const done = commits.on ? await committedTurn({ root: findProjectRoot(ground), request: thought, being: live.name, run, say }) : await run();
     if (done.checks > 0 || commits.on) safePrompt();
   };
@@ -394,7 +404,7 @@ export const runCode = async ({ cwd, stdin = process.stdin, stdout, stderr, argv
     safePrompt();
   });
   // AI comments (watch-comments.js): an instruction saved in any editor queues like a typed line.
-  const watch = argv.watch ? startCommentWatch({ ground, stderr, enqueue, seated, live, workTurn, runTurn }) : null;
+  const watch = argv.watch ? startCommentWatch({ ground, stderr, enqueue, seated, live, workTurn, runTurn, confirm }) : null;
   rl.on('close', () => {
     closed = true;
     watch?.stop();

@@ -8,10 +8,9 @@
 // X, TikTok, Instagram, Vimeo, Twitch, Facebook, Reddit, SoundCloud, Bandcamp, podcasts, news sites,
 // and any page with a plain video or audio file on it). It is downloaded on first use from its own
 // GitHub releases, pinned to the size and SHA-256 published there, like every engine the app sets
-// up (managed-stt-plan.js). Sites change and break old copies, so when a site will not answer the
-// pinned copy, the app asks yt-dlp to update itself once; yt-dlp checks its own update against its
-// publisher's signature. ffmpeg cuts the picture into frames and the sound into what speech
-// recognition reads; a machine without one gets a pinned static build.
+// up (managed-stt-plan.js). A stale site failure never replaces the pinned copy. ffmpeg cuts the
+// picture into frames and the sound into what speech recognition reads; a machine without one gets
+// a pinned static build.
 
 export const YT_DLP_VERSION = '2026.10.26';
 const YT_DLP_RELEASE = `https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}`;
@@ -227,12 +226,9 @@ export const ytDlpArgs = ({ url, dir, proxy, want, ffmpegDir = null, jsRuntime =
   return [...common, '--format', format, '--merge-output-format', 'mkv', '--max-filesize', '4G', '--', url];
 };
 
-/** yt-dlp's arguments to update itself (it checks the update against its publisher's key). Pure. */
-export const ytDlpUpdateArgs = ({ proxy }) => ['--ignore-config', '--no-plugin-dirs', '--proxy', proxy, '--update-to', 'stable'];
-
 /**
- * What a failed fetch means, from yt-dlp's last ERROR line. `stale` asks for the one self-update:
- * the site changed under the pinned copy. Pure.
+ * What a failed fetch means, from yt-dlp's last ERROR line. `stale` marks a site that changed under
+ * the pinned copy; the caller reports it without replacing the executable. Pure.
  * @param {string} stderr
  * @returns {{why: string, stale: boolean, line: string}}
  */

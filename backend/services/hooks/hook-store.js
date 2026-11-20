@@ -6,9 +6,9 @@
  *   <data root>/hooks/hooks.json          the hooks, their secrets, the deliveries seen
  *   <data root>/hooks/events/<id>.jsonl   what each delivered, newest last, bounded
  *
- * The secret is kept because a signature cannot be checked without it; the
- * file is the operator's alone (0600) and the secret is shown once, when it is
- * made or rotated. Every read for a person (listHooks) leaves it out.
+ * The secret is kept because a signature cannot be checked without it; it is
+ * encrypted in the operator's 0600 file and shown once, when it is made or
+ * rotated. Every read for a person (listHooks) leaves it out.
  *
  * impure — the data root, one write at a time.
  */
@@ -17,10 +17,11 @@ import path from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { getDataRoot } from '../data-root.js';
 import { HOOK_SOURCES } from './hook-verify.js';
+import { encryptEnvelope, decryptEnvelope } from '../../../core/workspace/workspace-crypto.js';
 
 /** Hooks one house may hold. */
 export const HOOKS_PER_HOUSE_MAX = 32;
-/** Delivery ids remembered per hook, to refuse a replay. */
+/** Delivery hashes remembered per timestamped hook; GitHub hashes never age out. */
 export const DELIVERIES_REMEMBERED = 500;
 /** Events kept per hook. */
 export const EVENTS_KEPT = 200;
@@ -46,8 +47,15 @@ const read = async () => {
 
 const write = async (state) => {
   await fs.mkdir(dir(), { recursive: true, mode: 0o700 });
+  const atRest = {
+    ...state,
+    hooks: state.hooks.map(({ secret, ...hook }) => ({
+      ...hook,
+      ...(secret ? { secretEnvelope: encryptEnvelope(secret) } : {}),
+    })),
+  };
   const tmp = `${storeFile()}.${randomBytes(6).toString('hex')}.tmp`;
-  await fs.writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
+  await fs.writeFile(tmp, `${JSON.stringify(atRest, null, 2)}\n`, { mode: 0o600 });
   await fs.rename(tmp, storeFile());
 };
 
@@ -142,7 +150,9 @@ export const setHookSecret = (wallet, id, secret) => serialize(async () => {
 /** impure — the hook a delivery names, secret included; null for anything not a hook. */
 export const hookForDelivery = async (id) => {
   if (!HOOK_ID.test(String(id || ''))) return null;
-  return (await read()).hooks.find((h) => h.id === id) ?? null;
+  const hook = (await read()).hooks.find((h) => h.id === id);
+  if (!hook) return null;
+  return { ...hook, secret: hook.secretEnvelope ? decryptEnvelope(hook.secretEnvelope) : hook.secret };
 };
 
 /**
@@ -157,7 +167,8 @@ export const noteDelivery = (id, deliveryId) => serialize(async () => {
   if (!hook) return { fresh: false };
   hook.seen = Array.isArray(hook.seen) ? hook.seen : [];
   if (hook.seen.includes(deliveryId)) return { fresh: false };
-  hook.seen = [...hook.seen, deliveryId].slice(-DELIVERIES_REMEMBERED);
+  hook.seen = [...hook.seen, deliveryId];
+  if (hook.source !== 'github') hook.seen = hook.seen.slice(-DELIVERIES_REMEMBERED);
   hook.deliveries = (hook.deliveries ?? 0) + 1;
   hook.lastDeliveryAt = new Date().toISOString();
   await write(state);

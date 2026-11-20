@@ -16,7 +16,7 @@
 
 import { ethers } from 'ethers';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
-import { classifyDeposit } from '../../../core/wallet/lp-tx-policy.js';
+import { checkLpIntent, classifyDeposit, classifyLpTransaction, UMBRAE_BASE } from '../../../core/wallet/lp-tx-policy.js';
 import { lpBase } from './lp-base.js';
 import { callUmbrae } from './umbrae-lp-client.js';
 import { umbraeKeyFor } from './lp-enroll.js';
@@ -26,8 +26,8 @@ import { readLpBudget, addPendingDeposit, takePendingDeposit } from './lp-budget
 import { tellDepositWaiting } from './lp-report.js';
 import { bookAct } from './lp-book.js';
 import { signalWake } from '../house-clock/wake-signal.js';
-import { poolBaseFactorOnChain, quoteDepositOnChain, quoteExitOnChain, tokenDecimalsOnChain } from './lp-quotes.js';
-import { independentBudgetFigures } from './lp-budget-independent.js';
+import { poolBaseFactorOnChain, poolTokensOnChain, positionOnChain, quoteDepositOnChain, quoteExitOnChain, tokenDecimalsOnChain, tokenSymbolOnChain } from './lp-quotes.js';
+import { independentBudgetFigures, depositWithinSnapshot } from './lp-budget-independent.js';
 import { guardLpExecution, recordLpBroadcast, settleLpExecution } from './lp-executions.js';
 import { proveLpReceipt } from './lp-receipt-proof.js';
 import { assertLpNotPaused, reserveCapitalAssets } from './lp-capital-controls.js';
@@ -171,6 +171,34 @@ export const signSendWait = async ({ signer, provider, keyed, pollMs, neumaId, r
   return refuse('The transaction was sent and is still not confirmed.', { txHash: signed.hash, uncertain: true });
 };
 
+const APPROVAL_CALLS = new ethers.Interface([
+  'function approve(address spender, uint256 amount)',
+  'function setApprovalForAll(address spender, bool approved)',
+]);
+
+// impure — cleanup is reported separately and never makes a confirmed LP action look unsent.
+const revokeGrantedApprovals = async (ctx, steps, pool) => {
+  const txHashes = [];
+  const warnings = [];
+  for (const step of steps) {
+    try {
+      const token = step.kind === 'erc20-approve' ? ethers.getAddress(step.transaction.to) : null;
+      const tx = token
+        ? { to: token, chainId: 8453, data: APPROVAL_CALLS.encodeFunctionData('approve', [UMBRAE_BASE.positionManager, 0n]) }
+        : { to: pool, chainId: 8453, data: APPROVAL_CALLS.encodeFunctionData('setApprovalForAll', [UMBRAE_BASE.positionManager, false]) };
+      const intent = token
+        ? { kind: 'approval', spender: UMBRAE_BASE.positionManager, token, revoke: true }
+        : { kind: 'approval', pool, spender: UMBRAE_BASE.positionManager, revoke: true };
+      const revoked = await signSendWait(ctx, tx, intent, token ? { [token]: '0' } : undefined).catch((error) => refuse(error.message));
+      if (revoked.ok) txHashes.push(revoked.txHash);
+      else warnings.push(revoked.reason);
+    } catch (error) {
+      warnings.push(`Approval cleanup could not be built: ${error.shortMessage || error.message}`);
+    }
+  }
+  return { txHashes, warnings };
+};
+
 // impure — a configured cap uses independent market prices and chain-held positions.
 const budgetGate = async (neumaId, keyed, action, fields, raw, provider) => {
   const budgetUsd = await readLpBudget(neumaId);
@@ -182,12 +210,14 @@ const budgetGate = async (neumaId, keyed, action, fields, raw, provider) => {
   const deployed = figures?.deployedMicroUsd ?? null;
   const deposit = figures?.depositMicroUsd ?? null;
   if (classifyDeposit({ budgetUsd, deployedMicroUsd: deployed, depositMicroUsd: deposit }) === 'free') return null;
-  const depositUsd = deposit === null ? 'unknown' : ethers.formatUnits(deposit, 6);
   const reason = budgetUsd === 0 ? 'Any deposit would take the total past the $0 budget.'
       : deposit === null || deployed === null ? 'The deposit could not be independently sized in dollars.'
-      : `This deposit of $${depositUsd} would take the total past the $${budgetUsd} budget.`;
+      : `This deposit of $${ethers.formatUnits(deposit, 6)} would take the total past the $${budgetUsd} budget.`;
+  if (deposit === null || deployed === null) return refuse(reason);
+  const depositUsd = ethers.formatUnits(deposit, 6);
   const { type, pool, tokenId, amountX, amountY, strategy, binRange } = action;
-  const request = await addPendingDeposit(neumaId, { action: { type, pool, tokenId, amountX, amountY, strategy, binRange }, depositUsd, reason });
+  const [tokenXSymbol, tokenYSymbol] = await Promise.all([tokenSymbolOnChain(provider, fields.tokenX), tokenSymbolOnChain(provider, fields.tokenY)]);
+  const request = await addPendingDeposit(neumaId, { action: { type, pool, tokenId, amountX, amountY, strategy, binRange, tokenXSymbol, tokenYSymbol }, depositUsd, reason });
   await tellDepositWaiting(neumaId, request);
   return refuse(`${reason} It is waiting for the operator's answer.`, { pending: true, requestId: request.id });
 };
@@ -205,7 +235,7 @@ const budgetGate = async (neumaId, keyed, action, fields, raw, provider) => {
  * @returns {Promise<Readonly<{ok: true, type: string, txHashes: string[], tokenId: string|null, approvals: number}
  *   | {ok: false, reason: string, pending?: boolean, requestId?: string, txHash?: string}>>}
  */
-const actOnce = async (neumaId, action, { operatorApproved = false, provider, pollMs = 3000, receiptProvider, receiptConfirmations } = {}) => {
+const actOnce = async (neumaId, action, { operatorApproved = false, expectedDepositUsd = null, provider, pollMs = 3000, receiptProvider, receiptConfirmations } = {}) => {
   const asked = readAction(action);
   if (!asked.ok) return asked;
   if (DEPOSITS.includes(asked.type)) {
@@ -219,6 +249,9 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
   if (!ethers.isAddress(pool.payload?.address) || ethers.getAddress(pool.payload.address) !== asked.pool) {
     return refuse('Umbrae returned a different pool than the one requested. Nothing was signed.');
   }
+  if (pool.payload?.lane !== 'verified') {
+    return refuse('Only Umbrae-verified pools are open to LP wallet actions. Nothing was signed.');
+  }
   const isDeposit = DEPOSITS.includes(asked.type);
   const base = provider ?? await lpBase();
   if (!base) return refuse('Base did not answer, so nothing can be signed.');
@@ -227,11 +260,17 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
   if (!fields) return refuse('Umbrae\'s answer for that pool is missing its tokens.');
   if (isDeposit) {
     try {
-      const [baseFactor, tokenXDecimals, tokenYDecimals] = await Promise.all([
+      const [identity, baseFactor, tokenXDecimals, tokenYDecimals] = await Promise.all([
+        poolTokensOnChain(base, asked.pool),
         poolBaseFactorOnChain(base, asked.pool),
         tokenDecimalsOnChain(base, fields.tokenX),
         tokenDecimalsOnChain(base, fields.tokenY),
       ]);
+      if (identity.tokenX !== ethers.getAddress(fields.tokenX)
+        || identity.tokenY !== ethers.getAddress(fields.tokenY)
+        || identity.binStep !== fields.binStep) {
+        return refuse('Base shows different tokens or bin step for this pool than Umbrae claimed. Nothing was signed.');
+      }
       fields = Object.freeze({ ...fields, baseFactor, tokenXDecimals, tokenYDecimals });
     } catch (error) {
       return refuse(`Base could not read this pool's execution parameters: ${error.message}`);
@@ -257,6 +296,25 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
   const keyed = keyedCaller(neumaId, enrolled.key);
   const ctx = { signer, provider: base, keyed, pollMs, neumaId, receiptProvider, receiptConfirmations, vault };
 
+  if (asked.type === 'add') {
+    try {
+      const position = await positionOnChain(base, asked.tokenId);
+      if (position.pairAddress !== asked.pool || position.owner !== ethers.getAddress(fields.walletAddress)) {
+        return refuse('Base shows that this token ID is not your position in the named pool. Nothing was signed.');
+      }
+    } catch (error) {
+      return refuse(`Base could not verify this position's owner and pool: ${error.message}`);
+    }
+  }
+  if (isDeposit && expectedDepositUsd !== null) {
+    const held = await keyed('positions', {});
+    const figures = held.ok
+      ? await independentBudgetFigures({ provider: base, fields, raw, wallet: action.walletAddress ?? fields.walletAddress, positionsPayload: held.payload })
+      : null;
+    if (!depositWithinSnapshot(figures?.depositMicroUsd, expectedDepositUsd)) {
+      return refuse('The deposit no longer has the dollar value the operator approved. Ask again before anything is signed.');
+    }
+  }
   if (isDeposit && !operatorApproved) {
     const held = await budgetGate(neumaId, keyed, asked, fields, raw, base);
     if (held) return held;
@@ -267,19 +325,6 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
       { token: fields.tokenY, amount: raw.amountY, decimals: fields.tokenYDecimals },
     ].filter((asset) => BigInt(asset.amount) > 0n));
     if (!admitted.ok) return admitted;
-  }
-
-  const approvals = await keyed('approvals', body);
-  if (!approvals.ok) return refuse(approvals.error);
-  // An allowance is never more than twice the deposit it serves.
-  const maxApprove = {
-    [ethers.getAddress(fields.tokenX)]: (BigInt(raw.amountX) * 2n).toString(),
-    [ethers.getAddress(fields.tokenY)]: (BigInt(raw.amountY) * 2n).toString(),
-  };
-  const steps = approvals.payload?.steps ?? [];
-  for (const step of steps) {
-    const approved = await signSendWait(ctx, step.transaction, { kind: 'approval', pool: asked.pool }, maxApprove);
-    if (!approved.ok) return approved;
   }
 
   let plan;
@@ -294,15 +339,42 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
   const baseIntent = isDeposit
     ? { kind: 'deposit', action: asked.type === 'open' ? 'createPositionWithStrategy' : 'increasePositionWithStrategy', tokenId: asked.tokenId, tokenX: fields.tokenX, tokenY: fields.tokenY, ...raw, ...plan }
     : { kind: 'exit', tokenId: asked.tokenId, actions: EXIT_ACTIONS[asked.type], ...plan };
+  const firstBuilt = await keyed('build', asked.type === 'claim' ? { ...body, claimStartIndex: 0 } : body);
+  if (!firstBuilt.ok) return refuse(firstBuilt.error);
+  const firstIntent = asked.type === 'claim' ? { ...baseIntent, startIndex: '0' } : baseIntent;
+  const firstVerdict = classifyLpTransaction(firstBuilt.payload?.transaction, { wallet: vault?.safe ?? signer.address });
+  const firstFits = firstVerdict.ok ? checkLpIntent(firstVerdict, firstIntent) : firstVerdict;
+  if (!firstFits.ok) return refuse(`Umbrae's action was refused before any approval was signed: ${firstFits.reason}`);
+
+  const approvals = await keyed('approvals', body);
+  if (!approvals.ok) return refuse(approvals.error);
+  // An allowance is never more than twice the deposit it serves.
+  const maxApprove = {
+    [ethers.getAddress(fields.tokenX)]: (BigInt(raw.amountX) * 2n).toString(),
+    [ethers.getAddress(fields.tokenY)]: (BigInt(raw.amountY) * 2n).toString(),
+  };
+  const steps = approvals.payload?.steps ?? [];
+  const granted = [];
+  const finish = async (result) => {
+    if (result.uncertain || !granted.length) return result;
+    const approvalCleanup = await revokeGrantedApprovals(ctx, granted, asked.pool);
+    return Object.freeze({ ...result, approvalCleanup });
+  };
+  for (const step of steps) {
+    const approved = await signSendWait(ctx, step.transaction, { kind: 'approval', pool: asked.pool, spender: UMBRAE_BASE.positionManager }, maxApprove);
+    if (!approved.ok) return finish(approved);
+    granted.push(step);
+  }
+
   const txHashes = [];
   let tokenId = asked.tokenId;
   let claimStartIndex = 0;
   for (let round = 0; round < MAX_ROUNDS; round += 1) {
-    const built = await keyed('build', asked.type === 'claim' ? { ...body, claimStartIndex } : body);
-    if (!built.ok) return refuse(built.error, { txHashes });
+    const built = round === 0 ? firstBuilt : await keyed('build', asked.type === 'claim' ? { ...body, claimStartIndex } : body);
+    if (!built.ok) return finish(refuse(built.error, { txHashes }));
     const intent = asked.type === 'claim' ? { ...baseIntent, startIndex: String(claimStartIndex) } : baseIntent;
     const done = await signSendWait(ctx, built.payload?.transaction, intent);
-    if (!done.ok) return Object.freeze({ ...done, txHashes });
+    if (!done.ok) return finish(Object.freeze({ ...done, txHashes }));
     txHashes.push(done.txHash);
     const synced = await keyed('sync', { txHash: done.txHash, walletAddress: fields.walletAddress, actionToken: built.payload.actionToken });
     tokenId = (synced.ok && synced.payload?.tokenId) || tokenId;
@@ -310,12 +382,12 @@ const actOnce = async (neumaId, action, { operatorApproved = false, provider, po
     const more = asked.type === 'close' ? meta.chunkedClose === true : asked.type === 'claim' && meta.claimComplete === false;
     if (!more) {
       await neumaWorkspace.audit(neumaId, 'LP_ACTION', { type: asked.type, pool: asked.pool, tokenId, txHashes, recorded: synced.ok });
-      return Object.freeze({ ok: true, type: asked.type, txHashes, tokenId, approvals: steps.length, poolName: pool.payload?.name ?? null });
+      return finish(Object.freeze({ ok: true, type: asked.type, txHashes, tokenId, approvals: steps.length, poolName: pool.payload?.name ?? null }));
     }
     claimStartIndex = (meta.claimStartIndex ?? 0) + (meta.claimBinCount ?? 0);
   }
   await neumaWorkspace.audit(neumaId, 'LP_ACTION', { type: asked.type, pool: asked.pool, tokenId, txHashes, unfinished: true });
-  return refuse(`The ${asked.type} took ${MAX_ROUNDS} transactions and is still not finished. Ask again to continue.`, { txHashes });
+  return finish(refuse(`The ${asked.type} took ${MAX_ROUNDS} transactions and is still not finished. Ask again to continue.`, { txHashes }));
 };
 
 // pure — the act in a few words, for the book.
@@ -360,5 +432,9 @@ export const answerWaitingDeposit = async (neumaId, requestId, answer, opts = {}
     return result;
   };
   if (answer === 'declined') return wake(Object.freeze({ ok: true, declined: true, requestId }));
-  return wake(await runLpAction(neumaId, request.action, { ...opts, operatorApproved: true }));
+  return wake(await runLpAction(neumaId, request.action, {
+    ...opts,
+    operatorApproved: true,
+    expectedDepositUsd: request.priceSnapshot?.depositUsd ?? request.depositUsd,
+  }));
 };

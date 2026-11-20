@@ -135,17 +135,3 @@ describe('with the connection on', () => {
     expect(out).toEqual({ ok: false, error: 'the call to Umbrae was cut short' });
   });
 });
-
-describe('the host pin', () => {
-  test('an origin that is not Umbrae is refused before anything is sent', async () => {
-    const mine = process.env.NEUMA_UMBRAE_LP_ORIGIN;
-    try {
-      for (const origin of ['https://umbrae.io.evil.example', 'http://www.umbrae.io', 'http://169.254.169.254', 'file:///etc']) {
-        process.env.NEUMA_UMBRAE_LP_ORIGIN = origin;
-        expect((await callUmbrae('build', { token: 'umbr_secret', body: {} })).error).toMatch(/not Umbrae/);
-      }
-    } finally {
-      process.env.NEUMA_UMBRAE_LP_ORIGIN = mine;
-    }
-  });
-});

@@ -16,12 +16,15 @@ import { positionMapText } from '../../backend/services/positions/position-map.j
 const onDesk = (text) => renderToStaticMarkup(createElement(WindowContext.Provider, { value: { dispatch: () => {}, state: { windows: [] } } }, createElement(Markdown, { text })));
 
 describe('a record or place named in a member\'s words is a door', () => {
-  test('an audience, a company, a facts sheet and a campaign each open on their own tab, marked', () => {
-    expect(recordDoor('s-e4f50ba1')).toEqual({ kind: 'position', office: 'cro', tab: 'campaigns', reveal: '[data-segment-id="s-e4f50ba1"]', words: 'Open the audience in POSITIONS, CHIEF REVENUE OFFICER' });
-    expect(recordDoor('p-1192e6e0')).toMatchObject({ tab: 'campaigns', reveal: '[data-prospect-id="p-1192e6e0"]' });
-    expect(recordDoor('fs-0a1b2c3d')).toMatchObject({ tab: 'model', reveal: '[data-facts-sheet]' });
-    expect(recordDoor('k-c7539192')).toMatchObject({ tab: 'campaigns', reveal: '[data-campaign-id="k-c7539192"]' });
-    expect(doorPlan(recordDoor('s-e4f50ba1'))).toEqual({ open: 'positions', position: { office: 'cro', tab: 'campaigns' }, reveal: '[data-window-id="positions"] [data-segment-id="s-e4f50ba1"]' });
+  test('an audience, a company, a facts sheet and a campaign each open on the stage of the sales pipeline they stand at, marked, and say what they are', () => {
+    expect(recordDoor('s-e4f50ba1')).toEqual({ kind: 'position', office: 'cro', tab: 'discover', reveal: '[data-segment-id="s-e4f50ba1"]', words: 'Open the audience in POSITIONS, CHIEF REVENUE OFFICER, DISCOVER', record: { id: 's-e4f50ba1', kind: 'AUDIENCE' } });
+    expect(recordDoor('p-1192e6e0')).toMatchObject({ tab: 'validate', reveal: '[data-prospect-id="p-1192e6e0"]', record: { kind: 'COMPANY' } });
+    expect(recordDoor('fs-0a1b2c3d')).toMatchObject({ tab: 'model', reveal: '[data-facts-sheet]', record: { kind: 'FACTS SHEET' } });
+    expect(recordDoor('k-c7539192')).toMatchObject({ tab: 'campaigns', reveal: '[data-campaign-id="k-c7539192"]', record: { kind: 'CAMPAIGN' } });
+    expect(doorPlan(recordDoor('s-e4f50ba1'))).toEqual({ open: 'positions', position: { office: 'cro', tab: 'discover' }, reveal: '[data-window-id="positions"] [data-segment-id="s-e4f50ba1"]' });
+    // The stages are places a member may name too.
+    expect(recordDoor('POSITIONS → CHIEF REVENUE OFFICER → EMAILS')).toMatchObject({ office: 'cro', tab: 'emails' });
+    expect(recordDoor('POSITIONS → CRO → VALIDATE')).toMatchObject({ office: 'cro', tab: 'validate' });
     expect(doorPlan({ kind: 'position' })).toBe(null);
   });
 
@@ -52,7 +55,8 @@ describe('a record or place named in a member\'s words is a door', () => {
 
   test('the chat draws each as one press, in code or in prose; a link\'s own words and a fenced block are left alone', () => {
     const html = onDesk('The segment (`s-e4f50ba1`) is still DRAFT. Approve it — POSITIONS → SALES → LEADS — and the gate is open.\n\n```\ns-e4f50ba1\n```\n\n[s-e4f50ba1](https://example.com)');
-    expect(html).toContain('<button type="button" class="relink-md-door" title="Open the audience in POSITIONS, CHIEF REVENUE OFFICER" aria-label="s-e4f50ba1 — Open the audience in POSITIONS, CHIEF REVENUE OFFICER"><code>s-e4f50ba1</code></button>');
+    // A record reads as what it is (its name joins once the desk has read it), never as its id; the id stays in the hover.
+    expect(html).toContain('<button type="button" class="relink-md-door" title="Open the audience in POSITIONS, CHIEF REVENUE OFFICER, DISCOVER (s-e4f50ba1)" aria-label="AUDIENCE — Open the audience in POSITIONS, CHIEF REVENUE OFFICER, DISCOVER"><code>AUDIENCE</code></button>');
     expect(html).toContain('title="Open POSITIONS, CHIEF REVENUE OFFICER, LEADS" aria-label="POSITIONS → SALES → LEADS — Open POSITIONS, CHIEF REVENUE OFFICER, LEADS"><code>POSITIONS → SALES → LEADS</code></button>');
     expect(html.match(/relink-md-door/g)).toHaveLength(2);
     expect(html).toContain('<a href="https://example.com" target="_blank" rel="noopener noreferrer">s-e4f50ba1</a>');

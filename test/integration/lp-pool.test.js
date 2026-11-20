@@ -11,6 +11,7 @@
  * NOT proven here: Umbrae's real factory creating a pair. That is the fork live
  * test (umbrae-lp-fork-live.test.js, -t "new pool").
  */
+import process from 'node:process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
@@ -18,8 +19,9 @@ import { ethers } from 'ethers';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 import { startAnvil } from '../helpers/money-in-kit.js';
+import { returnContract } from '../helpers/evm-return-contract.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
-import { viaIntent, sweep, intentDir } from '../helpers/intent-path.js';
+import { viaIntent, sweep, intentDir, granting } from '../helpers/intent-path.js';
 import { startUmbraeStandIn, USDC, WETH, NEW_TOKEN } from '../helpers/umbrae-stand-in.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { UMBRAE_FACTORY, binIdFor } from '../../core/wallet/pool-policy.js';
@@ -73,8 +75,14 @@ beforeAll(async () => {
   await workspace.writeEncryptedKeypair('tenekom', { address: ethers.Wallet.createRandom().address });
   lp = (await openLpWallet('tenekom')).address;
   await provider.send('anvil_setBalance', [lp, ethers.toQuantity(ethers.parseEther('1'))]);
-  // Tokens that answer every call with 6 (balance 0.000006 USDC; approve returns true).
-  for (const token of [USDC, WETH, NEW_TOKEN]) await provider.send('anvil_setCode', [token, '0x600660005260206000f3']);
+  // Each token answers its real decimals; every other call returns 6 (balance and truthy approval).
+  for (const [token, units] of [[USDC, 6], [WETH, 18], [NEW_TOKEN, 18]]) {
+    const code = returnContract({
+      fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [6]),
+      routes: { [ethers.id('decimals()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [units]) },
+    });
+    await provider.send('anvil_setCode', [token, code]);
+  }
   await provider.send('anvil_setCode', [UMBRAE_FACTORY, factoryStub(NEW_POOL)]);
   umbrae = await startUmbraeStandIn({ provider });
 }, 30000);
@@ -112,12 +120,13 @@ describe('opening a new pool', () => {
   test('a token with an established market: the seed is approved to the factory, createPair is signed for exactly the planned pool, and the new pool is read back', async () => {
     const out = await create({ why: 'NEW trades on Base with depth and Umbrae has no pool for it' });
     expect(out).toMatchObject({ ok: true, pool: ethers.getAddress(NEW_POOL), name: 'NEW-USDC', binStep: 25, baseFee: 30, startPrice: 2 });
-    expect(out.txHashes).toHaveLength(2);
-    const [approve, created] = await Promise.all(out.txHashes.map((h) => provider.getTransaction(h)));
+    expect(out.txHashes).toHaveLength(3);
+    const [approve, created, revoked] = await Promise.all(out.txHashes.map((h) => provider.getTransaction(h)));
     expect(approve.to).toBe(USDC);
     expect(ERC20.decodeFunctionData('approve', approve.data).toArray()).toEqual([UMBRAE_FACTORY, 10n]); // twice the 5-unit seed
     expect(created.from).toBe(lp);
     expect(created.to).toBe(UMBRAE_FACTORY);
+    expect(ERC20.decodeFunctionData('approve', revoked.data).toArray()).toEqual([UMBRAE_FACTORY, 0n]);
     // NEW (0x3333…) sorts below USDC: NEW is X, USDC is Y, the seed is USDC alone, and the pool opens at 2 USDC per NEW
     expect(FACTORY.decodeFunctionData('createPair', created.data).toArray()).toEqual([ethers.getAddress(NEW_TOKEN), USDC, BigInt(binIdFor(2, 25)), 25n, 30n, 0n, 5n]);
     const line = (await readBook('tenekom')).journal.at(-1);
@@ -132,6 +141,26 @@ describe('opening a new pool', () => {
     umbrae.state.newTokenUnestablished = false;
     expect((await create({ quoteToken: NEW_TOKEN, baseToken: 'USDC' })).reason).toMatch(/quoteToken\) is a token Umbrae's pools trade/);
     expect((await create({ binStep: 2.5 })).reason).toMatch(/Name the fee tier/);
+    expect(await nonce(lp)).toBe(before);
+  }, 60000);
+
+  test('dishonest API start prices and an uncapped seed are refused by local economics', async () => {
+    const before = await nonce(lp);
+    umbrae.state.mode = 'pool-api-offprice';
+    expect((await create()).reason).toMatch(/more than 2% from the independent market price/);
+
+    const originalCode = await provider.send('eth_getCode', [USDC, 'latest']);
+    await provider.send('anvil_setCode', [USDC, returnContract({
+      fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [ethers.parseUnits('1000', 6)]),
+      routes: { [ethers.id('decimals()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [6]) },
+    })]);
+    try {
+      umbrae.state.mode = 'pool-uncapped-seed';
+      const out = await create({ seedQuote: '25' });
+      expect(out.reason).toMatch(/over the \$20\.00 per-action capital limit/);
+    } finally {
+      await provider.send('anvil_setCode', [USDC, originalCode]);
+    }
     expect(await nonce(lp)).toBe(before);
   }, 60000);
 
@@ -175,7 +204,7 @@ describe('opening a new pool', () => {
     expect(unknown.error).toMatch(/50·30 is not a tier Umbrae's factory allows\. It allows \(baseFee in basis points\): 1·1 = bin step 1, 0\.01% fee \(free\)/);
     // the member fixes the same file in place
     await fs.writeFile(path.join(intentDir(member()), 'act.json'), JSON.stringify({ type: 'lp/create-pool', ...ask(), binStep: 50, baseFee: 50, check: true }));
-    const [fixed] = await sweep(member());
+    const [fixed] = await sweep(member(), 'ask', granting('lp.create-pool'));
     expect(fixed.status).toBe('ok');
     expect(fixed.content).toMatch(/^PLAN for a NEW-USDC pool at bin step 50 · 50 bps:/);
   }, 60000);
@@ -186,8 +215,18 @@ describe('opening a new pool', () => {
     expect(again.reason).toMatch(/^0x3333…3333-USDC already has a pool at 25·30: 0x4444444444444444444444444444444444444444\. Add to it with lp\/open; every other tier is taken too\.$/);
   }, 60000);
 
+  test('opening a pool is the operator\'s yes each time, in ASK and in AUTO: a filing with no grant signs nothing (P6-15)', async () => {
+    const before = await nonce(lp);
+    for (const mode of ['ask', 'auto']) {
+      const [held] = await viaIntent({ ...member(), toolMode: mode }, 'lp/create-pool', ask(), mode);
+      expect(held.status).toBe('denied');
+    }
+    expect(umbrae.seen.map((r) => r.url)).not.toContain('/api/v1/base/build-pool');
+    expect(await nonce(lp)).toBe(before);
+  }, 60000);
+
   test('through the real intent sweep, with the connection on', async () => {
-    const [receipt] = await viaIntent(member(), 'lp/create-pool', { ...ask(), check: true });
+    const [receipt] = await viaIntent(member(), 'lp/create-pool', { ...ask(), check: true }, 'ask', granting('lp.create-pool'));
     expect(receipt.status).toBe('ok');
     expect(receipt.content).toMatch(/PLAN for a NEW-USDC pool/);
   }, 60000);

@@ -8,7 +8,7 @@
 // so structure arrives as structure, not as a wall of pipes. Links open
 // in a new tab, severed from this window's context.
 
-import { memo } from 'react';
+import { memo, useContext } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { renderLatexSymbols } from '../../utils/latex-symbols.js';
@@ -16,9 +16,11 @@ import { softenBreakTags } from '../../utils/markdown-breaks.js';
 import { openablePath, webAddress } from './path-link.js';
 import { openPathDoor, openPathMenu, pathMenuAnchor, openWebLink } from './path-menu.js';
 import { CopyWord } from './copy-word.jsx';
+import { PathBases } from './path-bases.js';
 import { codeBlockText } from './copy-text.js';
 import { isShortCell } from './table-cell.js';
 import { recordDoor, remarkDoors } from './doors/record-door.js';
+import { useRecordName } from './doors/use-record-name.js';
 import { openDoor } from './doors/open-door.js';
 import { useWindows } from '../windowing/use-windows.js';
 import './RelinkMarkdown.css';
@@ -47,42 +49,50 @@ const WebSpan = ({ url, children, node: _node, ...props }) => (
   </a>
 );
 
-const PathSpan = ({ path, children, ...props }) => (
+// A relative path is looked for under the folders this message's own acts worked in (path-bases.js).
+const PathSpan = ({ path, children, ...props }) => {
+  const bases = useContext(PathBases);
+  return (
   <code
     {...props}
     className="relink-md-path"
     role="link"
     tabIndex={0}
     title={`${path}\nClick to open · Right-click (or Ctrl+click) for options`}
-    onContextMenu={(e) => { e.preventDefault(); openPathMenu(path, e.clientX, e.clientY); }}
+    onContextMenu={(e) => { e.preventDefault(); openPathMenu(path, e.clientX, e.clientY, bases); }}
     onClick={(e) => {
       e.preventDefault();
-      if (e.ctrlKey || e.metaKey) openPathMenu(path, e.clientX, e.clientY);
-      else openPathDoor(path);
+      if (e.ctrlKey || e.metaKey) openPathMenu(path, e.clientX, e.clientY, bases);
+      else openPathDoor(path, bases);
     }}
     onKeyDown={(e) => {
       if (e.key === 'ContextMenu' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
         e.preventDefault();
-        openPathMenu(path, ...pathMenuAnchor(e.currentTarget));
+        openPathMenu(path, ...pathMenuAnchor(e.currentTarget), bases);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        openPathDoor(path);
+        openPathDoor(path, bases);
       }
     }}
   >
     {children}
   </code>
-);
+  );
+};
 
 // A house record or place a member names (an audience id, […]) is a DOOR to it:
 // one press opens the POSITIONS window on that tab with the record marked (doors/record-door.js).
+// A record names itself by what it IS and its own name ("COMPANY · Polychain"), never by its id (Design note, 2026-11-18:
+// […]); the id stays in the hover, for whoever needs it.
 const DoorSpan = ({ door, children, ...props }) => {
   const windows = useWindows();
+  const name = useRecordName(door.record?.id ?? null);
   if (!windows?.dispatch) return <code {...props}>{children}</code>;
   const words = Array.isArray(children) ? children.join('') : children;
+  const shown = door.record ? `${door.record.kind}${name ? ` · ${name}` : ''}` : words;
   return (
-    <button type="button" className="relink-md-door" title={door.words} aria-label={`${words} — ${door.words}`} onClick={() => openDoor(door, windows)}>
-      <code {...props}>{children}</code>
+    <button type="button" className="relink-md-door" title={door.record ? `${door.words} (${door.record.id})` : door.words} aria-label={`${shown} — ${door.words}`} onClick={() => openDoor(door, windows)}>
+      <code {...props}>{door.record ? shown : children}</code>
     </button>
   );
 };

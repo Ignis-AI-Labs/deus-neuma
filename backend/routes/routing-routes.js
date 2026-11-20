@@ -282,6 +282,7 @@ const maskedService = async (entry, store) => {
   return {
     ...maskCredential(entry, state, storeEntry), service: entry.service,
     group: entry.group ?? null, format: entry.format ?? 'key', keyEnv: entry.keyEnv ?? null,
+    partOf: entry.partOf ?? null, label: entry.label ?? null,
     source: stored ? 'stored' : fromEnv ? 'env' : null,
   };
 };

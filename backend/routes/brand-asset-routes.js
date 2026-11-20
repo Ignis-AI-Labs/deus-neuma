@@ -32,10 +32,9 @@ import { workspaceBrandsDir } from '../services/branding/kit-locate.js';
 const router = Router();
 const log = createLogger('Brands.Assets');
 
-// ⚠️ Auth is NOT applied here. brand-routes.js mounts this behind its own
-// requireAuth, and opens the ?token= door for /faces/:id/file just above it —
-// one door and one gate for the whole lane, rather than two of each to keep in
-// step. Every handler below can rely on req.walletAddress.
+// Auth is applied by brand-routes.js: ordinary Authorization, or an exact-face
+// short-lived ticket for the stylesheet's bare GET. Every handler below can
+// rely on req.walletAddress.
 
 /**
  * How a brand kit is EDITED, plus what the cards demand of it.

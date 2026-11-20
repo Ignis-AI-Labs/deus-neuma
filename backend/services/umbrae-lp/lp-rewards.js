@@ -25,6 +25,8 @@ import { readPositions } from './lp-view.js';
 import { bookTick } from './lp-book.js';
 import { runSend } from './lp-trade.js';
 import { tellLpOwner } from './lp-report.js';
+import { withRewardLock } from './lp-reward-lock.js';
+import { proveLpReceipt } from './lp-receipt-proof.js';
 
 const file = (neumaId) => path.join(neumaWorkspace._path(neumaId), 'config', 'lp-rewards.json');
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -32,7 +34,7 @@ const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 export const OPEN_GOALS_MAX = 5;
 export const COST_MAX_USD = 1_000_000;
 const OPEN = Object.freeze(['working', 'requested']);
-const refuse = (reason) => Object.freeze({ ok: false, reason });
+const refuse = (reason, extra = {}) => Object.freeze({ ok: false, reason, ...extra });
 
 /** The member's goals, newest last. impure — reads config. */
 export const readGoals = async (neumaId) => {
@@ -114,7 +116,7 @@ export const requestReward = async (neumaId, goalId) => {
  * @param {'approved'|'declined'|'delivered'} answer
  * @param {{note?: string, provider?: object}} [opts]
  */
-export const answerReward = async (neumaId, goalId, answer, { note, provider, receiptProvider, receiptConfirmations } = {}) => {
+const answerRewardLocked = async (neumaId, goalId, answer, { note, provider, receiptProvider, receiptConfirmations } = {}) => {
   const goals = await readGoals(neumaId);
   const goal = goals.find((g) => g.id === goalId);
   const said = typeof note === 'string' && note.trim() ? note.trim().slice(0, 500) : null;
@@ -126,18 +128,36 @@ export const answerReward = async (neumaId, goalId, answer, { note, provider, re
     return Object.freeze({ ok: true, goal });
   }
   if (!['approved', 'declined'].includes(answer)) return refuse('The answer is approved, declined or delivered.');
+  if (goal?.status === 'paying' && goal.paymentUncertain && goal.txHash) {
+    if (answer !== 'approved' || !provider) return refuse('The reward payment is still unresolved. Reconcile its transaction before answering again.', { uncertain: true, txHash: goal.txHash });
+    const receipt = await provider.send('eth_getTransactionReceipt', [goal.txHash]).catch(() => null);
+    if (receipt && Number(receipt.status) === 0) {
+      Object.assign(goal, { status: 'requested', paymentUncertain: false });
+      await writeGoals(neumaId, goals);
+      return refuse('The reward payment reverted. It can be approved again.');
+    }
+    const proof = receipt ? await proveLpReceipt({ primary: provider, secondary: receiptProvider, minConfirmations: receiptConfirmations, timeoutMs: 0, hash: goal.txHash }) : { ok: false };
+    if (!proof.ok) return refuse('The reward payment is still unresolved. Reconcile its transaction before answering again.', { uncertain: true, txHash: goal.txHash });
+    Object.assign(goal, { status: 'paid', paidAt: new Date().toISOString(), paymentUncertain: false, ...(said ? { note: said } : {}) });
+    await writeGoals(neumaId, goals);
+    await neumaWorkspace.audit(neumaId, 'LP_REWARD_PAID', { id: goal.id, costUsd: goal.costUsd, reconciled: true });
+    signalWake({ seat: neumaId, reason: 'lp', ref: `reward-${goal.id}-approved`, detail: { event: 'reward-answered', answer, what: goal.what.slice(0, 80), costUsd: goal.costUsd, note: said?.slice(0, 120) ?? null } });
+    return Object.freeze({ ok: true, goal });
+  }
   if (goal?.status !== 'requested') return refuse('That reward is not waiting for an answer.');
   if (answer === 'approved') {
-    // Marked before paying, so a second press finds it no longer waiting and pays nothing.
     goal.status = 'paying';
     await writeGoals(neumaId, goals);
-    const paid = await runSend(neumaId, { to: 'operator', token: 'USDC', amount: goal.costUsd.toFixed(2), why: `reward: ${goal.what}` }, { purpose: 'reward', provider, receiptProvider, receiptConfirmations });
+    // Paid to the wallet of the owner record itself, never to whoever answers to a name (audit PR600 P6-22).
+    const owner = await neumaWorkspace.readOwner(neumaId).catch(() => null);
+    const paid = !owner?.wallet ? refuse('this house member has no owner record to pay') : await runSend(neumaId, { to: owner.wallet, token: 'USDC', amount: goal.costUsd.toFixed(2), why: `reward: ${goal.what}` }, { purpose: 'reward', provider, receiptProvider, receiptConfirmations });
     if (!paid.ok) {
-      goal.status = 'requested';
+      if (paid.uncertain) Object.assign(goal, { txHash: paid.txHash ?? null, paymentUncertain: true });
+      else goal.status = 'requested';
       await writeGoals(neumaId, goals);
-      return refuse(`The reward could not be paid: ${paid.reason}`);
+      return refuse(`The reward could not be paid: ${paid.reason}`, { uncertain: paid.uncertain === true, txHash: paid.txHash });
     }
-    Object.assign(goal, { status: 'paid', paidAt: new Date().toISOString(), txHash: paid.txHashes[0], ...(said ? { note: said } : {}) });
+    Object.assign(goal, { status: 'paid', paidAt: new Date().toISOString(), txHash: paid.txHashes[0], paymentUncertain: false, ...(said ? { note: said } : {}) });
   } else {
     Object.assign(goal, { status: 'working', declinedAt: new Date().toISOString(), note: said });
   }
@@ -146,6 +166,10 @@ export const answerReward = async (neumaId, goalId, answer, { note, provider, re
   signalWake({ seat: neumaId, reason: 'lp', ref: `reward-${goal.id}-${answer}`, detail: { event: 'reward-answered', answer, what: goal.what.slice(0, 80), costUsd: goal.costUsd, note: said?.slice(0, 120) ?? null } });
   return Object.freeze({ ok: true, goal });
 };
+
+export const answerReward = (neumaId, goalId, answer, opts = {}) => withRewardLock(
+  file(neumaId), () => answerRewardLocked(neumaId, goalId, answer, opts),
+);
 
 /**
  * The goals as lines the member reads, with its progress. Pure.

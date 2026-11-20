@@ -125,10 +125,17 @@ describe('setting up a position', () => {
     expect(stepWords(setupOf('cro', 'merc', bare).steps.find((s) => s.id === 'facts'))).toBe('THE SEAT\'S — File what a buyer may be told');
     expect(setupOf('cro', 'merc', ready).steps.slice(-2).map(stepWords)).toEqual(['OPTIONAL — Attach a contact-data provider', 'OPTIONAL — Turn paid lead data on, or leave it off']);
     const position = (state) => foldBoard({ holders: { cos: null, cro: 'merc', cmo: null, clo: null, cso: null, cfo: null, cao: null }, names: new Map([['merc', 'Sol']]), waiting: [], connections: [], setupState: state }).find((p) => p.office === 'cro');
-    expect(hubTabs(position(bare))[0]).toEqual({ id: '_setup', label: 'SETUP · 1/12' });
-    expect(pickTab(position(bare), undefined)).toBe('_setup');
-    expect(hubTabs(position(ready)).map((t) => t.id)).toEqual(['model', 'campaigns', 'leads', 'deals', 'mailbox', '_switches', '_eyes', '_setup']);
-    expect(hubTabs(position(ready)).at(-1).label).toBe('SETUP · DONE');
+    // The sales hub is its pipeline (Design note, 2026-11-18: SETUP is its first stage, where it opens until the seat is ready.
+    expect(hubTabs(position(bare))[0]).toEqual({ id: 'setup', label: 'SETUP' });
+    expect(pickTab(position(bare), undefined)).toBe('setup');
+    expect(hubTabs(position(ready)).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'emails', 'sent', 'replies', 'deals', 'campaigns', 'leads', 'model', 'mailbox', '_switches', '_eyes']);
+    expect(pickTab(position(ready), undefined)).toBe('discover');
+    // Every other hub keeps its tabs: SETUP leads while a needed step is open, then steps back to last.
+    const other = (done) => ({ office: 'cmo', functions: [{ id: 'campaigns', label: 'CAMPAIGNS' }], connections: [], setup: { done, total: 5 } });
+    expect(hubTabs(other(1))[0]).toEqual({ id: '_setup', label: 'SETUP · 1/5' });
+    expect(pickTab(other(1), undefined)).toBe('_setup');
+    expect(hubTabs(other(5)).map((t) => t.id)).toEqual(['campaigns', '_eyes', '_setup']);
+    expect(hubTabs(other(5)).at(-1).label).toBe('SETUP · DONE');
     expect(railRow(position(bare))).toMatchObject({ setupOpen: 11, setup: '1/12' });
   });
 
@@ -184,15 +191,18 @@ describe('the business model of a company', () => {
     expect(() => makeModel({ ...MODEL, value: '', price: ' ' })).toThrow(/a business model needs: value \(what changes for them\), price \(what it costs and how you earn\)/);
   });
 
-  test('the operator\'s model stands at once; a member\'s waits, and is approved or returned', () => {
+  test('the operator\'s model stands at once; a member\'s waits, and only its exact proposal is settled', () => {
     const filed = { type: 'filed', company: 'umbrae', model: MODEL, by: 'merc', at: 't1' };
-    expect(foldModels([filed]).get('umbrae')).toMatchObject({ approved: null, proposal: MODEL, by: 'merc' });
+    expect(foldModels([filed]).get('umbrae')).toMatchObject({ approved: null, proposal: MODEL, proposalId: 'filed-0', by: 'merc' });
+    expect(foldModels([filed, { type: 'approved', company: 'umbrae', proposalId: 'filed-0', at: 't2' }]).get('umbrae')).toMatchObject({ approved: MODEL, proposal: null, proposalId: null });
+    expect(foldModels([filed, { type: 'returned', company: 'umbrae', proposalId: 'filed-0', note: 'say the price', at: 't2' }]).get('umbrae')).toMatchObject({ approved: null, proposal: null, proposalId: null, returned: 'say the price' });
     expect(foldModels([filed, { type: 'approved', company: 'umbrae', at: 't2' }]).get('umbrae')).toMatchObject({ approved: MODEL, proposal: null });
-    expect(foldModels([filed, { type: 'returned', company: 'umbrae', note: 'say the price', at: 't2' }]).get('umbrae')).toMatchObject({ approved: null, proposal: null, returned: 'say the price' });
-    expect(foldModels([{ ...filed, by: 'operator' }]).get('umbrae')).toMatchObject({ approved: MODEL, proposal: null });
-    // A new proposal never unseats the model that stands; an approval with nothing waiting changes nothing.
+    expect(foldModels([{ ...filed, by: 'operator' }]).get('umbrae')).toMatchObject({ approved: MODEL, proposal: null, proposalId: null });
+    // A stale id cannot settle a replacement; legacy id-less settlement events keep their historical meaning.
     const next = { ...MODEL, price: 'A new fee' };
-    expect(foldModels([{ ...filed, by: 'operator' }, { ...filed, model: next }]).get('umbrae')).toMatchObject({ approved: MODEL, proposal: next });
+    const replacement = [{ ...filed, by: 'operator' }, { ...filed, model: next }];
+    expect(foldModels(replacement).get('umbrae')).toMatchObject({ approved: MODEL, proposal: next, proposalId: 'filed-1' });
+    expect(foldModels([...replacement, { type: 'approved', company: 'umbrae', proposalId: 'filed-0', at: 't2' }]).get('umbrae')).toMatchObject({ approved: MODEL, proposal: next, proposalId: 'filed-1' });
     expect(foldModels([{ type: 'approved', company: 'umbrae', at: 't0' }]).get('umbrae')).toMatchObject({ approved: null, proposal: null });
   });
 
@@ -301,11 +311,11 @@ describe('the positions board and window', () => {
     expect(pickPosition(positions, 'nope').office).toBe('cos');
     expect(pickPosition([], 'cro')).toBe(null);
     const sales = positions.find((p) => p.office === 'cro');
-    expect(hubTabs(sales).map((t) => t.id)).toEqual(['model', 'campaigns', 'leads', 'deals', 'mailbox', '_switches', '_eyes']);
-    expect(hubTabs(sales).find((t) => t.id === '_switches').label).toBe('SETTINGS · 0/2');
+    expect(hubTabs(sales).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'emails', 'sent', 'replies', 'deals', 'campaigns', 'leads', 'model', 'mailbox', '_switches', '_eyes']);
+    expect(hubTabs(sales).find((t) => t.id === '_switches').label).toBe('SETTINGS');
     expect(hubTabs(positions.find((p) => p.office === 'clo')).map((t) => t.id)).toEqual(['legal', '_eyes']);
     expect(pickTab(sales, 'mailbox')).toBe('mailbox');
-    expect(pickTab(sales, 'legal')).toBe('model');
+    expect(pickTab(sales, 'legal')).toBe('discover');
     expect(seatOptions([{ laneId: 'merc', name: 'Sol' }, { laneId: 'aure', name: 'Metidar' }], sales)).toEqual([{ value: 'aure', label: 'Metidar' }]);
   });
 

@@ -39,7 +39,7 @@ const LINE_MAX_TOKENS = 90;
 const THINK_ROOM = 1536;
 const TIMEOUT_MS = 120_000;
 const VERDICTS = Object.freeze(['supports', 'does_not_support', 'wrong_provision', 'cannot_tell']);
-export const BLOCKING = Object.freeze(['does_not_support', 'wrong_provision']);
+export const BLOCKING = Object.freeze(['does_not_support', 'wrong_provision', 'cannot_tell']);
 export const HOUSE_MODEL = 'house';
 
 // ── the setting ──
@@ -177,5 +177,5 @@ export const readingText = (result, rows) => [
     const { verdict, why } = result.readings.get(r.n);
     return `${r.n}. ${verdict.toUpperCase().replace(/_/g, ' ')} · ${r.record.authority.trim()}, ${r.record.pinCite.trim()} — ${why}`;
   }),
-  result.ok ? null : (result.failed ? null : 'Nothing that rests on a row the reader judged DOES NOT SUPPORT or WRONG PROVISION may land: fix the claim or the pin cite from the passage, or remove it.'),
+  result.ok ? null : (result.failed ? null : 'Nothing may land unless every row is affirmed SUPPORTS: fix a rejected claim or pin cite from the passage, or get a clear reading for a CANNOT TELL row.'),
 ].filter(Boolean).join('\n');

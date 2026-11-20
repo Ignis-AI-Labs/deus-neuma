@@ -104,10 +104,11 @@ export const stepItems = ({ candidates = [], prospects = [], leads = [], held = 
     case 'leads': return fits.filter((p) => p.stage === 'found' && peopleOf(p).length).map((p) => ({ ...p, top: peopleOf(p)[0] }));
     case 'approve': return fits.filter((p) => !p.listApproved);
     case 'outreach': {
-      const staged = new Set(drafts.filter((d) => d.state === 'waiting').flatMap((d) => d.to ?? []).map((a) => String(a).toLowerCase()));
+      // Each lead with the id of the email staged to it, if one waits: staging again replaces that one.
+      const draftTo = new Map(drafts.filter((d) => d.state === 'waiting').flatMap((d) => (d.to ?? []).map((a) => [String(a).toLowerCase(), d.id])));
       return fits.filter((p) => p.stage === 'promoted').map((p) => ({ prospect: p, lead: byId.get(p.leadId) ?? null }))
         .filter(({ lead }) => lead && lead.contact && !WRITTEN.has(lead.status))
-        .map(({ prospect, lead }) => ({ ...lead, domain: prospect.domain, staged: staged.has(String(lead.contact).toLowerCase()) }));
+        .map(({ prospect, lead }) => ({ ...lead, domain: prospect.domain, staged: draftTo.has(String(lead.contact).toLowerCase()), draft: draftTo.get(String(lead.contact).toLowerCase()) ?? null }));
     }
     default: return [];
   }

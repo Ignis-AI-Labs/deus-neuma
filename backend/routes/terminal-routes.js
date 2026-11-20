@@ -1,6 +1,6 @@
 /**
  * Terminal routes — the WebSocket connection handler for the integrated
- * terminal. Mirrors the portal's auth-on-connect (`?token=` → verify → close
+ * terminal. Exact-resource ticket on connect (`?ticket=` → verify → close
  * 4001), admits only the install owner or a co-owner (else close 4003), then
  * binds an owned PTY. Disposal detaches; explicit close kills.
  *
@@ -13,7 +13,8 @@
  */
 import os from 'node:os';
 import { Router } from 'express';
-import { verifySessionToken, requireAuth } from '../services/auth.js';
+import { requireAuth } from '../services/auth.js';
+import { deskTicketSessionForUrl } from '../services/desk-tickets.js';
 import { passesInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 import { resolveFocusPath } from '../services/user-files.js';
@@ -43,8 +44,7 @@ const resolveCwd = (requestedCwd) => resolveFocusPath(requestedCwd) || os.homedi
 export const setupTerminalRoutes = (wss) => {
   wss.on('connection', async (ws, req) => {
     const params = new URL(req.url, 'http://localhost').searchParams;
-    const token = params.get('token');
-    const session = token ? verifySessionToken(token) : null;
+    const session = deskTicketSessionForUrl(req.url);
     if (!session) {
       ws.close(4001, 'Unauthorized');
       return;
@@ -72,7 +72,7 @@ export const setupTerminalRoutes = (wss) => {
     const termId = params.get('term');
     const cwd = termId ? undefined : resolveCwd(params.get('cwd'));
     if (ws.readyState !== ws.OPEN) return;
-    if (!verifySessionToken(token)) { ws.close(4001, 'Unauthorized'); return; }
+    if (session.expiresAt <= Date.now()) { ws.close(4001, 'Unauthorized'); return; }
 
     // Agent launch (?launch=<id>) — an UNTRUSTED id resolved ONLY against
     // the closed catalog (agent-launch.js): unknown id or a binary missing
@@ -110,7 +110,7 @@ export const setupTerminalRoutes = (wss) => {
     expiryTimer.unref?.();
 
     ws.on('message', (raw) => {
-      if (!verifySessionToken(token)) { expire(); return; }
+      if (session.expiresAt <= Date.now()) { expire(); return; }
       let msg;
       try { msg = JSON.parse(raw.toString()); } catch { return; }
       if (msg.type === 'terminal:data') writeToTerminal(ws, msg.data);

@@ -11,6 +11,7 @@
  * the fork live test (umbrae-lp-fork-live.test.js, -t aggregator).
  */
 import fs from 'node:fs/promises';
+import process from 'node:process';
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { ethers } from 'ethers';
 import { createTempDir } from '../helpers/temp-fs.js';
@@ -23,7 +24,6 @@ import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/work
 import { KYBER_ROUTER, KYBER_ABI } from '../../core/wallet/aggregator-policy.js';
 import { openLpWallet } from '../../backend/services/umbrae-lp/lp-wallet.js';
 import { runSwap } from '../../backend/services/umbrae-lp/lp-trade.js';
-import { aggregatorQuote } from '../../backend/services/umbrae-lp/lp-aggregator.js';
 import { marketQuote } from '../../backend/services/umbrae-lp/lp-market.js';
 import { readBook } from '../../backend/services/umbrae-lp/lp-book.js';
 
@@ -74,7 +74,9 @@ describe('the aggregator road', () => {
   test('KyberSwap pays more (Umbrae has no route on this node): its router\'s swap is signed, mined from the LP wallet, paying the wallet, above the run\'s floor', async () => {
     const out = await swapUsdc();
     expect(out).toMatchObject({ ok: true, via: 'kyberswap', exchanges: ['uniswap-v3', 'aerodrome'], compared: { umbrae: null, kyberswap: '0.001' } });
-    const tx = await provider.getTransaction(out.txHashes.at(-1));
+    expect(out.approvalCleanup).toMatchObject({ warnings: [] });
+    expect(out.approvalCleanup.txHashes).toHaveLength(1);
+    const tx = await provider.getTransaction(out.txHashes[0]);
     expect(tx.from).toBe(lp);
     expect(tx.to).toBe(KYBER_ROUTER);
     const { desc } = KYBER.parseTransaction({ data: tx.data }).args[0];
@@ -89,7 +91,11 @@ describe('the aggregator road', () => {
   }, 60000);
 
   test('a KyberSwap that pays someone else, takes a fee, names another router or lowers the floor: refused, nothing signed', async () => {
-    for (const [mode, said] of [['pays-thief', /pay a different wallet/], ['fee', /pays a fee/], ['other-router', /router other than its own/], ['low-floor', /minimum out is lower than the floor/]]) {
+    for (const [mode, said] of [
+      ['pays-thief', /pay a different wallet/], ['fee', /pays a fee/], ['other-router', /router other than its own/], ['low-floor', /minimum out is lower than the floor/],
+      ['wrong-executor', /executor other than/], ['approve-target', /approval target/], ['wrong-src-receiver', /source receivers/],
+      ['wrong-src-amount', /do not sum/], ['flag-0x200', /flags/], ['simple-mode', /full swap/],
+    ]) {
       kyber.state.mode = mode;
       const before = await nonce(lp);
       const out = await swapUsdc();
@@ -113,19 +119,9 @@ describe('the aggregator road', () => {
     expect(kyber.seen).toEqual([]);
   }, 60000);
 
-  test('pinned: a host that is not KyberSwap\'s is never called', async () => {
-    const prior = process.env.NEUMA_KYBER_ORIGIN;
-    process.env.NEUMA_KYBER_ORIGIN = 'https://evil.example';
-    try {
-      expect(await aggregatorQuote({ tokenIn: USDC, tokenOut: WETH, amountIn: 5n })).toEqual({ ok: false, error: 'refusing to call a host that is not KyberSwap' });
-    } finally {
-      process.env.NEUMA_KYBER_ORIGIN = prior;
-    }
-  });
-
   test('a quote shows both roads, the better marked', async () => {
     const text = await marketQuote({ tokenIn: 'USDC', tokenOut: 'WETH', amount: '0.000005' });
-    expect(text).toMatch(/^QUOTE 0\.000005 USDC → WETH, two roads:/);
+    expect(text).toMatch(/^QUOTE 0\.000005 USDC \(0x[0-9a-fA-F]{40}\) → WETH \(0x[0-9a-fA-F]{40}\), two roads:/);
     expect(text).toContain("Umbrae's router: no route takes this amount whole");
     expect(text).toContain('KyberSwap: 0.001 WETH via uniswap-v3, aerodrome');
     expect(text).toContain('lp/swap takes the road that pays more.');

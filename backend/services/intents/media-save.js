@@ -12,6 +12,7 @@
 import { neumaWorkspace } from '../../../core/index.js';
 import { webSettings } from '../web-settings.js';
 import { fetchMediaBytes } from '../media-fetch.js';
+import { screenWebEgress } from '../web-egress-screen.js';
 import { mediaLibrary } from '../media-library.js';
 import { createLogger } from '../logger.js';
 
@@ -63,6 +64,9 @@ export const mediaSaveIntent = Object.freeze({
     if (!/^https?:\/\//.test(url)) {
       return { ok: false, status: 'invalid', reason: 'media/save needs {url} — the direct http(s) address of the image file' };
     }
+    // A key spelled into the address is refused before any card, in every mode (audit P6-04).
+    const secret = screenWebEgress('the image address', url);
+    if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
     return { ok: true, value: { url, alt: payload?.alt } };
   },
 

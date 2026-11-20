@@ -26,7 +26,7 @@
 // citation or a legal authority, and a bare section sign only beside one.
 // Quoting a form, a document, a post or a person is ordinary writing.
 
-import { squeeze, unresolvedMarks, unboundQuotes, quoteSegments, holdsInOrder } from './citation-record.js';
+import { squeeze, unresolvedMarks, unboundQuoteLines, quoteSegments, holdsInOrder } from './citation-record.js';
 import { cloDesignation } from './clo-designation.js';
 import { sendToolEvent } from '../portal-tools/tool-events.js';
 import { queuePlatformFollowUp } from '../platform-follow-up.js';
@@ -52,12 +52,13 @@ const MENTIONS = Object.freeze([
   [/\bFINRA\s+Rule\s+(\d{4})/gi, (m) => `finrarule${m[1]}`],
   [/\b(?:Regulation|Directive|Reg\.)\s*\((?:EU|EC|EEC)\)\s*(?:No\.?\s*)?(\d{2,4}\/\d{1,4})/gi, (m) => m[1]],
   [/\bS\.?\s?I\.?\s*(\d{4}\/\d{1,4})/g, (m) => m[1]],
-  [/\b([A-Z][\w.&'-]*)\s+v\.\s+([A-Z][\w.&'-]*)/g, (m) => `${m[1]}v${m[2]}`],
+  // a party's name is bounded: unbounded, it reran from every dot of `A.A.A.…` (PR600 audit P6-125)
+  [/\b([A-Z][\w.&'-]{0,80})\s{1,20}v\.\s{1,20}([A-Z][\w.&'-]{0,80})/g, (m) => `${m[1]}v${m[2]}`],
 ]);
 const LEGAL_SIGNS = /§|\bArt\.\s*\d/;
 // A legal authority named in words: a regulator, a named Act, a numbered
 // Rule or lettered Regulation, or the law's own nouns.
-const AUTHORITY_NAMED = /\b(?:SEC|CFTC|FTC|FINRA|FCA|ESMA|EDPB|IRS|DOJ|OFAC|MiCA|MiFID|GDPR)\b|\b[A-Z][\w-]*(?:\s+[A-Z][\w-]*)*\s+Act\b|\bthe Act\b|\bRule\s+\d|\bRegulation\s+[A-Z]{1,3}\b/;
+const AUTHORITY_NAMED = /\b(?:SEC|CFTC|FTC|FINRA|FCA|ESMA|EDPB|IRS|DOJ|OFAC|MiCA|MiFID|GDPR)\b|\b[A-Z][\w-]{0,80}(?:\s+[A-Z][\w-]{0,80}){0,11}\s+Act\b|\bthe Act\b|\bRule\s+\d|\bRegulation\s+[A-Z]{1,3}\b/;
 const AUTHORITY_WORDS = /\b(?:statut\w*|regulations?|directives?|courts?|case law|precedent)\b/i;
 
 /** Does this line speak AS law — a citation the hold keys, or a legal authority named? Pure. */
@@ -65,9 +66,6 @@ export const speaksAsLaw = (line) => {
   const text = String(line ?? '');
   return citationMentions(text).length > 0 || AUTHORITY_NAMED.test(text) || AUTHORITY_WORDS.test(text);
 };
-
-// pure — the line of the answer a quoted span sits on.
-const lineOf = (text, span) => String(text ?? '').split('\n').find((line) => line.includes(span)) ?? '';
 
 /** Every citation the text makes that the hold can key. Pure. */
 export const citationMentions = (text) => {
@@ -129,9 +127,14 @@ export const holdProblems = (text, confirmed, said = []) => {
   // A section or article sign the hold cannot key counts only beside a named authority.
   const signed = String(text ?? '').split('\n').some((line) => LEGAL_SIGNS.test(line) && speaksAsLaw(line));
   const heard = said.map(squeeze).filter(Boolean);
-  const unbound = unboundQuotes(text, confirmed)
-    .filter((span) => speaksAsLaw(lineOf(text, span)))
-    .filter((span) => !heard.some((words) => holdsInOrder(words, quoteSegments(span))));
+  // each line is judged once however many quotations it carries
+  const asLaw = new Map();
+  const lineSpeaksAsLaw = (line) => asLaw.get(line) ?? asLaw.set(line, speaksAsLaw(line)).get(line);
+  const unbound = unboundQuoteLines(text, confirmed)
+    .filter(({ line }) => lineSpeaksAsLaw(line))
+    .map(({ span }) => ({ span, segments: quoteSegments(span) }))
+    .filter(({ segments }) => !heard.some((words) => holdsInOrder(words, segments)))
+    .map(({ span }) => span);
   return [
     marks.length ? `it still carries ${marks.join(', ')}` : null,
     !confirmed.length && (mentions.length || signed) ? 'no citation check has passed in this chat, yet it cites law' : null,

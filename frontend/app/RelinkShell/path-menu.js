@@ -87,10 +87,10 @@ export const toolLinePath = (summary) => {
  * @param {number} x
  * @param {number} y
  */
-export const openPathMenu = (path, x, y) => window.dispatchEvent(new CustomEvent('neuma:path-menu', { detail: { path, x, y } }));
+export const openPathMenu = (path, x, y, bases = []) => window.dispatchEvent(new CustomEvent('neuma:path-menu', { detail: { path, x, y, bases } }));
 
-/** impure — ask the desk host to open a path on plain click/Enter. */
-export const openPathDoor = (path) => window.dispatchEvent(new CustomEvent('neuma:path-open', { detail: { path } }));
+/** impure — ask the desk host to open a path on plain click/Enter. `bases`: the folders a relative path may be under (path-bases.js). */
+export const openPathDoor = (path, bases = []) => window.dispatchEvent(new CustomEvent('neuma:path-open', { detail: { path, bases } }));
 
 /**
  * impure (reads layout) — where a keyboard-raised menu opens: under the door.

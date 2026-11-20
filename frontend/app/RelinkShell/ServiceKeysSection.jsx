@@ -6,6 +6,9 @@
 // contract: a stored key is never shown back, only THAT it is stored. A
 // service is never a model, a route or a connection, so there is nothing to
 // test or connect here: only set, replace and remove.
+//
+// A service that takes two values (Tomba: its API key and its secret) is ONE
+// row with a field for each, one under the other (Design note, 2026-11-18: […]).
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +17,7 @@ import { setServiceKey, removeServiceKey } from '../../services/routing.js';
 import { InlineActionConfirm } from './InlineActionConfirm.jsx';
 import { KeyLink } from './KeyLink.jsx';
 import { CredentialRow } from './CredentialMap.jsx';
-import { passesState, serviceItem } from './credential-view.js';
+import { passesState, serviceItem, withParts } from './credential-view.js';
 
 // What a value looks like, said in the empty field.
 const PLACEHOLDER = Object.freeze({ url: 'https://… (the full address, key included)', id: 'account id' });
@@ -26,7 +29,11 @@ const sourceLine = (service) => {
   return service.keyEnv ? `Not set. Save it here, or set ${service.keyEnv} in the env file.` : null;
 };
 
-const ServiceKeyCard = ({ service, item, open, onToggle, onChanged }) => {
+// pure — the service's short name, without what it is for: "Tomba".
+const shortName = (name) => String(name ?? '').replace(/\s*\(.*$/, '');
+
+/** One value of a service: its field, SAVE, and REMOVE once saved. `labelled` names it when the row holds two. */
+const KeyField = ({ service, rowName, labelled, onChanged }) => {
   const { t } = useTranslation('settingsApi');
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,21 +56,21 @@ const ServiceKeyCard = ({ service, item, open, onToggle, onChanged }) => {
     setBusy(false);
   };
 
+  const label = labelled ? String(service.label ?? service.name) : null;
   return (
-    <CredentialRow item={item} open={open} onToggle={onToggle}>
-      {service.endpoint ? <p className="settings-note"><code>{service.endpoint}</code></p> : null}
+    <>
+      {label ? <div className="label-data">{label.toUpperCase()}</div> : null}
       {sourceLine(service) ? <p className="settings-note">{sourceLine(service)}</p> : null}
-      <KeyLink family="service" id={service.id} />
       <div className="settings-control">
         <input
           className="settings-input"
           type={service.format === 'id' ? 'text' : 'password'}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder={service.source === 'stored' ? t('serviceKeys.keyStoredPlaceholder') : (PLACEHOLDER[service.format] ?? t('serviceKeys.keyPlaceholder'))}
+          placeholder={service.source === 'stored' ? t('serviceKeys.keyStoredPlaceholder') : (label ?? PLACEHOLDER[service.format] ?? t('serviceKeys.keyPlaceholder'))}
           spellCheck={false}
           autoComplete="off"
-          aria-label={t('serviceKeys.keyAria', { name: service.name })}
+          aria-label={label ? `${shortName(rowName)} ${label}` : t('serviceKeys.keyAria', { name: service.name })}
           data-service-input={service.id}
           disabled={busy}
         />
@@ -78,7 +85,7 @@ const ServiceKeyCard = ({ service, item, open, onToggle, onChanged }) => {
             <InlineActionConfirm label={t('serviceKeys.removeConfirmAria')} confirmLabel={t('serviceKeys.remove')}
               busy={busy} onConfirm={() => act(() => removeServiceKey(service.id))}
               onCancel={() => { uiSound('close'); setConfirming(false); }}>
-              {t('serviceKeys.removeConfirm', { name: service.name })}
+              {t('serviceKeys.removeConfirm', { name: label ? `${shortName(rowName)} ${label}` : service.name })}
             </InlineActionConfirm>
           ) : (
             <button type="button" className="settings-set is-danger" disabled={busy}
@@ -89,6 +96,18 @@ const ServiceKeyCard = ({ service, item, open, onToggle, onChanged }) => {
         </div>
       ) : null}
       {error ? <p className="settings-err">{error}</p> : null}
+    </>
+  );
+};
+
+const ServiceKeyCard = ({ service, item, open, onToggle, onChanged }) => {
+  const parts = service.parts ?? [];
+  return (
+    <CredentialRow item={item} open={open} onToggle={onToggle}>
+      {service.endpoint ? <p className="settings-note"><code>{service.endpoint}</code></p> : null}
+      <KeyLink family="service" id={service.id} />
+      <KeyField service={service} rowName={service.name} labelled={parts.length > 0} onChanged={onChanged} />
+      {parts.map((part) => <KeyField key={part.id} service={part} rowName={service.name} labelled onChanged={onChanged} />)}
     </CredentialRow>
   );
 };
@@ -111,7 +130,7 @@ const groupsOf = (services) => {
  */
 export const ServiceKeysSection = ({ services, error, onChanged, stateFilter, openKey, onOpen }) => {
   const { t } = useTranslation('settingsApi');
-  const shown = (services ?? []).filter((s) => passesState(serviceItem(s), stateFilter));
+  const shown = withParts(services).filter((s) => passesState(serviceItem(s), stateFilter));
   if (stateFilter && shown.length === 0) return null;
 
   return (

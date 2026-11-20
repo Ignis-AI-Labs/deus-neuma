@@ -99,13 +99,15 @@ describe('Social API routes', () => {
       expect(res.body.createdAt).toBeDefined();
     });
 
-    test('neuma-authored emanation has authorType=neuma', async () => {
+    test('a client cannot forge neuma authorship; the wallet session is human', async () => {
       const res = await request(app)
         .post('/api/v1/social/emanations').set(witness.header)
         .send({ content: { text: 'I think therefore I am' }, authorType: 'neuma' });
 
-      expect(res.status).toBe(201);
-      expect(res.body.authorType).toBe('neuma');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/derived from the authenticated wallet/);
+      const feed = await request(app).get('/api/v1/social/feed/global');
+      expect(feed.body.emanations).toEqual([]);
     });
   });
 

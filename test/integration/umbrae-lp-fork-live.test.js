@@ -166,7 +166,7 @@ describe.skipIf(!ASKED)('the LP wallet against live Umbrae and its real contract
     log('approval steps', JSON.stringify(approvals.payload.steps.map((s) => ({ kind: s.kind, approveAmount: s.approveAmount, required: s.required }))));
     const maxApprove = { [ethers.getAddress(pool.tokenX.address)]: '0', [USDC]: '2000000' };
     for (const step of approvals.payload.steps) {
-      const done = await signAndMine(step.transaction, { kind: 'approval', pool: pool.address }, maxApprove);
+      const done = await signAndMine(step.transaction, { kind: 'approval', pool: pool.address, spender: UMBRAE_BASE.positionManager }, maxApprove);
       if (!done.ok) log('approval not signed or reverted:', done.reason ?? done.receipt?.status);
       expect(done.ok).toBe(true);
     }
@@ -210,7 +210,7 @@ describe.skipIf(!ASKED)('the LP wallet against live Umbrae and its real contract
     expect(approvals.ok).toBe(true);
     log('close approval steps', JSON.stringify(approvals.payload.steps.map((s) => s.kind)));
     for (const step of approvals.payload.steps) {
-      expect((await signAndMine(step.transaction, { kind: 'approval', pool: pool.address }, {})).ok).toBe(true);
+      expect((await signAndMine(step.transaction, { kind: 'approval', pool: pool.address, spender: UMBRAE_BASE.positionManager }, {})).ok).toBe(true);
     }
     const usdc = async () => BigInt(await provider.call({ to: USDC, data: erc20.encodeFunctionData('balanceOf', [signer.address]) }));
     const deadline = BigInt((await provider.getBlock('latest')).timestamp + 600);
@@ -418,7 +418,7 @@ describe.skipIf(!ASKED)('a new pool on Umbrae\'s real factory, on a fork of Base
     const btcUsd = 95_000; // the factory takes any price; Umbrae's plan is what holds it to the market
     const activeId = binIdFor(1 / btcUsd, binStep); // cbBTC (Y) per USDC (X), whole tokens
     const seed = 5_000_000n;
-    const approved = await signAtRealFees({ to: USDC, data: approve.encodeFunctionData('approve', [UMBRAE_FACTORY, seed]), chainId: 8453 }, { kind: 'approval' }, { [USDC]: (seed * 2n).toString() });
+    const approved = await signAtRealFees({ to: USDC, data: approve.encodeFunctionData('approve', [UMBRAE_FACTORY, seed]), chainId: 8453 }, { kind: 'approval', spender: UMBRAE_FACTORY, token: USDC }, { [USDC]: (seed * 2n).toString() });
     expect(approved.ok).toBe(true);
     const created = await signAtRealFees(
       { to: UMBRAE_FACTORY, data: factory.encodeFunctionData('createPair', [tokenX, tokenY, activeId, binStep, baseFee, seed, 0n]), chainId: 8453 },

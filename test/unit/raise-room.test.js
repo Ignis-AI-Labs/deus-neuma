@@ -6,7 +6,7 @@
  * waits for counsel; a being never reads the receiving account.
  */
 import { describe, test, expect } from 'vitest';
-import { makeMandate, judgeSign, makeFactsSheet, judgeReview, foldRaise, raiseForBeings } from '../../backend/services/raise/raise-shape.js';
+import { makeMandate, judgeSign, makeFactsSheet, judgeReview, foldRaise, raiseForBeings, judgeReach } from '../../backend/services/raise/raise-shape.js';
 import { judgeStatus } from '../../backend/services/raise/raise-store.js';
 
 const NOW = '2026-11-10T09:00:00.000Z';
@@ -85,5 +85,23 @@ describe('the facts sheet', () => {
     const newer = sheet();
     const refiled = foldRaise([{ type: 'facts', sheet: s, at: NOW }, judgeReview(filed, { sheetId: s.id, verdict: 'approved', now: NOW }).event, { type: 'facts', sheet: newer, at: NOW }]);
     expect([refiled.sheet.id, refiled.review, refiled.approved.id]).toEqual([newer.id, null, s.id]);
+  });
+});
+
+describe('uncertain outreach in the raise record', () => {
+  test('a maybe-sent reach stays in the thread and spends its pace/follow-up allowance', () => {
+    const m = mandate({ limits: { perDay: 1, followUps: 0 } });
+    const s = sheet();
+    const state = foldRaise([
+      { type: 'mandate', mandate: m, at: NOW },
+      { type: 'signed', id: m.id, account: { kind: 'wallet', address: `0x${'ab'.repeat(20)}` }, by: 'operator', at: NOW },
+      { type: 'facts', sheet: s, at: NOW },
+      { type: 'reviewed', sheetId: s.id, verdict: 'approved', at: NOW },
+      { type: 'investor', investor: { id: 'i-u', name: 'Uma', email: 'uma@fund.example' }, at: NOW },
+      { type: 'cleared', id: 'i-u', verdict: 'cleared', at: NOW },
+      { type: 'reach', id: 'i-u', to: 'uma@fund.example', subject: 'Hello', text: 'Body', delivery: 'maybe-sent', by: 'merc', at: NOW },
+    ]);
+    expect(state.investors[0].thread[0]).toMatchObject({ delivery: 'maybe-sent' });
+    expect(judgeReach(state, { investorId: 'i-u', now: NOW }).ok).toBe(false);
   });
 });

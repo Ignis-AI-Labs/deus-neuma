@@ -4,15 +4,20 @@
 // title, COS · OPTIO, who holds it, how many decisions wait); the chosen position's hub on
 // the right. SHINKEI: every count is the length of the list it opens.
 
+import { STAGES, MORE, isPipelineTab } from '../company-line/sales-pipeline-view.js';
+
+// The sales position's hub is its pipeline (company-line/SalesPipeline.jsx): its stages in order, then what is not a stage.
+const pipelineTabs = () => [...STAGES, ...MORE].map((s) => ({ id: s.id, label: s.label }));
+
 /** The tabs of one position's hub: its functions, then SETTINGS (what it may be switched on or off to use) when it has any, then THEIR EYES. */
-export const hubTabs = (position) => [
+export const hubTabs = (position) => (position.office === 'cro' ? pipelineTabs() : [
   // SETUP leads while a needed step is open; once all are done it stays, last, for the optional ones.
   ...(position.setup && position.setup.done < position.setup.total ? [{ id: '_setup', label: `SETUP · ${position.setup.done}/${position.setup.total}` }] : []),
   ...position.functions.map((f) => ({ id: f.id, label: f.label })),
   ...(position.connections.length ? [{ id: '_switches', label: `SETTINGS · ${position.connections.filter((c) => c.on).length}/${position.connections.length}` }] : []),
   { id: '_eyes', label: 'THEIR EYES' },
   ...(position.setup && position.setup.done >= position.setup.total ? [{ id: '_setup', label: 'SETUP · DONE' }] : []),
-];
+]);
 
 /** One setup step's line: who does it, and whether it is done. */
 export const stepWords = (s) => `${s.done ? 'DONE' : s.optional ? 'OPTIONAL' : s.who === 'operator' ? 'YOURS' : 'THE SEAT\'S'} — ${s.label}`;
@@ -44,7 +49,16 @@ export const pickPosition = (positions, office) =>
   positions.find((p) => p.office === office) ?? positions.find((p) => p.waiting.length) ?? positions[0] ?? null;
 
 /** The tab to show inside a hub: the one asked for when the hub has it, else its first function. */
-export const pickTab = (position, tab) => (hubTabs(position).some((t) => t.id === tab) ? tab : hubTabs(position)[0].id);
+// The sales hub opens on SETUP while it is not done, then on DISCOVER; an older SETUP door lands on its stage.
+const salesTab = (position, tab) => {
+  const asked = tab === '_setup' ? 'setup' : tab;
+  if (isPipelineTab(asked)) return asked;
+  return position.setup && position.setup.done < position.setup.total ? 'setup' : 'discover';
+};
+export const pickTab = (position, tab) => {
+  if (position.office === 'cro') return salesTab(position, tab);
+  return hubTabs(position).some((t) => t.id === tab) ? tab : hubTabs(position)[0].id;
+};
 
 /** The members a seat may be given to, as select options; the holder is left out. */
 export const seatOptions = (members, position) =>

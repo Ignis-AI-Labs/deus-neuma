@@ -110,46 +110,6 @@ describe('readableBytes / fileUrl', () => {
   });
 });
 
-// The src a plain <img>/<video> is handed. `fileUrl` stays pure; the token is
-// added here, at the one impure edge that knows about a session.
-describe('fileSrc — the token an element can carry', () => {
-  const withSession = async (token, fn) => {
-    const store = new Map(token === null ? [] : [['authToken', token]]);
-    globalThis.sessionStorage = {
-      getItem: (k) => (store.has(k) ? store.get(k) : null),
-      setItem: (k, v) => store.set(k, String(v)),
-      removeItem: (k) => store.delete(k),
-    };
-    vi.resetModules();
-    try {
-      const { fileSrc } = await import('../../frontend/services/gallery-client.js');
-      await fn(fileSrc);
-    } finally {
-      delete globalThis.sessionStorage;
-      vi.resetModules();
-    }
-  };
-
-  test('appends the session token, so the element’s own GET is authenticated', () =>
-    withSession('tok-123', (fileSrc) => {
-      const src = fileSrc(item());
-      expect(src).toContain('/api/v1/gallery/file?');
-      expect(src).toContain('&token=tok-123');
-    }));
-
-  test('encodes the token — a base64 token carries + / and =', () =>
-    withSession('a+b/c=', (fileSrc) => {
-      expect(fileSrc(item())).toContain('&token=a%2Bb%2Fc%3D');
-    }));
-
-  test('no session ⇒ no empty token= param, just the plain url (the route 401s honestly)', () =>
-    withSession(null, (fileSrc) => {
-      const src = fileSrc(item());
-      expect(src).toBe(fileUrl(item()));
-      expect(src).not.toContain('token=');
-    }));
-});
-
 describe('the root allowlist — the whole of the gallery’s reach', () => {
   test('ComfyUI output is built in, so a fresh install has a working gallery', () => {
     const built = builtInRoots({ outputDir: '/data/comfyui/output' });

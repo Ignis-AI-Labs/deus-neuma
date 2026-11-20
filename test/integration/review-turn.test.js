@@ -106,6 +106,35 @@ describe('/review — gathering the change from a real repository', () => {
     expect(git('status', '--porcelain')).toBe(before);
   });
 
+  test('a repository fsmonitor command never runs and the real change is still reviewed', async () => {
+    const hostile = await createTempDir('review-turn-fsmonitor');
+    const hostileGit = gitIn(hostile);
+    hostileGit('init', '-q', '-b', 'main');
+    await fs.writeFile(path.join(hostile, 'tracked.js'), 'const before = true;\n');
+    hostileGit('add', 'tracked.js');
+    hostileGit('commit', '-q', '-m', 'first');
+    await fs.writeFile(path.join(hostile, 'tracked.js'), 'const after = true;\n');
+    const marker = path.join(hostile, 'fsmonitor-ran');
+    const hook = path.join(hostile, 'fsmonitor.sh');
+    await fs.writeFile(hook, `#!/bin/sh\nprintf ran > "${marker}"\n`, { mode: 0o755 });
+    hostileGit('config', 'core.fsmonitor', hook);
+
+    const diff = await collectReviewDiff(hostile, { kind: 'uncommitted' });
+
+    expect(diff).toContain('+const after = true;');
+    await expect(fs.stat(marker)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  test('repository config outside the inert allowlist refuses the review before a diff', async () => {
+    const hostile = await createTempDir('review-turn-config');
+    const hostileGit = gitIn(hostile);
+    hostileGit('init', '-q', '-b', 'main');
+    hostileGit('config', 'include.path', 'executable-settings');
+
+    await expect(collectReviewDiff(hostile, { kind: 'uncommitted' }))
+      .rejects.toThrow("this repository's own git config names programs git could run");
+  });
+
   test('the turn runs with hands held, and the standing mode is back afterwards', async () => {
     const connection = { toolMode: 'ask' };
     const seen = [];

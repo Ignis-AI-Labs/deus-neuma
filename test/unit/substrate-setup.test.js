@@ -8,6 +8,7 @@ import {
   recommendSubstrate,
   parseOllamaTags,
   parseLmStudioModels,
+  redactEndpoint,
 } from '../../backend/services/substrate-setup.js';
 import { describe, expect, test } from 'vitest';
 
@@ -133,5 +134,21 @@ describe('provider payload parsers (pure)', () => {
     expect(parseLmStudioModels({ data: [{ id: 'qwen3.5-122b' }] })).toEqual(['qwen3.5-122b']);
     expect(parseLmStudioModels({ data: [] })).toEqual([]);
     expect(parseLmStudioModels(undefined)).toEqual([]);
+  });
+});
+
+describe('public provider endpoint redaction (pure)', () => {
+  test('keeps the useful address and drops userinfo, query, and fragment', () => {
+    expect(redactEndpoint('http://127.0.0.1:11434')).toBe('http://127.0.0.1:11434');
+    expect(redactEndpoint(`http://setup-user:${'setup-pass'}@127.0.0.1:11434/api?access_token=fake-query#fake-fragment`))
+      .toBe('http://127.0.0.1:11434/api');
+    expect(redactEndpoint('https://user@example.com:443/v1/models?key=another#secret'))
+      .toBe('https://example.com:443/v1/models');
+  });
+
+  test('malformed input fails safe without throwing or carrying query data', () => {
+    expect(redactEndpoint('not a url?private=value')).toBe('not a url');
+    expect(redactEndpoint('//user:pass@host.invalid:1234/base?private=value')).toBe('//host.invalid:1234/base');
+    expect(redactEndpoint(null)).toBe('');
   });
 });

@@ -67,7 +67,7 @@ const STEPS = Object.freeze({
       { ask: 'File our first audience with sales/segment under the campaign it serves. Before you file it, tell me who you propose to reach and why, and ask me which countries it may be sent to.' }),
     step('audience-approved', 'operator', 'Approve the audience', s.audiencesApproved > 0, 'POSITIONS, CHIEF REVENUE OFFICER, CAMPAIGNS: read the audience under its campaign and press APPROVE. Nothing from it reaches the lead list before this.', { go: CAMPAIGNS }),
     step('provider', 'operator', 'Attach a contact-data provider', s.provider,
-      'First sign up at hunter.io and copy your API key (hunter.io/api-keys). Then paste it into the Hunter row under SETTINGS, API, Service keys, Lead data, and press save. Tomba and Apollo keys go in the same group, each with its own link. Without one the seat reads each address on the company\'s own pages.',
+      'First sign up at hunter.io and copy your API key (hunter.io/api-keys). Then paste it into the Hunter row under SETTINGS, API, Service keys, Lead data, and press save. Tomba and Apollo go in the same group, each with its own link; Tomba\'s row takes its API key and its secret. Without one the seat reads each address on the company\'s own pages.',
       { optional: true, link: { url: 'https://hunter.io/api-keys', label: '1 · GET THE KEY AT HUNTER' }, door: { kind: 'service', serviceId: 'hunter', label: '2 · PASTE IT HERE' } }),
     step('paid-rule', 'operator', 'Turn paid lead data on, or leave it off', s.spendChosen,
       'POSITIONS, CHIEF REVENUE OFFICER, SETTINGS: PAID LEAD DATA is one switch. ON lets the seat pay for a lookup when a company\'s own pages give no address, up to the monthly limit beside it. OFF spends nothing.', { optional: true, go: SWITCHES }),

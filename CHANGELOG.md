@@ -6,6 +6,77 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.181] - 2026-11-18
+
+### Security
+
+- Kept private workspace, signing, and provider credentials inside their approved boundaries, including remote desks, child programs, terminal sessions, and production network calls.
+- Required operator approval for third-party extension actions, member-authored house charters, and company tasks that send the operator to an external action.
+- Closed additional file-write paths that could alter account keys, repository hooks, login commands, or shell startup behavior.
+- Added a clear native warning when an AppImage host cannot support Chromium's sandbox, with the .deb and .rpm identified as the sandboxed alternatives.
+- Approval cards now identify the exact sender, companies, pool, tokens, and business-model proposal being approved.
+- Browser wallet confirmations show the sender and complete transaction data.
+- Opening a path now asks before adding a Files root or changing focus, refuses network-share paths, and limits browser opening to HTML inside open roots.
+- Persisted media URLs and seating approvals now validate their destination or exact member identity before acting.
+- Session notices keep their verified origin through fallback writes, replay, compaction, and recall; volatile context cannot forge its framing.
+- Gallery, file, brand, watch, terminal, and dictation URLs now use short-lived resource-bound tickets instead of the full sign-in credential.
+- Wallet and key records now replace atomically with owner-only permissions, and a remembered wallet stays locked after idle or explicit lock until you enter its password.
+- Wallet IPC refuses registrations without a desk-origin check, Recovery Kit attempts are bounded per launch, and a failed confirmation setup no longer blocks later confirmations.
+- Packaged desks no longer expose the confirmation test hook or DevTools accelerators. Application code is archived with integrity checks, RunAsNode is disabled, and backend and extension children use Electron's utility runtime.
+- Voice sidecars prove their own engine and listening socket with per-engine credentials, so a local relay cannot borrow another engine's identity or calls.
+- Film controls now accept only authenticated commands from private operator state.
+- Windows setup runs its verified runtime from a private directory, and uninstall refuses linked paths while preserving unrelated files.
+- Managed video tools verify their pinned bytes before use and no longer update themselves outside the reviewed release.
+- Linux packages build in exclusive temporary directories with root-owned payloads.
+- Release checks now verify every trusted update key, signed feed freshness, packaged source and dependency contents, and both Mac download formats.
+- Linux and native installer inputs now come from clean, reproducibly pinned sources instead of private checkouts or movable downloads.
+- Managed Ollama setup refuses any model whose downloaded content does not match the reviewed model revision and digest.
+- Unsigned Mac apps can no longer be released to production; they remain available for preview checks only.
+- Backup instructions no longer tell you to send encryption keys to your phone, and private guidance removes personal and machine identifiers.
+
+### Fixed
+
+- Workspace runs now start on Linux systems that do not have a `/lib64` directory, while keeping system files read-only.
+- Environment production files and common private-key file types are ignored by Git to reduce accidental secret commits.
+- Liquidity actions now verify position ownership, aggregator routes, approval recipients, and contract code before signing, and clean up permissions after use.
+- Reward approvals cannot pay twice across concurrent processes or after an uncertain broadcast; stale unresolved actions can safely retry after chain checks.
+- Encrypted workspace records are bound to their lane, purpose, file, and generation, preventing cross-record reuse and older-record restoration.
+- Wallet transfer limits now hold across backend processes, invalid attempts no longer consume allowance, and network fees have a hard ceiling.
+- Correct passwords still unlock when a legacy key upgrade cannot be written, recovery guesses are limited, and payment memos cannot hide bidi or zero-width controls.
+- Liquidity deposits keep their approved value, pending requests are capped, and earnings use independent market and on-chain prices instead of pool-list claims.
+- House-internal transfers cannot pay invoices, close investments, or enter the books; each receipt has one consumer, and LP wallets are watched for money in.
+- Holder reconstruction starts with a bounded recent window, stops when cancelled or capped, and requires operator approval.
+- Reading a small PDF page range no longer processes the whole document, and downloads stop before they can exhaust disk space.
+- Research, legal, and company worksheet files can no longer be redirected outside their workspace through symbolic links.
+- Delivery publishing now refuses credential files, active web content, and hidden secrets in large or binary-looking files.
+- Desk security headers and file-serving rules are stricter, and correctly signed JSON webhooks now arrive instead of being rejected.
+- Remote devices can no longer give the security watch machine-wide repository reach, and chat pairing now limits each sender as well as the whole house.
+- Do-not-contact rules cover plus-addressed email, email approval cards show recorded promises, and lead-list approval covers exactly the companies reviewed.
+- Lead-source text is bounded and screened before briefing, test-only source endpoints are confined to local test servers, paid lookups record partial charges, and concurrent lookups cannot exceed the monthly credit limit.
+- Daily outreach limits now count the actual sending address, so an approved list works correctly when a mailbox sends as another of its addresses.
+- Webhook identity now comes from the signed content, event names are validated, and old GitHub deliveries cannot replay after their identifiers age out.
+- Quote posts now keep only their canonical destination and include it in outbound secret checks.
+- Video metadata, captions, lead records, and campaign notes are bounded and marked as untrusted data, with warnings for injection-shaped text.
+- Requests for operator action now ask approval for each new website, render stored links safely, and refuse secret-shaped or oversized answers.
+- Autonomous team replanning now respects the charter's run cap even without an open programme.
+- PDF pressing now communicates with Chromium through private process pipes instead of a local debugging port.
+- Every change to an approved social post returns it to draft for a fresh decision.
+- Wallet-authenticated social posts, replies, and echoes now derive human authorship on the server instead of trusting client-selected authorship.
+- Summoning now refuses names that could collide with platform or witness workspaces, including workspaces beside the house.
+- Vault records require full-length authentication tags. New witness setup keeps private keys and recovery phrases only in sealed storage, and witness tools unlock them with a hidden password prompt.
+- Birth and chain guidance now describes key custody, file deletion, and public birth-record fingerprints accurately.
+- The CLI now verifies a local backend before releasing the first-owner claim or signing a private sitting challenge.
+- Operator wallet files must be chosen explicitly, generic keys require opt-in, and the selected key name and address are shown without exposing the key.
+- CLI sessions use the private token cache, and agent commands authenticate the lane owner before applying caller rules or pre-approvals.
+- Concurrent editor sessions no longer share a working directory, and forged OAuth callbacks no longer cancel the real sign-in.
+- Reviewing code no longer lets a repository's own git settings run commands as the operator; unsafe repository settings are refused.
+- An act filed once now has one owner across concurrent chats and backend processes, preventing duplicate approval cards and duplicate execution.
+- The desk verifies the identity of the backend it launches before opening.
+- Starting the desk no longer stops a backend that was not launched by a desk.
+- Verified updates reject expired release feeds and feeds older than the newest release already seen.
+- The desktop app starts its local backend through Electron's utility-process runtime without the legacy Node compatibility switch.
+- Long comment, tool, market, legal, and model text no longer triggers runaway parsing, and folded tool results no longer repeat tool-supplied instructions as platform text.
+
 ## [0.1.180] - 2026-11-17
 
 Notes: `docs/operations/release-notes-0.1.180.md`.

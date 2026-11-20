@@ -36,7 +36,7 @@ import { releaseIntentOwner } from './intents/intent-owners.js';
 import { withLease } from './substrate-lease.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { mintSessionId } from '../../core/workspace/session-id.js';
-import { memberApprovalRoute, memberDecisionRoute, readHouseHolds } from './house-clock/wake-approvals.js';
+import { HOUSE_ASKS, memberApprovalRoute, memberDecisionRoute, readHouseHolds } from './house-clock/wake-approvals.js';
 
 /** The reason a member's governed act is refused — said to the member. */
 export const MEMBER_APPROVAL_REFUSAL = 'Team members cannot take acts that need the operator\'s approval during a team run. Do the work inside the team workspace, and name what still needs the operator in your status so your lead can ask.';
@@ -173,6 +173,7 @@ export const runMemberTurn = async ({
   // A member holds what a wake holds: money out, and every act the charter escalates, go to the
   // operator even where a grant would let them run card-free (protocol-guard.js holdForWake).
   connection._wakeHolds = member.holds;
+  connection._wakeAsks = HOUSE_ASKS;
   // A clone's governed acts are refused at once and its questions answered with where they go:
   // back to its original, who is in the room (shadow-clone.js).
   connection._approvalRoute = as ? null : memberApprovalRoute(member);

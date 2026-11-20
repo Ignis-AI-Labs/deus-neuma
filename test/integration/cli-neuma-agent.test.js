@@ -15,6 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
+import { Wallet } from 'ethers';
 import neumaWorkspace, {
   getWorkspacesRoot, setWorkspacesRoot,
 } from '../../core/workspace/neuma-workspace.js';
@@ -26,6 +27,7 @@ let root;
 let workspacesRoot;
 let ground;
 let previousRoot;
+let walletEnv;
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-agent-path-'));
@@ -38,10 +40,13 @@ beforeEach(async () => {
   previousRoot = getWorkspacesRoot();
   setWorkspacesRoot(workspacesRoot);
   await neumaWorkspace.create(LANE_ID);
+  const operator = Wallet.createRandom();
   await fs.writeFile(path.join(workspacesRoot, LANE_ID, 'owner.json'), `${JSON.stringify({
-    wallet: '0x0000000000000000000000000000000000000001',
+    wallet: operator.address,
     claimedAt: new Date().toISOString(),
   }, null, 2)}\n`);
+  walletEnv = path.join(root, 'operator.env');
+  await fs.writeFile(walletEnv, `OPERATOR_WALLET_PRIVATE_KEY=${operator.privateKey}\n`, { mode: 0o600 });
 });
 
 afterEach(async () => {
@@ -60,6 +65,7 @@ describe('neuma agent — real neuma turn entry', () => {
       LLM_MODEL: 'offline-neuma-proof',
       LM_STUDIO_URL: 'http://127.0.0.1:1/v1',
       NEUMA_WEB_ACCESS: '0',
+      NEUMA_WALLET_ENV: walletEnv,
       WORKSPACES_ROOT: workspacesRoot,
       WITNESSES_ROOT: path.join(root, 'witnesses'),
       AI_WITNESSES_ROOT: path.join(root, 'ai-witnesses'),
@@ -106,6 +112,7 @@ describe('neuma agent — real neuma turn entry', () => {
       LLM_MODEL: 'offline-neuma-proof',
       LM_STUDIO_URL: 'http://127.0.0.1:1/v1',
       NEUMA_WEB_ACCESS: '0',
+      NEUMA_WALLET_ENV: walletEnv,
       WORKSPACES_ROOT: workspacesRoot,
       WITNESSES_ROOT: path.join(root, 'witnesses'),
       AI_WITNESSES_ROOT: path.join(root, 'ai-witnesses'),
@@ -202,7 +209,7 @@ describe('neuma agent — real neuma turn entry', () => {
     expect(declared.failure?.code).toBe(1);
     const receipt = JSON.parse(await fs.readFile(scopePath, 'utf8'));
     expect(receipt.benchmark.toolScope).toEqual([
-      'fs/list', 'fs/read', 'fs/write', 'fs/edit', 'fs/search',
+      'fs/list', 'fs/read', 'fs/write', 'fs/edit', 'fs/copy', 'fs/move', 'fs/search',
       'coding/execute', 'coding/shell_network', 'coding/ground_git', 'map/read_history',
     ]);
 
@@ -310,6 +317,7 @@ describe('neuma agent — real neuma turn entry', () => {
       LLM_MODEL: 'offline-neuma-proof',
       LM_STUDIO_URL: 'http://127.0.0.1:1/v1',
       NEUMA_WEB_ACCESS: '0',
+      NEUMA_WALLET_ENV: walletEnv,
       NEUMA_DATA_ROOT: path.join(root, 'data'),
       NEUMA_REALM_ROOT: path.join(root, 'realm'),
       NEUMA_VAULT_ROOT: path.join(root, 'vault'),
@@ -379,6 +387,7 @@ describe('neuma agent — real neuma turn entry', () => {
       LLM_MODEL: 'offline-neuma-proof',
       LM_STUDIO_URL: 'http://127.0.0.1:1/v1',
       NEUMA_WEB_ACCESS: '0',
+      NEUMA_WALLET_ENV: walletEnv,
       NEUMA_DATA_ROOT: path.join(root, 'data'),
       NEUMA_REALM_ROOT: path.join(root, 'realm'),
       NEUMA_VAULT_ROOT: path.join(root, 'vault'),
@@ -427,6 +436,7 @@ describe('neuma agent — real neuma turn entry', () => {
       LLM_MODEL: 'offline-neuma-proof',
       LM_STUDIO_URL: 'http://127.0.0.1:1/v1',
       NEUMA_WEB_ACCESS: '0',
+      NEUMA_WALLET_ENV: walletEnv,
       NEUMA_DATA_ROOT: path.join(root, 'data'),
       NEUMA_REALM_ROOT: path.join(root, 'realm'),
       NEUMA_VAULT_ROOT: path.join(root, 'vault'),

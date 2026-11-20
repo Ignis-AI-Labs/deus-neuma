@@ -47,6 +47,8 @@
 .pos-row-name { font-size: var(--text-md, 15px); letter-spacing: 0.1em; }
 .pos-row-who { grid-column: 2 / 4; letter-spacing: 0.1em; color: var(--color-text-tertiary); }
 .pos-row.is-empty .pos-row-who { color: var(--alert); }
+/* On the chosen row's band the tertiary grey falls under the contrast floor: it reads one step brighter there. */
+.pos-row.is-on .pos-row-who { color: var(--color-text-secondary); }
 /* The waiting count stands top right on its row, so every row's light and name line up the same
    (it used to fall into the light's column and push one name in). */
 .pos-row-n {

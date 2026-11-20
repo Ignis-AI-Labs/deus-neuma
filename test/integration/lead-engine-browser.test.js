@@ -68,7 +68,7 @@ beforeAll(async () => {
   vite = await createVite({
     configFile: false, root: REPO, cacheDir: path.join(tmp, 'vite-cache'), appType: 'custom', esbuild: { jsx: 'automatic' },
     optimizeDeps: { entries: ['test/helpers/lead-engine-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
-    server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null },
+    server: { middlewareMode: true, hmr: false, watch: null },
   });
   web.get('/', (req, res) => res.type('html').send(
     `<!doctype html><html><body style="background:#000"><script>window.leadEngineFixture=${JSON.stringify({ token: auth.token })}</script><div id="root"></div><script type="module" src="/test/helpers/lead-engine-page.jsx"></script></body></html>`,
@@ -136,7 +136,7 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     expect(await page.locator('[data-fold="company:facts"]').getAttribute('open')).not.toBe(null);
     expect(await page.locator('[data-fact="2"] .cline-fact-claim').textContent()).toBe('A session costs 250 US dollars an hour');
     expect(await page.locator('[data-fact="2"] .cline-fact-figure').textContent()).toBe('250 USD');
-    expect(await page.locator('[data-sheet^="facts about"]').first().locator('thead th').allTextContents()).toEqual(['#', 'OK', 'WHAT MAY BE SAID', 'FIGURE', 'SOURCE', 'STANDS', 'CHANGE']);
+    expect(await page.locator('[data-sheet^="facts about"]').first().locator('thead th').allTextContents()).toEqual(['OK', '#', 'WHAT MAY BE SAID', 'FIGURE', 'SOURCE', 'STANDS', 'CHANGE']);
     expect(await page.locator('[data-fact="2"] .cline-fact-source').textContent()).toBe('https://ignislabs.ai/sessions');
     // One fact is rewritten in place: a new sheet stands on disk, still waiting, the figure and source kept.
     await page.getByRole('button', { name: 'EDIT fact 2' }).click();

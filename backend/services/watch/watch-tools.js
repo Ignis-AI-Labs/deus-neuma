@@ -2,10 +2,9 @@
 // processes)
 //
 // Both live under <dataRoot>/watch/tools, never inside the install (read-only once installed). yt-dlp
-// is the pinned release (watch-plan.js) until a site changes under it; then yt-dlp updates itself,
-// at most once every six hours, and the record says which version is on disk and where it came
-// from. ffmpeg is the machine's own when it has one (FFMPEG_PATH, then the PATH), else the pinned
-// static build. Every download is checked against its pinned size and SHA-256 before it is used.
+// stays on the pinned release (watch-plan.js); a stale site failure never replaces the executable.
+// ffmpeg is the machine's own when it has one (FFMPEG_PATH, then the PATH), else the pinned static
+// build. Every managed executable is checked against its pinned bytes before every use.
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
@@ -16,25 +15,25 @@ import { getDataRoot } from '../data-root.js';
 import { obtainArchive } from '../managed-ollama-download.js';
 import { probeEnvironment } from '../agent-terminal-environment.js';
 import { createLogger } from '../logger.js';
-import { FFMPEG_BUILD, YT_DLP_VERSION, ffmpegFor, ytDlpFor, ytDlpUpdateArgs } from './watch-plan.js';
+import { FFMPEG_BUILD, YT_DLP_VERSION, ffmpegFor, ytDlpFor } from './watch-plan.js';
+import { gzipMatchesFile, matchesSha256 } from './verified-tool.js';
 
 const log = createLogger('WatchTools');
-const UPDATE_EVERY_MS = 6 * 3600_000;
 
 export const watchHome = () => path.join(getDataRoot(), 'watch');
 const toolsHome = () => path.join(watchHome(), 'tools');
 const ytDir = () => path.join(toolsHome(), 'yt-dlp');
 const recordPath = () => path.join(ytDir(), 'record.json');
 
-/**
- * The environment the tools run in: the probe environment (never the backend's secrets), and, in
- * the installed app, the app's own Electron answering as Node: the JavaScript runtime yt-dlp needs
- * for YouTube. impure (env)
- */
-export const toolEnvironment = () => ({ ...probeEnvironment(), ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: '1' } : {}) });
+/** The environment the tools run in: the probe environment (never the backend's secrets). impure (env) */
+export const toolEnvironment = () => probeEnvironment();
 
-/** The JavaScript runtime handed to yt-dlp: this process's own Node (or Electron as Node). */
-export const jsRuntime = () => process.execPath;
+/**
+ * The JavaScript runtime handed to yt-dlp: this process's own Node, or the independent `node` on PATH
+ * when this backend is a utility child (an external downloader cannot borrow utilityProcess).
+ * NEUMA_NODE_BINARY may name a deliberate alternative.
+ */
+export const jsRuntime = () => (process.versions.electron ? process.env.NEUMA_NODE_BINARY || 'node' : process.execPath);
 
 /**
  * Run a tool to the end. Never rejects. impure
@@ -45,34 +44,23 @@ export const runTool = (bin, args, { timeoutMs = 60_000, cwd } = {}) => new Prom
     (err, stdout, stderr) => resolve({ ok: !err, stdout: String(stdout || ''), stderr: `${stderr || ''}${err && !stderr ? err.message : ''}` }));
 });
 
-// pure — yt-dlp's dated versions compared as numbers (2026.10.26 < 2026.11.2)
-const newer = (a, b) => {
-  const pa = String(a || '').split('.').map(Number);
-  const pb = String(b || '').split('.').map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i += 1) {
-    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) > (pb[i] || 0);
-  }
-  return false;
-};
-
 const readRecord = () => { try { return JSON.parse(fs.readFileSync(recordPath(), 'utf8')); } catch { return null; } };
 const writeRecord = (record) => fsp.writeFile(recordPath(), JSON.stringify(record, null, 2));
 
-// impure — a gzipped binary unpacked beside where it goes, made runnable, then moved in
+// impure — a verified gzip unpacked beside its executable; the pinned archive stays for reuse checks
 const gunzipTo = async (gz, bin) => {
   const tmp = `${bin}.unpacking`;
   await fsp.mkdir(path.dirname(bin), { recursive: true });
   await pipeline(fs.createReadStream(gz), zlib.createGunzip(), fs.createWriteStream(tmp));
   if (process.platform !== 'win32') await fsp.chmod(tmp, 0o755);
   await fsp.rename(tmp, bin);
-  await fsp.rm(gz, { force: true });
 };
 
 let ytReady = null;
 let ffReady = null;
 
 /**
- * yt-dlp on disk, set up from the pin when it is missing or older than the app's pin. impure
+ * yt-dlp on disk, set up from the pin when its version or real bytes differ. impure
  * @returns {Promise<{bin: string, version: string}>}
  */
 export const ensureYtDlp = () => (ytReady ??= (async () => {
@@ -80,7 +68,7 @@ export const ensureYtDlp = () => (ytReady ??= (async () => {
   if (!pin) throw new Error(`no yt-dlp is published for ${process.platform} ${process.arch}`);
   const bin = path.join(ytDir(), pin.bin);
   const record = readRecord();
-  if (fs.existsSync(bin) && record && !newer(YT_DLP_VERSION, record.version)) return { bin, version: record.version };
+  if (fs.existsSync(bin) && record?.version === YT_DLP_VERSION && await matchesSha256(bin, pin.sha256)) return { bin, version: record.version };
   await fsp.mkdir(ytDir(), { recursive: true });
   const download = path.join(ytDir(), `${pin.name}.download`);
   await obtainArchive(pin, download);
@@ -90,26 +78,6 @@ export const ensureYtDlp = () => (ytReady ??= (async () => {
   log.info('yt-dlp set up', { version: YT_DLP_VERSION });
   return { bin, version: YT_DLP_VERSION };
 })().catch((err) => { ytReady = null; throw err; }));
-
-/**
- * A site changed under the copy here: yt-dlp updates itself (through the guarded proxy, checked
- * against its publisher's key), at most once every six hours. Answers whether a newer version is now
- * on disk. impure
- * @param {{proxy: string}} through
- */
-export const updateYtDlp = async ({ proxy }) => {
-  const { bin } = await ensureYtDlp();
-  const record = readRecord() || {};
-  if (record.triedAt && Date.now() - Date.parse(record.triedAt) < UPDATE_EVERY_MS) return false;
-  await writeRecord({ ...record, triedAt: new Date().toISOString() });
-  await runTool(bin, ytDlpUpdateArgs({ proxy }), { timeoutMs: 300_000 });
-  const version = (await runTool(bin, ['--version'], { timeoutMs: 60_000 })).stdout.trim();
-  if (!version || version === record.version) return false;
-  await writeRecord({ version, from: 'self-update', at: new Date().toISOString(), triedAt: new Date().toISOString() });
-  ytReady = null;
-  log.info('yt-dlp updated itself', { from: record.version, to: version });
-  return true;
-};
 
 /**
  * ffmpeg and ffprobe: the machine's own, or the pinned static build. impure
@@ -128,8 +96,10 @@ export const ensureFfmpeg = () => (ffReady ??= (async () => {
   const dir = path.join(toolsHome(), `ffmpeg-${FFMPEG_BUILD}`);
   for (const asset of [pins.ffmpeg, pins.ffprobe]) {
     const bin = path.join(dir, asset.bin);
-    if (fs.existsSync(bin)) continue;
     const gz = path.join(toolsHome(), asset.name);
+    const verified = fs.existsSync(bin) && fs.existsSync(gz)
+      && await matchesSha256(gz, asset.sha256) && await gzipMatchesFile(gz, bin);
+    if (verified) continue;
     await obtainArchive(asset, gz);
     await gunzipTo(gz, bin);
   }

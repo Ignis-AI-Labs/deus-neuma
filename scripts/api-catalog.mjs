@@ -27,10 +27,21 @@ try {
   process.env.LOG_LEVEL = 'error';
 
   const { mountApiRoutes } = await import('../backend/routes/route-mounts.js');
+  const { mountLocalOnlyRoutes } = await import('../backend/services/remote/wire.js');
+  const { requireLocalScope } = await import('../backend/services/remote/access-guard.js');
+  const { mapLaneQueryToken, HEADERLESS_LANES } = await import('../backend/routes/user-files-routes.js');
   const { catalogRoutes, catalogMarkdown } = await import('../backend/routes/route-catalog.js');
   const { requireAuth } = await import('../backend/services/auth.js');
   const { requireInstallOwner } = await import('../backend/services/install-owner.js');
-  const page = catalogMarkdown(catalogRoutes(mountApiRoutes, new Map([[requireAuth, 'requireAuth'], [requireInstallOwner, 'requireInstallOwner']])));
+  const page = catalogMarkdown(catalogRoutes((app) => {
+    mountLocalOnlyRoutes(app);
+    mountApiRoutes(app);
+  }, new Map([
+    [requireAuth, 'requireAuth'],
+    [requireInstallOwner, 'requireInstallOwner'],
+    [requireLocalScope, 'requireLocalScope'],
+    [mapLaneQueryToken, 'mapLaneQueryToken'],
+  ]), { queryTokenGuard: 'mapLaneQueryToken', queryTokenPaths: HEADERLESS_LANES }));
 
   if (process.argv.includes('--check')) {
     const standing = await fs.readFile(CATALOG_PAGE, 'utf8').catch(() => '');

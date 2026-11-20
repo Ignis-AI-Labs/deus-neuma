@@ -9,9 +9,12 @@
 //
 // The record is append-only events in the revenue office:
 //   { type: 'rule', mode, cap, at }
-// What was spent is counted from the lookups themselves (sales-store.js).
+//   { type: 'reserve', id, spent, at } / { type: 'release', id, at }
+// Actual spend is counted from lookups (sales-store.js), with unreleased
+// maximum-cost reservations included while their provider calls run.
 // The fold, the count and the judgement are PURE; the reads are impure.
 
+import { randomUUID } from 'node:crypto';
 import { officeFile } from '../house-office.js';
 import { createWriteChain } from '../write-chain.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
@@ -19,6 +22,8 @@ import { resolveUsableCredential } from '../oauth-token-broker.js';
 import { readContactLookups } from './sales-store.js';
 import { hunterAccount, accountWords } from './hunter-discover.js';
 import { PEOPLE_PROVIDERS } from './lead-providers.js';
+import { tombaAccount } from './tomba-api.js';
+import { apolloAccount } from './apollo-api.js';
 
 const serialize = createWriteChain();
 const FILE = 'lead-spend.jsonl';
@@ -61,13 +66,23 @@ export const spendRefusal = ({ rule, spent, cost }) => {
   return null;
 };
 
+const left = (a) => Math.max(0, a.available - a.used);
+
+/** pure — what each attached account itself says it has left, in the operator's words; null when none can be read. */
+export const accountsWords = (accounts = {}) => [
+  accountWords(accounts.hunter ?? null),
+  accounts.tomba ? `TOMBA · ${String(accounts.tomba.plan).toUpperCase()} PLAN · ${left(accounts.tomba)} OF ${accounts.tomba.available} SEARCH CREDITS LEFT${accounts.tomba.checks ? ` · ${left(accounts.tomba.checks)} OF ${accounts.tomba.checks.available} ADDRESS CHECKS LEFT` : ''}` : null,
+  accounts.apollo ? `APOLLO · ${left(accounts.apollo)} OF ${accounts.apollo.available} CREDITS LEFT THIS CYCLE` : null,
+].filter(Boolean).join(' — ') || null;
+
 /** pure — the setting as the seat reads it. */
 export const spendLine = ({ rule, spent, attached, accounts = {} }) => {
   if (!attached.length) return 'PAID LEAD DATA: no provider is attached. Read each address on the company\'s own pages. (A free Hunter account would give you a company search that spends nothing and 50 people lookups a month: tell your operator.)';
-  return `${spendLineBody({ rule, spent, attached })}${attached.includes('hunter') ? ` Hunter's company search (sales/gather, source hunter-discover) spends no credits and is always allowed, whatever this setting says.${accounts.hunter ? ` Hunter's own count: ${Math.max(0, accounts.hunter.available - accounts.hunter.used)} of ${accounts.hunter.available} credits left this month (${accounts.hunter.plan} plan).` : ''}` : ''}`;
+  const own = ['tomba', 'apollo'].filter((id) => accounts[id]).map((id) => ` ${PEOPLE_PROVIDERS[id].name}'s own count: ${left(accounts[id])} of ${accounts[id].available} credits left.`).join('');
+  return `${spendLineBody({ rule, spent, attached })}${attached.includes('hunter') ? ` Hunter's company search (sales/gather, source hunter-discover) spends no credits and is always allowed, whatever this setting says.${accounts.hunter ? ` Hunter's own count: ${Math.max(0, accounts.hunter.available - accounts.hunter.used)} of ${accounts.hunter.available} credits left this month (${accounts.hunter.plan} plan).` : ''}` : ''}${own}`;
 };
 const spendLineBody = ({ rule, spent, attached }) => {
-  return `PAID LEAD DATA (${attached.join(', ')} attached; it spends your operator's credits): ${rule.on ? `ON. It is one of the ways you may find a person's address. Use what is free first (the company's own pages); pay for a lookup when those give none` : 'OFF. Do not ask for it; read each address on the company\'s own pages'}. Spent this month: ${spent} of ${rule.cap} credit(s).`;
+  return `PAID LEAD DATA (${attached.join(', ')} attached; it spends your operator's credits): ${rule.on ? `ON. It is one of the ways you may find a person's address. Use what is free first (the company's own pages); pay for a lookup when those give none` : 'OFF. Do not ask for it; read each address on the company\'s own pages'}. Spent this month: ${spent} of ${rule.cap} credit(s). Every address an email goes to is checked before it leaves, ON or OFF, within the limit (address-check.js) — you never ask for that, it runs at staging and at send.`;
 };
 
 /**
@@ -76,14 +91,46 @@ const spendLineBody = ({ rule, spent, attached }) => {
  */
 export const spendSwitch = ({ rule, spent, attached, accounts = {} }) => ({
   id: 'paid-lead-data', kind: 'spend', on: rule.on, cap: rule.cap, spent, attached,
-  // what the attached account itself says it has left, where it can be read (Hunter today)
-  note: accountWords(accounts.hunter ?? null),
+  // what each attached account itself says it has left, where it can be read
+  note: accountsWords(accounts),
   name: `Paid lead data${attached.length ? ` (${attached.map((a) => a[0].toUpperCase() + a.slice(1)).join(', ')})` : ''}`,
-  whileOff: attached.length ? 'your sales seat reads each address on the company\'s own pages and spends none of your credits' : 'no provider key is attached yet. A free Hunter account (hunter.io) gives your sales seat a company search that spends nothing and 50 credits a month to look people up; add its key in Settings, API, Lead data',
+  whileOff: attached.length ? 'your sales seat reads each address on the company\'s own pages and spends no credits finding people; every address an email goes to is still checked before it leaves, within this limit' : 'no provider key is attached yet. A free Hunter account (hunter.io) gives your sales seat a company search that spends nothing and 50 credits a month to look people up; add its key in Settings, API, Lead data',
 });
 
 /** impure — the rule of one house. */
 export const readSpend = async (wallet) => foldSpend((await readJsonLines(officeFile(wallet, 'revenue', FILE))).records);
+
+/** impure — reservations not yet released, counted against the cap while their provider call runs. */
+export const readSpendReservations = async (wallet) => {
+  const events = (await readJsonLines(officeFile(wallet, 'revenue', FILE))).records;
+  const released = new Set(events.filter((e) => e?.type === 'release').map((e) => e.id));
+  return events.filter((e) => e?.type === 'reserve' && e.id && !released.has(e.id));
+};
+
+/** impure — the cap check and its reservation land under one write chain, before any provider call. */
+export const reserveSpend = (wallet, cost) => serialize(async () => {
+  const [rule, lookups, reservations] = await Promise.all([readSpend(wallet), readContactLookups(wallet), readSpendReservations(wallet)]);
+  const refusal = spendRefusal({ rule, spent: spentThisMonth([...lookups, ...reservations], Date.now()), cost });
+  if (refusal) return { ok: false, reason: refusal };
+  const reservation = { id: randomUUID(), spent: cost, at: new Date().toISOString() };
+  await appendJsonLine(officeFile(wallet, 'revenue', FILE), { type: 'reserve', ...reservation });
+  return { ok: true, reservation };
+});
+
+/** impure — the hold for an address check before an email leaves: within the month's limit, whatever the switch
+ * says (Design note, 2026-11-19: […]) — address-check.js checkBeforeSending. */
+export const reserveCheck = (wallet, cost) => serialize(async () => {
+  const [rule, lookups, reservations] = await Promise.all([readSpend(wallet), readContactLookups(wallet), readSpendReservations(wallet)]);
+  const spent = spentThisMonth([...lookups, ...reservations], Date.now());
+  if (spent + cost > rule.cap) return { ok: false, reason: `this month's limit for paid lead data is reached (${spent} of ${rule.cap} credits)` };
+  const reservation = { id: randomUUID(), spent: cost, at: new Date().toISOString() };
+  await appendJsonLine(officeFile(wallet, 'revenue', FILE), { type: 'reserve', ...reservation });
+  return { ok: true, reservation };
+});
+
+/** impure — actual charges now stand in the lookup ledger; the maximum-cost hold can leave. */
+export const releaseSpend = (wallet, id) => serialize(() =>
+  appendJsonLine(officeFile(wallet, 'revenue', FILE), { type: 'release', id, at: new Date().toISOString() }));
 
 /** The operator sets the rule. @returns {Promise<{ok: true, rule: object} | {ok: false, reason: string}>} */
 export const setSpend = (wallet, input) => serialize(async () => {
@@ -96,18 +143,40 @@ export const setSpend = (wallet, input) => serialize(async () => {
   }
 });
 
-/** impure — the providers whose key the operator attached, cheapest first, each with its key (never shown to a being). */
+/** impure — the providers whose key the operator attached, cheapest first, each with its key (never shown to a being).
+ * A provider that also takes a secret (Tomba) stands attached only with both — or with the older `key:secret` row. */
 export const attachedProviders = async () => {
   const found = await Promise.all(Object.entries(PEOPLE_PROVIDERS).map(async ([id, source]) => {
     const credential = await resolveUsableCredential(source.key).catch(() => null);
-    return credential?.apiKey ? { id, source, apiKey: credential.apiKey } : null;
+    if (!credential?.apiKey) return null;
+    if (!source.secret) return { id, source, apiKey: credential.apiKey };
+    const secret = (await resolveUsableCredential(source.secret).catch(() => null))?.apiKey ?? null;
+    return secret || credential.apiKey.includes(':') ? { id, source, apiKey: credential.apiKey, secret } : null;
   }));
   return found.filter(Boolean);
 };
 
+// Each attached account's own count, asked at most every ten minutes: the engine is read on every change, and
+// Tomba's free plan answers /me 30 times a minute at most. Hunter keeps its own (hunter-discover.js).
+const ACCOUNT_FRESH_MS = 10 * 60 * 1000;
+const counted = new Map();
+const ASK_ACCOUNT = Object.freeze({
+  hunter: (a) => hunterAccount(a.apiKey),
+  tomba: (a) => tombaAccount({ apiKey: a.apiKey, secret: a.secret }),
+  apollo: (a) => apolloAccount({ apiKey: a.apiKey }),
+});
+const accountOf = async (a, now = Date.now()) => {
+  const held = counted.get(a.id);
+  if (a.id !== 'hunter' && held && held.key === a.apiKey && now - held.at < ACCOUNT_FRESH_MS) return held.value;
+  const value = await ASK_ACCOUNT[a.id]?.(a).catch(() => null) ?? null;
+  counted.set(a.id, { key: a.apiKey, at: now, value });
+  return value;
+};
+/** impure — { hunter?, tomba?, apollo? }: each attached account's plan and credits, where it can be read. */
+const accountsOf = async (attached) => Object.fromEntries((await Promise.all(attached.map(async (a) => [a.id, await accountOf(a)]))).filter(([, v]) => v));
+
 /** impure — where the house stands: the rule, what the month has spent, which providers are attached (ids only). */
 export const spendState = async (wallet) => {
-  const [rule, lookups, attached] = await Promise.all([readSpend(wallet), readContactLookups(wallet), attachedProviders()]);
-  const hunter = attached.find((a) => a.id === 'hunter');
-  return { rule, spent: spentThisMonth(lookups, Date.now()), attached: attached.map((a) => a.id), accounts: hunter ? { hunter: await hunterAccount(hunter.apiKey) } : {}, lookups: lookups.slice(-10).reverse() };
+  const [rule, lookups, reservations, attached] = await Promise.all([readSpend(wallet), readContactLookups(wallet), readSpendReservations(wallet), attachedProviders()]);
+  return { rule, spent: spentThisMonth([...lookups, ...reservations], Date.now()), attached: attached.map((a) => a.id), accounts: await accountsOf(attached), lookups: lookups.slice(-10).reverse() };
 };

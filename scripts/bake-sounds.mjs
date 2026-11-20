@@ -1,3 +1,4 @@
+/* global console */
 /**
  * Bake the ratified soundscape into a single committed sprite.
  *
@@ -23,12 +24,15 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { SOUND_MANIFEST } from '../frontend/services/sound-manifest.js';
+import { SOUND_MANIFEST, SOUND_GAIN_DB } from '../frontend/services/sound-manifest.js';
 import { buildPlan } from './lib/bake-plan.mjs';
 import { concatWavs, parseWav, wavDuration } from './lib/wav-concat.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOUNDS_ROOT = resolve(HERE, '../frontend/assets/sounds');
+// The platform's OWN sounds (designed by Founder, tracked, shipped as-is): a manifest path `own/<file>` is read here.
+const OWN_ROOT = resolve(HERE, '../frontend/sounds-own');
+const sourceOf = (file) => (file.startsWith('own/') ? join(OWN_ROOT, file.slice(4)) : join(SOUNDS_ROOT, file));
 const OUT_DIR = resolve(HERE, '../frontend/sounds-baked');
 const GAP = 0.15;
 const TARGET_RATE = 48000;
@@ -59,7 +63,7 @@ const cueList = () => Object.keys(SOUND_MANIFEST).map(
 );
 
 const verifySources = (cues) => {
-  const missing = cues.filter((c) => !existsSync(join(SOUNDS_ROOT, c.file)));
+  const missing = cues.filter((c) => !existsSync(sourceOf(c.file)));
   if (missing.length) {
     throw new Error(
       `Missing source samples (is the Splice symlink present at ${SOUNDS_ROOT}?):\n` +
@@ -70,7 +74,7 @@ const verifySources = (cues) => {
 
 // impure — ffmpeg path: normalize each source, concat with silence, encode opus
 const bakeWithFfmpeg = (cues) => {
-  const durations = cues.map((c) => probeDuration(join(SOUNDS_ROOT, c.file)));
+  const durations = cues.map((c) => probeDuration(sourceOf(c.file)));
   const plan = buildPlan(cues, durations, GAP);
   const tmp = mkdtempSync(join(tmpdir(), 'neuma-bake-'));
 
@@ -85,8 +89,10 @@ const bakeWithFfmpeg = (cues) => {
     const listLines = [];
     cues.forEach((cue, i) => {
       const norm = join(tmp, `${i}.wav`);
+      const gain = SOUND_GAIN_DB[cue.event];
       run('ffmpeg', [
-        '-y', '-v', 'error', '-i', join(SOUNDS_ROOT, cue.file),
+        '-y', '-v', 'error', '-i', sourceOf(cue.file),
+        ...(Number.isFinite(gain) ? ['-af', `volume=${gain}dB`] : []),
         '-ar', String(TARGET_RATE), '-ac', String(TARGET_CHANNELS),
         '-sample_fmt', TARGET_FMT, norm,
       ]);
@@ -110,7 +116,7 @@ const bakeWithFfmpeg = (cues) => {
 
 // impure — pure-JS fallback: only correct for uniform-format sources
 const bakeWithoutFfmpeg = (cues) => {
-  const parsed = cues.map((c) => parseWav(readFileSync(join(SOUNDS_ROOT, c.file))));
+  const parsed = cues.map((c) => parseWav(readFileSync(sourceOf(c.file))));
   const durations = parsed.map(wavDuration);
   const plan = buildPlan(cues, durations, GAP);
   const wavBuf = concatWavs(parsed, GAP);

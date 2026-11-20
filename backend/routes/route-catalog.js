@@ -94,9 +94,10 @@ const blanketGuards = (router, known) => (router?.stack || [])
  * apart from what the mount function itself does.
  * @param {(app: object) => void} mount - e.g. mountApiRoutes
  * @param {Map<Function, string>} [known] - functions to name by reference (guards built by a factory have no name)
- * @returns {Array<{ method: string, path: string, guards: string[] }>} sorted by path, then method
+ * @param {{queryTokenGuard?: string|null, queryTokenPaths?: Set<string>}} [options]
+ * @returns {Array<{ method: string, path: string, guards: string[], queryToken?: boolean }>} sorted by path, then method
  */
-export const catalogRoutes = (mount, known = new Map()) => {
+export const catalogRoutes = (mount, known = new Map(), { queryTokenGuard = null, queryTokenPaths = new Set() } = {}) => {
   const mounts = [];
   const record = (method) => (first, ...rest) => {
     const hasPath = typeof first === 'string' || first instanceof RegExp || Array.isArray(first);
@@ -129,14 +130,22 @@ export const catalogRoutes = (mount, known = new Map()) => {
     }
   }
   // App-level middleware mounted at a prefix BEFORE a route stands in front of it.
-  const withPrefix = out.map(({ prefixGuards, ...r }) => ({
-    ...r,
-    // Each guard once, in the order a request meets it.
-    guards: [...new Set([...prefixGuards.filter((g) => r.path === g.prefix || r.path.startsWith(`${g.prefix === '/' ? '' : g.prefix}/`)).map((g) => g.name), ...r.guards])],
-  }));
-  const seen = new Set();
-  return withPrefix
-    .filter((r) => { const k = `${r.method} ${r.path}`; if (seen.has(k)) return false; seen.add(k); return true; })
+  const withPrefix = out.map(({ prefixGuards, ...r }) => {
+    const guards = [...new Set([...prefixGuards.filter((g) => r.path === g.prefix || r.path.startsWith(`${g.prefix === '/' ? '' : g.prefix}/`)).map((g) => g.name), ...r.guards])];
+    const queryToken = Boolean(queryTokenGuard && queryTokenPaths.has(r.path) && guards.includes(queryTokenGuard));
+    return { ...r, guards: guards.filter((g) => g !== queryTokenGuard), ...(queryToken ? { queryToken: true } : {}) };
+  });
+  const merged = new Map();
+  for (const r of withPrefix) {
+    const key = `${r.method} ${r.path}`;
+    const prior = merged.get(key);
+    merged.set(key, prior ? {
+      ...r,
+      guards: [...new Set([...prior.guards, ...r.guards])],
+      ...(prior.queryToken || r.queryToken ? { queryToken: true } : {}),
+    } : r);
+  }
+  return [...merged.values()]
     .sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method));
 };
 
@@ -161,12 +170,18 @@ export const catalogMarkdown = (routes) => {
     '> WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.',
     '',
     `${routes.length} endpoints. **Guards** are the checks a request passes before the handler, in order`
-      + ' (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install).',
+      + ' (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install;'
+      + ' `requireLocalScope`: the local desk, never a paired remote).',
+    '> `?ticket=` marks only the headerless file lanes that accept a short-lived exact-resource ticket;',
+    '> it is not an alternate authentication transport on any other route.',
     '',
   ];
   for (const [group, list] of groups) {
     lines.push(`## ${group}`, '', '| Method | Path | Guards |', '| --- | --- | --- |');
-    for (const r of list) lines.push(`| ${r.method} | \`${r.path}\` | ${r.guards.length ? r.guards.map((g) => `\`${g}\``).join(', ') : '—'} |`);
+    for (const r of list) {
+      const guards = [...r.guards.map((g) => `\`${g}\``), ...(r.queryToken ? ['`?ticket=`'] : [])];
+      lines.push(`| ${r.method} | \`${r.path}\` | ${guards.length ? guards.join(', ') : '—'} |`);
+    }
     lines.push('');
   }
   return `${lines.join('\n').trimEnd()}\n`;

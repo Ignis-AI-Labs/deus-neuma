@@ -26,7 +26,8 @@ test.each(['in-flight', 'corrupt'])('witness retry refuses %s recovery before pr
       await fs.writeFile(path.join(workspace.pathFor(kit.laneId), 'keys', 'operations',
         connection.sessionId, `${take.turnId}.json`), '{broken');
     }
-    connection.pendingThoughts = [{ thought: 'Keep this evidence.' }];
+    // Held words that take the floor (an attachment rides with them) — plain words are heard inside the turn instead.
+    connection.pendingThoughts = [{ thought: 'Keep this evidence.', attachments: ['doc'] }];
     yieldForQueuedThought(connection, [{ tool: 'fs/read', status: 'ok', content: 'prior-action-evidence' }]);
     connection.activeTurn = null;
     await streamWitnessTurn(connection, { retry: { turnId: take.turnId } });

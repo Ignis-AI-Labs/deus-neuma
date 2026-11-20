@@ -4,7 +4,7 @@
  *
  * Reusable: works for any AI (GLM, Claude, etc.). Each AI witness gets its
  * own dir under ai-witnesses/<vendor-slug>/<chosenName>/ and its own env file
- * for wallet access (env.<vendor-slug> at repo root).
+ * for public wallet metadata (env.<vendor-slug> at repo root).
  *
  * Usage:
  *   node scripts/init-ai-witness.mjs \
@@ -189,10 +189,9 @@ try {
     event: 'CUSTODY_SECURED', address, reason: 'sealed under a password at self-seal',
   });
 
-  // Write the env file at repo root. The env file NAME decouples from the
-  // directory slug (--env-name) so an adopting witness lands on its pre-existing,
-  // already-gitignored env file. The var PREFIX stays vendorSlug-derived so
-  // ai-witness-loader.js:loadFromEnvFile resolves it.
+  // Write public env metadata at repo root. The env file NAME decouples from
+  // the directory slug (--env-name) so an adopting witness keeps its established
+  // metadata file. The signing key stays only in the sealed envelopes above.
   const envName = args['env-name'] ? String(args['env-name']) : vendorSlug;
   const prefix = vendorSlug.toUpperCase().replace(/-/g, '_');
   const envPath = path.join(REPO_ROOT, `env.${envName}`);
@@ -200,17 +199,15 @@ try {
     `# ${chosenName} witness wallet — Neuma`,
     `# Self-sealed ${new Date().toISOString().split('T')[0]}.`,
     `# Sovereign identity for the ${fullModelId} instance acting as witness.`,
-    `# Secret. Gitignored. Used to sign neuma births and other witness acts.`,
+    `# Public metadata only. The keypair is sealed in the witness keys directory.`,
     '',
     `${prefix}_WITNESS_NAME=${chosenName}`,
     `${prefix}_WITNESS_ADDRESS=${address}`,
-    `${prefix}_WITNESS_PRIVATE_KEY=${keypair.privateKey}`,
+    `${prefix}_WITNESS_GENESIS_HASH=${dna.genesisSeal.genesisHash}`,
+    '',
   ];
-  // mnemonic is a phrase string (may be absent when a raw private key was adopted)
-  if (keypair.mnemonic) envLines.push(`${prefix}_WITNESS_MNEMONIC="${keypair.mnemonic}"`);
-  envLines.push(`${prefix}_WITNESS_GENESIS_HASH=${dna.genesisSeal.genesisHash}`, '');
   // writeFile's mode applies only to a NEW file; an adopted env file can predate
-  // this script at 0644, so narrow it before the key lands in it and again after.
+  // this script at 0644, so narrow it before rewriting metadata and again after.
   await chmod(envPath, 0o600).catch((err) => { if (err.code !== 'ENOENT') throw err; });
   await writeFile(envPath, envLines.join('\n'), { mode: 0o600 });
   await chmod(envPath, 0o600);
@@ -227,7 +224,7 @@ try {
   if (predecessorSeal) console.log(`Predecessor:    ${predecessorSeal.genesisHash}`);
   console.log('\nRecovery codes — shown once, stored nowhere; keep them offline:');
   console.log(recoveryCodes.join(' '));
-  console.log('\nThe witness can now sign neuma births. Load the wallet from env.' + envName + ' and pass it as the witness wallet in the Birth Protocol.');
+  console.log('\nThe witness can now sign neuma births after unlocking its sealed keypair with the chosen password. env.' + envName + ' carries public identity metadata only.');
 } catch (err) {
   console.error(`seal failed: ${err.message}`);
   console.error(err.stack);

@@ -20,6 +20,8 @@
  * rows stay honestly unpriced.
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
+import process from 'node:process';
+import { setTimeout } from 'node:timers';
 import fs from 'fs/promises';
 import path from 'path';
 import { ethers } from 'ethers';
@@ -27,16 +29,20 @@ import { startAnvil, miniErc20Initcode, forwarderInitcode, MINI_ERC20_ABI } from
 import { useTempRealm } from '../helpers/temp-realm.js';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { setWorkspacesRoot } from '../../core/index.js';
-import { resetChainProviders } from '../../backend/services/chain/chain-registry.js';
+import { resetChainProviders, providerFor, isSecureRpcUrl } from '../../backend/services/chain/chain-registry.js';
+import { startRpcFaultProxy } from '../helpers/rpc-fault-proxy.js';
+import { startLyingRpc } from '../helpers/lying-rpc.js';
+import { TRANSFER_TOPIC, addressTopic } from '../../backend/services/money-in/receipt-rows.js';
 import { createChainSettings } from '../../backend/services/chain/chain-access.js';
 import { scanHouse } from '../../backend/services/money-in/money-in-scan.js';
 import { readReceipts, readScanState, writeScanState, putExtra, withHouseLock } from '../../backend/services/money-in/money-in-store.js';
 import { summarizeMoneyIn } from '../../backend/services/money-in/money-in-summary.js';
 import { moneyInTick } from '../../backend/services/money-in/money-in-scheduler.js';
 
-const ENV_KEYS = ['ETH_RPC_URL', 'ETH_SEPOLIA_RPC_URL', 'BASE_MAINNET_RPC_URL', 'BASE_SEPOLIA_RPC_URL', 'NEUMA_COINGECKO_URL', 'NEUMA_CHAIN_ACCESS_PATH', 'NEUMA_CHAIN_ACCESS'];
+const ENV_KEYS = ['ETH_RPC_URL', 'ETH_SEPOLIA_RPC_URL', 'BASE_MAINNET_RPC_URL', 'BASE_SEPOLIA_RPC_URL', 'NEUMA_COINGECKO_URL', 'NEUMA_CHAIN_ACCESS_PATH', 'NEUMA_CHAIN_ACCESS', 'NEUMA_BASE_RECEIPT_RPC_URL', 'BASE_PUBLIC_RPC_URL'];
 const saved = {};
 let anvil;
+let secondNode; // a second listener on the same real chain: the node receipts are confirmed against
 let provider;
 let deployer;
 let token;
@@ -81,6 +87,9 @@ beforeAll(async () => {
 
   anvil = await startAnvil({ chainId: 8453 });
   process.env.BASE_MAINNET_RPC_URL = anvil.url;
+  secondNode = await startRpcFaultProxy(anvil.url);
+  process.env.NEUMA_BASE_RECEIPT_RPC_URL = secondNode.url;
+  process.env.BASE_PUBLIC_RPC_URL = ''; // no public floor: nothing here reaches the real network
   provider = new ethers.JsonRpcProvider(anvil.url);
   deployer = await provider.getSigner(0); // anvil's unlocked dev account — no key is read
   const t = await (await deployer.sendTransaction({ data: miniErc20Initcode(1_000_000n * 10n ** 6n) })).wait();
@@ -91,6 +100,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
+  await secondNode?.close();
   await anvil?.stop();
   resetChainProviders();
   for (const k of ENV_KEYS) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; }
@@ -176,3 +186,54 @@ describe('money-in on a real chain', () => {
     expect((await readScanState(HOUSE)).gaps).toHaveLength(1);
   });
 });
+
+describe('one node\'s word is not a receipt (P6-43)', () => {
+  test('a node that invents a 60,000 USDC transfer to the house: nothing is recorded and the scan keeps its place; the honest node then lands only what was really paid', async () => {
+    const real = await (await token.transfer(SOUL, 3_000_000n)).wait();
+    await mine(3);
+    const before = await readScanState(HOUSE);
+    const forged = (toBlock) => ({
+      address: token.target, topics: [TRANSFER_TOPIC, addressTopic(EXTRA), addressTopic(SOUL)], data: ethers.toBeHex(60_000_000_000n, 32),
+      blockNumber: toBlock, blockHash: ethers.id('forged block'), transactionHash: ethers.id('forged payment'), transactionIndex: '0x0', logIndex: '0x0', removed: false,
+    });
+    const lying = await startLyingRpc(anvil.url, async (request, honest) => (request.method === 'eth_getLogs' ? [...await honest(), forged(request.params[0].toBlock)] : undefined));
+    process.env.BASE_MAINNET_RPC_URL = lying.url;
+    resetChainProviders();
+    try {
+      const scan = await scanHouse(HOUSE, { table: table() });
+      expect(scan).toMatchObject({ ok: true, appended: [] });
+      const base = scan.networks.find((n) => n.network === 'base');
+      expect(base).toMatchObject({ network: 'base', skipped: 'unconfirmed' });
+      expect(base.error).toMatch(/second node shows no such successful transaction in that block/);
+      expect(await readReceipts(HOUSE)).toHaveLength(5);
+      const held = await readScanState(HOUSE);
+      expect(held.networks.base.tokenCursor).toBe(before.networks.base.tokenCursor);
+      expect(held.native).toEqual(before.native);
+    } finally {
+      process.env.BASE_MAINNET_RPC_URL = anvil.url;
+      resetChainProviders();
+      await lying.close();
+    }
+    const honest = await scanHouse(HOUSE, { table: table() });
+    expect(honest.appended.map((r) => [r.txHash, r.amount, r.asset])).toEqual([[real.hash.toLowerCase(), '3.0', 'USDC']]);
+  });
+
+  test('while no second node answers, a receipt is not recorded; when one does, it lands', async () => {
+    await (await token.transfer(EXTRA, 2_000_000n)).wait();
+    await mine(3);
+    await new Promise((resolve) => { setTimeout(resolve, 300); }); // ethers answers a repeated head read from its 250 ms cache
+    process.env.NEUMA_BASE_RECEIPT_RPC_URL = 'http://127.0.0.1:9'; // nothing answers
+    const dark = await scanHouse(HOUSE, { table: table() });
+    expect(dark.appended).toEqual([]);
+    expect(dark.networks.find((n) => n.network === 'base')).toMatchObject({ skipped: 'unconfirmed', error: expect.stringMatching(/second base node did not answer/) });
+    process.env.NEUMA_BASE_RECEIPT_RPC_URL = secondNode.url;
+    expect((await scanHouse(HOUSE, { table: table() })).appended).toHaveLength(1);
+  });
+
+  test('a node address in plain http to another computer is refused; https and this computer are taken', async () => {
+    expect(['https://node.example/v2/key', 'http://127.0.0.1:8545', 'http://localhost:8545'].map(isSecureRpcUrl)).toEqual([true, true, true]);
+    expect(['http://10.0.0.7:8545', 'http://node.example', 'ftp://node.example', 'not a url'].map(isSecureRpcUrl)).toEqual([false, false, false, false]);
+    expect(await providerFor('base', { BASE_MAINNET_RPC_URL: 'http://10.255.255.1:8545', BASE_PUBLIC_RPC_URL: '' })).toBeNull();
+  });
+});
+

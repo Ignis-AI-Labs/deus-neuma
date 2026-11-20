@@ -92,7 +92,7 @@ const salesPipelineIntent = Object.freeze({
   name: 'sales/pipeline',
   policyTool: 'sales.pipeline',
   fieldsForPrompt: `{segment?, step?: ${VIEWS.map((v) => `"${v}"`).join(' | ')}, id?, offset?, limit?}`,
-  descriptionForPrompt: `THE LEAD ENGINE. See the pipeline whole, and exactly what stands at any step — each thing by its id, a page at a time (free). Without step: every audience's road with its NEXT step. With step (and segment): filter = the companies still to filter; verify = shortlisted sites not yet read; score = companies read alive, to research and score; contacts = fits with no person yet; leads = fits ready to file, each with its top person (name, role, address, page) — file it with sales/lead; approve = what waits for the operator's list approval; outreach = the leads to write, and whether an email is already staged for each. step outbox (no segment needed) = EVERY email you staged, each WHOLE — its id, to, subject, the full text, the promise, and where it stands (waiting for your operator, returned with their note, sent) — ${OUTBOX_PAGE} a page; with id, that one email whole. Everything else: ${POOL_PAGE} a page, limit up to ${POOL_PAGE_MAX}, offset for the next.`,
+  descriptionForPrompt: `THE LEAD ENGINE. See the pipeline whole, and exactly what stands at any step — each thing by its id, a page at a time (free). Without step: every audience's road with its NEXT step. With step (for one audience with segment, else across every audience at once): filter = the companies still to filter; verify = shortlisted sites not yet read; score = companies read alive, to research and score; contacts = fits with no person yet; leads = fits ready to file, each with its top person (name, role, address, page) — file it with sales/lead; approve = what waits for the operator's list approval; outreach = the leads to write (each by its lead id), and the id of the email staged to it if one waits — staging again replaces it. step outbox (no segment needed) = EVERY email you staged, each WHOLE — its id, to, subject, the full text, the promise, and where it stands (waiting for your operator, returned with their note, sent) — ${OUTBOX_PAGE} a page; with id, that one email whole. Everything else: ${POOL_PAGE} a page, limit up to ${POOL_PAGE_MAX}, offset for the next.`,
   availableFor: async ({ connection }) => ((await seated(connection)) ? {} : null),
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -102,7 +102,6 @@ const salesPipelineIntent = Object.freeze({
     const segments = await readSegments(context.wallet);
     const segment = payload?.segment ? segments.find((s) => s.id === String(payload.segment).trim()) : null;
     if (payload?.segment && !segment) return { ok: false, status: 'invalid', reason: `"${payload.segment}" is not one of your audiences` };
-    if (step && step !== 'outbox' && !segment) return { ok: false, status: 'invalid', reason: 'a step is read for one audience: name its segment' };
     const offset = Math.max(0, parseInt(payload?.offset, 10) || 0);
     const limit = Math.min(Math.max(parseInt(payload?.limit, 10) || (step === 'outbox' ? OUTBOX_PAGE : POOL_PAGE), 1), POOL_PAGE_MAX);
     return { ok: true, value: { context, segments, segment, step, offset, limit, id: payload?.id ? String(payload.id).trim() : null } };
@@ -140,16 +139,19 @@ const salesPipelineIntent = Object.freeze({
       const roads = (segment ? [segment] : segments.filter((s) => ['approved', 'draft'].includes(s.state))).map((s) => audiencePipeline(of(s)));
       return { ok: true, detail: ['The pipeline, every audience (sales/pipeline {segment, step} lists what stands at a step):', ...roads.map((r) => `- ${pipelineLine(r)}`)].join('\n') };
     }
-    const items = stepItems(of(segment), step);
+    // One audience, or every audience at once with each item marked by its audience.
+    const audiences = segment ? [segment] : segments.filter((s) => ['approved', 'draft'].includes(s.state));
+    const items = audiences.flatMap((s) => stepItems(of(s), step).map((item) => ({ ...item, audience: s })));
     const line = {
       filter: (c) => `- ${poolLine(c, held)}`, verify: (c) => `- ${poolLine(c, held)}`, score: (c) => `- ${poolLine(c, held)}`,
       contacts: (p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]} — no person with an address yet (sales/contacts)`,
       leads: (p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]} — top person: ${p.top.name}, ${p.top.role} — ${p.top.email}${p.top.sourceUrl ? ` (found on ${p.top.sourceUrl})` : ''} — file: sales/lead {id: "${p.id}", person: {name, role}, email, emailSource}`,
       approve: (p) => `- [${p.id}] ${p.name} (${p.domain}) — ${p.stage === 'promoted' ? 'on the lead list' : 'scored a fit'} — waits for the operator's APPROVE THE LIST`,
-      outreach: (l) => `- lead [${l.id}] ${l.name || l.contact} <${l.contact}> (${l.domain})${l.staged ? ' — an email is STAGED for your operator: do not stage another' : ' — to write: sales/draft-email'}`,
+      outreach: (l) => `- lead [${l.id}] ${l.name || l.contact} <${l.contact}> (${l.domain})${l.draft ? ` — email [${l.draft}] STAGED for your operator (sales/pipeline {step: "outbox", id: "${l.draft}"} reads it; staging again to them replaces it)` : ' — to write: sales/draft-email'}`,
     }[step];
+    const marked = segment ? line : (item) => line(item).replace(/^- /, `- (${item.audience.id} ${item.audience.name}) `);
     const stepWords = STEPS.find((s) => s.id === step);
-    return { ok: true, detail: [`"${segment.name}" — step ${stepWords.label}: ${stepWords.does}.`, ...page(items, line)].join('\n') };
+    return { ok: true, detail: [`${segment ? `"${segment.name}"` : `Every audience (${audiences.length})`} — step ${stepWords.label}: ${stepWords.does}.`, ...page(items, marked)].join('\n') };
   },
 });
 

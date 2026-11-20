@@ -104,9 +104,12 @@ a:hover {
   color: var(--color-white);
 }
 
+/* ONE FOCUS RING, EVERYWHERE (Design note, 2026-11-18: […]). The ring lies ON the element's own edge, never outside it: drawn outside, a scrolling
+   strip (the chat tabs) cut it off and it spilled over the neighbouring tab or row. One weight, one colour; no
+   component sets its own offset or width. */
 :focus-visible {
   outline: 1px solid var(--signal);
-  outline-offset: 3px;
+  outline-offset: -1px;
 }
 
 /* ============================================

@@ -77,13 +77,24 @@ describe('createBackup — the witness realm travels with the beings', () => {
     expect(manifest.realm).toBe(true);
   });
 
-  it('a wallet with no realm yet backs up its beings cleanly (realm:false)', async () => {
-    await ownWorkspace('lifovan-test');
-    const backup = await createBackup(WALLET);
-    expect(backup.realm).toBe(false);
-    expect(backup.beings).toEqual(['lifovan-test']);
-    const missing = await fs.access(path.join(backupsRoot, backup.id, 'realm')).then(() => true, () => false);
-    expect(missing).toBe(false);
+  it('completes without volatile coding overlays, even when their files are unreadable', async () => {
+    await ownWorkspace('lifovan-overlays');
+    const lane = path.join(workspacesRoot, 'lifovan-overlays');
+    await fs.mkdir(path.join(lane, 'dna'), { recursive: true });
+    await fs.writeFile(path.join(lane, 'dna', 'active.json'), '{"identity":"kept"}\n');
+    const overlay = path.join(lane, 'coding', 'sandboxes', 'shell-1', 'upper', 'analysis');
+    await fs.mkdir(path.dirname(overlay), { recursive: true });
+    await fs.writeFile(overlay, 'volatile');
+    await fs.chmod(overlay, 0o000);
+    try {
+      const backup = await createBackup(WALLET);
+      expect(await fs.readFile(path.join(backupsRoot, backup.id, 'lifovan-overlays', 'dna', 'active.json'), 'utf8'))
+        .toBe('{"identity":"kept"}\n');
+      await expect(fs.access(path.join(backupsRoot, backup.id, 'lifovan-overlays', 'coding', 'sandboxes')))
+        .rejects.toMatchObject({ code: 'ENOENT' });
+      const manifest = JSON.parse(await fs.readFile(path.join(backupsRoot, backup.id, 'manifest.json'), 'utf8'));
+      expect(manifest.beings).toEqual(['lifovan-overlays']);
+    } finally { await fs.chmod(overlay, 0o600); }
   });
 });
 

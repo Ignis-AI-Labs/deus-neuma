@@ -10,6 +10,9 @@
 //   { type: 'opened', campaign, at }   { type: 'closed', id, by, at }  (archived)
 //   { type: 'reopened', id, by, at }   { type: 'updated', id, name?, goal?, by, at }
 //   { type: 'deleted', id, by, at }    (only a campaign that holds no audience)
+//   { type: 'email-plan', id, plan, by, at }   the campaign's email variables, proposed (email-formula.js)
+//   { type: 'email-plan-review', id, verdict: 'approved'|'returned', note, by, at }   the operator locks them in or
+//                                      sends them back; an approved plan stands until a newer one is approved
 // PURE, but for makeCampaign's random id.
 
 import crypto from 'crypto';
@@ -41,6 +44,16 @@ export const foldCampaigns = (events) => {
     else if (e?.type === 'reopened' && byId.has(e.id)) byId.set(e.id, { ...byId.get(e.id), state: 'open', closedAt: null });
     else if (e?.type === 'updated' && byId.has(e.id)) byId.set(e.id, { ...byId.get(e.id), ...(e.name ? { name: e.name } : {}), ...(e.goal ? { goal: e.goal } : {}) });
     else if (e?.type === 'deleted') byId.delete(e.id);
+    else if (e?.type === 'email-plan' && byId.has(e.id)) {
+      const c = byId.get(e.id);
+      byId.set(e.id, { ...c, emailPlan: { ...(c.emailPlan ?? { approved: null, approvedAt: null }), proposed: e.plan, proposedBy: e.by, proposedAt: e.at, review: null } });
+    } else if (e?.type === 'email-plan-review' && byId.get(e.id)?.emailPlan?.proposed) {
+      const c = byId.get(e.id);
+      const p = c.emailPlan;
+      byId.set(e.id, { ...c, emailPlan: e.verdict === 'approved'
+        ? { ...p, approved: p.proposed, approvedAt: e.at, proposed: null, review: { verdict: 'approved', note: e.note ?? '', at: e.at } }
+        : { ...p, review: { verdict: 'returned', note: e.note ?? '', at: e.at } } });
+    }
   }
   return [...byId.values()];
 };
@@ -149,3 +162,12 @@ export const leadOrigins = ({ campaigns = [], segments = [], prospects = [], lea
 
 /** pure — one campaign as the sales seat reads it. */
 export const campaignLine = (c) => `- [${c.id}] ${c.name} (for ${c.company}, ${c.state}) — goal: ${c.goal} — ${c.audiences.length} audience(s), ${c.gathered} gathered, ${c.scored} scored, ${c.leads} on the lead list, ${STAGES.map((s) => `${c[s]} ${s}`).join(', ')}`;
+
+/** pure — a campaign's email plan as the sales seat reads it: locked in (its asks, numbered for askIndex), waiting, or
+ *  missing (email-formula.js). */
+export const emailPlanLine = (c) => {
+  const p = c.emailPlan ?? null;
+  const waits = p?.proposed ? (p.review?.verdict === 'returned' ? ` A newer plan was RETURNED by your operator: ${p.review.note} — file it again with sales/email-plan.` : ' A newer plan waits for your operator.') : '';
+  if (p?.approved) return `    EMAIL PLAN, LOCKED IN (${p.approved.objective}): they need — ${p.approved.need} · we offer — ${p.approved.offer} · asks: ${p.approved.asks.map((a, i) => `[${i}] ${a.ask} (on a yes: ${a.delivers})`).join(' ')}.${waits}`;
+  return p?.proposed ? `    EMAIL PLAN: waits for your operator to lock it in — no first email of this campaign until then.${waits}` : `    EMAIL PLAN: none — file it with sales/email-plan {campaign: "${c.id}", …} before any first email of this campaign.`;
+};

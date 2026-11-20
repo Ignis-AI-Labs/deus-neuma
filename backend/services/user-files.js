@@ -18,7 +18,7 @@
 import fs from 'fs/promises';
 import { AsyncLocalStorage } from 'async_hooks';
 import { assertRenameName } from './rename-name.js';
-import { realpathSync, statSync } from 'fs';
+import { realpathSync, statSync, lstatSync } from 'fs';
 import path from 'path';
 import { MAX_TEXT_BYTES, looksBinary, isLossyAsUtf8, lossyCharCount, lossyVerdict } from './text-encoding-law.js';
 
@@ -48,6 +48,35 @@ export const withOwnRoots = (folders, task) => ownRoots.run(folders.map((r) => p
 const within = (real, root) => real === root || real.startsWith(root + path.sep);
 
 /**
+ * The path with every symlink followed, for a target that may not exist yet (a
+ * fresh write, create or rename). The nearest folder that does exist is
+ * resolved and the missing names joined below it, so a link in a PARENT is
+ * followed even when the leaf is new (PR600 audit P6-126: the lexical path was
+ * trusted, and `<root>/link/new` landed wherever `link` pointed). A name that
+ * exists but cannot be resolved is a broken or looping link: a write through
+ * it would land at its target, so it resolves nowhere. impure (reads the disk).
+ * @param {string} resolved - absolute, normalized
+ * @returns {string}
+ */
+const realThroughLinks = (resolved) => {
+  const missing = [];
+  let probe = resolved;
+  for (;;) {
+    try {
+      return path.join(realpathSync(probe), ...missing);
+    } catch {
+      let dangling = true;
+      try { lstatSync(probe); } catch { dangling = false; }
+      if (dangling) throw new Error('Symlink target outside allowed roots');
+      const parent = path.dirname(probe);
+      if (parent === probe) return resolved;
+      missing.unshift(path.basename(probe));
+      probe = parent;
+    }
+  }
+};
+
+/**
  * Resolve a path and confirm it is contained within one of the chosen roots,
  * following symlinks so neither `..` nor a symlink can escape. Returns the
  * real, absolute path. Throws on any escape or bad input.
@@ -65,12 +94,7 @@ export const containWithinRoots = (target) => {
     throw new Error('Path outside allowed roots');
   }
   // Then resolve symlinks and re-check, so a link inside a root can't point out.
-  let real = resolved;
-  try {
-    real = realpathSync(resolved);
-  } catch {
-    real = resolved; // path may not exist yet (e.g. a fresh write target) — lexical check stands
-  }
+  const real = realThroughLinks(resolved);
   if (!bases.some((b) => within(real, b))) {
     throw new Error('Symlink target outside allowed roots');
   }

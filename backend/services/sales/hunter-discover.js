@@ -42,12 +42,13 @@ import process from 'node:process';
 import { HUNTER_URL } from './lead-providers.js';
 import { SIZES } from './company-index.js';
 import INDUSTRIES from './hunter-industries.json' with { type: 'json' };
+import { testEndpoint } from '../test-endpoint-door.js';
 
 export const DISCOVER_MAX = 3000;
 const PER_CALL = 100;
 const SAMPLE = 15; // what a look shows
 const PACE_MS = 1300; // Hunter allows 50 Discover calls a minute
-const urlOf = () => process.env.NEUMA_LEAD_SOURCE_HUNTER || HUNTER_URL;
+const urlOf = () => testEndpoint(process.env, 'NEUMA_LEAD_SOURCE_HUNTER', HUNTER_URL);
 const HOST = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/;
 
 export const HUNTER_INDUSTRIES = Object.freeze([...INDUSTRIES]);

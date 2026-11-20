@@ -41,14 +41,8 @@ export const FOLDED_RESULT_STUB =
   '[folded: this earlier result was released to free working context — '
   + 'its facts live in your own words above; re-run the tool if you need the raw data again]';
 
-// A paged read's position line (native-filesystem.js lineRange: […]). A fold keeps it: […] never stopped a re-read; […] does (deus-neuma #35, Wendell's step 3).
-const POSITION_LINE = /^\[(?:lines|pages|part|chars?)\b[^\]\n]*\bof\b[^\]\n]*\]$/i;
-
-// pure — the folded stub, with the position the result stood at when it had one
-const foldedResultOf = (text) => {
-  const first = String(text ?? '').split('\n', 1)[0].trim();
-  return POSITION_LINE.test(first) ? `${FOLDED_RESULT_STUB}\nShown before the fold: ${first}` : FOLDED_RESULT_STUB;
-};
+// pure — a folded result carries platform text only, never tool-controlled prose.
+const foldedResultOf = () => FOLDED_RESULT_STUB;
 
 const FOLDED_IMAGE_STUB =
   '[folded: an image shown here was released to free working context]';

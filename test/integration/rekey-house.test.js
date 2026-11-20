@@ -32,7 +32,7 @@ const envOf = async (file) => Object.fromEntries((await fs.readFile(file, 'utf8'
 const opens = (env, key) => { try { decryptEnvelope(env, { key }); return true; } catch { return false; } };
 
 describe('rekey-house', () => {
-  let base; let lane; let harness; let settings; let vault; let envFile; let cliEnv;
+  let base; let lane; let harness; let settings; let realm; let vault; let envFile; let cliEnv;
   const master = deriveKeyFromSecret(OLD);
   const oldDek = deriveNeumaDEK(master, GENESIS);
 
@@ -42,6 +42,7 @@ describe('rekey-house', () => {
     lane = path.join(house, 'aaaa1111');
     harness = path.join(base, 'house', 'harness', 'harness-one');
     settings = path.join(base, 'data', 'settings');
+    realm = path.join(base, 'realm');
     vault = path.join(base, 'vault', 'dna');
     envFile = path.join(base, '.env');
     await put(path.join(lane, 'keys', 'dek.json'), JSON.stringify(wrapDEK(oldDek, master)));
@@ -51,10 +52,11 @@ describe('rekey-house', () => {
     await put(path.join(lane, 'identity', 'genesis-seal.json'), { genesisHash: GENESIS });
     await put(path.join(harness, 'notes.json'), encryptEnvelope({ h: 1 }, { key: master }));
     await put(path.join(settings, 'provider-credentials.json'), encryptEnvelope({ openai: 'sk-test' }, { key: master }));
+    await put(path.join(realm, 'social-channel-credentials.json'), encryptEnvelope({ account: 'kept' }, { key: master }));
     await put(path.join(vault, 'active', 'aaaa1111.dna'), await encryptVaultData(null, { dna: 'own' }, { dek: oldDek }));
     await put(path.join(vault, 'active', 'legacy0000.dna'), await encryptVaultData(OLD, { dna: 'master' }));
     await put(envFile, `PORT=3333\nDNA_ENCRYPTION_KEY=${OLD}\nOTHER=kept\n`);
-    cliEnv = { PATH: process.env.PATH, HOME: process.env.HOME, NEUMA_REKEY_ENV_FILE: envFile, WORKSPACES_ROOT: house, NEUMA_DATA_ROOT: path.join(base, 'data'), NEUMA_VAULT_ROOT: path.join(base, 'vault') };
+    cliEnv = { PATH: process.env.PATH, HOME: process.env.HOME, NEUMA_REKEY_ENV_FILE: envFile, WORKSPACES_ROOT: house, NEUMA_DATA_ROOT: path.join(base, 'data'), NEUMA_REALM_ROOT: realm, NEUMA_VAULT_ROOT: path.join(base, 'vault') };
   });
 
   test('the dry run changes nothing and says what would move', async () => {
@@ -129,6 +131,9 @@ describe('rekey-house', () => {
     const creds = await read(path.join(settings, 'provider-credentials.json'));
     expect(decryptEnvelope(creds, { key: fresh })).toEqual({ openai: 'sk-test' });
     expect(opens(creds, master)).toBe(false);
+    const realmCreds = await read(path.join(realm, 'social-channel-credentials.json'));
+    expect(decryptEnvelope(realmCreds, { key: fresh })).toEqual({ account: 'kept' });
+    expect(opens(realmCreds, master)).toBe(false);
 
     expect(await decryptVaultData(null, await read(path.join(vault, 'active', 'aaaa1111.dna')), { dek: newDek })).toEqual({ dna: 'own' });
     expect(await decryptVaultData(env.DNA_ENCRYPTION_KEY, await read(path.join(vault, 'active', 'legacy0000.dna')))).toEqual({ dna: 'master' });

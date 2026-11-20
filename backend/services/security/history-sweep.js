@@ -59,7 +59,7 @@ const createPatchScanner = () => {
 
   const release = (next) => {
     if (held === null) return;
-    for (const hit of scanLine(held, next)) hits.push({ commit, path, ...hit });
+    for (const hit of scanLine(held.body, next, { allowlisted: held.allowlisted })) hits.push({ commit, path, ...hit });
     held = null;
   };
 
@@ -96,7 +96,7 @@ const createPatchScanner = () => {
       if (inHunk && raw.startsWith('+')) {
         const body = raw.slice(1);
         release(body);
-        if (path && !isAllowlisted(path)) held = body;
+        if (path) held = { body, allowlisted: isAllowlisted(path) };
         return;
       }
       release('');

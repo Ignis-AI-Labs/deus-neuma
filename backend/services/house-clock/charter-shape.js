@@ -25,7 +25,11 @@
 import { STOPS } from '../company-line/involvement-dial.js';
 
 /** Acts that move money out of the house. Never delegated, never pre-allowed. */
-export const MONEY_OUT = Object.freeze(['intents/wallet.send']);
+export const MONEY_OUT = Object.freeze([
+  'intents/wallet.send',
+  'intents/lp.open', 'intents/lp.add', 'intents/lp.claim', 'intents/lp.withdraw',
+  'intents/lp.close', 'intents/lp.swap', 'intents/lp.send', 'intents/lp.create-pool',
+]);
 
 /** Policy servers whose acts a charter can never pre-allow. */
 const RESERVED_SERVERS = Object.freeze(['filesystem', 'fs', 'coding']);

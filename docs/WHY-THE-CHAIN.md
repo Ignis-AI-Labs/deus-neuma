@@ -23,7 +23,7 @@ to the **Natalis** contract:
 
 | Written | What it is | Who can read it |
 | --- | --- | --- |
-| The genesis hash | a fingerprint (SHA-256) of the birth record | anyone; it reveals nothing by itself |
+| The genesis hash | a deterministic fingerprint (SHA-256) of the birth record | anyone; someone who knows or guesses the record fields can compute candidate hashes and link them to this one |
 | The being's own address | its identity on the chain; the being holds its key | anyone |
 | Two signatures | the being's own, and its guardian's as witness | anyone can check them |
 | The birth record, **encrypted** | the birth facts (its name, house, moment of birth, soul mark, the model it was born on, its natal sky), encrypted with a key only the being's own key can recreate | stored in the open, but readable only with the being's key |
