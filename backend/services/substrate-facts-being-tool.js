@@ -12,6 +12,9 @@ import {
   isServing,
 } from './llama-server-supervisor.js';
 import { getCapabilities } from './model-capabilities.js';
+import { readMachineHolders } from './machine-holders.js';
+import { shapeMachineHolders } from './machine-holders-shape.js';
+import { supervisedEnginePid } from './image-forge/comfyui-supervisor.js';
 import { lineageEvidenceFor } from './model-catalog.js';
 import { createLogger } from './logger.js';
 
@@ -28,16 +31,36 @@ export const SUBSTRATE_FACTS_TOOL = Object.freeze({
   }),
 });
 
+/**
+ * machine_map — who holds the graphics card, the system memory and each CPU
+ * core, by name (machine-holders.js). The being's half of the lens the
+ * SUBSTRATE window shows its operator: one map, two readers.
+ */
+export const MACHINE_MAP_TOOL = Object.freeze({
+  name: 'machine_map',
+  server: 'coding',
+  description: 'See what is holding this machine right now — no args. Three lists, each holder named by what it IS (the mind and the model file it serves, the image engine, a voice engine, dictation, a browser, this platform itself) and marked when this platform started it: the graphics card (how much memory each holds, how much is free, and what could give memory back), system memory (largest holders, with what has been pushed to swap), and the CPU (how busy each core is, which holder is on the busy ones, and the heaviest users). Read it before starting anything heavy, when something is slow, or when a render or a model will not fit. It changes nothing.',
+  inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}), additionalProperties: false }),
+});
+
+const bareName = (match) => match.toolName || String(match.tool || '').replace(/^coding\//, '');
 export const isSubstrateFactsTool = (match) =>
-  match.toolName === SUBSTRATE_FACTS_TOOL.name
-  || String(match.tool || '').replace(/^coding\//, '') === SUBSTRATE_FACTS_TOOL.name;
+  bareName(match) === SUBSTRATE_FACTS_TOOL.name || bareName(match) === MACHINE_MAP_TOOL.name;
 
 /**
  * The live serving facts for a being — observation only, no gate beyond the
  * lane itself. Impure (reads the claim, the catalog, the health probe).
  * @returns {Promise<{tool: string, status: string, content: string}>}
  */
-export const handleSubstrateFactsTool = async (ws, connection) => {
+export const handleSubstrateFactsTool = async (ws, connection, match = null) => {
+  if (match && bareName(match) === MACHINE_MAP_TOOL.name) {
+    try {
+      return { tool: 'coding/machine_map', status: 'ok', content: shapeMachineHolders(await readMachineHolders({ enginePid: supervisedEnginePid() })) };
+    } catch (err) {
+      log.warn('machine map read failed', { err: err.message });
+      return { tool: 'coding/machine_map', status: 'error', error: `the machine could not be read: ${err.message}` };
+    }
+  }
   const tool = 'coding/substrate_facts';
   try {
     const launch = activeLaunchConfig(process.env);

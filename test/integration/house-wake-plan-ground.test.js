@@ -11,6 +11,7 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { createStaffOfficeFixture, WALLET, OPTIO, HOUSEMATE, BYSTANDER } from '../helpers/staff-office-fixture.js';
 import { writeCharter, approveCharter } from '../../backend/services/house-clock/charter-store.js';
 import { wakePlanRoute } from '../../backend/services/house-clock/wake-plan.js';
+import { createRun } from '../../backend/services/team-run-store.js';
 import { readAsks } from '../../backend/services/house-clock/wake-ledger.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 
@@ -63,6 +64,16 @@ describe('a wake\'s team plan names its workspace', () => {
       const { result } = await route(HOUSEMATE, root);
       expect(result.status).toBe('routed');
     }
+  });
+
+  test('without an open programme the lead\'s real run history reaches the same cap', async () => {
+    expect((await route(HOUSEMATE, null)).result.status).toBe('routed');
+    for (const [n, lead] of [HOUSEMATE, HOUSEMATE, HOUSEMATE, BYSTANDER].entries()) {
+      await createRun({ by: WALLET, lead, lane: 'lead', runAt: `2026-11-${String(n + 1).padStart(2, '0')}T00:00:00.000Z`, steps: [{ id: 'one' }] });
+    }
+    const { result, wake } = await route(HOUSEMATE, null);
+    expect(result.status).toBe('escalated');
+    expect(wake.escalations[0].why).toContain('the programme "runs outside an open programme" has run its 3 runs');
   });
 
   test('the charter is read at the plan, never the copy the wake started with', async () => {

@@ -9,7 +9,12 @@
 // refuse is left as it is, so a posted /go/ link always resolves. Adding a
 // host is a reviewed change on BOTH sides.
 //
+// An X post's own link in an X post is a QUOTE (quote-post.js): X shows it as the quoted post only
+// as written, so it is never made a counted link.
+//
 // Pure.
+
+import { isXPostLink } from '../social/quote-post.js';
 
 /** The code alphabet: Crockford base-32, lowercase (no i, l, o, u) — six of them per code. */
 export const CODE_ALPHABET = '0123456789abcdefghjkmnpqrstvwxyz';
@@ -63,7 +68,7 @@ export const planLinks = (text, { channelId, base, mint }) => {
   const out = String(text || '').replace(URL_IN_TEXT, (found) => {
     const tail = TRAILING.exec(found)?.[0] || '';
     const destination = tail ? found.slice(0, -tail.length) : found;
-    if (!isTrackable(destination)) return found;
+    if (!isTrackable(destination) || (channelId === 'x' && isXPostLink(destination))) return found;
     let link = links.find((l) => l.destination === destination);
     if (!link) {
       link = { code: mint(), destination };

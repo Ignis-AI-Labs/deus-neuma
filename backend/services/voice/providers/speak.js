@@ -49,16 +49,16 @@ const voiceBody = async (voice, inline) => (inline
   ? { clip_b64: await clipB64(voice), words: voice.words }
   : { clip_ref: voice.ref, words: voice.words });
 
-const post = (url, body, signal) => sidecarFetch(url, {
+const post = (url, body, signal, engine) => sidecarFetch(url, {
   method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal,
-});
+}, engine);
 
 // impure — POST, resending inline whatever a 409 names (the clip first, then
 // the context). Resolves the first non-409 response.
-const postWithRefs = async (url, build, voice, signal) => {
+const postWithRefs = async (url, build, voice, signal, engine) => {
   const inline = { clip: false, context: false };
   for (;;) {
-    const response = await post(url, await build(inline), signal);
+    const response = await post(url, await build(inline), signal, engine);
     if (response.status !== 409) return response;
     const { ref } = await response.json().catch(() => ({}));
     if (ref === voice.ref && !inline.clip) inline.clip = true;
@@ -74,21 +74,21 @@ const failure = async (response, what) => {
 
 /**
  * Speak one utterance on a speak-protocol sidecar, streamed.
- * @param {{endpoint: string, text: string,
+ * @param {{endpoint: string, engine: string, text: string,
  *   voice: {ref: string, words: string, wav?: Buffer, loadClip?: () => Promise<Buffer|null>},
  *   context?: object[], signal?: AbortSignal, maxAudioMs?: number}} req
  *   context: speech-context ring segments, oldest first
  * @returns {AsyncGenerator<{bytes: Uint8Array, sampleRate: number, channels: number, format: string,
  *   sequence: number, final: boolean, utteranceRef: string|null}>}
  */
-export async function* speak({ endpoint, text, voice, context = [], signal, maxAudioMs }) {
+export async function* speak({ endpoint, engine, text, voice, context = [], signal, maxAudioMs }) {
   const url = `${guard(endpoint)}/speak`;
   const response = await postWithRefs(url, async (inline) => ({
     text,
     voice: await voiceBody(voice, inline.clip),
     context: wireContext(context, { inline: inline.context }),
     ...(Number.isFinite(maxAudioMs) ? { max_audio_ms: maxAudioMs } : {}),
-  }), voice, signal);
+  }), voice, signal, engine);
   if (!response.ok) throw await failure(response, 'speak');
   const utteranceRef = response.headers.get('x-utterance-ref');
   let finished = false;
@@ -105,12 +105,12 @@ export async function* speak({ endpoint, text, voice, context = [], signal, maxA
 /**
  * Prepare a voice before its first sentence (csm encodes the clip, Nano builds
  * its conditioning), so the first /speak pays no setup. impure.
- * @param {{endpoint: string, voice: object, signal?: AbortSignal}} req
+ * @param {{endpoint: string, engine: string, voice: object, signal?: AbortSignal}} req
  * @returns {Promise<{ok: true, voice_ref: string|null, ms: number}>}
  */
-export const warmSpeakVoice = async ({ endpoint, voice, signal }) => {
+export const warmSpeakVoice = async ({ endpoint, engine, voice, signal }) => {
   const url = `${guard(endpoint)}/warm`;
-  const response = await postWithRefs(url, async (inline) => ({ voice: await voiceBody(voice, inline.clip) }), voice, signal);
+  const response = await postWithRefs(url, async (inline) => ({ voice: await voiceBody(voice, inline.clip) }), voice, signal, engine);
   if (!response.ok) throw await failure(response, 'warm');
   return response.json();
 };

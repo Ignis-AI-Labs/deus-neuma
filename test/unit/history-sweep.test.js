@@ -88,7 +88,7 @@ describe('history-sweep (real tmp git repos)', () => {
       'a/openai.md': `OPENAI=sk-${'q'.repeat(24)}`,
       'a/slack.md': `SLACK=xoxb-1234567890-${'w'.repeat(12)}`,
       'a/aws.md': `AWS=AKIA${'Q'.repeat(16)}`,
-      'a/pem.md': '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAfakefakefake\n-----END RSA PRIVATE KEY-----',
+      'a/pem.md': '-----BEGIN RSA PRIVATE\x20KEY-----\nMIIEowIBAAKCAQEAfakefakefake\n-----END RSA PRIVATE\x20KEY-----',
     };
     await commit(repo, Object.fromEntries(Object.entries(samples).map(([k, v]) => [k, `${v}\n`])), 'samples');
     await fs.rm(path.join(repo, 'a'), { recursive: true });
@@ -107,14 +107,22 @@ describe('history-sweep (real tmp git repos)', () => {
     expect(findings[0].surfaces.sort()).toEqual(['one.txt', 'two.txt']);
   });
 
-  test('the allowlist and the public dev keys hold in history too', async () => {
+  test('history sees bare keys on allowlisted paths and still skips public dev keys', async () => {
     const anvil0 = HDNodeWallet.fromPhrase('test test test test test test test test test test test junk', '', "m/44'/60'/0'/0").deriveChild(0).privateKey;
     await commit(repo, {
-      'test/fixture.txt': `PRIVATE_KEY=${FAKE_EVM_KEY}\n`,
+      'test/fixture.txt': `PRIVATE_KEY=${FAKE_EVM_KEY.slice(2)}\n`,
+      'assets/backup.zip': `PRIVATE_KEY=${FAKE_EVM_KEY.slice(2)}\n`,
       'script/Deploy.s.sol': `// Anvil #0\nuint256 PRIVATE_KEY = ${anvil0};\n`,
     }, 'fixtures');
+    await fs.rm(path.join(repo, 'test'), { recursive: true });
+    await fs.rm(path.join(repo, 'assets'), { recursive: true });
+    await commit(repo, {}, 'remove fixtures');
     const result = await sweepRepoHistory({ id: 'tmp', path: repo });
-    expect(result).toMatchObject({ error: null, findings: [] });
+    expect(result.error).toBeNull();
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0]).toMatchObject({ patternId: 'evm-private-key', commits: 1 });
+    expect(result.findings[0].surfaces.sort()).toEqual(['assets/backup.zip', 'test/fixture.txt']);
+    expect(JSON.stringify(result)).not.toContain(FAKE_EVM_KEY.slice(2));
   });
 
   test('a gone path and a non-repo directory are honest errors, never a clean bill', async () => {
@@ -130,7 +138,7 @@ describe('history-sweep (real tmp git repos)', () => {
     const leaked = await commit(repo, { 'docs/audit.md': `DEPLOYER_PRIVATE_KEY=${FAKE_EVM_KEY}\n` }, 'audit notes');
     await commit(repo, { 'docs/audit.md': 'DEPLOYER_PRIVATE_KEY=0x…REDACTED\n' }, 'redact');
     await fs.writeFile(path.join(repo, '.env'), `DEPLOYER_PRIVATE_KEY=${FAKE_EVM_KEY}\n`, { mode: 0o600 });
-    await fs.writeFile(path.join(repo, 'env.other'), `WITNESS_PRIVATE_KEY=0x${'e5'.repeat(32)}\n`, { mode: 0o600 });
+    await fs.writeFile(path.join(repo, 'env.other'), `WITNESS_PRIVATE_KEY=${'e5'.repeat(32)}\n`, { mode: 0o600 });
     const workspacesRoot = await createTempDir('history-sweep-lanes');
     const savedRoot = process.env.WORKSPACES_ROOT;
     process.env.WORKSPACES_ROOT = workspacesRoot;

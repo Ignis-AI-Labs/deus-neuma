@@ -33,7 +33,6 @@ import { assemblePromptSections, stablePromptSplit } from '../../core/index.js';
 // the marker itself lives with the builder that consumes it and is re-exported
 // so portal-stream's import surface stays one module.
 export { systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead } from './llm-request-builders.js';
-export { wireContextSections } from './turn-context-carry.js';
 import { expressionSectionFor } from './expression-prompt.js';
 import { voiceSittingSection } from '../../core/voice/purpose.js';
 import { speechBriefingSection } from './speech-consent.js';
@@ -42,6 +41,7 @@ import { formatSubstrateForPrompt } from './substrate-detector.js';
 import { loadHouseWorkspace } from './house-workspace.js';
 import { postKnock } from './house-post.js';
 import { planModeSection } from './plan-mode.js';
+import { researchModeSection } from './research-mode.js';
 import { gatewaySection } from './sovereignty/gateway-handlers.js';
 import { operatorChangeNotice, markOperatorChangesTold } from './sovereignty/operator-change.js';
 import { activeAmendments } from './sovereignty/amendment-store.js';
@@ -58,13 +58,13 @@ import { cosBriefingSection } from './staff/cos-briefing.js';
 import { companyLineBriefing } from './company-line/company-briefing.js';
 import { mercatorBriefingSection } from './revenue/revenue-briefing.js';
 import { logistaBriefingSection } from './accounts/accounts-briefing.js';
+import { positionSection } from './positions/position-board.js';
 import { cfoBriefingSection } from './treasury/treasury-briefing.js';
 import { spendNewsFor } from './treasury/spend-news.js';
 import { markSpendsTold } from './treasury/spend-records.js';
 import { recordSectionDrift } from './section-drift.js';
 import {
   sectorSectionFor,
-  projectFilesSection as _projectFilesSection,
   houseSeatSection as _houseSeatSection,
   cmoBriefingSection as _cmoBriefingSection,
   replyCandidatesSection as _replyCandidatesSection,
@@ -228,7 +228,9 @@ export const assembleTurnPrompt = async ({
       // the being's usual tools — named in the HUD by signature, frozen for the chat (tool-hud.js)
       usualTools: connection._turnUsualTools || [],
       // A benchmark sitting states its conditions up front: closed-book or open-book (test-conditions.js).
-      testConditions: [testConditionsFor(connection), callerRulesFor(connection)].filter(Boolean).join('\n\n'),
+      testConditions: testConditionsFor(connection),
+      // The sender's standing rules ride beside the closing, never buried in TOOLS (prompt-assembler.js).
+      sittingRules: callerRulesFor(connection),
       // The lane's standing context rides the STABLE group (#282), read above
       // because this assembler is pure — none of the four moves within a sitting.
       groundProtocol,
@@ -241,11 +243,7 @@ export const assembleTurnPrompt = async ({
       // THE HARNESS ARM mounts no silo: no identity is read for a platform-only sitting.
       identityDriver: platformOnly ? null : await mountForTurn(connection, companion?.neumaId, route || getConfig()),
     });
-    // A project's shared files ride as an extra section when the chat belongs
-    // to a project — appended (not folded into core's assembler) so its tokens
-    // are counted honestly in BOTH composition emissions below.
-    const projectFilesSection = await _projectFilesSection(connection);
-    // The CMO's office briefing rides beside it — a string section ('' for
+    // The CMO's office briefing rides as an extra section — a string ('' for
     // every other lane), wrapped in the section shape the assembler joins.
     const cmoBriefing = await _cmoBriefingSection(connection);
     // The CSO's watch briefing rides the same law — '' (prompt
@@ -265,6 +263,8 @@ export const assembleTurnPrompt = async ({
     const croBriefing = await mercatorBriefingSection(connection);
     // The Logista's books — '' for every lane but the seated Logista's.
     const caoBriefing = await logistaBriefingSection(connection);
+    // YOUR POSITION — what the lane's seat handles, by function; '' for every lane that holds no seat.
+    const positionMap = await positionSection(connection);
     // What became of the being's own spend requests (#586), told once — never on a harness or benchmark sitting.
     const walletNews = companion?.neumaId && !platformOnly && !connection._benchmarkControls
       ? await spendNewsFor(companion.neumaId) : { text: '', ids: [] };
@@ -282,6 +282,7 @@ export const assembleTurnPrompt = async ({
     // to PLAN, the being is told to research and present, never act. ''
     // (prompt byte-identical) for every other bearing — the empty-string law.
     const planBearing = planModeSection(connection);
+    const researchBearing = researchModeSection(connection); // RESEARCH: read widely, then report ('' elsewhere)
     // The gateway's live posture — open proposals + fresh verdicts, VOLATILE
     // (a verdict moves its bytes), '' for every lane with nothing standing.
     // An operator's staged change to this being's DNA or soul is put to it here,
@@ -304,7 +305,7 @@ export const assembleTurnPrompt = async ({
     // it — never a retelling.
     let envelopeDecision = null;
     const finalized = finalizeTurnEnvelope({
-      baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing,
+      baseSections, expressionInvite, positionMap, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing, researchBearing,
       sovereigntyKnock, housePost, walletNews: walletNews.text, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
       voiceRite: companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
       speechBriefing,

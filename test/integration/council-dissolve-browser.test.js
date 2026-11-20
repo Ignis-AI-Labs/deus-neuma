@@ -42,6 +42,7 @@ test('dissolution requires confirmation and preserves the real council record', 
     await page.goto(kit.url);
     await page.getByRole('button', { name: 'Open idle council' }).click();
     await expect(page.locator('#council-id')).toContainText('council-');
+    await expect(page.locator('#council-view')).toHaveText('council');
     const id = await page.locator('#council-id').textContent();
     const walletDirs = await fs.readdir(getRealmRoot());
     const file = path.join(getRealmRoot(), walletDirs[0], 'councils', `${id}.jsonl`);
@@ -65,6 +66,8 @@ test('dissolution requires confirmation and preserves the real council record', 
     expect(await fs.readFile(file, 'utf8')).toBe(original);
     peer._socket.resume();
     await expect(page.locator('#council-id')).toHaveText('closed');
+    // A dissolved council leaves the stream on the one-on-one (deus-neuma #25).
+    await expect(page.locator('#council-view')).toHaveText('one-on-one');
     expect(closes()).toBe(1);
     expect(await fs.readFile(file, 'utf8')).toBe(original);
     expect(frames.some(frame => frame.type === 'council:say')).toBe(false);

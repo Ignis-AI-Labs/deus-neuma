@@ -129,5 +129,7 @@
 .ps-tabrow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-1); border-bottom: 1px solid var(--line); }
 .ps-tabrow > .outreach-tabs { flex: 1 1 auto; border-bottom: 0; }
 .ps-tabrow > .door-btn { margin-bottom: 4px; }
+.ps-tabrow > .acc-campaigns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); margin-bottom: 4px; }
+.acc-campaign.is-paused, .acc-campaign.is-ended { opacity: 0.7; }
 /* One board needs no tab: the door alone stands at the row's end. */
 .ps-tabrow > .door-btn:first-child { margin-left: auto; }

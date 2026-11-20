@@ -132,7 +132,7 @@ describe('sectionActivity', () => {
 
 describe('groupDockApps — pure partition', () => {
   it('is a pure partition — no app appears in two sections', () => {
-    const ids = ['chat', 'voice', 'avatar', 'house', 'refinement', 'teams', 'projects',
+    const ids = ['chat', 'voice', 'avatar', 'house', 'refinement', 'teams',
       'files', 'terminal', 'chats', 'stats', 'skills', 'contextmap', 'map', 'wallet'];
     const groups = groupDockApps(ids.map(entry));
     const placed = groups.flatMap((g) => g.items.map(([id]) => id));
@@ -151,7 +151,7 @@ const real = (pairs) => Object.entries(pairs).map(([id, label]) => [id, { label 
 describe('the ordering law, with the labels the operator actually reads', () => {
   it('WORKSPACE is four bands, alphabetical inside each', () => {
     const [ws] = groupDockApps(real({
-      chat: 'STREAM', chats: 'CHATS', projects: 'PROJECTS', teams: 'TEAMS',
+      chat: 'STREAM', chats: 'CHATS', teams: 'TEAMS',
       todo: 'TASKS', workflow: 'WORKFLOW', comfyui: 'COMFY', files: 'FILES',
       gallery: 'GALLERY', terminal: 'TERMINAL', security: 'SECURITY', legal: 'LEGAL', witnesses: 'WITNESSES',
     })).filter((g) => g.id === 'workspace');
@@ -159,7 +159,7 @@ describe('the ordering law, with the labels the operator actually reads', () => 
     expect(ws.bands.map((b) => b.label)).toEqual(['TALK', 'WORK', 'CRAFT', 'WATCH']);
     const labels = (name) => ws.bands.find((b) => b.label === name).items.map(([, a]) => a.label);
     expect(labels('TALK')).toEqual(['CHATS', 'STREAM']);
-    expect(labels('WORK')).toEqual(['PROJECTS', 'TASKS', 'TEAMS', 'WORKFLOW']);
+    expect(labels('WORK')).toEqual(['TASKS', 'TEAMS', 'WORKFLOW']);
     expect(labels('CRAFT')).toEqual(['COMFY', 'FILES', 'GALLERY', 'TERMINAL']);
     expect(labels('WATCH')).toEqual(['LEGAL', 'SECURITY', 'WITNESSES']);
     // No band is big enough to be a wall again — that was the whole complaint.

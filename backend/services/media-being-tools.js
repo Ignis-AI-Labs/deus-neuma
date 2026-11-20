@@ -10,6 +10,11 @@
 // house's voice, filed and settled by the sweep — the web-access master
 // switch is a validate-time standing rule there.
 //
+//   media_watch / media_listen — watch a video or listen to audio from any
+//                   source, a link or a file (Design note, 2026-11-14: […]). What is said, timed, and frames to look at;
+//                   watch/watch.js does it. Egress like web_fetch, so it asks
+//                   like web_fetch (an unlisted tool asks: tool-policy.js).
+//
 // Portal-stream owns the socket, so the event sender arrives as an injected
 // port; the ACTS gate itself is act-gate.js, the one implementation both
 // seats share.
@@ -17,6 +22,8 @@
 import { gateAct } from './act-gate.js';
 import { webSettings } from './web-settings.js';
 import { mediaLibrary } from './media-library.js';
+import { watchSource } from './watch/watch.js';
+import { neumaWorkspace } from '../../core/index.js';
 
 export const MEDIA_TOOLS = Object.freeze([
   Object.freeze({
@@ -26,6 +33,34 @@ export const MEDIA_TOOLS = Object.freeze([
     inputSchema: Object.freeze({
       type: 'object',
       properties: Object.freeze({}),
+    }),
+  }),
+  Object.freeze({
+    name: 'media_watch',
+    server: 'media',
+    description: 'Watch a video — args {source, from?, to?}. source: a link from any site (YouTube, X, TikTok, Instagram, Facebook, Vimeo, Twitch, Reddit, a news site, a direct video file) or a video file on this computer. You get what is said, with the second each line begins (its own captions, or heard on this computer), and frames from across it to look at. One call covers ten minutes from `from` (default the start; "12:30" or "1:02:00"); call again with the `from` it gives for the next part. The transcript is kept in your workspace under watched/.',
+    inputSchema: Object.freeze({
+      type: 'object',
+      properties: Object.freeze({
+        source: Object.freeze({ type: 'string', description: 'the link, or the path of a file on this computer' }),
+        from: Object.freeze({ type: 'string', description: 'where to start, like "12:30" (default the start)' }),
+        to: Object.freeze({ type: 'string', description: 'where to stop (default ten minutes on, at most thirty)' }),
+      }),
+      required: Object.freeze(['source']),
+    }),
+  }),
+  Object.freeze({
+    name: 'media_listen',
+    server: 'media',
+    description: 'Listen to audio — args {source, from?, to?}. source: a podcast episode, an interview, a talk, a speech, a song, a voice note: a link from any site (YouTube, SoundCloud, Apple Podcasts, Bandcamp, Mixcloud, X, a direct audio file) or an audio or video file on this computer. You get what is said, with the second each line begins. One call covers ten minutes from `from`; call again with the `from` it gives for the next part. The transcript is kept in your workspace under watched/.',
+    inputSchema: Object.freeze({
+      type: 'object',
+      properties: Object.freeze({
+        source: Object.freeze({ type: 'string', description: 'the link, or the path of a file on this computer' }),
+        from: Object.freeze({ type: 'string', description: 'where to start, like "12:30" (default the start)' }),
+        to: Object.freeze({ type: 'string', description: 'where to stop (default ten minutes on, at most thirty)' }),
+      }),
+      required: Object.freeze(['source']),
     }),
   }),
 ]);
@@ -110,8 +145,25 @@ export const handleMediaTool = async (ws, connection, neumaPolicy, toolMode, mat
   });
   if (!gate.ok) return gate.result;
 
+  if (toolName === 'media_watch' || toolName === 'media_listen') {
+    const mode = toolName === 'media_watch' ? 'watch' : 'listen';
+    const laneId = companion.neumaId;
+    const watched = await watchSource({
+      laneId, laneDir: neumaWorkspace.pathFor(laneId), source: args?.source, from: args?.from, to: args?.to, mode,
+    });
+    if (!watched.ok) {
+      ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: watched.summary, detail: watched.error });
+      return { tool, status: 'error', error: watched.error };
+    }
+    ports.sendToolEvent(ws, companion, { tool, status: 'ok', summary: watched.summary, ...(watched.file ? { path: watched.file } : {}) });
+    return {
+      tool, status: 'ok', content: watched.content,
+      ...(watched.imageIds.length ? { sight: { laneId, imageIds: watched.imageIds, store: 'ephemeral', purpose: 'watch-frames' } } : {}),
+    };
+  }
+
   try {
-    // media_library — the only remaining tool (saving is the media/save intent).
+    // media_library (saving is the media/save intent).
     const entries = await library.list();
     ports.sendToolEvent(ws, companion, {
       tool, status: 'ok',

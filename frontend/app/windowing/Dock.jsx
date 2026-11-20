@@ -29,9 +29,20 @@ import { disconnectSession } from '../../services/session.js';
 import { DepartureVeil } from '../RelinkShell/DepartureVeil.jsx';
 import { BrandMark } from '../RelinkShell/brand-marks.jsx';
 import { MARKETING_PLATFORMS, MARKETING_WINDOW, PLATFORM_LABELS } from './retired-windows.js';
+import { POSITION_TILES, positionTileId, officeOfTile, requestPositionPlace } from './position-tiles.js';
 
 const PLATFORM_ENTRIES = MARKETING_PLATFORMS.map((id) => [id, Object.freeze({
   label: PLATFORM_LABELS[id], icon: <BrandMark id={id} />, keywords: ['marketing', 'social', 'platform'],
+})]);
+
+// One tile per position of the house: it opens POSITIONS on that seat (position-tiles.js).
+const SeatGlyph = () => (
+  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" aria-hidden="true">
+    <circle cx="8" cy="5" r="2.4" /><path d="M3 14 C3 10.6 5.2 9 8 9 C10.8 9 13 10.6 13 14" />
+  </svg>
+);
+const POSITION_ENTRIES = POSITION_TILES.map(([office, label, keywords]) => [positionTileId(office), Object.freeze({
+  label, icon: <SeatGlyph />, keywords: ['position', 'seat', ...keywords],
 })]);
 
 const LauncherGlyph = () => (
@@ -66,6 +77,7 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
       .filter(([, app]) => app.launcher !== false)
       .map(([id, app]) => [id, app.labelKey ? { ...app, label: tDesk(app.labelKey) } : app]),
     ...(registry[MARKETING_WINDOW] ? PLATFORM_ENTRIES : []),
+    ...(registry.positions ? POSITION_ENTRIES : []),
   ], [registry, tDesk]);
   const ids = useMemo(() => entries.map(([id]) => id), [entries]);
   const byId = useMemo(() => new Map(entries), [entries]);
@@ -109,6 +121,9 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
   // 2026-10-23: […]), restoring a minimized one
   // when its turn comes; anything else opens or raises its one window.
   const raiseOrOpen = (id) => {
+    // A position's tile: POSITIONS, standing on that seat.
+    const office = officeOfTile(id);
+    if (office) { requestPositionPlace(office); dispatch({ type: 'OPEN', id: 'positions' }); return; }
     if (registry[id]?.panel) { onPanelToggle?.(id); return; }
     const next = registry[id]?.multiInstance ? clickTarget(state.windows, state.focusedId, id) : null;
     dispatch(next ? { type: 'FOCUS', id: next.id, restore: next.restore } : { type: 'OPEN', id });

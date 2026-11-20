@@ -34,8 +34,7 @@
  * a LoRA never could.
  */
 
-import { canonicalSha256 } from '../shared/plain-data-canonical.js';
-import { assertSiloIntegrity } from './compile-silo.js';
+import { assertSiloIntegrity, siloLayerSha256 } from './compile-silo.js';
 import { verifySiloSeal } from './seal-silo.js';
 import {
   buildNeumaIdentityBundle,
@@ -239,7 +238,7 @@ export const unmountSilo = (silo, authored = {}) => {
 const rehashed = (manifest, layers, now) => {
   const layerHashes = {};
   for (const name of Object.keys(manifest.layerHashes || {})) {
-    layerHashes[name] = canonicalSha256(layers[name]);
+    layerHashes[name] = siloLayerSha256(name, layers[name]);
   }
   return {
     ...manifest,

@@ -142,7 +142,7 @@ export async function* walkFiles(root) {
  * @param {string} data
  */
 const writeFileDurable = async (filePath, data) => {
-  const fd = await fs.open(filePath, 'w');
+  const fd = await fs.open(filePath, 'w', 0o600);
   try {
     await fd.writeFile(data);
     await fd.sync();
@@ -322,7 +322,7 @@ export const migrateFile = async (filePath, masterCandidates, dek, opts = {}) =>
     await writeFileDurable(backupPath, text);
 
     try {
-      const fresh = encryptEnvelope(globalTry.plain, { key: dek });
+      const fresh = encryptEnvelope(globalTry.plain, { key: dek, aad: envelope.aad });
       await writeFileDurable(tempPath, JSON.stringify(fresh, null, 2));
       await fs.rename(tempPath, filePath);
       // Dir-fsync is best-effort durability (ai6 R2.2): a failure here means

@@ -93,7 +93,7 @@ export const rawPostNoTimeout = (body) =>
     const url = new URL(`${QWEN3_ENDPOINT}/synthesize`);
     const req = http.request(
       // the backend's own token (sidecar-trust.js): the sidecar answers nothing else
-      { hostname: url.hostname, port: url.port, path: url.pathname, method: 'POST', headers: { 'Content-Type': 'application/json', [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) } },
+      { hostname: url.hostname, port: url.port, path: url.pathname, method: 'POST', headers: { 'Content-Type': 'application/json', [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey(), 'qwen3') } },
       (response) => resolve(response),
     );
     req.on('error', reject);

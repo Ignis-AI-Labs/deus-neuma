@@ -21,6 +21,7 @@ import { handleCodingShellControl } from './coding-shell-control.js';
 import { focusGroundOf } from './focus-ground.js';
 import { isLiveShell } from './open-folder-autonomy.js';
 import { normalizeToolMode } from './tool-policy.js';
+import { startedByOf } from './chat-processes.js';
 
 // impure — one coding-shell call. `gateWitnessAct` is the caller's act gate
 // (witness-tools.js), injected so the dependency flows orchestrator → family.
@@ -36,7 +37,7 @@ export const handleCodingTool = async (ws, connection, identity, args, sandbox, 
   if (!sandbox) {
     const error = connection._turnSandboxError
       ? `The coding shell is unavailable this turn: ${connection._turnSandboxError}`
-      : 'No focused workspace is open. Focus an opened folder or project before using coding tools.';
+      : 'No focused workspace is open. Focus an opened folder before using coding tools.';
     sendToolEvent(ws, connection.companion, { tool, status: 'unavailable', summary: 'coding shell unavailable', detail: error });
     return { tool, status: 'unavailable', error };
   }
@@ -55,6 +56,8 @@ export const handleCodingTool = async (ws, connection, identity, args, sandbox, 
       mode: identity.toolName === 'inspect' ? 'inspect' : 'write',
       live: isLiveShell({ mode: normalizeToolMode(connection.toolMode), sourceRoot: sandbox.sourceRoot, ground: focusGroundOf(connection) }),
       signal: connection.activeTurn?.signal, onChunk: paint,
+      // The chat that ran it, marked on every process it starts (chat-processes.js): what it leaves running is shown.
+      startedBy: startedByOf({ wallet: connection.walletAddress, laneId: connection.companion?.neumaId, sessionId: connection.sessionId }),
     });
     const content = renderCommandResult(result);
     const ok = result.exitCode === 0 && !result.timedOut;

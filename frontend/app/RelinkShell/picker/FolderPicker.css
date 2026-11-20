@@ -3,7 +3,7 @@
    their own sheets (FolderPicker-rail.css, FolderPicker-list.css), imported
    at the same site in cascade order.
 
-   Inline (Projects/House) it fills its host window (absolute, not fixed, so
+   Inline (House) it fills its host window (absolute, not fixed, so
    a transformed window ancestor can't mis-anchor it); portaled to the body
    (FolderOpenFlow) it is a centered, DRAGGABLE dialog over a dimmed backdrop.
 

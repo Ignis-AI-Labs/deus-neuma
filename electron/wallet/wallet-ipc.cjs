@@ -18,7 +18,9 @@ const { createRpcStore, maskRpcUrl } = require('./rpc-store.cjs');
 const { validateRpcUrl } = require('./rpc-url.cjs');
 const { pickPersonalSignMessage, parseTypedData, isReadMethod, toChainIdHex } = require('./eip1193-helpers.cjs');
 const { createConfirmWindow } = require('./confirm-window.cjs');
-const { buildSignConfirmView, buildGateView } = require('./confirm-view.cjs');
+const { buildSignConfirmView } = require('./confirm-view.cjs');
+const { gateDialog, secretGate } = require('./trusted-gate.cjs');
+const { walletRevealDoors } = require('./reveal-doors.cjs');
 const { NETWORKS, createNetworkStore } = require('./networks.cjs');
 const { fromDesk } = require('../desk-links.cjs');
 
@@ -40,11 +42,6 @@ const callCtx = new AsyncLocalStorage();
 // pure buildSignConfirmView (confirm-view.cjs), proven by real tests.
 const makeNativeConfirm = (getWindow) => (req) => createConfirmWindow(getWindow(), buildSignConfirmView(req));
 
-// impure — a stern gate for irreversible actions (reveal/delete/reroute RPC),
-// through the same trusted window. Destructive gates pass tone:'alert' so the
-// window lights the theatrical alert register.
-const gateDialog = (getWindow, spec) => createConfirmWindow(getWindow(), buildGateView(spec));
-
 // impure — lazily build + cache the RPC provider for the SELECTED network. The
 // witness's custom RPC (a secret held by rpcStore) wins when set; otherwise the
 // selected network's public endpoint is used. Reads AND the embedded wallet's
@@ -65,10 +62,11 @@ const makeRpcGetter = (rpcStore, networkStore) => {
 
 /**
  * Register the wallet IPC handlers and wire the main-process wallet service.
- * @param {{getWindow: () => object, userDataPath: string}} deps
+ * @param {{getWindow: () => object, userDataPath: string, getOrigin: () => string}} deps
  * @returns {() => void} an unregister function
  */
-const registerWalletIpc = ({ getWindow, userDataPath, getOrigin = null }) => {
+const registerWalletIpc = ({ getWindow, userDataPath, getOrigin }) => {
+  if (typeof getOrigin !== 'function') throw new Error('wallet IPC requires the desk origin resolver');
   const walletDir = path.join(userDataPath, 'wallet');
   const rpcStore = createRpcStore({ walletDir, outerSeal: osKeySeal });
   const networkStore = createNetworkStore({ walletDir });
@@ -102,6 +100,8 @@ const registerWalletIpc = ({ getWindow, userDataPath, getOrigin = null }) => {
       }
     },
   });
+
+  const reveals = walletRevealDoors({ service, gate: secretGate(resolveWindow) });
 
   // Ledger medium — a pure relay to the hardware device. No key material ever
   // enters this process (see ledger-service.cjs); it only reads public addresses.
@@ -145,32 +145,16 @@ const registerWalletIpc = ({ getWindow, userDataPath, getOrigin = null }) => {
     'wallet:tryRemembered': () => service.tryRememberedUnlock(),
     'wallet:canKeepMadeKey': () => service.canKeepMadeKey(),
     'wallet:createForMe': () => service.createForMe(),
-    'wallet:revealMade': async (_e, id) => {
-      const ok = await gateDialog(resolveWindow, {
-        message: 'Reveal your recovery phrase?',
-        detail:
-          'Anyone who sees these 24 words controls this wallet and its funds. Make sure no one is watching your screen — including screen share or recording.',
-        confirmLabel: 'Reveal',
-        tone: 'alert',
-      });
-      if (!ok) throw new Error('Reveal cancelled.');
-      return service.revealMadeMnemonic(id);
-    },
+    // Creation with the phrase shown in the trusted window and never returned (reveal-doors.cjs, P6-10).
+    'wallet:createShown': (_e, password) => reveals.create(password),
+    'wallet:createForMeShown': () => reveals.createForMe(),
+    // The secret is shown in the trusted window and never returned to the page (reveal-doors.cjs).
+    'wallet:revealMade': (_e, id) => reveals.revealMade(id),
     'wallet:lock': () => {
       service.lock();
       return { unlocked: false };
     },
-    'wallet:reveal': async (_e, id, password) => {
-      const ok = await gateDialog(resolveWindow, {
-        message: 'Reveal your recovery phrase?',
-        detail:
-          'Anyone who sees these 24 words controls this wallet and its funds. Make sure no one is watching your screen — including screen share or recording.',
-        confirmLabel: 'Reveal',
-        tone: 'alert',
-      });
-      if (!ok) throw new Error('Reveal cancelled.');
-      return service.revealMnemonic(id, password);
-    },
+    'wallet:reveal': (_e, id, password) => reveals.reveal(id, password),
     'wallet:remove': async (_e, id, password) => {
       const ok = await gateDialog(resolveWindow, {
         message: 'Delete this wallet from this device?',
@@ -249,7 +233,7 @@ const registerWalletIpc = ({ getWindow, userDataPath, getOrigin = null }) => {
   // audit 2026-10-28 M-07). The confirm and unlock windows keep their own sender checks.
   for (const [channel, fn] of Object.entries(handlers)) {
     ipcMain.handle(channel, (event, ...args) => {
-      if (getOrigin && !fromDesk(event, getOrigin())) throw new Error(`${channel} refused: not the desk`);
+      if (!fromDesk(event, getOrigin())) throw new Error(`${channel} refused: not the desk`);
       return callCtx.run({ sender: event.sender }, () => fn(event, ...args));
     });
   }

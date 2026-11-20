@@ -114,6 +114,23 @@ describe('a fresh install is seated only by the owner claim', () => {
     } finally { await house.close(); }
   });
 
+  test('a genesis seal alone never seats the install owner without the local claim', async () => {
+    const house = await freshInstall('owner-claim-genesis-bypass');
+    const stranger = (await keypairs(1))[0];
+    try {
+      const lane = path.join(path.dirname(house.dataRoot), 'workspaces', 'old-being');
+      await fs.mkdir(path.join(lane, 'identity'), { recursive: true });
+      await fs.writeFile(path.join(lane, 'identity', 'genesis-seal.json'), JSON.stringify({
+        record: { witnessWallet: stranger.address, birthMoment: { epochMs: 1 } },
+      }));
+      const unsignedOwner = await house.signIn(stranger);
+      expect(unsignedOwner.machine.standing).toBe('unowned');
+      expect(await house.standing(unsignedOwner.token)).toMatchObject({ standing: 'unowned', owner: null });
+      const claimed = await house.signIn(stranger, readOwnerClaim(house.dataRoot));
+      expect(claimed.machine).toEqual({ standing: 'owner' });
+    } finally { await house.close(); }
+  });
+
   test('an install that already has an owner writes no claim and ignores one', async () => {
     const [ownerKey, other] = await keypairs(2);
     const house = await freshInstall('owner-claim-owned', { ownedBy: ownerKey.address });

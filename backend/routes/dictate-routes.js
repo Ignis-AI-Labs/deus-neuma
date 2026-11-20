@@ -8,7 +8,7 @@
  * it arrives: words land while the key is down and the final follows the
  * release by ~0.2 s, however long the hold (docs/work/dictation-flow.md).
  *
- * One socket = one hold. Auth-on-connect like the terminal (`?token=`); the
+ * One socket = one hold. Exact-lane ticket on connect (`?ticket=`); the
  * key owns the endpoint (hold mode — the sidecar's VAD is bypassed). The
  * bridge is the portal's own VoiceStreamSession, so the flood bound, the
  * owed-flush and the honest degrade are the sitting's, not a copy.
@@ -19,7 +19,7 @@
  * an error; the desk falls back to /transcribe for that hold.
  */
 
-import { verifySessionToken } from '../services/auth.js';
+import { deskTicketSessionForUrl } from '../services/desk-tickets.js';
 import { VoiceStreamSession } from '../services/voice/stream-session.js';
 import { createLogger } from '../services/logger.js';
 
@@ -45,8 +45,7 @@ const send = (ws, frame) => {
 /** Bind the dictation socket. impure. */
 export const setupDictateRoutes = (wss) => {
   wss.on('connection', async (ws, req) => {
-    const token = new URL(req.url, 'http://localhost').searchParams.get('token');
-    if (!token || !verifySessionToken(token)) { ws.close(4001, 'Unauthorized'); return; }
+    if (!deskTicketSessionForUrl(req.url)) { ws.close(4001, 'Unauthorized'); return; }
 
     let open = false;
     let heard = false;      // any PCM reached the lane

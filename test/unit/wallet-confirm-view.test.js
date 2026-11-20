@@ -8,12 +8,14 @@ import {
   buildGateView,
   isTrustedResolve,
   isSignInMessage,
+  isArmed,
   DEFAULT_CHAIN_ID,
 } from '../../electron/wallet/confirm-view.cjs';
 
 describe('buildSignConfirmView', () => {
   it('shapes a transaction with to / value / chain and a send label', () => {
     const v = buildSignConfirmView({ type: 'transaction', to: '0xabc', value: 10n ** 18n });
+    expect(v.tone).toBe('normal');
     expect(v.heading).toBe('CONFIRM TRANSACTION');
     expect(v.confirmLabel).toBe('CONFIRM & SEND');
     const byLabel = Object.fromEntries(v.fields.map((f) => [f.label, f.value]));
@@ -23,23 +25,24 @@ describe('buildSignConfirmView', () => {
     expect(v.fields.every((f) => f.mono)).toBe(true);
   });
 
-  it('omits the DATA field for a plain 0x transfer but shows it for calldata', () => {
+  it('a plain 0x transfer has no call; calldata it cannot read is refused, never shown as a row of hex', () => {
     const plain = buildSignConfirmView({ type: 'transaction', to: '0x1', value: 0n, data: '0x' });
-    expect(plain.fields.find((f) => f.label === 'DATA')).toBeUndefined();
-    const call = buildSignConfirmView({ type: 'transaction', to: '0x1', value: 0n, data: '0xdeadbeef' });
-    expect(call.fields.find((f) => f.label === 'DATA').value).toContain('0xdeadbeef');
+    expect(plain.fields.find((f) => f.label === 'CALL')).toBeUndefined();
+    expect(plain.body).toBeUndefined();
+    expect(() => buildSignConfirmView({ type: 'transaction', to: '0x1', value: 0n, data: '0xdeadbeef' })).toThrow(/cannot read/);
   });
 
   it('shapes typed data with domain, contract, chain and the JSON value body', () => {
     const v = buildSignConfirmView({
       type: 'signTypedData',
-      domain: { name: 'Neuma', verifyingContract: '0xdead', chainId: 8453 },
+      domain: { name: 'Neuma', verifyingContract: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', chainId: 8453 },
+      types: { Greeting: [{ name: 'hello', type: 'string' }] },
       value: { hello: 'world' },
     });
     expect(v.heading).toBe('SIGN TYPED DATA');
     const labels = v.fields.map((f) => f.label);
-    expect(labels).toEqual(['DOMAIN', 'CONTRACT', 'CHAIN']);
-    expect(v.body).toContain('"hello": "world"');
+    expect(labels).toEqual(['DOMAIN', 'CONTRACT', 'CHAIN', 'TYPE']);
+    expect(v.body).toBe('Greeting\n  hello: world');
   });
 
   it('decodes a readable personal_sign message into the body (no warning)', () => {
@@ -60,12 +63,10 @@ describe('buildSignConfirmView', () => {
     expect(v.warning).toMatch(/unreadable/i);
   });
 
-  it('truncates a very long readable message (never dumps unbounded text)', () => {
+  it('shows a long readable message whole (what is signed is never cut)', () => {
     const long = 'A'.repeat(1000);
     const hex = ethers.hexlify(ethers.toUtf8Bytes(long));
-    const v = buildSignConfirmView({ type: 'signMessage', message: hex });
-    expect(v.body.length).toBeLessThan(long.length);
-    expect(v.body.endsWith('…')).toBe(true);
+    expect(buildSignConfirmView({ type: 'signMessage', message: hex }).body).toBe(long);
   });
 });
 
@@ -117,8 +118,9 @@ describe('isTrustedResolve — the sender-identity hinge', () => {
 describe('the sign-in challenge', () => {
   it('a real sign-in challenge shows SIGN IN; any other message still shows SIGN', async () => {
     const { generateChallenge } = await import('../../backend/services/auth.js');
-    const challenge = generateChallenge(ethers.Wallet.createRandom().address);
-    const view = buildSignConfirmView({ message: challenge });
+    const address = ethers.Wallet.createRandom().address;
+    const challenge = generateChallenge(address);
+    const view = buildSignConfirmView({ message: challenge, address });
     expect(view.heading).toBe('SIGN IN');
     expect(view.confirmLabel).toBe('SIGN IN');
     expect(view.rejectLabel).toBe('CANCEL');
@@ -129,7 +131,16 @@ describe('the sign-in challenge', () => {
   });
   it('only the first line counts — the phrase quoted later in a message is not a sign-in', () => {
     expect(isSignInMessage('hello\nexample.com wants you to sign in with your Ethereum account:')).toBe(false);
-    expect(isSignInMessage('example.com wants you to sign in with your Ethereum account:\n0xabc')).toBe(true);
+    expect(isSignInMessage('example.com wants you to sign in with your Ethereum account:\n0xabc', '0xabc')).toBe(false);
     expect(isSignInMessage(undefined)).toBe(false);
+  });
+});
+
+describe('isArmed — an approval counts only once the window has been showing', () => {
+  it('refuses before the window shows and before the delay has passed', () => {
+    expect(isArmed(null, 5000, 0)).toBe(false);
+    expect(isArmed(1000, 2999, 2000)).toBe(false);
+    expect(isArmed(1000, 3000, 2000)).toBe(true);
+    expect(isArmed(1000, 1000)).toBe(true);
   });
 });

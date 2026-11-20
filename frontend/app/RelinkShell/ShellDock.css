@@ -1,0 +1,8 @@
+/* ShellDock — what the chats left running, docked above the composer (ShellDock.jsx). */
+.shell-dock { flex: 0 0 auto; max-height: 26vh; overflow-y: auto; padding: var(--space-1) var(--space-3); border-top: 1px solid var(--line-strong); background: var(--surface-sunk); }
+.shell-dock-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); color: var(--color-text-secondary); }
+.shell-dock-list { list-style: none; margin: var(--space-1) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.shell-dock-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "cmd stop" "meta stop"; gap: 2px var(--space-2); padding: var(--space-1) var(--space-2); background: var(--surface-raised); border-left: 2px solid var(--signal); }
+.shell-dock-cmd { grid-area: cmd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--color-text-primary); font-size: 13px; }
+.shell-dock-meta { grid-area: meta; color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.shell-dock-stop { grid-area: stop; align-self: center; color: var(--alert); border-color: var(--alert); }

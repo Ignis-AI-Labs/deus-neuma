@@ -30,9 +30,9 @@ const failed = (id, house, over) => ({
   decidedAt: '2026-10-24T09:10:00.000Z', sendingAt: '2026-10-24T09:50:00.000Z', failedAt: '2026-10-24T09:52:00.000Z', ...over,
 });
 
-const put = async (who, id, act) => {
+const put = async (who, id, act, body = {}) => {
   const res = await fetch(`${base}/api/v1/social-channels/queue/${id}/${act}`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json', ...(who ? { Authorization: `Bearer ${who.token}` } : {}) }, body: '{}',
+    method: 'PUT', headers: { 'Content-Type': 'application/json', ...(who ? { Authorization: `Bearer ${who.token}` } : {}) }, body: JSON.stringify(body),
   });
   return { status: res.status, body: await res.json().catch(() => ({})) };
 };
@@ -109,7 +109,7 @@ describe('PUT /queue/:id/retry — TRY AGAIN, the operator\'s own press', () => 
   });
 
   it('it goes out again only through the ordinary APPROVE — the operator\'s fresh decision', async () => {
-    const res = await put(a, 'stumbled', 'approve');
+    const res = await put(a, 'stumbled', 'approve', { textSeen: (await entry('stumbled')).text }); // a yes names the copy it read (P6-124)
     expect(res.status).toBe(200);
     expect(await entry('stumbled')).toMatchObject({ status: 'approved', decidedBy: a.address });
     expect((await entry('stumbled')).decidedUnder).toBeUndefined();

@@ -9,6 +9,7 @@
 import '../SecurityApp.css';
 import './CompanyLine.css';
 import { EmptyState } from '../empty-state.jsx';
+import { safeHttpUrl } from '../safe-url.js';
 import { WorksheetView } from './WorksheetView.jsx';
 import { SalesSection } from './SalesSection.jsx';
 import { BooksSection } from './BooksSection.jsx';
@@ -116,6 +117,7 @@ const YourMove = ({ company, draft, busy, onDraft, onHandOn, onInspect, onEndGap
 // the link with its site shown plainly, and the answer the house asked for.
 const HandsCard = ({ item, names, draft, busy, onDraft, onAnswer }) => {
   const ask = ANSWER_ASKS[item.answer];
+  const href = safeHttpUrl(item.where);
   const text = (draft.text ?? '').trim();
   const stage = item.unblocks ? item.company.stages.find((s) => s.id === item.unblocks) : null;
   return (
@@ -128,7 +130,9 @@ const HandsCard = ({ item, names, draft, busy, onDraft, onAnswer }) => {
           {stage ? `HOLDS ${stage.name}` : 'HOLDS NO STAGE'}{item.cost ? ` · ESTIMATE: ${item.cost}` : ''}{item.by ? ` · BY ${item.by}` : ''}
         </p>
         <p className="cline-co-line label-data">
-          DO IT AT {domainOf(item.where)} — <a className="cline-link" href={item.where} target="_blank" rel="noopener noreferrer">{item.where}</a>
+          DO IT AT {domainOf(item.where)} — {href
+            ? <a className="cline-link" href={href} target="_blank" rel="noopener noreferrer">{item.where}</a>
+            : <span>{item.where}</span>}
         </p>
         <input className="cline-input" aria-label={ask ?? 'Why it will not be done'} disabled={busy} value={draft.text ?? ''}
           placeholder={ask ? `${ask} (or why it will not be done)` : 'Why it will not be done (only if you decline)'}
@@ -181,7 +185,7 @@ const OpenForm = ({ draft, busy, onDraft, onOpen }) => (
 
 export const CompanyLineBody = ({
   board, names, error, loading, busy, drafts, onDraft, onRefresh, onOpen, onHandOn, onInspect, onAnswer, onCharter, onEndGap = () => {},
-  sales = null, onSales = null, books = null, onBooks = null, raises = null, onRaise = null,
+  sales = null, onSales = null, books = null, onBooks = null, raises = null, onRaise = null, onOpenPosition = null,
 }) => {
   const view = lineOverview(board);
   const mine = (board?.companies ?? []).filter((c) => operatorMove(c));
@@ -229,6 +233,14 @@ export const CompanyLineBody = ({
             ))}
           </section>
           {onSales ? <SalesSection sales={sales} names={names} busy={busy} drafts={drafts} onDraft={onDraft} {...onSales} /> : null}
+          {/* The lead engine stands in ONE place: POSITIONS, CHIEF REVENUE OFFICER (its company facts, its campaigns, its lead list). */}
+          {onSales ? (
+            <section className="cline-sec" aria-label="lead engine" data-lead-engine-door="">
+              <p className="cline-h label-data">LEAD ENGINE — IN POSITIONS, CHIEF REVENUE OFFICER</p>
+              <p className="cline-move-t">The facts a buyer may be told stand on COMPANY, each campaign with its audiences and leads on CAMPAIGNS, and the lead list&apos;s upkeep on LEADS.</p>
+              {onOpenPosition ? <button type="button" className="sec-scan label-data" disabled={busy} onClick={() => onOpenPosition('cro', 'campaigns')}>OPEN SALES</button> : null}
+            </section>
+          ) : null}
           {onBooks ? <BooksSection books={books} names={names} busy={busy} {...onBooks} /> : null}
           {onRaise ? <RaiseSection raises={raises} drafts={drafts} busy={busy} onDraft={onDraft} {...onRaise} /> : null}
           <OpenForm draft={drafts._open ?? {}} busy={busy} onDraft={onDraft} onOpen={onOpen} />

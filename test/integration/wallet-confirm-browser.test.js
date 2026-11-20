@@ -63,15 +63,25 @@ it('renders message and transaction text literally, preserving confirm, reject a
   await page.locator('.wallet-confirm-approve').click();
   expect(await page.evaluate(() => window.choice)).toBe(true);
   await browserExpect(page.locator('.wallet-confirm-overlay')).toHaveCount(0);
-  await page.evaluate((to) => {
+  const from = `0x${'1'.repeat(40)}`;
+  const data = `0x095ea7b3${'2'.repeat(64)}${'f'.repeat(64)}`;
+  await page.evaluate(({ to, from: sender, data: calldata }) => {
     window.choice = 'pending';
-    window.modal.requestConfirmation('transaction', { to, value: '1000000000000000000', data: '0x123456789012345678901234' })
+    window.modal.requestConfirmation('transaction', { from: sender, to, value: '1000000000000000000', data: calldata })
       .then((v) => { window.choice = v; });
-  }, payload);
-  await browserExpect(page.locator('.wallet-confirm-value').nth(0)).toHaveText(payload);
-  await browserExpect(page.locator('.wallet-confirm-value').nth(1)).toHaveText('1.0 ETH');
-  await browserExpect(page.locator('.wallet-confirm-value').nth(2)).toHaveText('0x123456789012345678...');
+  }, { to: payload, from, data });
+  await browserExpect(page.locator('.wallet-confirm-value').nth(0)).toHaveText(from);
+  await browserExpect(page.locator('.wallet-confirm-value').nth(1)).toHaveText(payload);
+  await browserExpect(page.locator('.wallet-confirm-value').nth(2)).toHaveText('1.0 ETH');
+  await browserExpect(page.locator('.wallet-confirm-value').nth(3)).toHaveText(data);
   expect(await page.locator('img').count()).toBe(0);
+  await page.locator('.wallet-confirm-reject').click();
+  expect(await page.evaluate(() => window.choice)).toBe(false);
+  await page.evaluate(({ to, from: sender }) => {
+    window.choice = 'pending';
+    window.modal.requestConfirmation('transaction', { from: sender, to, value: '0', data: '0x' }).then((v) => { window.choice = v; });
+  }, { to: payload, from });
+  await browserExpect(page.locator('.wallet-confirm-value')).toHaveCount(3);
   await page.locator('.wallet-confirm-reject').click();
   expect(await page.evaluate(() => window.choice)).toBe(false);
   await page.evaluate(() => {
@@ -114,6 +124,7 @@ it('signs only after approval, rejects transactions before RPC, and unlocks thro
   page.on('request', (req) => requests.push(req.url()));
   await start('eth_sendTransaction', [{ to: address, value: '0x0' }]);
   await browserExpect(page.locator('.wallet-confirm-header')).toHaveText('Confirm Transaction');
+  await browserExpect(page.locator('.wallet-confirm-value').nth(0)).toHaveText(address);
   expect(await page.evaluate(() => window.result.status)).toBe('pending');
   await page.locator('.wallet-confirm-reject').click();
   await page.waitForFunction(() => window.result.status !== 'pending');

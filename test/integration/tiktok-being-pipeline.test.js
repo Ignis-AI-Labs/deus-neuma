@@ -139,7 +139,7 @@ describe('the operator decides on the card; the scheduler sends exactly that; th
     expect(before.content).toContain('the caption publishes; privacy, allow, promotion and send lines are read, never published');
 
     const res = await request(kit.app).put(`/api/v1/social-channels/queue/${staged.id}/approve`)
-      .set(kit.operator.header).send({ textSeen: staged.text, tiktok: CHOICE });
+      .set(kit.operator.header).send({ textSeen: staged.text, mediaSeen: (staged.media || []).map((m) => m.sha256 || null), tiktok: CHOICE }); // the card's words and video seal (P6-124)
     expect(res.status).toBe(200);
     const approved = await call(kit.connectionFor(CMO), 'queue_get', { id: staged.id });
     expect(approved.content).toContain('your operator chose on the card: who can watch Followers; comments on, duet off, stitch off; disclosure none; posting as @deusneuma');

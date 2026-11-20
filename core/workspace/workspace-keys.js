@@ -15,12 +15,14 @@ import fs from 'fs/promises';
 import path from 'path';
 import { wrapDEK, unwrapDEK, deriveKeyFromSecret } from './workspace-crypto.js';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
+import { createKeypairBundlesDomain } from './workspace-keypair-bundles.js';
 
 /**
  * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function}}} deps
  * @returns {Readonly<Object>} async methods assigned onto the NeumaWorkspace facade
  */
 export const createKeysDomain = ({ locks }) => Object.freeze({
+  ...createKeypairBundlesDomain({ locks }),
 
   // ─── Per-neuma DEK (#117 — LIVE on the IO path) ──────────────────────
   //
@@ -165,6 +167,7 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
     const keyPath = path.join(this._path(neumaId), 'keys', 'keypair-encrypted.json');
     await this._writeFileAtomic(keyPath, JSON.stringify(encrypted, null, 2));
     await this._audit(neumaId, 'ENCRYPTED_KEYPAIR_STORED', { address: encrypted.address });
+    await this.clearRotationBundle(neumaId);
   },
 
   /**
@@ -173,6 +176,8 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
    * @returns {Promise<Object|null>} Encrypted envelope or null if not found
    */
   async readEncryptedKeypair(neumaId) {
+    const bundle = await this.readRotationBundle(neumaId);
+    if (bundle?.encrypted) return bundle.encrypted;
     try {
       const data = await fs.readFile(
         path.join(this._path(neumaId), 'keys', 'keypair-encrypted.json'),
@@ -186,7 +191,7 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
 
   /**
    * Write the recovery codes hash for a neuma.
-   * Only the hash is stored — the actual codes are shown once to the witness.
+   * Rotation keeps delivered codes encrypted until the owner acknowledges them.
    * @param {string} neumaId - Neuma identifier
    * @param {string} hash - SHA-256 hash from hashRecoveryCodes()
    * @returns {Promise<void>}
@@ -195,6 +200,7 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
     const hashPath = path.join(this._path(neumaId), 'keys', 'recovery-hash.json');
     await this._writeFileAtomic(hashPath, JSON.stringify({ hash, createdAt: new Date().toISOString() }, null, 2));
     await this._audit(neumaId, 'RECOVERY_HASH_STORED', {});
+    await this.clearRotationBundle(neumaId);
   },
 
   /**
@@ -203,6 +209,8 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
    * @returns {Promise<string|null>} Hash string or null if not found
    */
   async readRecoveryHash(neumaId) {
+    const bundle = await this.readRotationBundle(neumaId);
+    if (bundle?.recoveryHash) return bundle.recoveryHash;
     try {
       const data = await fs.readFile(
         path.join(this._path(neumaId), 'keys', 'recovery-hash.json'),
@@ -223,6 +231,7 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
   async writeRecoveryKeypair(neumaId, encrypted) {
     const keyPath = path.join(this._path(neumaId), 'keys', 'keypair-recovery.json');
     await this._writeFileAtomic(keyPath, JSON.stringify(encrypted, null, 2));
+    await this.clearRotationBundle(neumaId);
   },
 
   /**
@@ -231,6 +240,8 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
    * @returns {Promise<Object|null>} Encrypted envelope or null
    */
   async readRecoveryKeypair(neumaId) {
+    const bundle = await this.readRotationBundle(neumaId);
+    if (bundle?.recoveryEncrypted) return bundle.recoveryEncrypted;
     try {
       const data = await fs.readFile(
         path.join(this._path(neumaId), 'keys', 'keypair-recovery.json'),
@@ -340,6 +351,34 @@ export const createKeysDomain = ({ locks }) => Object.freeze({
       }
     }
     return entries;
+  },
+
+  /**
+   * Preserve a retired key in password and recovery envelopes under the new
+   * rotation credentials. Only encrypted envelopes touch disk.
+   * @param {string} neumaId
+   * @param {string} address
+   * @param {{password: Object, recovery: Object}} envelopes
+   * @returns {Promise<void>}
+   */
+  async writeRetiredKeypair(neumaId, address, envelopes) {
+    const filePath = path.join(this._path(neumaId), 'keys', 'retired', `${address.toLowerCase()}.json`);
+    await this._writeFileAtomic(filePath, JSON.stringify({ version: 1, address, ...envelopes }, null, 2));
+  },
+
+  /**
+   * Read a retired key's encrypted envelopes; never decrypts them here.
+   * @param {string} neumaId
+   * @param {string} address
+   * @returns {Promise<Object|null>}
+   */
+  async readRetiredKeypair(neumaId, address) {
+    try {
+      const record = JSON.parse(await fs.readFile(path.join(this._path(neumaId), 'keys', 'retired', `${address.toLowerCase()}.json`), 'utf8'));
+      return record?.address?.toLowerCase() === address.toLowerCase() && record.password && record.recovery ? record : null;
+    } catch {
+      return null;
+    }
   },
 
   /**

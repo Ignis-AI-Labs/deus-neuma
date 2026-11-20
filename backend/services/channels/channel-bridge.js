@@ -20,6 +20,7 @@ import { broadcastSubstrateActivity, registerExternalTurnConnection } from '../.
 import { buildSessionKey } from './session-key.js';
 import { segmentText } from './message-segmenter.js';
 import { createBucket, consult, applyRetryAfter } from './rate-limiter.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('ChannelBridge');
@@ -89,8 +90,10 @@ export const createChannelBridge = ({
       notifySubstrateActivity: broadcastSubstrateActivity,
     });
     entry.connection.companion = { name: record.companionName, neumaId: record.neumaId };
-    // External channels can't tap approval chips (v1): the safest mode.
-    entry.connection.toolMode = 'observe';
+    // External channels can't tap approval chips, and the speaker is a visitor:
+    // nothing acts, and the being's private records stay closed (P6-42). The
+    // operator's own marked chat is set per turn (runTurn).
+    entry.connection.toolMode = 'visitor';
     // ...and counted by the broadcast, even though no frames come back here.
     entry.deregister = registerExternalTurnConnection(entry.connection);
     sessions.set(key, entry);
@@ -136,7 +139,10 @@ export const createChannelBridge = ({
   // impure — run ONE turn for a session entry and deliver the reply.
   // Never throws: the contract is { delivered, error? } however the turn
   // dies (error frame, thrown stream, wedged substrate past the deadline).
-  const runTurn = async (entry, event) => {
+  const runTurn = async (entry, event, operator) => {
+    // The operator's own one-to-one chat (chat-access.js isOperatorsOwn) is no visitor's: the being
+    // reads as it does at the desk. Nothing ACTS from a chat either way — no card can be answered here.
+    entry.connection.toolMode = operator ? 'observe' : 'visitor';
     let text = '';
     let failed = null;
     // The backend stream is UNFILTERED — the display's tool-block filter is
@@ -190,6 +196,12 @@ export const createChannelBridge = ({
       log.warn('Channel turn failed', { connection: record.connectionId, error: failed });
       return { delivered: 0, error: failed };
     }
+    // The answer leaves the house: a secret in it is never sent (P6-42).
+    const screened = checkOutboundSecrets('the answer', [text], 'nothing was sent');
+    if (!screened.ok) {
+      log.warn('Channel answer held — it carried a secret', { connection: record.connectionId });
+      return { delivered: 0, error: screened.reason };
+    }
     const chunks = segmentText(text.trim(), maxUnits);
     let delivered = 0;
     for (const chunk of chunks) {
@@ -211,9 +223,10 @@ export const createChannelBridge = ({
      * SYNCHRONOUSLY before any await (the Hermes race): a second message
      * for a busy session queues — depth 1, newest wins.
      * @param {object} event - a frozen MessageEvent
+     * @param {{operator?: boolean}} [who] operator: the door proved this is the operator's own marked chat
      * @returns {Promise<{ delivered: number, error?: string } | { queued: true }>}
      */
-    async handleEvent(event) {
+    async handleEvent(event, { operator = false } = {}) {
       const key = buildSessionKey(event, record.sessionOpts).key;
       const entry = sessionFor(key);
       clearTimeout(entry.evictTimer); // the session is alive again
@@ -223,18 +236,18 @@ export const createChannelBridge = ({
       if (entry.chatKey && entry.chatKey !== chatKey) chatBuckets.delete(entry.chatKey);
       entry.chatKey = chatKey;
       if (entry.busy) {
-        entry.queued = event; // newest wins
+        entry.queued = { event, operator }; // newest wins
         return { queued: true };
       }
       entry.busy = true;
       try {
-        return await runTurn(entry, event);
+        return await runTurn(entry, event, operator);
       } finally {
         entry.busy = false;
         const next = entry.queued;
         entry.queued = null;
         if (next) {
-          this.handleEvent(next).catch((err) => log.error('Queued turn failed', { error: err.message }));
+          this.handleEvent(next.event, { operator: next.operator }).catch((err) => log.error('Queued turn failed', { error: err.message }));
         } else {
           // Idle: schedule eviction so a long-running daemon never
           // accumulates an entry per user/chat/thread forever.

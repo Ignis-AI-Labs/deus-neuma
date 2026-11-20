@@ -65,8 +65,17 @@
       document.getElementById('warn').hidden = false;
       txt(document.getElementById('warnText'), v.warning);
     }
-    txt(document.getElementById('confirm'), v.confirmLabel || 'Sign');
+    var confirm = document.getElementById('confirm');
+    txt(confirm, v.confirmLabel || 'Sign');
     txt(document.getElementById('reject'), v.rejectLabel || 'Reject');
+    // A window that only shows (a secret) has one button, which closes it.
+    if (v.single === true) confirm.hidden = true;
+    // The arming delay: main refuses an approval before it has passed, so the
+    // button says so by standing disabled until then.
+    if (typeof v.armMs === 'number' && v.armMs > 0) {
+      confirm.disabled = true;
+      setTimeout(function () { confirm.disabled = false; }, v.armMs + 150);
+    }
   }
 
   document.getElementById('reject').addEventListener('click', function () { done(false); });

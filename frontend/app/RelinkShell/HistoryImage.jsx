@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLazyDetail } from './use-lazy-detail.js';
 import { mediaMenuDoor } from './media-menu.js';
+import { safeMediaUrl } from './media-url.js';
 
 const kb = (bytes) => (Number.isFinite(bytes) ? `${Math.round(bytes / 1024).toLocaleString()} KB` : '');
 
@@ -21,7 +22,7 @@ export const HistoryImage = ({ segment }) => {
     return () => watch.disconnect();
   }, [lazyRef, near]);
   const lazy = useLazyDetail(lazyRef, near);
-  const src = segment.src || lazy.value;
+  const src = safeMediaUrl(segment.src || lazy.value);
   // A pasted picture lives in the record only — no file, no gallery — so its
   // menu holds the loupe, the download and the clipboard (media-menu.js).
   if (src) {

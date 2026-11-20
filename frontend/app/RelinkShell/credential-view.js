@@ -26,10 +26,26 @@ export const channelItem = (channel, test) => {
   return Object.freeze({ key: `channel:${channel.id}`, id: channel.id, name: channel.name, group: 'CHANNELS', state, detail });
 };
 
-/** pure — a keyed service: set (here or in the env file), not set, or needing none. */
+/**
+ * pure — a value that belongs to another service (Tomba's secret, `partOf: 'tomba'`) is not a row of its own: it
+ * stands in its service's row as one of that row's `parts` (Design note, 2026-11-18: […]).
+ */
+export const withParts = (services) => {
+  const list = services ?? [];
+  return list.filter((s) => !s.partOf).map((s) => {
+    const parts = list.filter((p) => p.partOf === s.id);
+    return parts.length ? { ...s, parts } : s;
+  });
+};
+
+/** pure — a keyed service: set (here or in the env file), not set, or needing none. A row with parts is set only
+ * when every value in it is; half set, it says which is missing. */
 export const serviceItem = (service) => {
-  const state = service.hasKey ? 'set' : service.requiresKey === false ? 'keyless' : 'missing';
-  const detail = service.source === 'stored' ? 'saved here' : service.source === 'env' ? 'from the env file' : null;
+  const values = [service, ...(service.parts ?? [])];
+  const missing = values.filter((v) => !v.hasKey);
+  const state = !missing.length ? 'set' : service.requiresKey === false ? 'keyless' : 'missing';
+  const detail = missing.length && missing.length < values.length ? `${missing.map((v) => String(v.label ?? v.name).toLowerCase()).join(' and ')} not set`
+    : service.source === 'stored' ? 'saved here' : service.source === 'env' ? 'from the env file' : null;
   return Object.freeze({
     key: `service:${service.id}`, id: service.id, name: service.name,
     group: String(service.group || 'Services').toUpperCase(), state, detail,
@@ -46,7 +62,7 @@ export const emailItem = (account) => (account ? Object.freeze({
 /** pure — every credential on the tab, one vocabulary. */
 export const credentialItems = ({ channels, tests, services, email } = {}) => [
   ...(channels ?? []).map((c) => channelItem(c, tests?.[c.id])),
-  ...(services ?? []).map(serviceItem),
+  ...withParts(services).map(serviceItem),
   ...[emailItem(email)].filter(Boolean),
 ];
 

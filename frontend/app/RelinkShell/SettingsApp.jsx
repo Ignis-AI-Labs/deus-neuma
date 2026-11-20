@@ -29,10 +29,12 @@ import { RealmSection } from './RealmSection.jsx';
 import { SoundSection } from './SoundSection.jsx';
 import { InferenceSection } from './InferenceSection.jsx';
 import { HotkeysSection } from './HotkeysSection.jsx';
+import { SystemDictationSection } from './SystemDictationSection.jsx';
 import { ModelsSection } from './ModelsSection.jsx';
 import { ModelFoldersSection } from './ModelFoldersSection.jsx';
 import { SecuritySection } from './SecuritySection.jsx';
 import { ConnectionsSection } from './ConnectionsSection.jsx';
+import { ChatLineSection } from './ChatLineSection.jsx';
 import { RemoteSection } from './RemoteSection.jsx';
 import { DocPressSection } from './DocPressSection.jsx';
 import { ApiTab } from './SettingsApiTab.jsx';
@@ -54,6 +56,7 @@ const GeneralTab = () => (
     <RealmSection />
     <DocPressSection />
     <HotkeysSection />
+    <SystemDictationSection />
   </>
 );
 
@@ -69,9 +72,10 @@ const ModelsTab = ({ focus }) => (
 // windows decide WHO speaks; this tab holds WHAT unlocks the door.
 // Remote sits beside Security: a phone on the tailnet is a security posture
 // before it is a convenience (docs/security/remote-surface.md).
-const SecurityTab = () => (
+const SecurityTab = ({ focus }) => (
   <>
-    <ConnectionsSection />
+    <ConnectionsSection focus={focus} />
+    <ChatLineSection />
     <SecuritySection />
     <RemoteSection />
   </>
@@ -101,6 +105,7 @@ const TAB_OF_FOCUS = Object.freeze({
   providers: 'models',
   route: 'models',
   'channel-keys': 'api',
+  'service-keys': 'api',
   email: 'api',
   web: 'api',
   security: 'security',

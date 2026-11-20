@@ -9,7 +9,7 @@ import process from 'node:process';
 import { clearInterval } from 'node:timers';
 import { setTimeout as delay } from 'node:timers/promises';
 import { test, expect } from 'vitest';
-import { createRateLimiter, neumaAuthLimiter, apiLimiter, STATUS_PROBE_MAX } from '../../backend/services/rate-limiter.js';
+import { createRateLimiter, neumaAuthLimiter, apiLimiter, STATUS_PROBE_MAX, UPLOAD_MAX } from '../../backend/services/rate-limiter.js';
 import { requireAuth } from '../../backend/services/auth.js';
 import { fullAuth } from '../helpers/audit-auth.js';
 
@@ -134,6 +134,18 @@ test('production order (metered BEFORE auth, one local IP): spent reads never re
     expect((await send(port, { token, route: '/api/v1/attachments', method: 'POST', body: {} })).status).toBe(204);
     expect((await send(port, { route: '/api/v1/auth/challenge' })).status).toBe(204);
   });
+});
+
+test('the operator\'s uploads keep their own budget: a spent write minute never refuses a picture being sent (Design note, 2026-11-20', async () => {
+  const { token } = await fullAuth();
+  await withServer(apiLimiter, async (port) => {
+    // The desk's writes spend the shared minute — every local caller is one IP before auth.
+    await exhaust(port, { token, route: '/api/v1/gallery/items', method: 'POST', body: {} }, 200);
+    // The picture still uploads, up to its own finite bound, and the bound still refuses a flood.
+    await exhaust(port, { token, route: '/api/v1/attachments', method: 'POST', body: {} }, UPLOAD_MAX);
+    // Only the upload path rides it: any other write is still refused.
+    expect((await send(port, { token, route: '/api/v1/attachments/x', method: 'POST', body: {} })).status).toBe(429);
+  }, { auth: true }); // a fresh signer: buckets of its own, untouched by the tests above
 });
 
 for (const [ceiling, readRefusal, writeRefusal] of [

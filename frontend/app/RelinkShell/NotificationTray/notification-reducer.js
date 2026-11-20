@@ -51,9 +51,12 @@ const settle = (records) => {
   });
 };
 
+/** Pure — the newest card's stamp (what MARK ALL READ and CLEAR reach back from), or null. */
+export const newestStamp = (records) => records.reduce((max, rec) => (Number.isFinite(rec?.ts) && (max === null || rec.ts > max) ? rec.ts : max), null);
+
 /**
  * @param {object} state
- * @param {{type: string, records?: object[], record?: object, ids?: string[]}} action
+ * @param {{type: string, records?: object[], record?: object, ids?: string[], through?: number}} action
  */
 export const notificationReducer = (state = initialNotifications, action = {}) => {
   switch (action.type) {
@@ -77,12 +80,14 @@ export const notificationReducer = (state = initialNotifications, action = {}) =
       return settle([...without, merged]);
     }
 
+    // `through` (MARK ALL READ, from this desk or a sibling) reads every card up to that stamp.
     case 'MARK_READ': {
       const ids = new Set(Array.isArray(action.ids) ? action.ids : []);
-      if (ids.size === 0) return state;
+      const through = Number.isFinite(action.through) ? action.through : null;
+      if (ids.size === 0 && through === null) return state;
       let changed = false;
       const next = state.records.map((rec) => {
-        if (!ids.has(rec.id) || rec.read) return rec;
+        if (!(ids.has(rec.id) || (through !== null && rec.ts <= through)) || rec.read) return rec;
         changed = true;
         return { ...rec, read: true };
       });
@@ -98,11 +103,13 @@ export const notificationReducer = (state = initialNotifications, action = {}) =
 
     // The operator dismissed cards (the ×, or CLEAR for all of them). Folded the
     // same way whether this window pressed it or a sibling did; the server keeps
-    // them out of every later hydrate, and the records stay in its file.
+    // them out of every later hydrate, and the records stay in its file. CLEAR
+    // sends `through`: every card up to that stamp, held here or not.
     case 'DISMISS': {
       const ids = new Set(Array.isArray(action.ids) ? action.ids : []);
-      if (ids.size === 0) return state;
-      const next = state.records.filter((rec) => !ids.has(rec.id));
+      const through = Number.isFinite(action.through) ? action.through : null;
+      if (ids.size === 0 && through === null) return state;
+      const next = state.records.filter((rec) => !ids.has(rec.id) && !(through !== null && rec.ts <= through));
       return next.length === state.records.length ? state : settle(next);
     }
 

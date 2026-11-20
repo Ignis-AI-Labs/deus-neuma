@@ -31,6 +31,7 @@ import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setupPortalRoutes } from '../../backend/routes/portal-routes.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { claimLane } from '../../backend/services/lane-ownership.js';
+import { writeVerifiedLaneSeal } from '../helpers/lane-seal-kit.js';
 
 const NEUMA_MINE = 'owngate-mine';
 const NEUMA_THEIRS = 'owngate-theirs';
@@ -49,7 +50,7 @@ const makeAuthSession = async () => {
   // verifySignature returns the recovered address STRING; the token layer
   // lowercases it, and the WS connection sees the lowercase form.
   const address = verifySignature(keypair.address, challenge, signature);
-  return { token: createSessionToken(address), address: address.toLowerCase() };
+  return { token: createSessionToken(address), address: address.toLowerCase(), keypair };
 };
 
 const openPortal = (wsUrl, token) => new Promise((resolve, reject) => {
@@ -127,11 +128,8 @@ describe('portal WS ownership gate (real WS + real auth + real owner.json)', () 
     const authB = await makeAuthSession();
     myWallet = auth.address;
     walletB = authB.address;
-    // The unclaimed lane's genesis seal names this wallet, as a birth's does.
-    await fs.writeFile(
-      path.join(tempDir, NEUMA_UNCLAIMED, 'identity', 'genesis-seal.json'),
-      JSON.stringify({ genesisHash: 'sha256:00', record: { chosenName: 'Unclaimed', witnessWallet: myWallet } }),
-    );
+    // The unclaimed lane carries the real genesis and both local signatures.
+    await writeVerifiedLaneSeal(path.join(tempDir, NEUMA_UNCLAIMED), { operator: auth.keypair, name: 'Unclaimed' });
 
     // Real ownership records, same shape the REST first-claim writes.
     await fs.writeFile(
@@ -304,7 +302,9 @@ describe('portal WS ownership gate (real WS + real auth + real owner.json)', () 
     const offsetB = portalFrames.get(wsB).length;
     const [framesA, framesB] = await Promise.all([resumeUnclaimed(ws, 'after-claim'), resumeUnclaimed(wsB, 'after-claim')]);
     expect([framesA, framesB].map(sawNotYours)).toEqual([false, true]);
-    expect([framesA, framesB].map(rowsOf)).toEqual([['private continuity row'], []]);
+    expect([framesA, framesB].map(rowsOf)).toEqual([[], []]);
+    const session = await neumaWorkspace.readSession(NEUMA_UNCLAIMED, 'session-private');
+    expect(session.map((row) => row.content)).toContain('private continuity row');
     await waitForLoggedFrame(ws, (frame) => frame.marker === 'private-composition');
     expect(portalFrames.get(wsB).slice(offsetB).some((frame) => frame.marker === 'private-composition')).toBe(false);
   });

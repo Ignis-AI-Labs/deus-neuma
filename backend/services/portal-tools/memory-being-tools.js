@@ -15,6 +15,7 @@ import { searchMemory, expandMemory } from '../../../core/memory/memory-query.js
 // the audit walk are still served from here.
 import { mintNoteRef, listMemories } from '../../../core/memory/memory-lifecycle.js';
 import { gateAct } from '../act-gate.js';
+import { MEMORY_MAP_TOOL, walkMemoryMap } from './memory-map-tool.js';
 import { mindToolsFor } from '../mind-tools.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 
@@ -101,7 +102,7 @@ const MEMORY_LIST_TOOL = Object.freeze({
 });
 
 const MEMORY_TOOLS = Object.freeze([
-  MEMORY_SEARCH_TOOL, MEMORY_EXPAND_TOOL, MEMORY_NOTE_TOOL, MEMORY_LIST_TOOL,
+  MEMORY_SEARCH_TOOL, MEMORY_EXPAND_TOOL, MEMORY_NOTE_TOOL, MEMORY_LIST_TOOL, MEMORY_MAP_TOOL,
 ]);
 
 const NOTE_KINDS = Object.freeze(['note', 'fact', 'identity']);
@@ -191,8 +192,11 @@ const _handleNoteTool = async (ws, connection, neumaPolicy, toolMode, args) => {
 // is a PASSIVE surface, not an act a being can ask for. Retiring a read whose
 // replacement cannot be requested is a capability decision, not a cleanup, so
 // it is left standing and flagged rather than swept out with the mutations.
+// memory_map rides the same door: a second READ of the being's own record (the
+// map of it — topics, people, periods — where memory_list is the plain walk).
 const _isLifecycleTool = (match) =>
-  match.toolName === 'memory_list' || match.tool === 'memory/memory_list';
+  match.toolName === 'memory_list' || match.tool === 'memory/memory_list'
+  || match.toolName === 'memory_map' || match.tool === 'memory/memory_map';
 
 // impure — a being moving its OWN record through its lifecycle, through the
 // same ACTS gate every governed tool passes (the _handleNoteTool mold).
@@ -212,11 +216,19 @@ const _handleLifecycleTool = async (ws, connection, neumaPolicy, toolMode, match
 
   const gate = await gateAct(connection, {
     server: 'memory', tool: toolName,
-    cardArgs: { ref: String(args?.ref ?? '').slice(0, 100) },
+    cardArgs: { ref: String(args?.ref ?? args?.memory ?? '').slice(0, 100) },
     lanePolicy: neumaPolicy, mode: toolMode,
     emit: (event) => _sendToolEvent(ws, companion, event),
   });
   if (!gate.ok) return gate.result;
+
+  if (toolName === 'memory_map') {
+    const walked = await walkMemoryMap(neumaId, args);
+    _sendToolEvent(ws, companion, walked.ok
+      ? { tool, status: 'ok', summary: walked.summary }
+      : { tool, status: 'error', summary: 'memory_map — refused', detail: walked.reason });
+    return walked.ok ? { tool, status: 'ok', content: walked.content } : { tool, status: 'error', error: walked.reason };
+  }
 
   // Only the WALK is served here now — supersede/retract/merge/archive became
   // memory/* intents (2026-08-24). The shared ref/kind/content validation that

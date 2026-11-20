@@ -21,10 +21,11 @@ const { readLookTheme } = require('./wallet/look-theme.cjs');
 const TITLE_BAND_PX = 32;
 
 /** Pure — the web preferences every desk window opens with. */
-const deskWebPreferences = (slot) => ({
+const deskWebPreferences = (slot, isPackaged = false) => ({
   preload: path.join(__dirname, 'preload.cjs'),
   contextIsolation: true,
   nodeIntegration: false,
+  devTools: !isPackaged,
   // Explicit, not Electron's defaults: a desk renderer that can be fooled must
   // still hold no Node and keep the same-origin policy (preload.cjs is
   // written for the sandbox).
@@ -224,10 +225,10 @@ const createDeskWindows = ({ getOrigin, announceStillRunning }) => {
         titleBarOverlay: { color: '#000000', symbolColor: '#8f9a9a', height: TITLE_BAND_PX },
       }),
       show: false,
-      webPreferences: deskWebPreferences(slot),
+      webPreferences: deskWebPreferences(slot, app.isPackaged),
     });
     // The menu row goes too; its accelerators (New Window, reload, zoom,
-    // devtools, quit) stay registered on the hidden menu.
+    // quit, plus DevTools in development) stay registered on the hidden menu.
     if (process.platform !== 'darwin') win.setMenuBarVisibility(false);
     desks.set(slot, win);
     if (boot) {

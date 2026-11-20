@@ -11,13 +11,17 @@ jobs:
   # the value. Dependencies install with --ignore-scripts, so nothing in a
   # pull request's lockfile runs before the scan has read it.
   secrets:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+      # The npm that wrote package-lock.json (11.8.0). npm 11.19 (Node 24's own, 2026-11-16) reads the
+      # lockfile's version-scoped minimatch overrides differently and refuses `npm ci`
+      # ([…]); one npm, end to end, keeps the install exact.
+      - run: npm install -g npm@11.8.0
       - run: npm ci --ignore-scripts
       - name: tracked files (the standing sweep)
         run: node scripts/secret-scan.mjs
@@ -33,7 +37,7 @@ jobs:
   # and failing on them would block every pull request over a toolchain issue.
   # The audit reads the lockfile, so nothing installs and no script runs.
   deps:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,13 +48,25 @@ jobs:
   # Lint and the unit tests of the GPU-free lane (the `suite` project): no
   # model, no GPU, no network service.
   checks:
-    runs-on: ubuntu-latest
+    # pinned (2026-11-15): ubuntu-latest moved to 26.04, which Playwright 1.60 cannot install
+    # Chromium on, and the checks job stopped before its first test
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
+      # The npm that wrote package-lock.json (11.8.0). npm 11.19 (Node 24's own, 2026-11-16) reads the
+      # lockfile's version-scoped minimatch overrides differently and refuses `npm ci`
+      # ([…]); one npm, end to end, keeps the install exact.
+      - run: npm install -g npm@11.8.0
       - run: npm ci
       - run: npm run lint
-      - run: npx vitest run --project suite test/unit
+      # the unit lane presses real PDFs (Chromium) and stamps real clips and images (ffmpeg)
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: npx playwright install --with-deps chromium
+      # Ubuntu 24.04 runners forbid the unprivileged user namespaces Chromium's sandbox needs
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      # a 2-core runner is several times slower than a desk; the heavy proofs get the time they need
+      - run: npx vitest run --project suite test/unit --testTimeout=60000

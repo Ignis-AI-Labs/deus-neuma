@@ -33,7 +33,12 @@ export const reviewFiling = async ({ records, sweep = null, account = '', handOf
     const result = await runRecencySweep(sweep, { connection });
     if (result.refused) return { ok: false, reason: `${what} — ${result.text}` };
     swept = { ...result, verdict: sweepVerdict(result, account) };
-    if (!swept.verdict.ok) return { ok: false, reason: `${what} — the app's recency sweep found actions this filing does not answer for.\n${swept.verdict.text}` };
+    if (!swept.verdict.ok) {
+      const failure = swept.verdict.unread.length
+        ? 'one or more official recency feeds could not be read completely'
+        : 'found actions this filing does not answer for';
+      return { ok: false, reason: `${what} — the app's recency sweep ${failure}.\n${swept.verdict.text}` };
+    }
   }
   let reading = null;
   const verified = check ? check.rows.filter((r) => r.verdict === 'verified') : [];

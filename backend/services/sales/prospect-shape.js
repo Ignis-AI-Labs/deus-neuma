@@ -1,0 +1,170 @@
+// A PROSPECT — one company the Mercator found for a segment, scored against
+// that segment's signs before anyone is contacted (lead-engine-plan.md §3,
+// steps 3–5). Every positive criterion is scored 0–5 with a written reason —
+// a missing score is refused, never guessed — and a disqualifier that applies
+// is scored the same way. The scores roll into a match level: 1 none, 2 weak,
+// 3 strong. People found on the company's own pages ride along with the page
+// they were read on; an address is never invented here.
+//
+// The record is append-only events, folded here:
+//   { type: 'found', prospect, at }   { type: 'dropped', id, reason, by, at }
+//   { type: 'promoted', id, leadId, by, at }
+//   { type: 'listed', segmentId, ids, by, at } — the operator approved the list
+//   { type: 'placed', leadId, segmentId, name, domain, by, at } — a lead already on the ledger put under an
+//     audience: its own record moves there (and loses the list approval of the audience it left); a lead no
+//     audience ever found gets a record of its own, a promoted one with no scores
+// PURE, but for makeProspect's random id.
+
+import crypto from 'crypto';
+import { proofsFor, requiredState } from './required-signs.js';
+
+export const MATCH_WORDS = Object.freeze({ 1: 'none', 2: 'weak', 3: 'strong' });
+const PEOPLE_MAX = 5;
+
+const clean = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '').slice(0, max);
+const isHttps = (v) => /^https:\/\/[^\s]+$/.test(String(v ?? ''));
+
+/** A bare company domain from a URL or a domain, or '' when it is not one. pure. */
+export const normalizeDomain = (input) => {
+  const host = clean(input, 300).toLowerCase().replace(/^[a-z]+:\/\//, '').split(/[/?#]/)[0].replace(/:\d+$/, '').replace(/^www\./, '');
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(host) ? host : '';
+};
+
+// pure — the scores for one list of criteria, or the problems with them.
+const scoresFor = (criteria, given, label, required) => {
+  const problems = [];
+  const scores = [];
+  for (const criterion of criteria) {
+    const hit = given.find((g) => clean(g?.criterion, 160).toLowerCase() === criterion.toLowerCase());
+    if (!hit) {
+      if (required) problems.push(`${label} "${criterion}" has no score`);
+      continue;
+    }
+    const reasoning = clean(hit.reasoning, 300);
+    if (!Number.isInteger(hit.score) || hit.score < 0 || hit.score > 5) problems.push(`${label} "${criterion}": score is a whole number 0–5`);
+    else if (reasoning.length < 10) problems.push(`${label} "${criterion}": say why, from what you read`);
+    else scores.push(Object.freeze({ criterion, score: hit.score, reasoning }));
+  }
+  return { problems, scores };
+};
+
+/**
+ * The match level from the scores: any disqualifier at 3+ is no match; the
+ * signs of a fit averaging 4+ with none under 3 is strong; averaging 2.5+ is
+ * weak. pure.
+ */
+export const matchLevel = (fit, misfit) => {
+  if (misfit.some((s) => s.score >= 3) || !fit.length) return 1;
+  const mean = fit.reduce((n, s) => n + s.score, 0) / fit.length;
+  if (mean >= 4 && fit.every((s) => s.score >= 3)) return 3;
+  return mean >= 2.5 ? 2 : 1;
+};
+
+// pure — people read on the company's own pages, each with the page.
+const peopleOf = (people) => {
+  const list = Array.isArray(people) ? people.slice(0, PEOPLE_MAX) : [];
+  const problems = list.flatMap((p, i) => [
+    ...(clean(p?.name, 120).length < 2 ? [`people[${i}].name`] : []),
+    ...(clean(p?.role, 120).length < 2 ? [`people[${i}].role`] : []),
+    ...(!isHttps(p?.sourceUrl) ? [`people[${i}].sourceUrl: the https page you read them on`] : []),
+  ]);
+  // An address published with the person (on that same page) is kept with them: the contact book grows from it.
+  const emailOf = (p) => (/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(String(p?.email ?? '').trim()) ? String(p.email).trim().toLowerCase() : null);
+  return { problems, people: list.map((p) => Object.freeze({ name: clean(p.name, 120), role: clean(p.role, 120), sourceUrl: String(p.sourceUrl), ...(emailOf(p) ? { email: emailOf(p) } : {}) })) };
+};
+
+/**
+ * A prospect for `segment`, or a thrown reason naming every problem at once.
+ * @param {{segment: object, domain: unknown, name: unknown, description?: unknown, country?: unknown,
+ *   size?: unknown, scores: unknown, people?: unknown, source: unknown, by: string, now: string}} f
+ */
+export const makeProspect = (f) => {
+  const domain = normalizeDomain(f.domain);
+  const name = clean(f.name, 120);
+  const given = Array.isArray(f.scores) ? f.scores : [];
+  const fit = scoresFor(f.segment.positiveCriteria, given, 'sign of fit', true);
+  const misfit = scoresFor(f.segment.negativeCriteria, given, 'disqualifier', false);
+  const crew = peopleOf(f.people);
+  // What the audience REQUIRES is proved, either way, before anything is scored (required-signs.js).
+  const must = proofsFor(f.segment, { domain, name }, f.proofs);
+  const stand = requiredState(f.segment, { proofs: must.proofs });
+  const source = f.source === 'operator' || isHttps(f.source) ? String(f.source) : '';
+  const problems = [
+    ...(!domain ? ['domain: the company\'s own web domain'] : []),
+    ...(name.length < 2 ? ['name: the company\'s name'] : []),
+    ...must.problems, ...fit.problems, ...misfit.problems, ...crew.problems,
+    ...(!source ? ['source: the https page where you found the company'] : []),
+    ...(f.country != null && f.country !== '' && !/^[A-Za-z]{2}$/.test(String(f.country).trim()) ? ['country: the ISO code of where the company is (e.g. "US")'] : []),
+  ];
+  if (problems.length) throw new Error(problems.join('; '));
+  return Object.freeze({
+    id: `p-${crypto.randomBytes(4).toString('hex')}`,
+    segmentId: f.segment.id,
+    domain,
+    name,
+    description: clean(f.description, 300) || null,
+    country: /^[A-Za-z]{2}$/.test(String(f.country ?? '').trim()) ? String(f.country).trim().toUpperCase() : null,
+    size: clean(f.size, 60) || null,
+    fit: Object.freeze(fit.scores),
+    misfit: Object.freeze(misfit.scores),
+    // A required sign that is not met is no match, whatever the other signs average to.
+    match: stand.state === 'failed' ? 1 : matchLevel(fit.scores, misfit.scores),
+    ...(must.proofs.length ? { proofs: Object.freeze(must.proofs) } : {}),
+    ...(stand.state === 'failed' ? { failedRequired: stand.failed.map((r) => r.sign), ...(stand.route ? { belongsTo: stand.route } : {}) } : {}),
+    people: Object.freeze(crew.people),
+    source,
+    foundBy: f.by,
+    foundAt: f.now,
+  });
+};
+
+/** Fold the event log into the prospects, oldest first, each with its stage. pure. */
+export const foldProspects = (events) => {
+  const byId = new Map();
+  for (const e of events) {
+    if (e?.type === 'found' && e.prospect?.id) byId.set(e.prospect.id, { ...e.prospect, stage: 'found' });
+    const prior = byId.get(e?.id);
+    if (e?.type === 'dropped' && prior) byId.set(e.id, { ...prior, stage: 'dropped', dropReason: e.reason, droppedAt: e.at });
+    // A person read after the company was scored (the address is often found last) joins its people.
+    if (e?.type === 'people' && prior && Array.isArray(e.people)) byId.set(e.id, { ...prior, people: [...prior.people, ...e.people] });
+    // Proofs filed after the company was scored (sales/prove): an audience that gained a required sign.
+    if (e?.type === 'proved' && prior && Array.isArray(e.proofs)) byId.set(e.id, { ...prior, proofs: e.proofs });
+    if (e?.type === 'promoted' && prior) byId.set(e.id, { ...prior, stage: 'promoted', leadId: e.leadId, promotedAt: e.at });
+    if (e?.type === 'listed' && Array.isArray(e.ids)) {
+      for (const id of e.ids) if (byId.has(id)) byId.set(id, { ...byId.get(id), listApproved: true, listedAt: e.at });
+    }
+    // The operator's hands on one company (Design note, 2026-11-18: taken off the approved list, or moved under another
+    // audience — a move leaves the old audience's list approval behind.
+    if (e?.type === 'unlisted' && prior) byId.set(e.id, { ...prior, listApproved: false, listedAt: null });
+    if (e?.type === 'moved' && prior && e.segmentId) byId.set(e.id, { ...prior, segmentId: e.segmentId, listApproved: false, movedAt: e.at });
+    if (e?.type === 'placed' && e.leadId && e.segmentId) {
+      const held = [...byId.values()].find((p) => p.leadId === e.leadId);
+      if (held) byId.set(held.id, { ...held, segmentId: e.segmentId, listApproved: false, placedAt: e.at });
+      else byId.set(`placed:${e.leadId}`, { id: `placed:${e.leadId}`, segmentId: e.segmentId, leadId: e.leadId, name: e.name ?? '', domain: e.domain ?? null, description: null, country: null, size: null, fit: [], misfit: [], match: 0, people: [], source: 'operator', foundBy: e.by, foundAt: e.at, stage: 'promoted', promotedAt: e.at, placedAt: e.at, placed: true });
+    }
+  }
+  return [...byId.values()];
+};
+
+/** The prospects an approval of `segmentId`'s list would cover: a weak or strong match, still live, not yet on it. pure. */
+export const listable = (pool, segmentId) => pool.filter((p) => p.segmentId === segmentId && p.match >= 2 && p.stage !== 'dropped' && !p.listApproved);
+
+/**
+ * Why a new prospect may not join the pool (already there, or on the
+ * do-not-contact list), or null. pure.
+ */
+export const poolRefusal = (prospect, pool, suppressedDomain) => {
+  if (suppressedDomain(prospect.domain)) return `${prospect.domain} is on the do-not-contact list`;
+  const held = pool.find((p) => p.domain === prospect.domain && p.stage !== 'dropped');
+  return held ? `${prospect.domain} is already in the pool as [${held.id}]` : null;
+};
+
+// Country-code domains used worldwide as generic names: they say nothing about where a company is.
+const GENERIC_TLDS = new Set(['io', 'ai', 'co', 'me', 'tv', 'cc', 'gg', 'ly', 'so', 'to', 'fm', 'sh', 'ws', 'is', 'it', 'gl', 'im', 'la', 'vc', 'xyz']);
+
+/** The country an email address's domain names, as an ISO code, or null when it names none. pure. */
+export const countryOfAddress = (email) => {
+  const tld = String(email ?? '').trim().toLowerCase().split('.').pop();
+  if (!/^[a-z]{2}$/.test(tld) || GENERIC_TLDS.has(tld)) return null;
+  return tld === 'uk' ? 'GB' : tld.toUpperCase();
+};

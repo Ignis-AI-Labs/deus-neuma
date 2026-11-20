@@ -132,6 +132,10 @@ const seedStores = async () => {
     substance: 'substantive',
     inReplyToPostId: HOUSE_POST_ID,
   }));
+  // A reply read for the house's OTHER X account (Design note, 2026-11-14: @DeusNeuma's board showed 200
+  // replies to his other account): it belongs on that account's board, never on this one's.
+  candidates.push({ ...candidates[0], postId: 'knock-other-account', authorId: 'user-other', username: 'otheraccountfan',
+    text: 'a reply to the house\'s other X account', accountId: 'x-2' });
 
   // The house post the knocks answer — sent history, so the inbound cards can
   // show WHICH post they replied to, exactly as the live lane does.
@@ -262,6 +266,13 @@ test.beforeAll(async () => {
 
   ({ token, addr } = await mintToken());
   await claimOwner(root, NEUMA_ID, addr);
+  // The house holds one X account, a record with no keys (as mandate.spec.js does): MARKETING opens
+  // an account's level only for an account the house has (the spec stood at […]).
+  process.env.NEUMA_REALM_ROOT = path.join(root, 'realm');
+  const { setRealmRoot } = await import('../../backend/services/user-realm.js');
+  setRealmRoot(process.env.NEUMA_REALM_ROOT);
+  const { addAccount } = await import('../../backend/services/social/account-store.js');
+  await addAccount(addr, 'x', { label: 'house' });
   // The being stages replies because it HOLDS the house's X account — the
   // staging tool refuses an unbound lane, and the send re-checks it. The
   // operator ties the position through the real route, as the desk does.
@@ -365,6 +376,10 @@ test('replies sort into one strip — unanswered, staged, answered, bin — sear
   await bucketTab(win, 'UNANSWERED').click();
   const cards = board.locator('.queue-card');
   await expect(cards).toHaveCount(INBOUND_N - 3);
+  // Only this account's replies, each naming the account it answers.
+  await expect(board).not.toContainText('otheraccountfan');
+  await expect(cards.first()).toContainText('REPLIED TO');
+  await expect(cards.first().locator('.acm')).toHaveCount(1);
   // The decisions are one line away, never missable and never in the way.
   const owed = board.locator('.reply-board-owed');
   await expect(owed).toHaveText('2 AWAITING YOUR APPROVAL — OPEN STAGED');

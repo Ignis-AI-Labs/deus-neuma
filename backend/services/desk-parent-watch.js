@@ -23,10 +23,12 @@
  *
  * ── WINDOWS ────────────────────────────────────────────────────────────────
  *
- * Windows does not reparent, so the ppid simply goes stale and this never
- * fires. That is correct rather than unfortunate: Windows has no process groups
- * either, which is why the desk kills the tree with `taskkill /T` there — a
- * mechanism that does not depend on the child noticing anything.
+ * Windows does not reparent, so the ppid simply goes stale and the ppid test
+ * never fires. The desk kills the tree with `taskkill /T` on a clean quit, but
+ * a desk that is replaced by an update, crashes or is ended in Task Manager
+ * runs no quit at all, and the backend then served on forever in the new
+ * version's way (2026-11-10). So on Windows the watch also asks whether the
+ * desk's own pid is still alive.
  *
  * The decision is pure and separately provable; only the clock and the exit are
  * impure.
@@ -57,6 +59,20 @@ export const isOrphaned = (deskPid, currentPpid) => {
   return currentPpid !== deskPid;
 };
 
+/** impure — is a pid alive? (signal 0 tests existence on every platform) */
+export const pidAlive = (pid) => {
+  try { process.kill(pid, 0); return true; } catch (err) { return err.code === 'EPERM'; }
+};
+
+/**
+ * Has the desk gone? The ppid test everywhere, and on Windows (no reparenting)
+ * also the desk pid's own liveness. Pure over its readers.
+ * @param {{deskPid: number, ppid: number, platform: string, alive: (pid:number) => boolean}} facts
+ * @returns {boolean}
+ */
+export const deskGone = ({ deskPid, ppid, platform, alive }) =>
+  isOrphaned(deskPid, ppid) || (platform === 'win32' && Number.isInteger(deskPid) && deskPid > 1 && !alive(deskPid));
+
 /**
  * Pure — the desk pid this process was spawned by, or null when it was not
  * spawned by a desk at all (`npm run dev:backend`, the test lane, CI).
@@ -76,6 +92,8 @@ export const deskPidFrom = (env) => {
  * @param {Function} opts.onOrphaned - called ONCE when the desk is gone
  * @param {object} [opts.env] - defaults to process.env
  * @param {Function} [opts.ppid] - reads the current parent pid
+ * @param {string} [opts.platform] - process.platform
+ * @param {Function} [opts.alive] - is a pid alive (the Windows test)
  * @param {number} [opts.intervalMs]
  * @returns {Function|null} stop
  */
@@ -83,13 +101,15 @@ export const watchDeskParent = ({
   onOrphaned,
   env = process.env,
   ppid = () => process.ppid,
+  platform = process.platform,
+  alive = pidAlive,
   intervalMs = WATCH_INTERVAL_MS,
 } = {}) => {
   const deskPid = deskPidFrom(env);
   if (deskPid === null || typeof onOrphaned !== 'function') return null;
   let fired = false;
   const timer = setInterval(() => {
-    if (fired || !isOrphaned(deskPid, ppid())) return;
+    if (fired || !deskGone({ deskPid, ppid: ppid(), platform, alive })) return;
     fired = true;               // one exit, however long the shutdown takes
     clearInterval(timer);
     onOrphaned(deskPid);

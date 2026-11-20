@@ -46,7 +46,9 @@ const within = (inner, outer) => {
 const isSecretPlace = (target) => {
   const normalized = foldName(path.normalize(target));
   const parts = normalized.split(/[\\/]/).filter(Boolean);
-  return parts.some((part) => isSecretFile(part))
+  // Each name alone, then the whole path: a credential known only by where its tool keeps it
+  // (.kube/config, gh/hosts.yml, a browser's Login Data) is no secret by its last name (P6-17).
+  return parts.some((part) => isSecretFile(part)) || isSecretFile(normalized)
     || /keypair/i.test(parts.at(-1) || '')
     || SECRET_PLACES.some((pattern) => matchesDeniedPattern(normalized, pattern));
 };

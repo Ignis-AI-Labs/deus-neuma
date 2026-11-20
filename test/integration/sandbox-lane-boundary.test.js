@@ -249,7 +249,7 @@ describe('sandbox lane boundary — own lane only, others private (gnosis, no mo
             path: path.join(neumaA, `lane-${i}.md`), content: `${i}`,
           });
         }
-      })()).rejects.toThrow(/limit reached/);
+      })()).rejects.toThrow(/write limit stopped this write/);
     });
   });
 

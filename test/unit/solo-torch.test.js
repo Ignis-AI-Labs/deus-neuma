@@ -9,6 +9,7 @@
  * workspace on real disk with real encryption (RULE 0) — the torch must
  * survive the seal/unseal round-trip, or pickup is fiction.
  */
+import { turnWorkRoomTokens } from '../../backend/services/envelope-budget.js';
 import { describe, it, test, expect, beforeAll, afterAll } from 'vitest';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
@@ -34,8 +35,11 @@ describe('nearContextBoundary — measured truth only', () => {
   });
 
   test('quiet below the compaction ratio — 80% is fold territory, not compaction', () => {
+    // measured against the conversation's share: the window less the turn's working room (deus-neuma #34)
+    const share = 65536 - turnWorkRoomTokens(65536); // 42,599
     expect(nearContextBoundary({ promptTokens: 30000 }, { contextTokens: 65536 })).toBe(false);
-    expect(nearContextBoundary({ promptTokens: 52429 }, { contextTokens: 65536 })).toBe(false); // 80%: folds, never compacts
+    expect(nearContextBoundary({ promptTokens: Math.floor(share * 0.8) }, { contextTokens: 65536 })).toBe(false); // 80%: folds, never compacts
+    expect(nearContextBoundary({ promptTokens: Math.ceil(share * 0.9) }, { contextTokens: 65536 })).toBe(true);
   });
 
   test('never guesses: unknown window, missing usage, or garbage counts → false', () => {

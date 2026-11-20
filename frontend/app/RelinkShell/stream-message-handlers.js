@@ -15,19 +15,18 @@ import { runLinkHistoryLoad } from './stream-link-history.js';
 import { isWitness } from './house-members.js';
 import { reconnectFrames, streamSession, resumedSession, lifecycleAction } from './stream-lifecycle-actions.js';
 import { feedHeard } from './voice-purpose-state.js';
-import { isNewProjectChat } from './project-space.js';
-import { focusProject } from './desk-focus.js';
 import { announceFileChange } from './files-refresh.js';
 import { announceCampaignChange } from './campaign-refresh.js';
 import { announceBoardArrangement } from './marketing/board-change.js';
 import { shouldAnnounceStorage } from './storage-warning.js';
 import { TOOL_MODES, CHAT_MODES } from './stream-preferences.js';
 import { isBootActive } from '../Opening/opening-state.js';
+import { CLONE_FRAMES } from './clone-split.js';
 
 export const createStreamHandlers = ({
   wsService, dispatch, flushSpeech, ensureFilter, ensureSink, applyPurpose,
   setHeldCount, setToolModeState, setChatModeState, sendThought, portalFocusFrame,
-  houseRef, focusRef, projectsRef, onProjectChatCreatedRef, projectChatSeenRef,
+  houseRef, focusRef,
   storageWarningRef, companionRef, navigationSeqRef, transitioningRef, filterRef,
   streamSeenRef, historyLoadedRef, currentTakeRef, erroredRef, connectedRef,
   turnStartedRef, voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
@@ -94,14 +93,6 @@ export const createStreamHandlers = ({
     // THIS chat instead of forking a new one.
     if (data?.sessionId) {
       wsService.setSessionState(streamSession(companionRef.current, data.sessionId));
-      // A chat born under an active project just got its server-minted id —
-      // the backend has already pinned it to the project; refresh so it
-      // appears in the project's chat list. Fires once per new id (resume /
-      // new-session pre-seed the ref), never mid-conversation.
-      if (isNewProjectChat(focusProject(focusRef.current, projectsRef.current), data.sessionId, projectChatSeenRef.current)) {
-        onProjectChatCreatedRef.current?.();
-      }
-      projectChatSeenRef.current = data.sessionId;
     }
     // A turn that yielded no stream frames still names its point here —
     // the stamp is idempotent, so a turn that already stamped on its first
@@ -112,8 +103,9 @@ export const createStreamHandlers = ({
   const onTool = (data) => {
     // A being's hands are audible: each family of act has its own voice, and
     // an act that did NOT happen says so (services/act-sound-map.js). Handed
-    // every frame — it decides for itself which ones warrant a cue.
-    soundAct(data);
+    // every frame — it decides for itself which ones warrant a cue. Not the
+    // catch-up of a turn this desk took over (turn-keep.js): those acts already sounded.
+    if (!data?.catchUp) soundAct(data);
     if (data.status === 'executing') { dispatchAfterSpeech(lifecycleAction('tool:usage', data)); return; }
 
     // A being that changed the operator's ground must be VISIBLE in the
@@ -243,7 +235,7 @@ export const createStreamHandlers = ({
     // law live in stream-link-history.js — one module, one job.
     historyReadyRef.current = runLinkHistoryLoad({
       wsService, dispatch, portalFocusFrame, companionRef, navigationSeqRef,
-      turnStartedRef, projectChatSeenRef, focusRef, projectsRef, historyFailedRef,
+      turnStartedRef, focusRef, historyFailedRef,
       target, navigationSeq,
     });
   };
@@ -347,9 +339,17 @@ export const createStreamHandlers = ({
     ['watch:fired', onWatchFired],
     ['chatlink:arrived', onChatLink],
     ['citation:held', onCitationHeld],
+    // CONTINUE on a cut reply: the platform's line that opens the turn picking it up (portal-turn-adopt.js).
+    ['turn:continued', (data) => { if (typeof data?.text === 'string' && data.text) dispatch({ type: 'CONTINUED', text: data.text, at: data.at ?? Date.now() }); }],
+    // NOT DONE: a reply said queued posts changed and no act touched them; the being is sent back (social/queue-claim-check.js).
+    ['queue:unacted', (data) => { if (typeof data?.text === 'string' && data.text) dispatch({ type: 'QUEUE_UNACTED', text: data.text, at: data.at ?? Date.now() }); }],
     // A /compact, drawn in the thread where it happened (compact-marker.js).
     ['session:compact', (frame) => dispatch({ type: 'COMPACT', frame, at: new Date().toISOString() })],
+    // A shadow clone split, filed into its sub-channels on the turn's chip (clone-split.js).
+    ...CLONE_FRAMES.map((type) => [type, (frame) => dispatch({ type: 'CLONE', frame })]),
     ['tool:usage', onTool],
+    // a finished act's result, for a chip that came up with nothing to open (TOOL_DETAIL)
+    ['tool:detail', (data) => dispatchAfterSpeech(lifecycleAction('tool:detail', data))],
     ['tool:approval_request', cardHandler('tool:approval_request')],
     ['tool:approval_resolved', cardHandler('tool:approval_resolved')],
     ['operator:ask', cardHandler('operator:ask')],

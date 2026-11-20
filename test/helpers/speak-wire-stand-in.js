@@ -15,7 +15,7 @@
 
 import http from 'node:http';
 import { createHash, randomBytes } from 'node:crypto';
-import { answerIdentity } from './sidecar-identity.js';
+import { answerIdentity, directSidecarCredential } from './sidecar-identity.js';
 
 const json = (res, status, body) => {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -35,8 +35,9 @@ const json = (res, status, body) => {
  * @param {(body: object) => number} [opts.delayMs] - per-request delay before the first chunk
  */
 export const startSpeakWire = async ({
-  model = 'csm-1b', profile = 'full', context = true, chunks = 3, mode = 'ok', delayMs = () => 0,
+  model = 'csm-1b', profile = 'full', context = true, chunks = 3, mode = 'ok', delayMs = () => 0, engine = 'csm',
 } = {}) => {
+  const credential = directSidecarCredential(engine);
   const clips = new Set();
   const utterances = new Set();
   const bodies = [];
@@ -85,7 +86,7 @@ export const startSpeakWire = async ({
   };
 
   const server = http.createServer((req, res) => {
-    if (answerIdentity(req, res)) return undefined;
+    if (answerIdentity(req, res, credential)) return undefined;
     if (req.url === '/health') {
       return json(res, 200, {
         ok: true, model, profile, phase: 'ready', idle_seconds: 0, sample_rate: 24_000, device: 'stand-in', context, error: null,
@@ -128,7 +129,7 @@ export const startSpeakWire = async ({
     forget: () => { clips.clear(); utterances.clear(); },
     close: () => new Promise((resolve) => {
       server.closeAllConnections?.();
-      server.close(() => resolve());
+      server.close(() => { credential.restore(); resolve(); });
     }),
   };
 };

@@ -44,6 +44,7 @@ router.put('/queue/groups/:groupId/approve', async (req, res) => {
     if (trees.has(null) || trees.size > 1) {
       return res.status(409).json({ error: 'this group now speaks for more than one company tree (or an account with no company) — nothing was approved' });
     }
+    const seals = req.body?.mediaSeen; // each post's media seals as its card showed them (P6-124)
     const consents = {};
     for (const m of members.filter((e) => e.channelId === 'tiktok' && e.status === 'draft')) {
       const choice = req.body?.tiktok?.[m.id];
@@ -54,6 +55,7 @@ router.put('/queue/groups/:groupId/approve', async (req, res) => {
     }
     const result = await postQueue.approveGroup(req.params.groupId, {
       ids: new Set(members.map((m) => m.id)), decidedBy: wallet, textsSeen, consents,
+      mediaSeen: seals && typeof seals === 'object' && !Array.isArray(seals) ? seals : {},
     });
     if (!result.ok) return res.status(409).json({ error: result.error });
     log.info('Group approved', { group: req.params.groupId, posts: result.entries.length, ownCard: result.ownCard.length, wallet });

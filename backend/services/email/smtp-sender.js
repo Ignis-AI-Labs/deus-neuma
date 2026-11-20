@@ -11,6 +11,7 @@
 import crypto from 'crypto';
 import tls from 'tls';
 import { encodeHeaderWord, encodeBase64Body } from './mime.js';
+import { fromFor } from './send-as.js';
 
 export const EMAIL_ADDRESS_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 export const SEND_MAX_RECIPIENTS = 10;
@@ -117,12 +118,15 @@ export const buildSmtpDialogue = (credentials, { from, to, message }) => Object.
 
 // impure — walk a prepared dialogue over a live socket. Resolves with the
 // first failing reply or {ok:true}; never rejects for protocol reasons.
-const _runDialogue = (socket, steps) => new Promise((resolve) => {
+const _runDialogue = (socket, steps, onDataWritten) => new Promise((resolve) => {
   let index = 0;
   let buffered = '';
   const step = () => {
     if (index >= steps.length) return resolve({ ok: true });
-    if (steps[index].send !== null) socket.write(`${steps[index].send}\r\n`);
+    if (steps[index].send !== null) {
+      socket.write(`${steps[index].send}\r\n`);
+      if (index > 0 && steps[index - 1].expect === 354) onDataWritten();
+    }
     return undefined;
   };
   socket.on('data', (chunk) => {
@@ -140,8 +144,8 @@ const _runDialogue = (socket, steps) => new Promise((resolve) => {
   step();
 });
 
-// impure — one TLS session walking a prepared dialogue: timeout, barge-in,
-// and socket errors all land as {ok:false, detail}. Never throws/rejects.
+// impure — one TLS session walking a prepared dialogue. Once DATA leaves, a
+// lost acknowledgement is uncertain, never certainly unsent. Never rejects.
 const _runSmtpSession = (credentials, steps, { signal, interrupted }) => {
   const port = parseInt(credentials.smtpPort, 10);
   if (!Number.isInteger(port) || port <= 0 || port > 65535) {
@@ -149,6 +153,7 @@ const _runSmtpSession = (credentials, steps, { signal, interrupted }) => {
   }
   return new Promise((resolve) => {
     let settled = false;
+    let dataWritten = false;
     const socket = tls.connect({ host: credentials.smtpHost, port, servername: credentials.smtpHost });
     const finish = (result) => {
       if (settled) return;
@@ -156,14 +161,18 @@ const _runSmtpSession = (credentials, steps, { signal, interrupted }) => {
       socket.destroy();
       clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
-      resolve(result);
+      const detail = dataWritten && result.detail === interrupted ? 'interrupted by your operator' : result.detail;
+      resolve(!result.ok && dataWritten
+        ? { ...result, uncertain: true, detail: `${detail} after the message data was sent; delivery is uncertain` }
+        : result);
     };
     const onAbort = () => finish({ ok: false, detail: interrupted });
     const timer = setTimeout(() => finish({ ok: false, detail: 'SMTP conversation timed out' }), DIALOGUE_TIMEOUT_MS);
     signal?.addEventListener('abort', onAbort);
     socket.on('error', (err) => finish({ ok: false, detail: err.message }));
+    socket.on('close', () => finish({ ok: false, detail: 'SMTP connection closed before the conversation completed' }));
     socket.on('secureConnect', () => {
-      _runDialogue(socket, steps).then(finish);
+      _runDialogue(socket, steps, () => { dataWritten = true; }).then(finish);
     });
   });
 };
@@ -175,7 +184,7 @@ const _runSmtpSession = (credentials, steps, { signal, interrupted }) => {
  * @param {{to: string[]|string, subject: string, text: string}} request
  * @param {{signal?: AbortSignal}} [opts]
  * @returns {Promise<{ok: true, messageId: string, to: string[]}
- *   |{ok: false, detail: string}>}
+ *   |{ok: false, uncertain?: boolean, messageId?: string, to?: string[], detail: string}>}
  */
 // impure — network + clock + entropy
 export const sendEmail = async (credentials, request, { signal } = {}) => {
@@ -185,19 +194,22 @@ export const sendEmail = async (credentials, request, { signal } = {}) => {
   const interrupted = 'interrupted by your operator before sending';
   if (signal?.aborted) return { ok: false, detail: interrupted };
 
-  const domain = credentials.address.split('@')[1] || 'neuma.local';
+  // One mailbox, several addresses: the email leaves from the one asked for, or its company's (send-as.js).
+  const sender = fromFor(credentials, { from: request?.from, company: request?.company });
+  if (!sender.ok) return sender;
+  const domain = sender.from.split('@')[1] || 'neuma.local';
   const messageId = `<${crypto.randomBytes(12).toString('hex')}@${domain}>`;
   const message = buildMimeMessage({
-    from: credentials.address,
+    from: sender.from,
     to: valid.to,
     subject: valid.subject,
     text: valid.text,
     date: new Date(),
     messageId,
   });
-  const steps = buildSmtpDialogue(credentials, { from: credentials.address, to: valid.to, message });
+  const steps = buildSmtpDialogue(credentials, { from: sender.from, to: valid.to, message });
   const outcome = await _runSmtpSession(credentials, steps, { signal, interrupted });
-  return outcome.ok ? { ok: true, messageId, to: valid.to } : outcome;
+  return outcome.ok || outcome.uncertain ? { ...outcome, messageId, to: valid.to, from: sender.from } : outcome;
 };
 
 /**

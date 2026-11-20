@@ -6,27 +6,24 @@
 //     signed mandate's own terms (years and ISO dates aside) — the house cannot
 //     hallucinate a figure into an inbox;
 //   - every forward-looking sentence is marked "(forward-looking)";
-//   - it carries the disclosure line, word for word;
 //   - it holds NO payment detail: the receiving account rides only the
 //     {{payment}} placeholder, filled from the signed mandate (no being ever
 //     writes an account — the oldest fraud in fundraising is swapped wire details);
+//   - it points nowhere the approved sheet does not: no link, email address,
+//     ENS name or handle but the data room's and the facts' own sources — a
+//     payment page reached by a link is a swapped account all the same (P6-39);
 //   - it applies no false urgency (MAKOTO).
 // Every problem is named at once. PURE.
 
+import { paymentShapesIn, pointersIn } from '../security/payment-screen.js';
+
 export const PAYMENT_PLACEHOLDER = '{{payment}}';
 
-/** The disclosure line every message carries — the default wording until counsel settles it (plan §15). */
+/** The disclosure line a message MAY carry (Design note, 2026-11-17: no line is forced into any message); figures in it are not counted. */
 export const disclosureLine = (companyName) => `We are a team of AI agents building ${companyName}; we work under ${companyName} and its human operator, who reviews and signs everything.`;
 
 const FORWARD = /\b(will|expect(?:s|ed)?|project(?:s|ed|ion)?|forecast(?:s|ed)?|anticipate[sd]?|plan(?:s|ned)? to|aim(?:s|ed)? to|target(?:s|ed)?|on track to)\b/i;
-const URGENCY = /\b(act now|limited time|last chance|only today|before it'?s too late|don'?t miss out|hurry|closing (?:today|tomorrow)|spots? (?:are )?filling|fomo)\b/i;
-const PAYMENT_SHAPES = Object.freeze([
-  [/0x[0-9a-fA-F]{40}/, 'a wallet address'],
-  [/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/, 'an IBAN'],
-  [/\b(routing|account|acct|swift|bic|iban|aba)\s*(number|no\.?|#|code)?\s*[:#]?\s*[A-Z0-9-]{6,}/i, 'bank details'],
-  [/\b\d{8,}\b/, 'a long number that reads like an account'],
-]);
-
+export const URGENCY = /\b(act now|limited time|last chance|only today|before it'?s too late|don'?t miss out|hurry|closing (?:today|tomorrow)|spots? (?:are )?filling|fomo)\b/i;
 // pure — the sentences of a text, kept with their own words.
 const sentences = (text) => String(text).split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
 
@@ -39,13 +36,16 @@ const valueOf = (raw, scale) => {
 
 /**
  * Every number a reader would take as a figure, as values — ISO dates and
- * bare years set aside. pure.
+ * bare years set aside, and a number that is part of a NAME: glued to a word
+ * (web3, L2, Qwen3, H100), a standard's number (ERC-20, EIP-1559), a chain's
+ * layer (Layer 2) — Design note, 2026-11-17: […] refused an honest email. pure.
  * @param {string} text
  * @returns {number[]}
  */
 export const figuresIn = (text) => {
-  const bare = String(text).replace(PAYMENT_PLACEHOLDER, '').replace(/\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?Z?)?\b/g, ' ');
-  return [...bare.matchAll(/(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|mm|m|million|bn|b|billion)?\b/gi)]
+  const bare = String(text).replace(PAYMENT_PLACEHOLDER, '').replace(/\b\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?Z?)?\b/g, ' ')
+    .replace(/\b[A-Z]{2,}-\d+\b/g, ' ').replace(/\blayer[\s-]?\d\b/gi, ' ');
+  return [...bare.matchAll(/(?<![A-Za-z\d.])(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|mm|m|million|bn|b|billion)?\b/gi)]
     .map((m) => ({ raw: m[1].replace(/,+$/, ''), scale: m[2] }))
     .map(({ raw, scale }) => ({ raw, value: valueOf(raw, scale) }))
     .filter(({ raw, value }) => !(/^\d{4}$/.test(raw) && value >= 1990 && value <= 2100))
@@ -58,6 +58,9 @@ const allowedFigures = (sheet, mandate) => new Set([
   mandate.amount, mandate.minCheck, mandate.valuation.low, mandate.valuation.high,
 ]);
 
+// pure — the links a message may carry: the approved sheet's data room and its facts' own sources.
+const pinnedLinks = (sheet) => [...(sheet.dataRoom ?? []), ...sheet.facts.map((f) => f.source)].filter((v) => /^https:\/\//i.test(String(v ?? '')));
+
 /**
  * Judge one investor-bound message. pure.
  * @param {{subject: string, body: string, sheet: object, mandate: object, companyName: string}} args
@@ -68,12 +71,14 @@ export const checkMessage = ({ subject, body, sheet, mandate, companyName }) => 
   const allowed = allowedFigures(sheet, mandate);
   const strays = [...new Set(figuresIn(text.replace(disclosureLine(companyName), '')).filter((v) => !allowed.has(v)))];
   const unmarked = sentences(body).filter((s) => FORWARD.test(s) && !/\(forward-looking\)/i.test(s));
-  const payment = PAYMENT_SHAPES.filter(([shape]) => shape.test(text.replace(PAYMENT_PLACEHOLDER, ''))).map(([, words]) => words);
+  const own = text.replace(PAYMENT_PLACEHOLDER, '').split(disclosureLine(companyName)).join(' ');
+  const payment = paymentShapesIn(text.replace(PAYMENT_PLACEHOLDER, ''));
+  const pointers = pointersIn(own, { pinned: pinnedLinks(sheet) });
   const problems = [
     ...strays.map((v) => `${v} is not on the facts sheet counsel approved, nor in the mandate — an investor reads no figure the record does not hold (write dates as 2026-11-12)`),
     ...unmarked.map((s) => `mark this forward-looking sentence "(forward-looking)": "${s.slice(0, 120)}"`),
-    ...(body.includes(disclosureLine(companyName)) ? [] : [`carry the disclosure line, word for word: "${disclosureLine(companyName)}"`]),
     ...payment.map((w) => `${w} — no payment detail is ever written by a being; write ${PAYMENT_PLACEHOLDER} and the platform fills the mandate's own`),
+    ...pointers.map(({ found, kind }) => `"${found.slice(0, 80)}" is ${kind} the approved facts sheet does not hold — an investor is pointed only to the data room and the sources counsel reviewed`),
     ...(URGENCY.test(text) ? ['no false urgency (MAKOTO) — an investor decides in their own time'] : []),
   ];
   return problems.length ? { ok: false, problems } : { ok: true };

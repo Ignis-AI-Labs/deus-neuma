@@ -14,12 +14,16 @@ import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import './StreamChats.css';
 import { useConsciousness } from './consciousness-context.js';
+import { useCouncil } from './council-context.js';
+import { ChatBatchItems } from './ChatBatchItems.jsx';
 import { useWindows } from '../windowing/use-windows.js';
 import { ChatSearch } from './ChatSearch.jsx';
 import { useChatSearch } from './use-chat-search.js';
-import { autotitleChats, listSessions } from './workspace-sessions.js';
+import { listSessions, listChatThreads } from './workspace-sessions.js';
+import { useTitlingJob } from './use-titling-job.js';
+import { TitlingProgress } from './TitlingProgress.jsx';
 import { getChatLabels, setChatLabel } from '../../services/chat-labels.js';
-import { chatRows, rowTip, tipPlacement } from './stream-chats-view.js';
+import { chatRows, rowTip, tipPlacement, shownRows } from './stream-chats-view.js';
 import { CHAT_LABELS_EVENT, announceChatLabels } from './chat-labels-bus.js';
 import { setOpenRail } from './stream-rail-state.js';
 import { useRailItem } from './StreamRail.jsx';
@@ -31,6 +35,7 @@ import { uiSound } from '../../services/ui-sound.js';
 export const StreamChats = () => {
   const { activeCompanion, resumeSession, newSession, wsService, state } = useConsciousness() || {};
   const windows = useWindows();
+  const council = useCouncil();
   const { t } = useTranslation('desk');
   const neumaId = activeCompanion?.neumaId || null;
   const companionName = activeCompanion?.name || 'Unknown';
@@ -72,6 +77,8 @@ export const StreamChats = () => {
   }, [wsService]);
 
   const [sessions, setSessions] = useState(null); // null = loading
+  const [threads, setThreads] = useState({}); // which chats are sub-chats, and of which chat
+  const [opened, setOpened] = useState(() => new Set()); // the parents whose sub-chats are showing
   const [labels, setLabels] = useState({});
   // Naming, in the operator's two registers: the conduit names from what was
   // said (AUTO-TITLE / TITLE), the operator names by hand (RENAME). `menu`
@@ -81,15 +88,16 @@ export const StreamChats = () => {
   const [menu, setMenu] = useState(null);
   const [renaming, setRenaming] = useState(null);
   const [draft, setDraft] = useState('');
-  const [titling, setTitling] = useState(false);
   const [note, setNote] = useState('');
   const refresh = useCallback(async (settled) => {
     if (!neumaId) { setSessions([]); return; }
-    const [s, l] = await Promise.all([listSessions(neumaId), getChatLabels()]);
+    const [s, l, th] = await Promise.all([listSessions(neumaId), getChatLabels(), listChatThreads(neumaId)]);
+    setThreads(th);
     if (settled?.()) return;
     setSessions(s);
     setLabels(l);
   }, [neumaId]);
+  const titling = useTitlingJob(() => getChatLabels().then((l) => { setLabels(l); announceChatLabels(l); }), ['CHAT', 'CHATS']);
   useSettled((settled) => { if (!collapsed) refresh(settled); }, [refresh, collapsed]);
 
   // A chat that completes its first turn lands on the list without a manual
@@ -124,7 +132,7 @@ export const StreamChats = () => {
     };
   }, [menu]);
 
-  const search = useChatSearch(neumaId, sessions, labels, isOpen, chatId);
+  const search = useChatSearch(neumaId, sessions, labels, isOpen, chatId, threads);
 
   const keyOf = (id) => `${neumaId}:${id}`;
 
@@ -143,23 +151,12 @@ export const StreamChats = () => {
 
   // The conduit names chats from what was said — one chat, or the whole shelf
   // (force retitles even chats already named; without it, untitled only).
-  const runAutotitle = async ({ sessionIds, force = false } = {}) => {
-    if (titling) return;
+  // A batch is a job (titling-jobs.js): its progress and CANCEL show here, titles land as they come.
+  const runAutotitle = ({ sessionIds, force = false } = {}) => {
+    if (titling.running) return;
     uiSound('activate');
-    setTitling(true);
-    setNote(sessionIds ? 'NAMING CHAT…' : 'NAMING CHATS…');
-    const { results, labels: updated } = await autotitleChats(neumaId, { sessionIds, force });
-    if (updated) { setLabels(updated); announceChatLabels(updated); }
-    const titled = results.filter((r) => r.status === 'titled').length;
-    const failed = results.filter((r) => r.status === 'failed').length;
-    setNote(
-      results.length === 0 ? 'NOTHING TO NAME'
-        : failed > 0 ? `NAMED ${titled} · ${failed} FAILED`
-          : titled === 0 ? 'NOTHING NAMED'
-            : `NAMED ${titled} ${titled === 1 ? 'CHAT' : 'CHATS'}`
-    );
-    setTitling(false);
-    refresh();
+    setNote('');
+    titling.start({ kind: 'chats', neumaIds: [neumaId], sessionIds, force: sessionIds ? true : force });
   };
 
   const openMenu = (e, id) => { e.preventDefault(); uiSound('open'); setMenu({ id, x: e.clientX, y: e.clientY }); };
@@ -171,8 +168,10 @@ export const StreamChats = () => {
   // whether it is open or shut.
   if (!isOpen) return null;
 
-  const all = chatRows(sessions || [], labels, neumaId, chatId);
-  const rows = search.rows;
+  const all = chatRows(sessions || [], labels, neumaId, chatId, threads);
+  // A sub-chat stands folded under its parent until the parent is opened; a search shows every match, flat.
+  const rows = search.query.trim() ? search.rows : shownRows(search.rows, opened);
+  const toggleSubs = (id) => { uiSound('toggle'); setOpened((was) => { const next = new Set(was); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
   return (
     <aside className="stream-chats cham" aria-label="Chats">
       <div className="stream-chats-in cham-in">
@@ -193,7 +192,7 @@ export const StreamChats = () => {
           <button
             type="button"
             className="stream-chats-new label-data"
-            onClick={() => { playSound('confirm'); newSession(); }}
+            onClick={() => { playSound('confirm'); council?.leaveRoom(); newSession(); }}
           >
             {t('stream.newChatRail')}
           </button>
@@ -201,10 +200,10 @@ export const StreamChats = () => {
             type="button"
             className="stream-chats-new label-data"
             onClick={openTitleMenu}
-            disabled={titling}
+            disabled={titling.running}
             title="Name chats from what was said"
           >
-            {titling ? 'NAMING…' : 'TITLE'}
+            {titling.running ? 'NAMING…' : 'TITLE'}
           </button>
         </div>
 
@@ -219,7 +218,7 @@ export const StreamChats = () => {
         ) : (
           <ul className="stream-chats-list">
             {rows.map((r) => (
-              <li key={r.id}>
+              <li key={r.id} className={`stream-chats-item${r.depth ? ' is-sub' : ''}`} data-chat-row={r.id} data-chat-parent={r.parent ?? undefined}>
                 {renaming === r.id ? (
                   <div className="stream-chats-rename">
                     <input
@@ -241,6 +240,7 @@ export const StreamChats = () => {
                     onMouseLeave={() => setTip(null)}
                     onBlur={() => setTip(null)}
                     onClick={() => {
+                      council?.leaveRoom(); // a one-on-one shows in the one-on-one view (#25)
                       if (r.live) return; // already on screen — a no-op, not a reload
                       playSound('menuOpen');
                       resumeSession({ neumaId, companionName, sessionId: r.id });
@@ -254,12 +254,19 @@ export const StreamChats = () => {
                     {r.excerpt ? <span className="chat-content-excerpt">{r.excerpt}</span> : null}
                   </button>
                 )}
+                {r.subs && renaming !== r.id && !search.query.trim() ? (
+                  <button type="button" className="stream-chats-subs label-data" aria-expanded={opened.has(r.id)} onClick={() => toggleSubs(r.id)}
+                    aria-label={`${r.subs} sub-chat${r.subs === 1 ? '' : 's'} of ${r.label} — ${opened.has(r.id) ? 'fold them away' : 'show them'}`} title={`${r.subs} sub-chat${r.subs === 1 ? '' : 's'} spawned from this chat`}>
+                    {opened.has(r.id) ? '▾' : '▸'} {r.subs}
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
         )}
 
-        {note ? <div className="stream-chats-note label-data">{note}</div> : null}
+        <TitlingProgress titling={titling} />
+        {note || titling.note ? <div className="stream-chats-note label-data" role="status">{note || titling.note}</div> : null}
 
         <footer className="stream-chats-foot">
           <button
@@ -282,19 +289,17 @@ export const StreamChats = () => {
       {menu ? createPortal(
         <div
           className="stream-chats-ctx"
-          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 150) }}
+          style={{ left: Math.min(menu.x, window.innerWidth - 210), top: Math.min(menu.y, window.innerHeight - 200) }}
           onMouseDown={(e) => e.stopPropagation()}
           onContextMenu={(e) => e.preventDefault()}
         >
           {menu.batch ? (
-            <>
-              <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { runAutotitle({ force: false }); setMenu(null); }}>TITLE UNTITLED</button>
-              <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { runAutotitle({ force: true }); setMenu(null); }}>RETITLE ALL</button>
-            </>
+            <ChatBatchItems itemClass="stream-chats-ctx-item" titling={titling.running} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
           ) : (
             <>
-              <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { startRename(menu.id); setMenu(null); }}>RENAME</button>
-              <button type="button" className="stream-chats-ctx-item" disabled={titling} onClick={() => { runAutotitle({ sessionIds: [menu.id], force: true }); setMenu(null); }}>AUTO-TITLE</button>
+              <button type="button" className="stream-chats-ctx-item" disabled={titling.running} onClick={() => { startRename(menu.id); setMenu(null); }}>RENAME</button>
+              <button type="button" className="stream-chats-ctx-item" disabled={titling.running} onClick={() => { runAutotitle({ sessionIds: [menu.id], force: true }); setMenu(null); }}>AUTO-TITLE</button>
+              <ChatBatchItems itemClass="stream-chats-ctx-item" separatorClass="stream-chats-ctx-sep" titling={titling.running} onRun={(opts) => { runAutotitle(opts); setMenu(null); }} />
             </>
           )}
         </div>,

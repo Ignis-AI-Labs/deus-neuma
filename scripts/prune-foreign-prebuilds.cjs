@@ -112,14 +112,40 @@ function dirsNamed(dir, name, out = []) {
   return out;
 }
 
+/** A package that IS one chip's binary: `@napi-rs/canvas-darwin-x64`, `@esbuild/darwin-arm64`. */
+const CHIP_PACKAGE = /(?:^|[-/])darwin-(arm64|x64)$/;
+
+/** Every package directory in every node_modules under `modules` (scoped ones inside their scope). */
+function packagesUnder(modules) {
+  const out = [];
+  for (const nm of [modules, ...dirsNamed(modules, 'node_modules')]) {
+    let entries;
+    try { entries = fs.readdirSync(nm, { withFileTypes: true }); } catch { continue; }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const full = path.join(nm, entry.name);
+      if (!entry.name.startsWith('@')) { out.push({ name: entry.name, full }); continue; }
+      for (const scoped of fs.readdirSync(full, { withFileTypes: true })) {
+        if (scoped.isDirectory()) out.push({ name: `${entry.name}/${scoped.name}`, full: path.join(full, scoped.name) });
+      }
+    }
+  }
+  return out;
+}
+
 /**
- * Two families of foreign binary live in a packaged node_modules:
+ * Three families of foreign binary live in a packaged node_modules:
  *
  *   prebuilds/darwin-x64/            one directory per chip, shipped by the package
  *   bin/darwin-x64-149/              node-gyp's staging for one chip and ABI,
  *                                    left by whichever build ran last on this
  *                                    machine — so a cross-arch build always packs
  *                                    the HOST's staging into the TARGET's bundle
+ *   @napi-rs/canvas-darwin-x64/      a whole package per chip (napi-rs, esbuild):
+ *                                    installed for the other chip when one build
+ *                                    makes both, and packed into each (the first
+ *                                    macOS CI run, 2026-11-14: skia.darwin-x64.node
+ *                                    inside the arm64 app)
  *
  * Neither is loaded: node-pty and better-sqlite3 read build/Release first. Both
  * are files inside a signed bundle, and both make the artifact look like it
@@ -179,6 +205,15 @@ function prune({ appOutDir, platform = 'darwin', dryRun = false, productFilename
     }
   }
 
+  // <name>-darwin-<arch>/ and @scope/darwin-<arch>/ — the other chip's package goes whole
+  for (const pkg of packagesUnder(modules)) {
+    const m = CHIP_PACKAGE.exec(pkg.name);
+    if (!m) continue;
+    if (m[1] === arch) { result.kept.push(pkg.name); continue; }
+    result.removed.push(pkg.name);
+    if (!dryRun) fs.rmSync(pkg.full, { recursive: true, force: true });
+  }
+
   return result;
 }
 
@@ -193,7 +228,7 @@ const afterPack = async (context) => {
     productFilename: context.packager && context.packager.appInfo && context.packager.appInfo.productFilename,
   });
   if (!chip) return;
-  console.log(`[prune-foreign-prebuilds] ${chip}: kept ${kept.length} prebuild dir(s), removed ${removed.length}`);
+  console.log(`[prune-foreign-prebuilds] ${chip}: kept ${kept.length} chip-specific dir(s), removed ${removed.length}`);
   for (const gone of removed) console.log(`[prune-foreign-prebuilds]   removed ${gone}`);
 };
 

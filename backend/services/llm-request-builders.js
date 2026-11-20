@@ -11,6 +11,8 @@ import { toAnthropicTools, toResponsesTools } from './tool-schema.js';
 import { getProvider } from './provider-registry.js';
 import { openAIChatGPTHeaders } from './openai-chatgpt-wire.js';
 import { carryForTurn, carriedMessages } from './turn-context-carry.js';
+import { randomUUID } from 'node:crypto';
+import { wrapHarnessContext } from './harness-context-frame.js';
 
 /**
  * What llama.cpp writes into the thought when the server budget closes it —
@@ -115,6 +117,7 @@ export const anchorVolatileAtTurn = (messages, carry = null) => {
     // SAY IT ONCE (turn-context-carry.js): the chat's earlier blocks stay on
     // the wire as sent, and this turn's block carries only what changed.
     const descriptor = carry ? carryForTurn(carry) : null;
+    Object.defineProperty(system, 'contextNonce', { value: descriptor?.turnKey ?? randomUUID(), enumerable: false });
     if (descriptor) Object.defineProperty(system, 'contextCarry', { value: descriptor, enumerable: false });
   }
   return messages.length;
@@ -144,7 +147,7 @@ export const localPrefixStableMessages = (messages) => {
   if (system?.role !== 'system' || !split || !Number.isInteger(at) || messages[at]?.role !== 'user') return messages;
   const carried = system.contextCarry ? carriedMessages(messages, split, at, system.contextCarry) : null;
   if (carried) return carried;
-  const block = `<harness-context>\n${HARNESS_CONTEXT_NOTE}\n\n${split.volatile}\n</harness-context>`;
+  const block = wrapHarnessContext(split.volatile, HARNESS_CONTEXT_NOTE, system.contextNonce);
   const turn = messages[at];
   const content = Array.isArray(turn.content)
     ? [{ type: 'text', text: block }, ...turn.content]
@@ -209,6 +212,9 @@ export const buildStreamBody = (config, messages, options) => {
         // request with `tools` present returns message.tool_calls, without it
         // the model can only talk about acting.
         ...(options.tools?.length ? { tools: options.tools } : {}),
+        // THE THINKING-OFF LEVER on Ollama (thought-governor pass 2): its own top-level switch,
+        // measured on the bundled 0.40.7 (deus-neuma #34). Sent only on the governor's re-ask.
+        ...(options.noThink === true ? { think: false } : {}),
         // the window this model is served at (model-capabilities.js OLLAMA_SERVED_CONTEXT):
         // unasked, Ollama picks one by the GPU and cuts a longer prompt silently
         options: {

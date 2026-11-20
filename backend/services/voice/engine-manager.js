@@ -140,7 +140,7 @@ const _inflightLaunches = new Map();
 // later stop() can only mark it, never signal a process we don't own. Only a
 // sidecar that proves the install key is adopted (sidecar-trust.js, M-06).
 const _adoptSidecar = async (engineId, host, port, health) => {
-  if (!(await provenOrRetired(host, port))) return false;
+  if (!(await provenOrRetired(host, port, engineId))) return false;
   const { model = null, profile = null } = health ?? {};
   _engines.set(engineId, {
     state: STATES.READY, host, port, pid: null, proc: null, model, profile,
@@ -156,7 +156,7 @@ const _adoptSidecar = async (engineId, host, port, health) => {
 // a process this manager spawned and that ignored the request.
 const _retire = async (engineId, host, port) => {
   log.info('relaunching sidecar for another model', { engineId, port });
-  const silent = await shutdownSidecar(host, port);
+  const silent = await shutdownSidecar(host, port, 10_000, engineId);
   if (!silent && _engines.get(engineId)?.proc) stop(engineId);
   _engines.set(engineId, { ..._engines.get(engineId), state: STATES.STOPPED, pid: null, proc: null });
 };
@@ -338,7 +338,7 @@ export const launch = async (engineId, options = {}) => {
     // compile takes minutes); a dead process or a 'failed' phase ends it early
     const ready = await waitForReady(
       endpoint, options.timeoutMs ?? meta.serve.readyTimeoutMs ?? 120_000, 250,
-      () => proc.exitCode !== null || proc.signalCode !== null,
+      () => proc.exitCode !== null || proc.signalCode !== null, engineId,
     );
     if (!ready.ok) {
       try { proc.kill('SIGKILL'); } catch { /* already gone */ }
@@ -426,7 +426,7 @@ export const healthCheck = async (engineId) => {
 // itself, which no local signal could do.
 const _reapEngine = async (engineId, state, idleSeconds) => {
   try {
-    await sidecarFetch(`http://${state.host}:${state.port}/shutdown`, { method: 'POST', signal: AbortSignal.timeout(2000) });
+    await sidecarFetch(`http://${state.host}:${state.port}/shutdown`, { method: 'POST', signal: AbortSignal.timeout(2000) }, engineId);
   } catch { /* it may drop the socket while exiting — that IS the shutdown */ }
   if (state.proc) stop(engineId);
   else _engines.set(engineId, { ...state, state: STATES.STOPPED, pid: null, proc: null });
@@ -452,7 +452,7 @@ export const reapIdleEngines = async (ttlMs) => {
     if (Date.now() - (state.readySince ?? 0) < ttl) continue;
     try {
       // only the sidecar's own word counts: an answerer that cannot prove the key is never trusted
-      const data = await provenHealth(`http://${state.host}:${state.port}`);
+      const data = await provenHealth(`http://${state.host}:${state.port}`, engineId);
       const idle = data?.idle_seconds;
       if (typeof idle !== 'number') continue; // pre-contract sidecar — never reap
       if (idle * 1000 >= ttl) {

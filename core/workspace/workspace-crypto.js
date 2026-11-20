@@ -22,22 +22,33 @@
  * `_enc: 2` with `z: 'gzip'` means the ciphertext protects gzip(JSON bytes)
  * instead of raw JSON bytes. Compression happens BEFORE encryption (GCM
  * output is incompressible) and the gunzip branch runs BEFORE any utf8
- * decode (gzip bytes are not utf8-safe). v2 is emitted only when a writer
- * asks for `compress: true` — existing stores keep writing v1, so no old
- * reader ever meets a v2 envelope. The rotation chain works on v2
- * unchanged: the version branch lives inside `_decryptWithKey`.
+ * decode (gzip bytes are not utf8-safe). v2 is emitted when a writer asks for
+ * `compress: true` without AAD; direct non-workspace callers keep their v1/v2
+ * shapes. The rotation chain works on v2 unchanged: the version branch lives
+ * inside `_decryptWithKey`.
  * Threat model: compress-before-encrypt reveals compressed length, but v1
  * already reveals plaintext length and at-rest data offers no interactive
  * oracle (no CRIME/BREACH-class channel) — no new leakage class.
+ *
+ * Envelope v3/v4 adds canonical AES-GCM AAD `{purpose,laneId,file,seq}` to the
+ * raw/compressed forms. Whole-file workspace readers require the actual lane-
+ * relative context; the `<file>.seq` companion refuses an older restored record.
+ * Explicit-key rotation readers use the embedded context so re-sealing preserves it.
  */
 
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import zlib from 'zlib';
+import { fileURLToPath } from 'url';
+import { canonicalEnvelopeAad, normalizeEnvelopeAad, sameEnvelopeAad } from './workspace-envelope-aad.js';
 
 const ALGO = 'aes-256-gcm';
 const IV_LENGTH = 12;
 const ENVELOPE_VERSION = 1;
 const ENVELOPE_VERSION_COMPRESSED = 2;
+const ENVELOPE_VERSION_AAD = 3;
+const ENVELOPE_VERSION_AAD_COMPRESSED = 4;
 const COMPRESSION = 'gzip';
 
 let cachedKey = null;
@@ -55,18 +66,31 @@ const _deriveKey = () => {
   return cachedKey;
 };
 
+// The install's retired masters (retired-masters.js writes the keyring; the data root is resolved as
+// backend/services/data-root.js resolves it). Read here, once per process and only when a fallback is
+// first needed, so the CLI and every script fall back to them too — not only a backend that ran its
+// start step. A keyring that is absent or does not open adds nothing; the backend's start says so.
+const _retiredMasterKeys = (openers) => {
+  try {
+    const dataRoot = process.env.NEUMA_DATA_ROOT || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'data');
+    const envelope = JSON.parse(fs.readFileSync(path.join(dataRoot, 'retired-masters.json'), 'utf8'));
+    for (const key of openers) {
+      try {
+        return _decryptWithKey(envelope, key).masters.map((m) => _hashSecret(m.secret));
+      } catch { /* not sealed under this key */ }
+    }
+  } catch { /* no keyring here */ }
+  return [];
+};
+
 const _derivePreviousKeys = () => {
   if (cachedPreviousKeys) return cachedPreviousKeys;
-  const raw = process.env.DNA_ENCRYPTION_KEY_PREVIOUS;
-  if (!raw) {
-    cachedPreviousKeys = [];
-    return cachedPreviousKeys;
-  }
-  cachedPreviousKeys = raw
+  const named = (process.env.DNA_ENCRYPTION_KEY_PREVIOUS || '')
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
     .map(_hashSecret);
+  cachedPreviousKeys = [...named, ..._retiredMasterKeys([_deriveKey(), ...named])];
   return cachedPreviousKeys;
 };
 
@@ -88,44 +112,51 @@ export const resetWorkspaceCryptoKey = () => {
  * @param {Buffer} key
  * @returns {*}
  */
-const _decryptWithKey = (envelope, key) => {
+const _decryptWithKey = (envelope, key, expectedAad) => {
   const version = envelope._enc;
-  if (version !== ENVELOPE_VERSION && version !== ENVELOPE_VERSION_COMPRESSED) {
-    throw new Error(`decryptEnvelope: unsupported envelope version ${version}`);
+  const versions = [ENVELOPE_VERSION, ENVELOPE_VERSION_COMPRESSED, ENVELOPE_VERSION_AAD, ENVELOPE_VERSION_AAD_COMPRESSED];
+  if (!versions.includes(version)) throw new Error(`decryptEnvelope: unsupported envelope version ${version}`);
+  const compressed = version === ENVELOPE_VERSION_COMPRESSED || version === ENVELOPE_VERSION_AAD_COMPRESSED;
+  if (compressed && envelope.z !== COMPRESSION) {
+    throw new Error(`decryptEnvelope: unsupported compression "${envelope.z}" for _enc: ${version}`);
   }
-  if (version === ENVELOPE_VERSION_COMPRESSED && envelope.z !== COMPRESSION) {
-    throw new Error(`decryptEnvelope: unsupported compression "${envelope.z}" for _enc: 2`);
+  const bound = version === ENVELOPE_VERSION_AAD || version === ENVELOPE_VERSION_AAD_COMPRESSED;
+  const aad = bound ? normalizeEnvelopeAad(envelope.aad) : null;
+  if (bound && expectedAad !== undefined && !sameEnvelopeAad(aad, expectedAad)) {
+    throw new Error('decryptEnvelope: workspace context does not match');
   }
   const iv = Buffer.from(envelope.iv, 'base64');
   const tag = Buffer.from(envelope.tag, 'base64');
   const ct = Buffer.from(envelope.ct, 'base64');
   const decipher = crypto.createDecipheriv(ALGO, key, iv);
+  if (bound) decipher.setAAD(Buffer.from(canonicalEnvelopeAad(aad), 'utf8'));
   decipher.setAuthTag(tag);
   const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
-  const json = version === ENVELOPE_VERSION_COMPRESSED ? zlib.gunzipSync(pt) : pt;
+  const json = compressed ? zlib.gunzipSync(pt) : pt;
   return JSON.parse(json.toString('utf8'));
 };
 
 /**
- * Encrypt a plain JS value into an envelope object.
- * With `compress: true`, emits envelope v2 (`_enc: 2`, `z: 'gzip'`) whose
- * ciphertext protects gzip(JSON bytes) — the archive-lane form. Without it,
- * emits v1 exactly as before.
+ * Encrypt a plain JS value into an envelope object. `compress` selects gzip;
+ * `aad` additionally binds a canonical workspace context with versions 3/4.
  * @param {*} plainObj - JSON-serializable value
- * @param {{key?: Buffer, compress?: boolean}} [opts] - Optional explicit key (otherwise uses env)
- * @returns {{_enc: number, z?: string, iv: string, tag: string, ct: string}}
+ * @param {{key?: Buffer, compress?: boolean, aad?: object}} [opts]
+ * @returns {{_enc: number, z?: string, aad?: object, iv: string, tag: string, ct: string}}
  */
 export const encryptEnvelope = (plainObj, opts = {}) => {
   const key = opts.key ?? _deriveKey();
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGO, key, iv);
+  const aad = opts.aad === undefined ? null : normalizeEnvelopeAad(opts.aad);
+  if (aad) cipher.setAAD(Buffer.from(canonicalEnvelopeAad(aad), 'utf8'));
   const json = Buffer.from(JSON.stringify(plainObj), 'utf8');
   const plaintext = opts.compress ? zlib.gzipSync(json) : json;
   const ct = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const tag = cipher.getAuthTag();
   return {
-    _enc: opts.compress ? ENVELOPE_VERSION_COMPRESSED : ENVELOPE_VERSION,
+    _enc: aad ? (opts.compress ? ENVELOPE_VERSION_AAD_COMPRESSED : ENVELOPE_VERSION_AAD) : (opts.compress ? ENVELOPE_VERSION_COMPRESSED : ENVELOPE_VERSION),
     ...(opts.compress ? { z: COMPRESSION } : {}),
+    ...(aad ? { aad } : {}),
     iv: iv.toString('base64'),
     tag: tag.toString('base64'),
     ct: ct.toString('base64'),
@@ -143,18 +174,18 @@ export const encryptEnvelope = (plainObj, opts = {}) => {
  *   3. Each previous key from `DNA_ENCRYPTION_KEY_PREVIOUS` (comma-separated)
  *
  * @param {{_enc: number, iv: string, tag: string, ct: string}} envelope
- * @param {{key?: Buffer}} [opts]
+ * @param {{key?: Buffer, aad?: object}} [opts]
  * @returns {*}
  */
 export const decryptEnvelope = (envelope, opts = {}) => {
   if (opts.key) {
-    return _decryptWithKey(envelope, opts.key);
+    return _decryptWithKey(envelope, opts.key, opts.aad);
   }
   const candidates = [_deriveKey(), ..._derivePreviousKeys()];
   let lastError = null;
   for (const key of candidates) {
     try {
-      return _decryptWithKey(envelope, key);
+      return _decryptWithKey(envelope, key, opts.aad);
     } catch (err) {
       lastError = err;
     }

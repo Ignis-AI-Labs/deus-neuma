@@ -41,6 +41,8 @@ import { enqueueWake, pumpHouse, configureWakeQueue } from './wake-queue.js';
 import { cadenceSlot } from './wake-gate.js';
 import { readServed, servesLane, servesWallet } from '../house-served.js';
 import { scheduleTick } from './schedule-tick.js';
+import { wakeRulesTick } from './wake-rules-tick.js';
+import { postMayWake } from './wake-rules.js';
 
 const log = createLogger('HouseClock');
 
@@ -84,6 +86,10 @@ const WALLET = /^0x[a-f0-9]{40}$/;
 export const takeSignal = async (signal) => {
   const wallet = await servesLane(signal.seat);
   if (!wallet) return { queued: false, why: `${signal.seat} belongs to no house this backend serves` };
+  // A member chooses who may wake it with a house post (wake-rules.js); the post still lands in its inbox.
+  if (signal.reason === 'post' && !(await postMayWake(signal.seat, signal.detail?.from))) {
+    return { queued: false, why: `${signal.seat}'s wake rules do not let a post from ${signal.detail?.from ?? 'that sender'} wake it; it reads the post on its next turn` };
+  }
   return enqueueWake(wallet, signal);
 };
 
@@ -154,6 +160,8 @@ export const clockTick = async (now = Date.now()) => {
   for (const wallet of await charteredHouses()) {
     await cadenceTick(wallet, now).catch((err) => log.warn('cadence tick failed', { error: err.message }));
     await scheduleTick(wallet, now).catch((err) => log.warn('schedule tick failed', { error: err.message }));
+    // the members' own wake rules: times, prices, their LP wallet's worth, new pools (wake-rules-tick.js)
+    await wakeRulesTick(wallet, now).catch((err) => log.warn('wake rules tick failed', { error: err.message }));
     await pumpHouse(wallet, now).catch((err) => log.warn('the wake queue could not move', { error: err.message }));
   }
 };

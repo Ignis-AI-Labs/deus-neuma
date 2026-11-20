@@ -23,13 +23,14 @@ import { GRAPH_VERSION } from './facebook-poster.js';
 import { readYouTubeChannel } from './youtube-poster.js';
 import { readTikTokAccount } from './tiktok-poster.js';
 import { missingProfileScopes, profileReconnectWords } from './tiktok-profile-view.js';
+import { testEndpoint } from '../test-endpoint-door.js';
 
 const TTL_MS = 60 * 1000;
 const TIMEOUT_MS = 8 * 1000;
 
 // The env doors — one per platform, the tests' only seam.
-const telegramRoot = () => process.env.NEUMA_TELEGRAM_API_ROOT || 'https://api.telegram.org';
-const discordRoot = () => process.env.NEUMA_DISCORD_API_ROOT || 'https://discord.com';
+const telegramRoot = () => testEndpoint(process.env, 'NEUMA_TELEGRAM_API_ROOT', 'https://api.telegram.org');
+const discordRoot = () => testEndpoint(process.env, 'NEUMA_DISCORD_API_ROOT', 'https://discord.com');
 const mastodonRoot = (configured) => process.env.NEUMA_MASTODON_API_ROOT || configured;
 const blueskyRoot = (configured) => process.env.NEUMA_BLUESKY_API_ROOT || configured;
 const facebookRoot = () => process.env.NEUMA_FACEBOOK_API_ROOT || 'https://graph.facebook.com';

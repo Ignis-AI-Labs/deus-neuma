@@ -42,8 +42,9 @@
  * a turn that no longer exists, so the signal is re-checked before any
  * execution and an aborted signal settles nothing that acts.
  *
- * The sweep is serialized per connection: a turn re-entering while a sweep
- * stands queues behind it, so no intent can double-execute.
+ * The sweep is serialized per connection, and each filing is claimed on disk
+ * before validation across every connection and process. The exclusive marker
+ * after any card is the final gate before execution, so no intent can double-execute.
  *
  * impure — disk reads/writes, stores, the approval card, executors.
  */
@@ -55,9 +56,10 @@ import { writeJsonAtomic } from '../user-realm.js';
 import { resolvePolicy, checkToolAccess, applyToolMode, normalizeToolMode, GLOBAL_DEFAULTS } from '../tool-policy.js';
 import { OPTIO_OFFICE_INTENTS } from '../tool-policy-defaults.js';
 import { mandateRenderAccess } from '../marketing/mandate/mandate-act.js';
+import { salesSendAccess } from '../sales/sales-cover.js';
 import { tripMandateForLane } from '../marketing/mandate/mandate-tripwire.js';
 import { cosDesignation } from '../staff/cos-designation.js';
-import { applyProtocolGuard, holdForWake } from '../protocol-guard.js';
+import { applyProtocolGuard, askInWake, escalateInWake } from '../protocol-guard.js';
 import { requestToolApproval } from '../tool-approval.js';
 import { grantAlwaysAllow, ACT_REFUSALS, refusalForDecision } from '../act-gate.js';
 import { capturePolicyGrant } from '../policy-grant-context.js';
@@ -66,6 +68,8 @@ import { logToolCall } from '../tool-sandbox.js';
 import { intentType } from './registry.js';
 import { captureIntentContext, validateIntentPolicy } from './intent-context.js';
 import { maySettle } from './intent-owners.js';
+import { pulseWaiting } from '../waiting/waiting-pulse.js';
+import { acquireFileLock, releaseFileLock, LOCK_TIMEOUT } from '../file-lock.js';
 
 const log = createLogger('IntentSweep');
 
@@ -110,7 +114,7 @@ const refiledAfterInvalid = async (dir, name, resultPath) => {
 const listUnsettled = async (dir) => {
   const names = await fs.readdir(dir).catch(() => []);
   const intents = names.filter((n) => n.endsWith('.json')
-    && !n.endsWith('.result.json') && !n.endsWith('.executing.json'));
+    && !n.endsWith('.result.json') && !n.endsWith('.executing.json') && !n.endsWith('.claim.json'));
   const unsettled = [];
   for (const name of intents) {
     const resultPath = path.join(dir, `${name.slice(0, -'.json'.length)}.result.json`);
@@ -134,9 +138,18 @@ const writeResult = async (dir, name, result) => {
 // honest: the marker is durable before the executor is entered, it is read
 // before any re-execution, and it is cleared once the result stands.
 const markerPath = (dir, name) => path.join(dir, `${name.slice(0, -'.json'.length)}.executing.json`);
+const claimPath = (dir, name) => path.join(dir, `${name.slice(0, -'.json'.length)}.claim.json`);
 
 const markExecuting = async (dir, name, type) => {
-  await writeJsonAtomic(markerPath(dir, name), { type: type.name, at: new Date().toISOString() });
+  try {
+    await fs.writeFile(markerPath(dir, name), JSON.stringify({ type: type.name, at: new Date().toISOString() }), {
+      flag: 'wx', mode: 0o600,
+    });
+    return true;
+  } catch (error) {
+    if (error.code === 'EEXIST') return false;
+    throw error;
+  }
 };
 
 const clearExecuting = async (dir, name) => {
@@ -164,10 +177,29 @@ const optioOfficeAccess = async (connection, access, policyTool, ownRow) => {
   return officer?.laneId && officer.laneId === connection.companion?.neumaId ? 'allowed' : access;
 };
 
-// Settle one intent file. Returns the one-line receipt the tool batch hands
-// back to the model THIS round, or null when the intent stays pending
-// (observe hold, interrupted card — see the header).
-const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, signal, current, syncPolicy }) => {
+// One live owner across connections and processes. No live TTL: an operator's
+// card may wait indefinitely; only a dead holder's claim may be reclaimed.
+const settleIntent = async (connection, dir, name, opts) => {
+  if (!opts.current()) return null;
+  const claim = claimPath(dir, name);
+  let token;
+  try {
+    token = await acquireFileLock(claim, { timeoutMs: 0, staleMs: Number.POSITIVE_INFINITY });
+  } catch (error) {
+    if (error.code === LOCK_TIMEOUT) return null;
+    throw error;
+  }
+  try {
+    return await settleClaimedIntent(connection, dir, name, opts);
+  } finally {
+    await releaseFileLock(claim, token);
+  }
+};
+
+// Settle one claimed intent file. Returns the one-line receipt the tool batch
+// hands back to the model THIS round, or null when the intent stays pending
+// (observe hold, interrupted card, another sitting's claim — see the header).
+const settleClaimedIntent = async (connection, dir, name, { mode, lanePolicy, emit, signal, current, syncPolicy }) => {
   if (!current()) return null;
   const grantOrigin = capturePolicyGrant(connection, { signal, isCurrent: current });
   const laneId = connection.companion?.neumaId;
@@ -245,10 +277,12 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   const ownRow = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`intents/${policyTool}`];
   const baseAccess = await optioOfficeAccess(connection, checkToolAccess(policy, 'intents', policyTool), policyTool, ownRow);
   const explicit = ownRow === 'allowed';
-  // A house wake's charter sends its escalated acts back to the operator, grant or none.
-  const guarded = applyProtocolGuard(applyToolMode(baseAccess, mode, policyTool), mode, 'intents', policyTool, explicit);
-  // THE MANDATE answers a render's card when it covers renders (marketing/mandate/); a wake's holds still stand over it.
-  const access = holdForWake(connection, await mandateRenderAccess(connection, guarded, policyTool, type.summarize(payload)), 'intents', policyTool);
+  // House work never runs posting, email, publishing or a money ask on a chat's grant or an unasked row (P6-105).
+  const guarded = askInWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, policyTool), mode, 'intents', policyTool, explicit), 'intents', policyTool);
+  // THE MANDATE answers a render's card when it covers renders (marketing/mandate/); THE SALES COVER an email
+  // to an approved list's lead within its limits (sales/sales-cover.js); a wake's holds still stand over both.
+  const mandated = await mandateRenderAccess(connection, guarded, policyTool, type.summarize(payload));
+  const access = escalateInWake(connection, await salesSendAccess(connection, mandated, policyTool, verdict.value), 'intents', policyTool);
   if (access === 'denied') {
     if (baseAccess !== 'denied') return null; // observe: watching, not acting
     await writeResult(dir, name, { status: 'denied', reason: ACT_REFUSALS.policyDenied.error });
@@ -286,8 +320,9 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   // #200: an approval answered after the interrupt must not become an act.
   if (!current()) return null;
 
-  // Durable BEFORE the act, so a crash leaves evidence the act was entered.
-  await markExecuting(dir, name, type);
+  // Durable and exclusive BEFORE the act, after any approval wait. A marker
+  // another sitting landed means this filing must not be entered again.
+  if (!(await markExecuting(dir, name, type))) return null;
   // A disconnect or interrupt during persistence cannot authorize the act.
   if (!current()) return null;
   emit({ tool: tool(policyTool), status: 'executing', summary: `${shown} — working` });
@@ -296,7 +331,14 @@ const settleIntent = async (connection, dir, name, { mode, lanePolicy, emit, sig
   // an executor can hand the stream a payload (a generated image's `sight`).
   const outcome = await type.execute(verdict.value, { connection, signal, emit })
     .catch((err) => ({ ok: false, reason: err.message }));
+  if (outcome.uncertain) {
+    await writeResult(dir, name, { status: 'uncertain', reason: outcome.reason, txHash: outcome.txHash });
+    await logToolCall(neumaWorkspace, laneId, 'intents', policyTool, payload, 'error', outcome.reason);
+    emit({ tool: tool(policyTool), status: 'uncertain', summary: `${shown} — outcome unknown; reconcile before retry`, detail: outcome.reason });
+    return { tool: tool(policyTool), status: 'uncertain', error: outcome.reason, txHash: outcome.txHash };
+  }
   if (outcome.ok) {
+    pulseWaiting(connection?.walletAddress); // a member's settled act may have put a decision before the operator, or settled one
     await writeResult(dir, name, { status: 'done', detail: outcome.detail });
     await clearExecuting(dir, name);
     await logToolCall(neumaWorkspace, laneId, 'intents', policyTool, payload, 'success', null);

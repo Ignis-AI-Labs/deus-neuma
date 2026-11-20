@@ -7,6 +7,7 @@
 
 import { Select } from '../Select.jsx';
 import { EmptyState } from '../empty-state.jsx';
+import { Sheet } from '../sheet/Sheet.jsx';
 import { holderName } from './company-line-view.js';
 
 const STAGES = Object.freeze(['qualified', 'proposed', 'won', 'lost']);
@@ -15,9 +16,10 @@ const money = (value) => Object.entries(value ?? {}).map(([c, n]) => `${n} ${c}`
 /**
  * @param {{sales: ?object, names: Record<string, string>, pick: string, busy: boolean,
  *   onPick: (v: string) => void, onSeat: () => void, onClear: () => void,
- *   drafts?: object, onDraft?: Function, onDestination?: () => void}} props
+ *   drafts?: object, onDraft?: Function, onDestination?: () => void, seatless?: boolean}} props
+ *   seatless — the POSITIONS hub seats the Mercator in its own head, so the picker here stands down
  */
-export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear, drafts = {}, onDraft = () => {}, onDestination = () => {} }) => {
+export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear, drafts = {}, onDraft = () => {}, onDestination = () => {}, seatless = false }) => {
   const seat = sales?.mercator?.laneId ?? null;
   const open = (sales?.deals ?? []).filter((d) => d.stage === 'qualified' || d.stage === 'proposed');
   const won = (sales?.deals ?? []).filter((d) => d.stage === 'won');
@@ -25,12 +27,14 @@ export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear
   return (
     <section className="cline-sec" aria-label="sales" data-sales="">
       <p className="cline-h label-data">SALES — MERCATOR · {seat ? holderName(seat, names) : 'NOBODY HOLDS THE SEAT'}</p>
-      <div className="cline-open">
-        <Select fill ariaLabel="Mercator holder" value={pick} onChange={onPick} disabled={busy}
-          placeholder="— choose the Mercator —" options={Object.entries(names).map(([laneId, name]) => ({ value: laneId, label: name }))} />
-        <button type="button" className="sec-scan label-data" disabled={busy || !pick} onClick={onSeat}>SEAT</button>
-        {seat ? <button type="button" className="sec-scan cline-danger label-data" disabled={busy} onClick={onClear}>UNSEAT</button> : null}
-      </div>
+      {seatless ? null : (
+        <div className="cline-open">
+          <Select fill ariaLabel="Mercator holder" value={pick} onChange={onPick} disabled={busy}
+            placeholder="— choose the Mercator —" options={Object.entries(names).map(([laneId, name]) => ({ value: laneId, label: name }))} />
+          <button type="button" className="sec-scan label-data" disabled={busy || !pick} onClick={onSeat}>SEAT</button>
+          {seat ? <button type="button" className="sec-scan cline-danger label-data" disabled={busy} onClick={onClear}>UNSEAT</button> : null}
+        </div>
+      )}
       {sales ? (
         <>
           <div className="cline-tiles cline-tiles-flat">
@@ -42,9 +46,8 @@ export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear
             ))}
           </div>
           {open.length === 0 ? <EmptyState title="NO OPEN DEAL" /> : (
-            <ul className="cline-ws-src" aria-label="open deals">
-              {open.map((d) => <li key={d.id} data-deal-id={d.id}>{d.buyer} — {d.stage.toUpperCase()}, {d.value.amount} {d.value.currency} — NEXT: {d.nextStep}</li>)}
-            </ul>
+            <Sheet label="open deals" rows={open} rowKey={(d) => d.id} rowName={(d) => d.buyer} rowAttrs={(d) => ({ 'data-deal-id': d.id })}
+              columns={[{ head: 'BUYER', cell: (d) => d.buyer }, { head: 'STAGE', sort: (d) => ({ qualified: 1, proposed: 2 }[d.stage] ?? 0), cell: (d) => d.stage.toUpperCase() }, { head: 'VALUE', cell: (d) => `${d.value.amount} ${d.value.currency}` }, { head: 'NEXT STEP', cell: (d) => d.nextStep || null, title: (d) => d.nextStep }]} />
           )}
           <p className="cline-h label-data">DELIVERY — {sales.destination ? 'WHERE FINISHED WORK GOES' : 'NOT SET: NOTHING CAN BE DELIVERED UNTIL YOU CHOOSE WHERE'}</p>
           {sales.destination ? (
@@ -66,16 +69,12 @@ export const SalesSection = ({ sales, names, pick, busy, onPick, onSeat, onClear
             </button>
           </div>
           {won.length ? (
-            <ul className="cline-ws-src" aria-label="won deals">
-              {won.map((d) => (
-                <li key={d.id} data-deal-id={d.id}>
-                  {d.buyer} — WON, {d.value.amount} {d.value.currency}
-                  {(sales.deliveries ?? []).filter((p) => p.dealId === d.id).map((p) => (
-                    <div key={p.id} data-delivery={p.id}>DELIVERED {p.name}: <a className="cline-link" href={p.link} target="_blank" rel="noreferrer noopener">{p.link}</a></div>
-                  ))}
-                </li>
-              ))}
-            </ul>
+            <Sheet label="won deals" rows={won} rowKey={(d) => d.id} rowName={(d) => d.buyer} rowAttrs={(d) => ({ 'data-deal-id': d.id })}
+              columns={[{ head: 'BUYER', cell: (d) => d.buyer }, { head: 'STAGE', cell: () => 'WON', tone: () => 'on' }, { head: 'VALUE', cell: (d) => `${d.value.amount} ${d.value.currency}` },
+                { head: 'DELIVERED', cell: (d) => {
+                  const sent = (sales.deliveries ?? []).filter((p) => p.dealId === d.id);
+                  return sent.length ? sent.map((p) => <span key={p.id} data-delivery={p.id}>{p.name}: <a className="cline-link" href={p.link} target="_blank" rel="noreferrer noopener">{p.link}</a> </span>) : null;
+                } }]} />
           ) : null}
         </>
       ) : null}

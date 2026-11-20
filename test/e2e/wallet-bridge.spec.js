@@ -1,83 +1,44 @@
 // @ts-check
+import process from 'node:process';
 import { test, expect } from '@playwright/test';
 import { ethers } from 'ethers';
 
 /**
- * System-browser wallet bridge (WEB-001 / #126) — the browser side of the
- * Electron hand-off, proven end-to-end:
- *   - a /?bridge=<code> tab connects an injected (Rabby-style) wallet + authenticates
- *   - it ASSOCIATES the minted token with the bridge session
- *   - the token is retrievable with the pollSecret (what Electron holds), and NOT
- *     with the URL-exposed browserCode alone
- *   - retrieval is one-time
- * Requires the dev stack (:7755 / :3355).
+ * The wallet bridge no longer exposes initiation or token retrieval over HTTP.
+ * The browser tab must ask for confirmation before any wallet connection, and
+ * cancel must stop before a wallet picker appears. Happy-path association and
+ * private desktop IPC are proven in test/integration/wallet-bridge-ipc.test.js
+ * and test/unit/wallet-bridge.test.js against a real backend child.
+ * Requires the dev stack; PORT and FRONTEND_PORT follow its assigned lane.
  */
-
-test.describe.configure({ retries: 2 });
 
 const BACKEND = `http://localhost:${process.env.PORT || 3355}`;
 
-test('bridge: a /?bridge tab connects an injected wallet and hands the token back via pollSecret', async ({ page, request }) => {
-  // 1. Electron starts the bridge and keeps both secrets.
+test('bridge: initiation and polling are not public HTTP endpoints', async ({ request }) => {
   const start = await request.post(`${BACKEND}/api/v1/auth/bridge/start`);
-  expect(start.ok()).toBeTruthy();
-  const { browserCode, pollSecret } = await start.json();
+  expect([401, 404]).toContain(start.status());
+  const poll = await request.get(`${BACKEND}/api/v1/auth/bridge/poll?code=not-a-session`, {
+    headers: { 'x-bridge-secret': 'not-a-secret' },
+  });
+  expect([401, 404]).toContain(poll.status());
 
-  // 2. Inject a mock EIP-6963 wallet that signs via a real Node-side key.
   const wallet = ethers.Wallet.createRandom();
-  await page.exposeFunction('__e2eSign', (message) => wallet.signMessage(message));
-  await page.addInitScript((address) => {
-    const provider = {
-      request: async ({ method, params }) => {
-        switch (method) {
-          case 'eth_requestAccounts':
-          case 'eth_accounts':
-            return [address];
-          case 'eth_chainId':
-            return '0x2105';
-          case 'personal_sign':
-            return await window.__e2eSign(params[0]);
-          default:
-            throw new Error(`mock EIP-6963 provider: unhandled ${method}`);
-        }
-      },
-      on: () => {},
-      removeListener: () => {},
-    };
-    const info = { uuid: 'e2e-bridge-uuid-0001', name: 'Rabby (e2e mock)', icon: '', rdns: 'io.rabby.e2e' };
-    const announce = () =>
-      window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: Object.freeze({ info, provider }) }));
-    window.addEventListener('eip6963:requestProvider', announce);
-    announce();
-  }, wallet.address);
+  const challengeResponse = await request.get(`${BACKEND}/api/v1/auth/challenge`, { params: { address: wallet.address } });
+  const challenge = (await challengeResponse.json()).challenge;
+  const signature = await wallet.signMessage(challenge);
+  const verified = await request.post(`${BACKEND}/api/v1/auth/verify`, { data: { address: wallet.address, signature, challenge } });
+  expect(verified.status()).toBe(200);
+  const { token } = await verified.json();
+  const headers = { Authorization: `Bearer ${token}` };
+  expect((await request.post(`${BACKEND}/api/v1/auth/bridge/start`, { headers })).status()).toBe(404);
+  expect((await request.get(`${BACKEND}/api/v1/auth/bridge/poll?code=not-a-session`, { headers })).status()).toBe(404);
+});
 
-  // 3. Open the bridge tab — it auto-prompts the wallet picker (no full app boot).
-  await page.goto(`/?bridge=${encodeURIComponent(browserCode)}`);
-  const item = page.locator('.wallet-picker-item:not(.wallet-picker-embedded)', { hasText: 'Rabby (e2e mock)' });
-  await expect(item).toBeVisible({ timeout: 15000 });
-  await item.click();
-
-  // 4. The bridge page confirms once it associates the token.
-  await expect(page.locator('.bridge-card')).toContainText('Signed in', { timeout: 30000 });
-
-  // 5. browserCode ALONE (URL-exposed) cannot retrieve the token → 403.
-  const wrong = await request.get(`${BACKEND}/api/v1/auth/bridge/poll?code=${encodeURIComponent(browserCode)}`, {
-    headers: { 'x-bridge-secret': 'wrong-secret' },
-  });
-  expect(wrong.status()).toBe(403);
-
-  // 6. Electron retrieves it with the pollSecret → the injected wallet's real token.
-  const poll = await request.get(`${BACKEND}/api/v1/auth/bridge/poll?code=${encodeURIComponent(browserCode)}`, {
-    headers: { 'x-bridge-secret': pollSecret },
-  });
-  expect(poll.ok()).toBeTruthy();
-  const { token, address } = await poll.json();
-  expect(token).toBeTruthy();
-  expect(address.toLowerCase()).toBe(wallet.address.toLowerCase());
-
-  // 7. One-time — a second retrieval is gone.
-  const again = await request.get(`${BACKEND}/api/v1/auth/bridge/poll?code=${encodeURIComponent(browserCode)}`, {
-    headers: { 'x-bridge-secret': pollSecret },
-  });
-  expect(again.status()).toBe(404);
+test('bridge: cancelling a URL handoff never opens the wallet picker', async ({ page }) => {
+  await page.goto('/?bridge=not-a-desktop-session');
+  const cancel = page.getByRole('button', { name: 'CANCEL' });
+  await expect(cancel).toBeVisible();
+  await cancel.click();
+  await expect(page.locator('.bridge-card')).toContainText('Cancelled');
+  await expect(page.locator('.wallet-picker-item')).toHaveCount(0);
 });

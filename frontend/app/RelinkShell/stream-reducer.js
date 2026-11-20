@@ -18,6 +18,7 @@ import { reduceHeldWord } from './held-word.js';
 import { streamingIndex, segmentHandlers } from './stream-reducer-segments.js';
 import { chipHandlers } from './stream-reducer-chips.js';
 import { compactHandlers } from './compact-marker.js';
+import { cloneHandlers } from './clone-split.js';
 import { toHistoryMessages, withDisplayedAsk, pushMessage } from './stream-reducer-messages.js';
 import { substrateLineText } from './stream-turn-actions.js';
 
@@ -98,7 +99,7 @@ export const reducer = (state, action) => {
   // The streaming-content and witness-gate chip families live in their own
   // handler-map modules (the size-law seam); the switch below keeps every
   // action that touches link, purpose, voice, or the turn's lifecycle.
-  const family = segmentHandlers[action.type] || chipHandlers[action.type] || compactHandlers[action.type];
+  const family = segmentHandlers[action.type] || chipHandlers[action.type] || compactHandlers[action.type] || cloneHandlers[action.type];
   if (family) return family(state, action);
   switch (action.type) {
     case 'LINK':
@@ -155,6 +156,14 @@ export const reducer = (state, action) => {
     // The citation law held the CLO's last answer (legal/answer-hold.js) — its words open the turn that re-checks it.
     case 'CITATION_HELD':
       return pushMessage(state, 'hold', action.text, [], action.at);
+
+    // CONTINUE on a reply the app's close cut short (portal-turn-adopt.js) — the platform's words open the turn that picks it up.
+    case 'CONTINUED':
+      return pushMessage(state, 'resume', action.text, [], action.at);
+
+    // A reply said queued posts changed and no act touched them (social/queue-claim-check.js) — the platform sends the being back.
+    case 'QUEUE_UNACTED':
+      return pushMessage(state, 'unacted', action.text, [], action.at);
 
     // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':

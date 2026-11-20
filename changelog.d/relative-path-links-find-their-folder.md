@@ -1,0 +1,2 @@
+Fixed
+- A folder or file a being names in chat with a relative path, such as `Signed-Drop/` or `To-Sign/`, now opens even when the window has no focused folder. It's looked for first in the focused folder, then in the folders that message's own actions worked in, and the first place it exists opens. If it isn't found anywhere, the note lists every place it looked instead of only "A relative path needs a focused folder".

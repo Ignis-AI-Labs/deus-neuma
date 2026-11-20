@@ -13,7 +13,7 @@
 import http from 'http';
 import https from 'https';
 import { assertSafeWebTarget, nextRedirectUrl } from './web-guard.js';
-import { pdfPagesFromBytes } from './pdf-text.js';
+import { pdfPagesForRequest } from './pdf-text.js';
 import { isPdfResponse, selectPdfPages, MAX_WEB_PDF_BYTES } from './web-pdf.js';
 import { isPrivateHost } from './endpoint-guard.js';
 import { htmlToText, extractTitle } from './html-to-text.js';
@@ -90,8 +90,9 @@ export const interpretBody = (raw, contentType, status) => {
     ? htmlToText(raw, WEB_TEXT_MAX)
     : `${raw.slice(0, WEB_TEXT_MAX)}${overflowed ? '\n[… truncated]' : ''}`;
   const smallJsShell = text.trim().length === 0
-    && /<script\b[^>]*\bsrc\s*=/i.test(raw)
-    && /<(?:div|main)\b[^>]*\bid\s*=\s*['"](?:root|app|__next)['"]/i.test(raw);
+    // bounded reach: `[^>]*` reran from every `<script` of a page with one endless tag (PR600 audit P6-125)
+    && /<script\b[^>]{0,400}\bsrc\s{0,20}=/i.test(raw)
+    && /<(?:div|main)\b[^>]{0,400}\bid\s{0,20}=\s{0,20}['"](?:root|app|__next)['"]/i.test(raw);
   const wall = isHtml && text.trim().length < WALL_TEXT_MIN
     && (raw.length >= WALL_MARKUP_MIN || smallJsShell)
     ? `the page answered ${status} but carried no readable text`
@@ -187,7 +188,8 @@ export const pinnedLookup = (addrs) => (hostname, options, callback) => {
  * @param {Array<{address: string, family: number}>} addrs Guard-vetted addresses.
  * @param {{userAgent?: string, signal?: AbortSignal}} [options]
  */
-export const requestWebOnce = (url, addrs, { userAgent = DEFAULT_UA, signal } = {}) => new Promise((resolve) => {
+// `headers` adds to the defaults for THIS request only (a download's login for its own host — web-download.js headersFor).
+export const requestWebOnce = (url, addrs, { userAgent = DEFAULT_UA, signal, headers = {} } = {}) => new Promise((resolve) => {
   const mod = url.startsWith('https:') ? https : http;
   const req = mod.request(url, {
     method: 'GET',
@@ -198,6 +200,7 @@ export const requestWebOnce = (url, addrs, { userAgent = DEFAULT_UA, signal } = 
       'User-Agent': userAgent,
       'Accept': 'text/html, text/plain, application/json, text/markdown, */*;q=0.5',
       'Accept-Language': 'en-US,en;q=0.9',
+      ...headers,
     },
   }, (res) => resolve({ res }));
   req.on('timeout', () => req.destroy(new Error(`no answer within ${TIMEOUT_MS / 1000}s`)));
@@ -238,9 +241,12 @@ export const readBounded = (res, maxBytes = MAX_BYTES) => new Promise((resolve) 
 const readPdfResponse = async (res, url, ask) => {
   const { buf, truncated } = await readBounded(res, MAX_WEB_PDF_BYTES);
   if (truncated) return { ok: false, url, status: res.statusCode, error: `the PDF is over ${MAX_WEB_PDF_BYTES / 1048576} MB — too large to read here; save it with a web/download intent` };
-  let pages;
-  try { pages = await pdfPagesFromBytes(buf); } catch (err) { return { ok: false, url, status: res.statusCode, error: err.message }; }
-  const { text, note } = selectPdfPages(pages, ask);
+  let selection;
+  try { selection = await pdfPagesForRequest(buf, ask); } catch (err) { return { ok: false, url, status: res.statusCode, error: err.message }; }
+  const effectiveAsk = selection.readRange ? { ...ask, pages: selection.readRange.join('-') } : ask;
+  const selected = selectPdfPages(selection.pages, effectiveAsk);
+  const text = selected.text;
+  const note = `${selected.note}${selection.invalidRange && selection.readRange ? `; pages "${ask.pages}" is not a range, so the bounded prefix is shown` : ''}${selection.capped ? '; later pages were not read — ask for a specific range' : ''}`;
   const overflowed = text.length > WEB_TEXT_MAX;
   return {
     ok: true, url, status: res.statusCode, title: note,
@@ -257,13 +263,15 @@ const readPdfResponse = async (res, url, ask) => {
  * @param {{browserRun?: {accountId?: string, apiToken?: string, apiRoot?: string}}} [options]
  * @returns {Promise<{ok: true, url: string, status: number|null, title: string|null, text: string, truncated: boolean, renderer: 'direct'|'kitesurf'} | {ok: false, error: string}>}
  */
-export const fetchWebPage = async (target, { browserRun = browserRunConfig(), pdf = {} } = {}) => {
+export const fetchWebPage = async (target, { browserRun = browserRunConfig(), pdf = {}, screenTarget = null } = {}) => {
   let url = target;
   let hops = 0;
   // At most one browser-UA retry per fetch, counted separately from redirects
   // so a refusal never eats a hop the redirect chain still needs.
   let retriedAsBrowser = false;
   for (;;) {
+    const screened = screenTarget?.(url, { redirect: hops > 0 });
+    if (screened && !screened.ok) return { ok: false, error: screened.reason };
     const guard = await assertSafeWebTarget(url);
     if (!guard.ok) return { ok: false, error: `target refused (${guard.reason})` };
     const { res, error } = await requestWebOnce(url, guard.addrs, {

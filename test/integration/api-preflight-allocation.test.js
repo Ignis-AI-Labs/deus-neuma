@@ -259,8 +259,10 @@ describe('Pre-flight verdict — affordability moves it, and only it', () => {
     const ids = res.body.checks.map((c) => c.id);
     expect(ids).toEqual(expect.arrayContaining([
       'substrate', 'acting', 'workspace', 'ceremonyRoad', 'records',
-      'protocol', 'sealing', 'disk', 'memory', 'dnaKey', 'mcp', 'gpu', 'trainer', 'forge',
+      'protocol', 'sealing', 'disk', 'memory', 'dnaKey', 'mcp', 'gpu', 'forge',
     ]));
+    // the LoRA refinement is no longer built (Design note, 2026-11-14: no pre-flight asks for its trainer
+    expect(ids).not.toContain('trainer');
     for (const check of res.body.checks) {
       expect(check.status).toMatch(/^(pass|warn|fail)$/);
       expect(typeof check.detail).toBe('string');

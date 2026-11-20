@@ -77,17 +77,17 @@ test.beforeEach(async ({ page }) => {
 // The COMPOSITION tests live in context-map-composition.spec.js, on the desk
 // harness's seeded lane (a synthetic companion with no lane is held at arrival).
 
-// ————— FIELD — the crystallized-memory graph (F-03) —————
+// ————— MEMORY — the memory atlas —————
 //
-// The graph route reads a real sovereign workspace, and the LIVE stack's
+// The atlas route reads a real sovereign workspace, and the LIVE stack's
 // root is a real workspace home — test lanes must never be planted there
 // (the 2026-07-03 shadow-lane incident). So this block boots its OWN stack:
 // a real backend + real vite dev server on PID-derived ports, pointed at a
 // disposable temp root. Everything else stays real end to end: challenge-
-// sign-verify auth, real REST observation writes, the real server graph
+// sign-verify auth, real REST observation writes, the real server atlas
 // pipeline, the real shell in a real browser. No mock anywhere in the path.
 
-test.describe('FIELD — crystallized-memory graph on an isolated temp-root stack', () => {
+test.describe('MEMORY — the memory atlas on an isolated temp-root stack', () => {
   const FPORT = 7411 + (process.pid % 149);
   const BPORT = 3511 + (process.pid % 149);
   const FIELD_BASE = `http://localhost:${BPORT}`;
@@ -152,9 +152,10 @@ test.describe('FIELD — crystallized-memory graph on an isolated temp-root stac
     ({ token: fieldToken, addr: fieldAddr } = await mintToken(FIELD_BASE));
     await seedLane(EMPTY_ID); // a claimed lane with ZERO observations
     await seedLane(GRAPH_ID);
-    // Overlapping vocabulary so the similarity graph genuinely links them.
+    // Three memories of one subject (a topic needs three) and one of another.
     await postObservation(GRAPH_ID, 'the copper lantern hums in the copper hall of lanterns');
     await postObservation(GRAPH_ID, 'the copper lantern in the hall hums a low copper tone at dusk');
+    await postObservation(GRAPH_ID, 'a copper lantern was lit in the hall and its copper hum carried');
     await postObservation(GRAPH_ID, 'a silver river runs under the silver bridge before dawn');
   });
 
@@ -182,39 +183,47 @@ test.describe('FIELD — crystallized-memory graph on an isolated temp-root stac
     await passDeskGates(page, 5000);
     await openDockApp(page, 'CONTEXT MAP');
     await expect(page.locator('.ctx')).toBeVisible();
-    await page.locator('.ctx-tab', { hasText: 'FIELD' }).click();
+    await page.locator('.ctx-tab', { hasText: 'MEMORY' }).click();
   };
 
-  test('zero observations → the honest empty state, never fake nodes', async ({ page }) => {
+  test('zero memories → the honest empty state, never a made-up map', async ({ page }) => {
     await openField(page, EMPTY_ID);
-    await expect(page.locator('.empty-state')).toContainText('NO CRYSTALLIZED FIELD YET');
-    await expect(page.locator('.empty-state small')).toContainText('The graph grows as memories form');
-    await expect(page.locator('.ctx-field-dot')).toHaveCount(0);
+    await expect(page.locator('.empty-state')).toContainText('NO MEMORIES YET');
+    await expect(page.locator('.atlas-rail')).toHaveCount(0);
     expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
   });
 
-  test('real observations → real nodes render, focused node reads out its real record', async ({ page }) => {
+  test('real memories → a topic in the rail, a table of memories, one opened in full, and the drawn map', async ({ page }) => {
     await openField(page, GRAPH_ID);
-    await expect(page.locator('.ctx-field-svg')).toBeVisible();
-    await expect(page.locator('.ctx-field-node')).toHaveCount(3);
-    await expect(page.locator('.ctx-field-count')).toContainText('3 MEMORIES');
+    await expect(page.locator('.atlas-sum')).toContainText('4 MEMORIES');
+    await expect(page.locator('.atlas-sum')).toContainText('1 TOPICS');
+    await expect(page.locator('[data-sheet="memories"] tbody tr')).toHaveCount(4);
 
-    // Before focus: the strip holds the hint; nothing carries signal.
-    await expect(page.locator('.ctx-field-strip')).toContainText('FOCUS A NODE');
-    await expect(page.locator('.ctx-field-dot.is-focused')).toHaveCount(0);
+    // The topic is named by what its memories share, and narrows the list.
+    const topic = page.locator('.atlas-rail .atlas-way').first();
+    await expect(topic).toContainText(/copper|lantern|hall/i);
+    await topic.click();
+    await expect(page.locator('[data-sheet="memories"] tbody tr')).toHaveCount(3);
+    await expect(page.locator('.atlas-shown')).toContainText('3 OF 4 SHOWN');
 
-    // Focus a node — the strip reads out its REAL record, and signal marks
-    // exactly that one node.
-    await page.locator('.ctx-field-node').first().focus();
-    await expect(page.locator('.ctx-field-dot.is-focused')).toHaveCount(1);
-    await expect(page.locator('.ctx-field-strip')).toContainText(/DEGREE \d+/);
-    await expect(page.locator('.ctx-field-strip')).toContainText(/BETWEENNESS \d/);
-    const label = await page.locator('.ctx-field-strip-label').textContent();
-    expect(['copper', 'silver'].some((w) => (label || '').includes(w))).toBe(true);
+    // Searching narrows by words; lifting the chips brings everything back.
+    await page.locator('.atlas-chip').first().click();
+    await page.locator('.atlas-search').fill('silver bridge');
+    await expect(page.locator('[data-sheet="memories"] tbody tr')).toHaveCount(1);
+    await page.locator('.atlas-search').fill('');
+    await expect(page.locator('[data-sheet="memories"] tbody tr')).toHaveCount(4);
 
-    // Arrow keys walk the field; still exactly one node holds signal.
-    await page.keyboard.press('ArrowRight');
-    await expect(page.locator('.ctx-field-dot.is-focused')).toHaveCount(1);
+    // Opening a memory reads its own words and the memories nearest to it.
+    await page.locator('.atlas-row-open', { hasText: 'copper' }).first().click();
+    await expect(page.locator('.atlas-reader .atlas-read-text')).toContainText('copper');
+    await expect(page.locator('.atlas-near-row').first()).toBeVisible();
+    await page.locator('.atlas-near-row').first().click();
+    await expect(page.locator('.atlas-read-bar .atlas-btn', { hasText: 'BACK' })).toBeEnabled();
+
+    // The map draws every memory as a dot and marks the opened one.
+    await page.locator('.atlas-seg .atlas-btn', { hasText: 'MAP' }).click();
+    await expect(page.locator('.atlas-dot')).toHaveCount(4);
+    await expect(page.locator('.atlas-dot.is-open')).toHaveCount(1);
 
     expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
   });

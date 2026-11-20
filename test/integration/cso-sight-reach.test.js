@@ -16,6 +16,7 @@ import { clearAttackSurfaceCache } from '../../backend/services/security/attack-
 import { circuitBreaker } from '../../backend/services/security/circuit-breaker.js';
 import { trafficMonitor } from '../../backend/services/security/traffic-monitor.js';
 import { createLogger } from '../../backend/services/logger.js';
+import { execFileSync } from 'node:child_process';
 import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 // The finding maps against the REAL lockfile, so the fixture names the tar this
@@ -342,4 +343,17 @@ describe('CSO Sight and Reach (real signed-wallet HTTP + kernel TCP + real disk)
     });
     expect(released.status).toBe(200);
   }, 30000);
+
+  test('machine-wide CSO watch scope belongs to the local desk, not the same wallet on a phone', async () => {
+    const outside = path.join(root, 'outside-house-repo');
+    await fs.mkdir(outside, { recursive: true });
+    execFileSync('git', ['init', '--quiet', outside]);
+    const remote = await authed(remoteBase, '/api/v1/cso/watch/repos', {
+      method: 'POST', body: JSON.stringify({ path: outside }),
+    });
+    expect(remote.status).toBe(403);
+    expect((await remote.json()).code).toBe('OUTSIDE_HOUSE');
+    const local = await post('/api/v1/cso/watch/repos', { path: outside });
+    expect(local.status).toBe(201);
+  });
 });

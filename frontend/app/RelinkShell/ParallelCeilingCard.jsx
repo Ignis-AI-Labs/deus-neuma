@@ -44,6 +44,15 @@ import { asText } from '../../utils/as-text.js';
  */
 export const headlineFor = (latest, servingModel = null) => {
   const scanned = latest?.substrate?.model ?? null;
+  // Never scanned on this model: the machine's measurement carries over, named
+  // (scanForModel). Switching models never asks for a re-scan (Design note, 2026-11-10.
+  if (latest?.carriedFrom) {
+    return {
+      big: `~${latest.ceiling} neuma working at once`,
+      sub: `measured on this machine with ${latest.carriedFrom} — a scan here measures ${servingModel || 'this model'} itself`,
+      stale: false,
+    };
+  }
   // A ceiling measured on a different model is not this machine's ceiling. Said
   // first and plainly, because it is the one thing that makes the number below
   // it untrue — and because it names the fix.
@@ -174,7 +183,7 @@ export const ParallelCeilingCard = () => {
             {latest.incomplete ? ' (measured up to the tested limit; the true ceiling may be higher)' : ''}
           </p>
           <p className="rec-line label-data">
-            {headline.stale ? `measured on ${latest.substrate?.model}` : "your server's current config"}
+            {headline.stale || latest.carriedFrom ? `measured on ${latest.substrate?.model}` : "your server's current config"}
             {' · measured '}{latest.runAt ? formatRelativeTime(new Date(latest.runAt).getTime()) : null}
           </p>
           <details className="rec-cap-detail">

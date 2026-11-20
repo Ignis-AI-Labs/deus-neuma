@@ -187,7 +187,7 @@ export const cardFreshness = async (cardPath, { wallet = null } = {}) => {
   try {
     const [brand, template] = await Promise.all([
       loadBrand(was.brand, { wallet }),
-      loadTemplate(was.template),
+      loadTemplate(was.template, { brand: was.brand, wallet }),
     ]);
     if (brand?.ok && template?.ok) {
       const marks = await loadMarks(was.brand, brand.tokens, { dir: brand.dir, wallet });

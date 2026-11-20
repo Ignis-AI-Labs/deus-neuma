@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
 import { grantMandate } from '../../../services/mandate-client.js';
-import { TERMS, MAX_DAYS, initialGrant, grantBody, grantMarks, buttonArmed, endDateOf } from './mandate-grant-view.js';
+import { TERMS, MAX_DAYS, MAX_REPLY_PACE, initialGrant, grantBody, grantMarks, buttonArmed, endDateOf } from './mandate-grant-view.js';
 import { useMandatePreflight } from './use-mandate-preflight.js';
 import { GrantProtocol } from './GrantProtocol.jsx';
 
@@ -62,7 +62,13 @@ export const MandateGrantForm = ({ view, act, onDone }) => {
       <div className="mandate-acts">
         <Toggle on={draft.acts.posts} label="POST" onFlip={() => setAct('posts')} />
         <Toggle on={draft.acts.renders} label="MAKE IMAGES AND VIDEOS" onFlip={() => setAct('renders')} />
-        <Toggle on={draft.acts.replies} label="ANSWER REPLIES" sub="off unless you turn it on" onFlip={() => setAct('replies')} />
+        <Toggle on={draft.acts.replies} label="ANSWER EASY REPLIES" sub="money, migration, arguments, claims and promises still ask you" onFlip={() => setAct('replies')} />
+        {draft.acts.replies ? (
+          <label className="mandate-pace">
+            <input type="number" min="1" max={MAX_REPLY_PACE} value={draft.replyPace} aria-label={`replies a day, up to ${MAX_REPLY_PACE}`}
+              onChange={(e) => setDraft((x) => ({ ...x, replyPace: Math.min(MAX_REPLY_PACE, Number(e.target.value) || 1) }))} /> REPLIES A DAY (UP TO {MAX_REPLY_PACE}) — THE REST WAIT FOR YOU
+          </label>
+        ) : null}
       </div>
       <p className="mandate-h">3 · TURNS ITSELF OFF AFTER</p>
       <div className="mandate-acts" role="radiogroup" aria-label="turns itself off after">

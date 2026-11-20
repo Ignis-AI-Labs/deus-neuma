@@ -26,6 +26,7 @@ import { attachUpgradeRouter } from '../../backend/services/ws-upgrade-router.js
 import { launch, stop } from '../../backend/services/voice/engine-manager.js';
 import { shutdownSidecar } from '../../backend/services/voice/engine-process.js';
 import { renderSpeechPcm, makeDiskWorkDir } from '../helpers/speech-fixture.js';
+import { ticketedWsUrl } from '../helpers/desk-ticket-kit.js';
 import { SIDECAR_CALLER_HEADER, callerToken, sidecarKey } from '../../backend/services/voice/sidecar-trust.js';
 
 const SIDECAR_PORT = 7873;
@@ -55,7 +56,7 @@ describe('dictation streams through the live lane (real sidecar, real route)', (
   const saved = {};
 
   const openDictation = (withToken = true) => {
-    const ws = new WebSocket(`${url}${withToken ? `?token=${encodeURIComponent(token)}` : ''}`);
+    const ws = new WebSocket(withToken ? ticketedWsUrl(url, token, '/dictate-ws') : url);
     const frames = [];
     const closed = new Promise((resolve) => ws.on('close', (code) => resolve(code)));
     ws.on('message', (d) => frames.push({ at: Date.now(), ...JSON.parse(d.toString()) }));
@@ -84,7 +85,7 @@ describe('dictation streams through the live lane (real sidecar, real route)', (
   afterAll(async () => {
     server?.close();
     stop('whisper');
-    await shutdownSidecar('127.0.0.1', SIDECAR_PORT, 15_000);
+    await shutdownSidecar('127.0.0.1', SIDECAR_PORT, 15_000, 'whisper');
     if (workDir) await fs.rm(workDir, { recursive: true, force: true });
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) delete process.env[key];
@@ -135,7 +136,7 @@ describe('dictation streams through the live lane (real sidecar, real route)', (
     const deadline = Date.now() + 60_000;
     for (;;) {
       // the sitting is the backend's own socket: it carries the install key's token (sidecar-trust.js)
-      sitting = new WebSocket(`ws://127.0.0.1:${SIDECAR_PORT}/stream`, { headers: { [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) } });
+      sitting = new WebSocket(`ws://127.0.0.1:${SIDECAR_PORT}/stream`, { headers: { [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey(), 'whisper') } });
       const got = await new Promise((resolve) => {
         sitting.on('message', (d) => resolve(JSON.parse(d.toString()).type === 'ready'));
         sitting.on('close', () => resolve(false));

@@ -31,6 +31,9 @@ export const servedOllamaWindow = () => {
   return Number.isInteger(w) && w >= OLLAMA_WINDOW_FLOOR && w <= OLLAMA_SERVED_CONTEXT ? w : OLLAMA_SERVED_CONTEXT;
 };
 
+/** The KV cache the platform's own Ollama was fitted with (ollama-window.js fitOwnServer); 8-bit unless recorded. impure (fs) */
+export const servedKvCache = () => (readManagedRecord()?.kvCache === 'q4_0' ? 'q4_0' : 'q8_0');
+
 /**
  * Write the record whole (tmp + rename), its folder made first. The tmp name is this write's own:
  * a name shared by two writes in one process (pid only) let the first rename take the second's

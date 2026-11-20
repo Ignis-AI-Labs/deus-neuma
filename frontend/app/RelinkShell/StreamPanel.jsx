@@ -5,8 +5,9 @@
 // returning witness picks up where they left off. Auto-scrolls to the
 // tail as content arrives.
 
-import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ToolChip } from './ToolChip.jsx';
+import { PathBases, pathBasesOf } from './path-bases.js';
 import { ThoughtBubble } from './ThoughtBubble.jsx';
 import { ApprovalChip } from './ApprovalChip.jsx';
 import { AskChip } from './AskChip.jsx';
@@ -24,6 +25,9 @@ import { useStreamWindow } from './use-stream-window.js';
 import { StreamFollow } from './StreamFollow.jsx';
 import { CompactMarker } from './CompactMarker.jsx';
 import { QueuedWordDoors, newestHoldId } from './QueuedWordDoors.jsx';
+import { CloneReportLine } from './CloneReportLine.jsx';
+import { InlineEdit } from './InlineEdit.jsx';
+import { cloneReportOf } from './clone-report-view.js';
 
 // The witness's own words render verbatim (pre-wrap keeps their line breaks
 // and never reinterprets them as markdown); the consciousness's speech goes
@@ -76,7 +80,9 @@ const keepInStream = (el) => {
   if (over > 0) stream.scrollTop += over + 8;
 };
 
-const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow, escTakesBack = false }) => {
+const MessageView = ({ message, onEdit, onRevise, onRetry, onContinue, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onReveal, onQueueEdit, onQueueNow, escTakesBack = false }) => {
+  // The folders this message's own acts worked in: where a relative path it speaks is looked for (path-bases.js).
+  const pathBases = useMemo(() => pathBasesOf(message.segments), [message.segments]);
   // THE EDIT, WHERE THE MESSAGE STANDS (Design note, 2026-07-28: […]). EDIT opens the editor AT the bubble; SAVE re-sends
   // the revised words FROM this point — the edit-fork, a new take, its own
   // chain forward ([…]) — and CANCEL restores. The composer is
@@ -146,45 +152,12 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
       {when ? <div className="relink-msg-when label-data">{when}</div> : null}
       <div className="relink-msg-body">
         {editing ? (
-          <div className="relink-inline-edit">
-            <textarea
-              ref={editFieldRef}
-              className="relink-inline-edit-field"
-              value={draft}
-              autoFocus
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                // Escape stands the editor down (and never walks the field's
-                // own Escape ladder); ⌘/Ctrl+Enter saves.
-                if (e.key === 'Escape') { e.stopPropagation(); setEditing(false); }
-                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); saveEdit(); }
-              }}
-            />
-            <div ref={editActionsRef} className="relink-inline-edit-actions label-data">
-              <button
-                type="button"
-                className="relink-inline-save"
-                disabled={!draft.trim() || draft === spokenText}
-                title={message.queued
-                  ? 'Rewrite the held word — it still goes after the current action finishes'
-                  : message.turnId
-                    ? 'Send the revised words from this point — the conversation continues from here'
-                    : 'This message carries no point — the words go to the composer instead'}
-                onClick={saveEdit}
-              >
-                {message.queued ? 'SAVE — STILL QUEUED' : 'SAVE — CONTINUE FROM HERE'}
-              </button>
-              <button
-                type="button"
-                className="relink-inline-cancel"
-                onClick={() => { uiSound('tick'); setEditing(false); }}
-              >
-                CANCEL
-              </button>
-            </div>
-          </div>
+          // The edit box, with the composer's voice: a held Space dictates into it (InlineEdit.jsx).
+          <InlineEdit message={message} draft={draft} setDraft={setDraft} fieldRef={editFieldRef} actionsRef={editActionsRef}
+            spokenText={spokenText} onSave={saveEdit} onCancel={() => setEditing(false)} />
         ) : (
           <>
+            <PathBases.Provider value={pathBases}>
             {message.segments.map((s, i) => {
               // Only trailing speech is paced. Once an action follows speech, its
               // key flips to settled so React remounts it fully revealed in the
@@ -194,6 +167,7 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
                 && i === message.segments.length - 1;
               return <Segment key={`${i}:${live ? 'live' : 'settled'}`} segment={s} role={message.role} live={live} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={onReveal} />;
             })}
+            </PathBases.Provider>
             {message.streaming ? <span className="relink-cursor" aria-hidden="true" /> : null}
           </>
         )}
@@ -270,6 +244,23 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
               </button>
             </span>
           ) : null}
+          {/* A take the app's close cut short (turn-keep.js): said so, with when — and on the chat's
+              last message, CONTINUE picks it up exactly where it stopped. */}
+          {message.role === 'neuma' && cutOffOf(message) ? (
+            <span className="stream-cut label-data">
+              <span className="stream-cut-tag">CUT OFF WHEN THE APP CLOSED{cutOffOf(message).at ? ` · ${formatClockStamp(cutOffOf(message).at)}` : ''}</span>
+              {onContinue ? (
+                <button
+                  type="button"
+                  className="stream-continue"
+                  title="Pick this reply up exactly where it stopped — what it already said and did stands"
+                  onClick={() => { uiSound('activate'); onContinue(message.turnId); }}
+                >
+                  CONTINUE
+                </button>
+              ) : null}
+            </span>
+          ) : null}
           <CopyWord text={speechText(message.segments)} />
           {editable ? (
             <button
@@ -291,6 +282,9 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
   );
 };
 
+// The viewed take's cut (the app closed before it settled — turn-keep.js), or null. Pure.
+const cutOffOf = (message) => (message.takes ? message.takes[message.takeIndex - 1]?.cutOff : message.cutOff) ?? null;
+
 // A WATCH the chat set, reporting — the platform's line, never the operator's
 // bubble (chat-watch.js): drawn as an event, and the being's answer follows.
 // A HOUSE WAKE's opening note (house-clock/wake-thought.js) is the same kind of
@@ -299,18 +293,28 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onTakeSwitch, onAppro
 // a housemate's words, never the operator's bubble.
 // A HOLD is the citation law sending the CLO back to check its last answer
 // (legal/answer-hold.js): the platform's words, never the operator's.
+// PICKED UP is CONTINUE on a reply the app's close cut (portal-turn-adopt.js).
+// NOT DONE is a reply that said queued posts changed when no act touched them (queue-claim-check.js).
 const PLATFORM_LINES = Object.freeze({
   watch: Object.freeze({ tag: 'WATCH', head: /^\[A WATCH YOU SET[^\]]*\]\s*/ }),
   wake: Object.freeze({ tag: 'WAKE', head: /^\[A WAKE[^\]]*\]\s*/ }),
   link: Object.freeze({ tag: 'LINK', head: /^\[CHAT LINK[^\]]*\]\s*/ }),
   hold: Object.freeze({ tag: 'HELD', head: /^\[HELD BY THE CITATION LAW[^\]]*\]\s*/ }),
+  resume: Object.freeze({ tag: 'PICKED UP', head: /^\[THE APP CLOSED MID-REPLY[^\]]*\]\s*/ }),
+  unacted: Object.freeze({ tag: 'NOT DONE', head: /^\[NOT DONE[^\]]*\]\s*/ }),
 });
-const WatchLine = ({ message }) => (
-  <div className="relink-watch-line" role="status">
-    <span className="relink-watch-tag label-data">{PLATFORM_LINES[message.role].tag}</span>
-    <span className="relink-watch-text">{message.segments.map((s) => s.text || '').join('').replace(PLATFORM_LINES[message.role].head, '')}</span>
-  </div>
-);
+const WatchLine = ({ message }) => {
+  const text = message.segments.map((s) => s.text || '').join('');
+  // Shadow clones back from the background: a line a clone, every report one press away (CloneReportLine.jsx).
+  const clones = message.role === 'watch' ? cloneReportOf(text) : null;
+  if (clones) return <CloneReportLine report={clones} />;
+  return (
+    <div className="relink-watch-line" role="status">
+      <span className="relink-watch-tag label-data">{PLATFORM_LINES[message.role].tag}</span>
+      <span className="relink-watch-text">{text.replace(PLATFORM_LINES[message.role].head, '')}</span>
+    </div>
+  );
+};
 
 const Message = memo((props) => (PLATFORM_LINES[props.message.role] ? <WatchLine message={props.message} /> : <MessageView {...props} />));
 
@@ -322,7 +326,7 @@ const ThinkingIndicator = () => (
   </div>
 );
 
-export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onRevise, onRetry, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onQueueEdit, onQueueNow }) => {
+export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onRevise, onRetry, onContinue, onTakeSwitch, onApprove, onAsk, onPlan, onSeal, onQueueEdit, onQueueNow }) => {
   // Ctrl+scroll zooms the STREAM's text only (Ctrl+0 over it resets) —
   // per-surface, remembered, clamped legible-to-sane. Other surfaces may
   // opt in with their own key; the desk chrome never scales.
@@ -408,7 +412,7 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
           const i = start + k;
           return (
           <Fragment key={m.id}>
-            {m.role === 'compact' ? <CompactMarker marker={m} /> : <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} escTakesBack={Boolean(onQueueNow) && m.holdId != null && m.holdId === escHoldId} />}
+            {m.role === 'compact' ? <CompactMarker marker={m} /> : <Message message={m} onEdit={onEdit} onRevise={onRevise} onRetry={onRetry} onContinue={i === messages.length - 1 ? onContinue : null} onTakeSwitch={onTakeSwitch} onApprove={onApprove} onAsk={onAsk} onPlan={onPlan} onSeal={onSeal} onReveal={follow} onQueueEdit={onQueueEdit} onQueueNow={onQueueNow} escTakesBack={Boolean(onQueueNow) && m.holdId != null && m.holdId === escHoldId} />}
             {i === lastHistoryIdx ? (
               <div className="relink-separator"><span>SESSION RESUMED</span></div>
             ) : null}

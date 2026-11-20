@@ -13,7 +13,7 @@
 // look like a leak — it looks like the tray showing the same card twice.
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { notificationReducer, initialNotifications } from './NotificationTray/notification-reducer.js';
+import { notificationReducer, initialNotifications, newestStamp } from './NotificationTray/notification-reducer.js';
 import { shouldRaise, shouldNotifyOS } from './NotificationTray/notification-suppression.js';
 import { notificationTarget } from './NotificationTray/notification-target.js';
 import { KIND } from '../../../core/runtime/notification-record.js';
@@ -185,11 +185,11 @@ export const useNotifications = (wsService) => {
 
     // A sibling desk marked something read. Fold it exactly like a local click.
     const onRead = (frame) => {
-      dispatch({ type: 'MARK_READ', ids: frame?.ids ?? [] });
+      dispatch({ type: 'MARK_READ', ids: frame?.ids ?? [], through: frame?.through });
     };
     // A sibling desk dismissed something. Fold it exactly like a local press.
     const onDismissed = (frame) => {
-      dispatch({ type: 'DISMISS', ids: frame?.ids ?? [] });
+      dispatch({ type: 'DISMISS', ids: frame?.ids ?? [], through: frame?.through });
     };
 
     // THE DISK. Deliberately NOT routed through the notification bus.
@@ -277,13 +277,18 @@ export const useNotifications = (wsService) => {
   }, [wsService, queueRead]);
 
   const markRead = useCallback((id) => queueRead([id]), [queueRead]);
-  const markAllRead = useCallback(() => {
-    const unreadIds = state.records.filter((rec) => !rec.read).map((rec) => rec.id);
-    dispatch({ type: 'MARK_ALL_READ' });
-    queueRead(unreadIds);
-  }, [state.records, queueRead]);
+  // MARK ALL READ and CLEAR reach every card up to the newest one shown, not only the ones this
+  // tray holds: the server keeps more than the tray's window, and naming only the held ids let
+  // the older ones fill the tray again on the next hydrate (Design note, 2026-11-15.
+  const allThrough = useCallback((dismissAll) => {
+    const through = newestStamp(state.records);
+    if (through === null) return;
+    dispatch({ type: dismissAll ? 'DISMISS' : 'MARK_READ', through });
+    wsService?.send('notification:read', dismissAll ? { through, dismiss: true } : { through });
+  }, [state.records, wsService]);
+  const markAllRead = useCallback(() => allThrough(false), [allThrough]);
   const dismiss = useCallback((id) => queueDismiss([id]), [queueDismiss]);
-  const clear = useCallback(() => queueDismiss(state.records.map((rec) => rec.id)), [state.records, queueDismiss]);
+  const clear = useCallback(() => allThrough(true), [allThrough]);
 
   return useMemo(() => ({
     records: state.records,

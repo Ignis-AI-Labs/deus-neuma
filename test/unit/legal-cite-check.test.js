@@ -6,7 +6,9 @@
  * real web is legal-citation-law.test.js.
  */
 import { describe, it, expect } from 'vitest';
-import { judgeRecord, printsHeading } from '../../backend/services/legal/cite-check.js';
+import path from 'node:path';
+import { judgeRecord, printsHeading, runCiteCheck } from '../../backend/services/legal/cite-check.js';
+import { createTempDir } from '../helpers/temp-fs.js';
 
 // legislation.gov.uk, FSMA 2000 s. 25 (excerpt, as read).
 const FSMA_25 = Object.freeze({
@@ -81,5 +83,27 @@ describe('every record judged against its page', () => {
     expect(judgeRecord(record({}), { ok: false, error: 'the server answered 403' })).toMatchObject({ verdict: 'unread' });
     expect(judgeRecord(record({}), undefined)).toMatchObject({ verdict: 'unread' });
     expect(judgeRecord(record({ quote: 'words past the end of what was read' }), { ...FSMA_25, truncated: true })).toMatchObject({ verdict: 'cut' });
+  });
+
+  it('the real citation check screens an outgoing URL for secret material before it can land', async () => {
+    const dir = await createTempDir('legal-cite-egress');
+    const savedPath = process.env.NEUMA_WEB_ACCESS_PATH;
+    const savedSwitch = process.env.NEUMA_WEB_ACCESS;
+    process.env.NEUMA_WEB_ACCESS_PATH = path.join(dir, 'web-access.json');
+    delete process.env.NEUMA_WEB_ACCESS;
+    try {
+      const sourceUrl = `https://www.sec.gov/files/release.pdf?PRIVATE_KEY=0x${'a1'.repeat(32)}`;
+      const result = await runCiteCheck([record({ sourceUrl })], { connection: {} });
+      expect(result.ok).toBe(false);
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].verdict).toBe('unread');
+      expect(result.rows[0].note).toMatch(/carries what looks like a secret/);
+      expect(result.rows[0].note).not.toContain('a1a1a1a1');
+    } finally {
+      if (savedPath === undefined) delete process.env.NEUMA_WEB_ACCESS_PATH;
+      else process.env.NEUMA_WEB_ACCESS_PATH = savedPath;
+      if (savedSwitch === undefined) delete process.env.NEUMA_WEB_ACCESS;
+      else process.env.NEUMA_WEB_ACCESS = savedSwitch;
+    }
   });
 });

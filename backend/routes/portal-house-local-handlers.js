@@ -18,7 +18,7 @@ export const houseFoundLocalPreflight = async (connection, message) => {
     if (message?.probe) {
       const out = await probeLocalFounding(connection.walletAddress);
       if (!out.ok) return refuse(connection, out.code, out.message);
-      if (out.founded) return send(connection, { type: 'house:found_local_state', record: out.record });
+      if (out.founded) return send(connection, { type: 'house:found_local_state', record: out.record, seats: out.seats });
       return send(connection, { type: 'house:found_local_open', ...out.open });
     }
     const out = await prepareLocalFounding({ wallet: connection.walletAddress, titles: message?.titles });

@@ -2,7 +2,7 @@
  * Being-boundary regression — SECURITY_ANALYSIS scenario 5, threat T2 (run
  * explorer-window-focus-k37s, Wave 4). THE regression test for the law that
  * a desk window's FOCUS is a witness-plane lens and NEVER a grant surface:
- * a bare-folder focus stamps NO project space onto the connection (D7/D8),
+ * a bare-folder focus stamps NO memory space onto the connection (D7/D8),
  * so nothing about the focus itself ever widens the being's sandbox.
  *
  * The law evolved (Design note, 2026-07-23, universal approval): a write outside the
@@ -26,7 +26,6 @@ import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.j
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { setRoots, getRoots } from '../../backend/services/user-files.js';
 import { setRealmRoot } from '../../backend/services/user-realm.js';
-import { createProject } from '../../backend/services/user-projects.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 
 const { processToolCalls } = __test;
@@ -84,7 +83,7 @@ describe('focus is never a grant surface (bare-folder focus ⇒ hard deny, no pr
 
   test('bare-folder focus: the write ASKS the witness — focus grants NOTHING by itself; her no lands as a real deny', async () => {
     // A general-space connection — exactly what a bare-folder-focused desk
-    // binds (focusSpaceFrame stamps nothing; no project space ever set).
+    // binds (a folder focus stamps no memory space onto the connection).
     const connection = {
       ws: serverWs,
       companion: { name: 'FocusBound', neumaId: NEUMA_ID },
@@ -125,36 +124,5 @@ describe('focus is never a grant surface (bare-folder focus ⇒ hard deny, no pr
     const deny = journal.find((e) =>
       e.type === 'tool_call' && e.metadata?.tool === 'write' && e.metadata?.status === 'denied');
     expect(deny).toBeTruthy();
-  }, 45000);
-
-  test('project space (the positive control): the same write PROMPTS — the envelope, not the focus, is the grant surface', async () => {
-    const projectFolder = await createTempDir('focus-bound-project');
-    const project = await createProject(WALLET, { name: 'FB', folder: projectFolder });
-    const connection = {
-      ws: serverWs,
-      companion: { name: 'FocusBound', neumaId: NEUMA_ID },
-      walletAddress: WALLET,
-      space: { id: project.id, kind: 'project', label: 'FB' },
-      _writeOps: 0,
-    };
-    serverWs.on('message', async (d) => {
-      const m = JSON.parse(d.toString());
-      if (m.type === 'tool:approval_response') {
-        const { resolveToolApproval } = await import('../../backend/services/tool-approval.js');
-        resolveToolApproval(connection, m.id, m.decision);
-      }
-    });
-    clientLog.length = 0;
-    let prompted = false;
-    decide = () => { prompted = true; return 'deny'; };
-
-    const results = await processToolCalls(
-      serverWs,
-      `[TOOL: fs/write {"path": "${path.join(projectFolder, 'ok.txt')}", "content": "x"}]`,
-      connection,
-    );
-
-    expect(prompted).toBe(true);
-    expect(results[0].status).toBe('denied');
   }, 45000);
 });

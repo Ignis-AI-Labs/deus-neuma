@@ -155,6 +155,13 @@ describe('parseToolCalls', () => {
     expect(calls.map(c => c.toolName)).toEqual(['write_file', 'read_file']);
   });
 
+  test('gpt-oss ignores hostile message-less channels and still reads the next valid call', () => {
+    const hostile = `<|channel|>${'to=x '.repeat(8000)}`;
+    expect(parseToolCalls(hostile)).toEqual([]);
+    const calls = parseToolCalls(`${hostile}<|channel|>commentary to=fs/read <|message|>{"path":"ok.md"}`);
+    expect(calls).toEqual([expect.objectContaining({ server: 'fs', toolName: 'read', args: { path: 'ok.md' } })]);
+  });
+
   test('collects calls across multiple formats in one response', () => {
     const calls = parseToolCalls([
       '[TOOL: filesystem/read_file {"path": "a"}]',

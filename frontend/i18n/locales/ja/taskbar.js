@@ -7,6 +7,7 @@ export default Object.freeze({
   noMatch: '「{{q}}」に一致するアプリはありません',
   cats: Object.freeze({
     beings: '存在',
+    company: '会社',
     work: '仕事',
     create: '制作',
     reach: '発信',

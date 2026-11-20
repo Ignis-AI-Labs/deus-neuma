@@ -11,7 +11,8 @@
 
 import { ethers } from 'ethers';
 import { getCachedKey } from '../routes/neuma-auth-routes.js';
-import { getProvider, getAddress } from './neuma-wallet-spend.js';
+import { getProvider, getAddress, walletNetworkKey } from './neuma-wallet-spend.js';
+import { balanceWithFloor } from './chain/public-floor.js';
 
 // Barrel — the moved public surface; the arrow is origin → spend, never back.
 export {
@@ -36,12 +37,7 @@ export {
  */
 export const balanceOfAddress = async (address, { network } = {}) => {
   if (!address) return null;
-  try {
-    const provider = getProvider(network);
-    return ethers.formatEther(await provider.getBalance(address));
-  } catch {
-    return null;
-  }
+  return (await balanceWithFloor(getProvider(network), walletNetworkKey(network), address)).eth;
 };
 
 /**

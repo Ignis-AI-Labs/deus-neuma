@@ -23,17 +23,17 @@ const build = (id, args = {}, source = false) => {
 };
 
 describe('game pixel-concept registry', () => {
-  test('all four named capabilities resolve to the attested incumbent model', () => {
-    for (const id of ['concept.pixel.character', 'concept.pixel.turnaround', 'concept.pixel.view', 'concept.pixel.weapon']) {
+  test('all five named capabilities resolve to the attested incumbent model', () => {
+    for (const id of ['concept.pixel.character', 'concept.pixel.turnaround', 'concept.pixel.view', 'concept.pixel.rig', 'concept.pixel.weapon']) {
       const { pipeline } = resolvePipeline(id);
       expect(pipeline.kind).toBe('concept');
       expect(resolveModel(pipeline).model.ckptName).toBe('bismuthIllustrious_v80.safetensors');
     }
   });
 
-  test('the caller catalog exposes the four recipes without file names or hashes', () => {
+  test('the caller catalog exposes the five recipes without file names or hashes', () => {
     const concepts = catalogForCaller().filter((p) => p.id.startsWith('concept.pixel.'));
-    expect(concepts).toHaveLength(4);
+    expect(concepts).toHaveLength(5);
     expect(JSON.stringify(concepts)).not.toContain('safetensors');
     expect(concepts.find((p) => p.id === 'concept.pixel.turnaround').requiresSourceImage).toBe(true);
     expect(concepts.find((p) => p.id === 'concept.pixel.weapon').requiresSourceImage).toBe(false);
@@ -91,5 +91,16 @@ describe('game pixel-concept graphs', () => {
     expect(r.ok).toBe(true);
     expect(r.graph['3'].inputs.denoise).toBe(0.45);
     expect(r.graph['12'].inputs).toMatchObject({ width: 832, height: 1216 });
+  });
+
+  test('rig source requires the approved image and pins side-on segmentation framing', () => {
+    const r = build('concept.pixel.rig', {}, true);
+    expect(r.ok).toBe(true);
+    expect(r.graph['3'].inputs).toMatchObject({ latent_image: ['11', 0], denoise: 0.95 });
+    expect(r.graph['31'].inputs.image).toBe('pose_rig_side_ref.png');
+    expect(r.graph['32'].inputs.strength).toBe(1.2);
+    expect(r.graph['6'].inputs.text).toContain('strict side-profile view facing left');
+    expect(r.graph['6'].inputs.text).toContain('one near arm fully visible');
+    expect(r.graph['7'].inputs.text).toContain('hidden near arm');
   });
 });

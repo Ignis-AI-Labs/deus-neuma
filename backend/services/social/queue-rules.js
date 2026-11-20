@@ -11,6 +11,9 @@ import { getChannel } from './channel-registry.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { youtubeDraftRefusal } from './youtube-metadata.js';
 import { tiktokDraftRefusal } from './tiktok-metadata.js';
+import { quoteRefusal } from './quote-post.js';
+
+export { quoteFieldsOf } from './quote-post.js';
 
 // Defensive ceiling only — each platform API is the authority on its limit.
 const QUEUE_TEXT_MAX = 4000;
@@ -114,7 +117,7 @@ export const replyCountForConversation = (entries, toUserId, conversationId) =>
  *   campaignId?: string, pillar?: string, kind?: string, reply?: object,
  *   expiresAt?: string|null}} draft
  */
-export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder } = {}) => {
+export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pillar, media, kind, reply, thread, expiresAt, placeholder, quote } = {}) => {
   if (!getChannel(channelId || '')) return `Unknown channel: ${channelId}`;
   if (placeholder != null && typeof placeholder !== 'boolean') {
     return 'placeholder must be a boolean';
@@ -130,6 +133,9 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
   if (channel?.maxChars && t.length > channel.maxChars) {
     return `the post is ${t.length} characters — ${channel.name || channelId} allows at most ${channel.maxChars}`;
   }
+  // A QUOTE POST (quote-post.js): X only, the quoted link counted in the ceiling, never a reply.
+  const quoted = quoteRefusal({ channelId, text: t, kind, quote }, channel?.maxChars || 280);
+  if (quoted) return quoted;
   // A YouTube post is one video and its title — refused here, at staging,
   // so a text-only draft never reaches the operator's approval.
   if (channelId === 'youtube') {
@@ -217,19 +223,20 @@ export const validateDraft = ({ channelId, text, scheduledFor, campaignId, pilla
     if (typeof v !== 'string') return `${label} must be a string`;
     if (v.length > 100) return `${label} is too long`;
   }
-  return queuedSecretRefusal({ text: t, media }, 'nothing was staged');
+  return queuedSecretRefusal({ text: t, media, quote }, 'nothing was staged');
 };
 
 /**
- * The outbound secret law over a queued post's leaving words — its text and
- * every alt text (security-seat G5). Every way into the queue (a being's
- * draft, REST, an edit) passes validateDraft above; the store re-asks at
- * approval and at the send claim, for entries staged before the law. Pure.
- * @param {{text?: string, media?: Array<{alt?: string}>|null}} entry
+ * The outbound secret law over a queued post's leaving words and quote URL —
+ * its text, every alt text and quoted link (security-seat G5). Every way into
+ * the queue (a being's draft, REST, an edit) passes validateDraft above; the
+ * store re-asks at approval and at the send claim, for entries staged before
+ * the law. Pure.
+ * @param {{text?: string, media?: Array<{alt?: string}>|null, quote?: {url?: string}}} entry
  * @param {string} outcome what the refusal means here
  * @returns {string|null} the refusal, or null when nothing secret leaves
  */
-export const queuedSecretRefusal = ({ text, media }, outcome) => {
-  const check = checkOutboundSecrets('the post', [text, ...(Array.isArray(media) ? media.map((m) => m?.alt) : [])], outcome);
+export const queuedSecretRefusal = ({ text, media, quote }, outcome) => {
+  const check = checkOutboundSecrets('the post', [text, quote?.url, ...(Array.isArray(media) ? media.map((m) => m?.alt) : [])], outcome);
   return check.ok ? null : check.reason;
 };

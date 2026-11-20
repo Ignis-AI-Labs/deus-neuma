@@ -20,6 +20,7 @@ import { generateChallenge, verifySignature, createSessionToken, verifySessionTo
 import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setupTerminalRoutes } from '../../backend/routes/terminal-routes.js';
+import { ticketedWsUrl } from '../helpers/desk-ticket-kit.js';
 
 const MAX_TERMINALS = 10; // mirrors terminal-manager.js — the global PTY budget
 
@@ -96,7 +97,7 @@ describe('terminal refusal closes the socket (HR-6)', () => {
     const token = await makeAuthToken();
     // The shell is the install owner's (terminal-routes.js): this wallet owns the test's install.
     await makeInstallOwner(verifySessionToken(token).address);
-    wsUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws?token=${encodeURIComponent(token)}`;
+    wsUrl = ticketedWsUrl(`ws://127.0.0.1:${httpServer.address().port}/terminal-ws`, token, '/terminal-ws');
   });
 
   afterAll(async () => {

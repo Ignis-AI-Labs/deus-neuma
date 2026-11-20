@@ -73,6 +73,15 @@ describe('one turn\'s governor', () => {
     expect(bare.room).toBe(THINK_TOKEN_BUDGET);
   });
 
+  it('the bundled Ollama arms when its model thinks: think: false is its lever (deus-neuma #34)', () => {
+    const ollama = { provider: 'ollama', endpoint: 'http://127.0.0.1:11434' };
+    const governor = createThoughtGovernor({ effort: { thinkBudget: 1800 }, thinkBehavior: THINKS, route: ollama });
+    expect(governor.armed).toBe(true);
+    expect(governor.offDirective).toBe(undefined); // the local lever, not a hosted one
+    expect(governor.serverBudget).toBe(null); // Ollama names no server budget: the client leash binds
+    expect(createThoughtGovernor({ thinkBehavior: { thinks: false }, route: ollama }).armed).toBe(false);
+  });
+
   it('a non-thinking substrate has no room and never arms', () => {
     const governor = createThoughtGovernor({ thinkBehavior: { thinks: false }, route: LLAMA_ROUTE });
     expect(governor.room).toBe(0);
@@ -271,6 +280,17 @@ describe('the re-ask keeps its reasoning (#569)', () => {
     expect(note.content).toContain('so the answer must be (C)');
     expect(note.content).toContain('Using what you already worked out');
     expect(note.content.length).toBeLessThan(LEASH_TAIL_CHARS + 400);
+  });
+
+  it('a cut round that was offered tools is asked for its next single step, not a final answer (deus-neuma #34)', () => {
+    const governor = createThoughtGovernor({ effort: { thinkBudget: 1800 }, thinkBehavior: THINKS, route: KIN_ROUTE });
+    governor.guard(() => {}, () => false)('weighing the next file '.repeat(1000));
+    const round = [{ role: 'user', content: 'Edit the three files.' }];
+    const withTools = governor.reaskMessages(round, { tools: true }).at(-1).content;
+    expect(withTools).toContain('take the next single step now: one tool call');
+    expect(withTools).not.toContain('give the final answer now');
+    const without = governor.reaskMessages(round).at(-1).content;
+    expect(without).toContain('give the final answer now');
   });
 
   it('an uncut round, or a fresh attempt after reset, re-asks with the round unchanged', () => {

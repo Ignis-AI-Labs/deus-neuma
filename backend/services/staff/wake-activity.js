@@ -23,6 +23,7 @@ const WAKE_REASON_WORDS = Object.freeze({
   scheduled: 'its calendar',
   'charge-due': 'a charge due now',
   mail: 'new mail',
+  hook: 'a webhook event',
   reply: 'new replies to the house\'s posts',
 });
 

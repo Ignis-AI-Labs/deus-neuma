@@ -80,7 +80,7 @@ async def _guard_and_track(request: Request, call_next):
     # before it runs, even if the bind were ever widened.
     if (request.client.host if request.client else None) not in LOOPBACK_PEERS:
         return error(403, "forbidden", "the designer answers loopback callers only")
-    answer = guard(request.headers, request.url.path, request.url.query)  # browser_guard.py: page, key
+    answer = guard(request.headers, request.url.path, request.url.query, local=request.scope.get("server"))
     if answer:
         return JSONResponse(answer[1], status_code=answer[0])
     global _last_activity

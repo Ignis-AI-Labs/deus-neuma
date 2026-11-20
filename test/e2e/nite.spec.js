@@ -278,19 +278,13 @@ test('the BIRTH gate still opens the SAME custody flow — the extraction kept b
   // lane owes custody. This is the OTHER caller of KeypairCustody: NITE gaining
   // the flow must never have cost the gate its own.
   await page.reload();
-  // GATES, TOP FIRST: the voice-seal gate lies OVER the birth gate and
-  // intercepts its pointer events — a click on a perfectly visible, enabled
-  // button then times out against the wrong overlay.
   const veil = page.locator('.arrival');
   if (await veil.count()) {
     await veil.click({ force: true }).catch(() => {});
     await expect(veil).toHaveCount(0, { timeout: 20000 });
   }
-  const seal = page.locator('.voice-seal-gate button', { hasText: 'STAND ASIDE' });
-  if (await seal.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await seal.click();
-    await expect(page.locator('.voice-seal-gate')).toHaveCount(0, { timeout: 20000 });
-  }
+  // the voice seal is never forced (2026-11-14): no first-seal notice stands over the desk
+  await expect(page.locator('.voice-seal-gate')).toHaveCount(0);
   const gate = page.locator('.birth-setup-gate');
   await expect(gate).toBeVisible({ timeout: 20000 });
   await expect(gate).toContainText('KEYPAIR CUSTODY');

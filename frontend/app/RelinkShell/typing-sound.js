@@ -13,7 +13,7 @@
 // so leaving the talk mid-reveal picks the bed back up exactly where the
 // still-revealing segments left it.
 
-import { startLoop, stopLoop } from '../../services/sound-engine.js';
+import { wantLoop } from './desk-loops.js';
 import { getSittingPurpose, isLiveArmed, subscribeVoiceSitting } from './voice-purpose-state.js';
 import { shouldMountVoiceSitting } from './VoiceSitting/voice-sitting-model.js';
 
@@ -29,9 +29,8 @@ let sounding = false;
 export const shouldTypingBedSound = ({ holders: n = 0, sittingActive = false } = {}) =>
   n > 0 && !sittingActive;
 
-// impure — bring the loop in line with the decision, once. Idempotent: the
-// engine's startLoop is a no-op while a loop of the same name runs, but
-// tracking it here keeps stopLoop from firing on every unrelated notify.
+// impure — say whether the bed is wanted, once per change. The desk plays one loop at a time and hands over
+// without flip-flop (desk-loops.js): words over an image over thinking.
 const sync = () => {
   const want = shouldTypingBedSound({
     holders,
@@ -41,7 +40,7 @@ const sync = () => {
   });
   if (want === sounding) return;
   sounding = want;
-  if (want) startLoop('neumaReplying'); else stopLoop('neumaReplying');
+  wantLoop('neumaReplying', want);
 };
 
 // Entering a talk silences a bed already playing; leaving it restores one the

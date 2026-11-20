@@ -26,7 +26,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  background: var(--color-glass-light);
+  background: var(--surface-band);
   border: 1px solid var(--line);
   padding: var(--space-2) var(--space-3);
 }
@@ -40,15 +40,22 @@
 .cline-tile-l { font-size: var(--text-label); letter-spacing: 0.14em; color: var(--color-text-secondary); }
 .cline-tiles-flat { padding: var(--space-2) 0; border-bottom: none; }
 
+/* A section is a card: its own fill and edge, a gap before the next, and its name on a ruled line. */
 .cline-sec {
+  margin: var(--space-3) var(--space-4) 0;
   padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
+  background: var(--surface-raised);
+  list-style: none;
 }
+.cline-sec:last-child { margin-bottom: var(--space-4); }
 .cline-h {
-  margin: 0 0 var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--line-strong);
   font-size: var(--text-label);
   letter-spacing: 0.16em;
-  color: var(--color-text-tertiary);
+  color: var(--color-text-primary);
 }
 
 .cline-move { margin-bottom: var(--space-2); background: var(--line); padding: 1px; }
@@ -65,7 +72,7 @@
 .cline-input {
   width: 100%;
   box-sizing: border-box;
-  background: var(--color-glass-light);
+  background: var(--color-input-fill);
   border: 1px solid var(--line);
   color: var(--color-text-primary);
   font-family: var(--font-voice);
@@ -143,3 +150,94 @@
 .cline-stage.is-in-hand { border-top-color: var(--signal); }
 .cline-stage.is-in-hand .cline-stage-n,
 .cline-stage.is-in-hand .cline-stage-m { color: var(--signal); }
+
+/* The sales facts sheet: one company, then its facts, each a readable line with its source and its own hands. */
+.cline-fact-group { margin-top: var(--space-4); }
+.cline-fact-claim { margin: 0; font-family: var(--font-voice); font-size: 14px; line-height: 1.5; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.cline-fact-figure { color: var(--signal); }
+.cline-fact-source { margin: 0; font-size: var(--text-label); color: var(--color-text-tertiary); overflow-wrap: anywhere; }
+.cline-fact-edit { font-size: 14px; line-height: 1.5; }
+
+
+/* The facts sheet's one bar, the tick on each fact, and each fact's own small hands. */
+.cline-fact-bar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); margin-top: var(--space-2); border: 1px solid var(--line-hover); background: var(--color-void); position: sticky; top: 0; z-index: 3; box-shadow: 0 8px 12px var(--color-void); }
+/* The bar stays in view while the facts scroll UNDER it: its ground is solid, so nothing shows through. */
+.cline-fact-bar .cline-input { flex: 1 1 12rem; width: auto; }
+.cline-fact-all { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-primary); }
+.cline-fact-tick { width: 16px; height: 16px; accent-color: var(--signal); flex: 0 0 auto; margin: 3px 0 0; }
+.cline-fact-hands { display: inline-flex; gap: var(--space-1); }
+.cline-mini { padding: 2px var(--space-2); font-size: 11px; }
+
+/* One audience as marks: tiles for the pool, two columns of reading text, chips, ticked and crossed lists. */
+.cline-aud-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.cline-aud { display: flex; flex-direction: column; gap: var(--space-3); border: 1px solid var(--line); padding: var(--space-3) var(--space-4); }
+.cline-aud-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; }
+.cline-aud-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--space-4); }
+.cline-aud-k { margin: 0 0 var(--space-1); letter-spacing: 0.14em; color: var(--color-text-tertiary); }
+.cline-aud-text { margin: 0; font-family: var(--font-voice); font-size: 14px; line-height: 1.5; color: var(--color-text-primary); overflow-wrap: anywhere; }
+.cline-aud-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.cline-aud-chips .cline-aud-k { margin: 0; min-width: 7rem; }
+.cline-chip { border: 1px solid var(--line); padding: 2px var(--space-2); font-size: 13px; color: var(--color-text-primary); background: var(--surface-band); }
+.cline-aud-signs ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cline-aud-signs li { display: flex; gap: var(--space-2); font-family: var(--font-voice); font-size: 14px; line-height: 1.45; color: var(--color-text-primary); }
+.cline-aud-mark { flex: 0 0 auto; color: var(--signal); }
+.cline-aud-signs.is-misfit .cline-aud-mark { color: var(--alert); }
+/* What MUST be true: its own band, above the scored signs, so a hard condition never reads as one more sign. */
+.cline-aud-signs.is-must { padding: var(--space-2) var(--space-3); background: var(--surface-band); border-left: 2px solid var(--signal); }
+.cline-aud-signs.is-must .cline-aud-mark { color: var(--signal); }
+.cline-aud-must-how { color: var(--color-text-secondary); font-size: 13px; }
+.cline-aud-why > summary { cursor: pointer; }
+.cline-aud-list { margin-top: var(--space-4); }
+
+/* An audience folded under its campaign: one line that opens onto its approvals, its companies, its leads and its pitch. */
+.cline-aud-list.is-nested { margin-top: var(--space-2); gap: var(--space-2); }
+.cline-aud.is-nested { border: none; border-left: 2px solid var(--signal-dim); padding: 0 0 0 var(--space-3); gap: 0; }
+.cline-aud-sum { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; cursor: pointer; padding: var(--space-2) 0; }
+.cline-aud-name { letter-spacing: 0.12em; color: var(--color-text-primary); }
+.cline-aud-count { color: var(--color-text-secondary); }
+.cline-chip.is-on { border-color: var(--signal); color: var(--signal); }
+.cline-aud-in { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) 0 var(--space-3); }
+/* THE PIPELINE (lead-pipeline.js): the seven steps in a row, each with its count; the next step lit, the operator's own step marked. */
+.cline-road { display: flex; flex-direction: column; gap: var(--space-2); }
+.cline-road-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border: 1px solid var(--line); }
+.cline-road-step { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); border-right: 1px solid var(--line); color: var(--color-text-secondary); }
+.cline-road-step:last-child { border-right: 0; }
+.cline-road-n { font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.cline-road-w { font-size: 13px; letter-spacing: 0.04em; }
+.cline-road-step.is-next { background: var(--color-glass-light); color: var(--color-text-primary); box-shadow: inset 0 -2px 0 var(--signal); }
+.cline-road-step.is-next .cline-road-n { color: var(--signal); }
+.cline-road-step.is-you .cline-road-w { color: var(--alert); }
+.cline-road-next { margin: 0; font-size: 13px; letter-spacing: 0.08em; color: var(--signal); }
+
+/* A row of people: who, how to reach them, what they are, where they stand. */
+.cline-lead-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.cline-lead-who, .cline-lead-state { margin: 0; font-size: 14px; overflow-wrap: anywhere; color: var(--color-text-primary); }
+.cline-lead-last { color: var(--color-text-secondary); font-size: 13px; }
+.cline-chip.is-alert { border-color: var(--alert); color: var(--alert); }
+
+/* The people list (LEADS): one line of counts, one row of filters, one row per person. */
+.cline-ppl { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.cline-ppl-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.cline-ppl-picks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.cline-ppl-picks .is-alert { color: var(--alert); border-color: var(--alert-dim); }
+.cline-ppl-picks .is-on { color: var(--signal); border-color: var(--signal); }
+
+/* An audience's companies: bars for the counts, then a table, one company a row (AudienceCompanies.jsx). */
+.cline-bars-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.cline-bar { display: grid; grid-template-columns: minmax(5rem, 9rem) minmax(3rem, 1fr) 4rem; gap: var(--space-2); align-items: center; font-size: 13px; color: var(--color-text-primary); }
+.cline-bar-l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cline-bar-track { height: 4px; background: var(--line); }
+.cline-bar-fill { display: block; height: 100%; background: var(--signal); }
+.cline-bar-n { text-align: right; font-variant-numeric: tabular-nums; color: var(--color-text-secondary); }
+
+.cline-ppl-tools .cline-input { flex: 2 1 14rem; }
+
+/* The outbox: one staged email read whole, exactly as it would leave (Outbox.jsx). */
+/* A batch on its way: a line, a bar filling as each email goes, then the batch itself. */
+.cline-out-sending { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-raised); border-left: 2px solid var(--signal); }
+.cline-out-meter { height: 3px; background: var(--surface-sunk); overflow: hidden; }
+.cline-out-meter > span { display: block; height: 100%; background: var(--signal); transition: width 200ms ease-out; }
+.cline-out-mail { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) 0; max-width: 46rem; }
+.cline-out-subject { margin: 0; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
+.cline-out-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-voice, inherit); font-size: 14px; line-height: 1.55; color: var(--color-text-primary); background: var(--color-glass-light); border-left: 2px solid var(--line); padding: var(--space-3); }
+textarea.cline-out-text { border: 1px solid var(--line); width: 100%; }

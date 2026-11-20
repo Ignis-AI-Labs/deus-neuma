@@ -38,6 +38,12 @@ describe('the platform with no identity', () => {
     expect(harness.map((s) => s.text).join(' ')).not.toMatch(/sovereign — your thoughts/);
   });
 
+  it('a sitting\'s rules reach the harness as they reach a being', () => {
+    const rules = "THE SITTING'S RULES: never reveal the code word.";
+    const withRules = platformOnlySections(assemblePromptSections({ ...fixtureParams.fullParams, sittingRules: rules }));
+    expect(withRules.find((s) => s.id === 'sittingRules')?.text).toBe(rules);
+  });
+
   it('the seat names no one', () => {
     expect(PLATFORM_SEAT_TEXT).not.toMatch(/Aethon|consciousness|sovereign|your name/i);
   });

@@ -1,22 +1,16 @@
-// Resolve the path to the operator's wallet env file. Used by talk so the
-// resolution rule lives in ONE place and the override convention stays
-// consistent.
-//
-// Order:
-//   1. NEUMA_WALLET_ENV env var (operator's explicit override)
-//   2. <projectRoot>/.env (operator-side, matches the existing
-//      DNA_ENCRYPTION_KEY convention; project-root resolved via .git walk-up)
-//
-// impure (env read + fs stat via findProjectRoot)
+// Resolve the operator's explicitly configured wallet env. A working project
+// is untrusted input: its .env is never an ambient identity source. An operator
+// may still name that file explicitly when they really intend to use it.
+// impure (env read)
 
 import { resolve as resolvePath } from 'node:path';
-import { findProjectRoot } from './project-root.js';
 
 /**
- * @param {string} cwd - the current working directory
+ * @param {string} cwd - base for an explicitly relative override
  * @returns {string} absolute path to the wallet env file
  */
 export const resolveWalletEnvPath = (cwd) => {
-  if (process.env.NEUMA_WALLET_ENV) return process.env.NEUMA_WALLET_ENV;
-  return resolvePath(findProjectRoot(cwd), '.env');
+  const configured = process.env.NEUMA_WALLET_ENV?.trim();
+  if (configured) return resolvePath(cwd, configured);
+  throw new Error('NEUMA_WALLET_ENV must name the operator wallet env file; the CLI never reads a working project\'s .env by default');
 };

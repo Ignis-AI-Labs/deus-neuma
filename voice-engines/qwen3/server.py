@@ -111,7 +111,7 @@ from browser_guard import assert_loopback_bind, guard  # noqa: E402  (audits 202
 async def _track_activity(request, call_next):
     # Stamped on arrival; the post-call_next stamp lands at stream START for a
     # StreamingResponse, so /synthesize stamps per chunk as the body streams.
-    answer = guard(request.headers, request.url.path, request.url.query)  # browser_guard.py: page, key
+    answer = guard(request.headers, request.url.path, request.url.query, local=request.scope.get("server"))
     if answer:
         return JSONResponse(answer[1], status_code=answer[0])
     global _last_activity

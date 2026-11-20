@@ -7,7 +7,8 @@
 // one. Now the platform offers to set one up: Ollama (it drives NVIDIA and AMD cards and the
 // processor on Linux and Windows, and pulls a model straight from Hugging Face), kept under
 // the platform's own data root, no admin rights, and the model the capacity check already
-// recommends for this machine (substrate-setup.js). The first-run discovery then adopts the
+// recommends for this machine (substrate-setup.js). On a Mac it is the same (2026-11-14: Ollama's
+// own macOS build, Metal on Apple silicon). The first-run discovery then adopts the
 // running server as it adopts any other (provider-discovery.js pickAutoAdopt).
 //
 // Why Ollama and not the supervised llama-server: the supervisor launches only with a physical
@@ -16,6 +17,8 @@
 //
 // The build is PINNED with the SHA-256 GitHub publishes for each file: a download that does not
 // hash to these bytes is discarded, never run. Moving the pin is a reviewed commit.
+
+import { ollamaModelPin } from './managed-ollama-models.js';
 
 export const OLLAMA_VERSION = '0.40.7';
 // The oldest Ollama trusted with the recommended models: the pinned build. An older one is not
@@ -39,7 +42,19 @@ export const managedEndpoints = (override) => {
   return Object.freeze({ usual: `http://127.0.0.1:${port}`, alt: `http://127.0.0.1:${port + 1}` });
 };
 
+// macOS: one archive for both chips (Apple silicon serves on Metal, Intel on the processor); the
+// server sits at its root beside its libraries. Signed by Ollama, so Gatekeeper lets it run.
+const MAC = Object.freeze({
+  name: 'ollama-darwin.tgz',
+  size: 174_723_727,
+  sha256: '6c8b378e423a4c959b586c0bb62865d20ae057e817f1a8ee10abcc44bde6abab',
+  format: 'tar.gz',
+  bin: 'ollama',
+});
+
 const ASSETS = Object.freeze({
+  'darwin-arm64': MAC,
+  'darwin-x64': MAC,
   'linux-x64': Object.freeze({
     name: 'ollama-linux-amd64.tar.zst',
     size: 1_505_607_169,
@@ -82,6 +97,7 @@ export const ollamaModelRef = (recommendation) => {
   const quant = recommendation?.quant;
   if (typeof source !== 'string' || !/^[\w.-]+\/[\w.-]+$/.test(source)) return null;
   if (typeof quant !== 'string' || !/^[\w.-]+$/.test(quant)) return null;
+  if (!ollamaModelPin(recommendation)) return null;
   return `hf.co/${source}:${quant}`;
 };
 
@@ -123,17 +139,23 @@ export const pullableChoice = (recommendation) => {
  */
 export const installPlan = ({ platform, arch, recommendation: matched, running, own = null, system, managedInstalled, freeBytes, endpoints = managedEndpoints(), gpuGuard = null, verify = true }) => {
   const { choice: recommendation, note: choiceNote } = pullableChoice(matched);
+  const pin = ollamaModelPin(recommendation);
   const ref = ollamaModelRef(recommendation);
   if (!ref) {
-    return Object.freeze({ supported: false, reason: matched?.why || 'This machine is below the floor for a local model, so there is no model to set up.' });
+    const reason = matched?.why || (matched?.model
+      ? 'The recommended model has no reviewed revision and SHA-256, so there is no safe Ollama model to set up.'
+      : 'This machine is below the floor for a local model, so there is no model to set up.');
+    return Object.freeze({ supported: false, reason });
   }
   const asset = ollamaAssetFor(platform, arch);
-  const ok = (s) => Boolean(s?.up && versionAtLeast(s.version, MIN_OLLAMA_VERSION));
+  // one another account on this computer runs is never used, whatever version it claims (ollama-server-state.js)
+  const ok = (s) => Boolean(s?.up && !s.foreign && versionAtLeast(s.version, MIN_OLLAMA_VERSION));
   const ownOk = ok(own);
   const runningOk = ok(running);
   const systemOk = Boolean(system && versionAtLeast(system.version, MIN_OLLAMA_VERSION));
   const notes = choiceNote ? [choiceNote] : [];
-  if (!ownOk && running?.up && !runningOk) notes.push(`An Ollama${running.version ? ` ${running.version}` : ''} is running here, too old for this model (it needs ${MIN_OLLAMA_VERSION} or newer). Deus Neuma sets up its own beside it and leaves yours as it is.`);
+  if (!ownOk && running?.foreign) notes.push('A program run by another account on this computer answers where Ollama usually does. Deus Neuma does not use it and sets up its own beside it.');
+  else if (!ownOk && running?.up && !runningOk) notes.push(`An Ollama${running.version ? ` ${running.version}` : ''} is running here, too old for this model (it needs ${MIN_OLLAMA_VERSION} or newer). Deus Neuma sets up its own beside it and leaves yours as it is.`);
   else if (!ownOk && !runningOk && system && !systemOk) notes.push(`An older Ollama${system.version ? ` (${system.version})` : ''} is installed here, too old for this model. Deus Neuma sets up its own ${OLLAMA_VERSION} beside it and leaves yours as it is.`);
   const server = ownOk || runningOk ? 'running' : systemOk && !running?.up ? 'installed' : managedInstalled ? 'managed' : 'download';
   if (server === 'download' && !asset) {
@@ -162,7 +184,7 @@ export const installPlan = ({ platform, arch, recommendation: matched, running, 
     managed: server === 'download' || server === 'managed' || ownOk,
     endpoint,
     notes: Object.freeze(notes),
-    model: Object.freeze({ ref, name: recommendation.model, quant: recommendation.quant, sizeGB: recommendation.sizeGB, ready: haveModel }),
+    model: Object.freeze({ ref, name: recommendation.model, quant: recommendation.quant, sizeGB: recommendation.sizeGB, ready: haveModel, revision: pin.revision, sha256: pin.sha256 }),
     steps: Object.freeze(steps.map((s) => Object.freeze(s))),
     downloadBytes: steps.reduce((n, s) => n + s.bytes, 0),
     needBytes,
@@ -215,13 +237,25 @@ export const humanBytes = (n) => {
  *   device and the Vulkan path is off, so the model is loaded on the processor only.
  * - Ollama's own cloud models are off (2026-10-24): they send prompts to Ollama's servers, and a
  *   neuma lives only on a model in the operator's custody (docs/protocols/sovereignty-boundary.md).
- * @param {{window: number, holdGpu?: boolean, env?: Record<string, string|undefined>}} input
+ * - An 8-bit KV cache, with the flash attention it needs (2026-11-11, neuma-research
+ *   inference-speed/runs/ollama-12g-2026-11-11T07-27-40-292Z.tsv, T4 IQ3_XXS, the 12 GB tier): the
+ *   served model takes 11.0 GiB of the card at the 20,480 window instead of 11.6, 11.5 instead of
+ *   12.4 at 32,768, at the same speed (~80 tok/s on the rig). On an RTX 5070's 12 GB, with the
+ *   desktop's share taken, that is the whole model on the card rather than part of it in RAM.
+ *   The person's own setting stands.
+ * - 4-bit instead, where the card cannot hold the whole window at 8 bits (2026-11-15, #24:
+ *   ollama-window.js fitOwnServer chooses it, the record keeps it).
+ * @param {{window: number, kvCache?: string, holdGpu?: boolean, env?: Record<string, string|undefined>}} input
  * @returns {Readonly<Record<string, string>>} the keys to set
  */
-export const managedServeEnv = ({ window, holdGpu = false, env = {} }) => Object.freeze({
+/** The KV cache the platform's own Ollama keeps (managedServeEnv), and its size against f16. */
+export const OLLAMA_KV_CACHE = 'q8_0';
+export const managedServeEnv = ({ window, kvCache = OLLAMA_KV_CACHE, holdGpu = false, env = {} }) => Object.freeze({
   OLLAMA_CONTEXT_LENGTH: String(window),
   OLLAMA_NUM_PARALLEL: env.OLLAMA_NUM_PARALLEL || '1',
   OLLAMA_MAX_LOADED_MODELS: env.OLLAMA_MAX_LOADED_MODELS || '1',
   OLLAMA_NO_CLOUD: env.OLLAMA_NO_CLOUD || '1',
+  OLLAMA_FLASH_ATTENTION: env.OLLAMA_FLASH_ATTENTION || '1',
+  OLLAMA_KV_CACHE_TYPE: env.OLLAMA_KV_CACHE_TYPE || kvCache,
   ...(holdGpu ? { CUDA_VISIBLE_DEVICES: '-1', OLLAMA_VULKAN: '0' } : {}),
 });

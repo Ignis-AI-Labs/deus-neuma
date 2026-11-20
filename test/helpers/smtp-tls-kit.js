@@ -12,8 +12,9 @@ import { execFileSync } from 'child_process';
 
 const reply = (socket, line) => socket.write(`${line}\r\n`);
 
-// One session: EHLO, AUTH, MAIL, RCPT, DATA … '.', QUIT — each answered as the sender expects.
-const session = (socket, received) => {
+// One session: EHLO, AUTH, MAIL, RCPT, DATA … '.', QUIT. The control can drop
+// the socket after accepting the terminator, a real lost-acknowledgement case.
+const session = (socket, received, control) => {
   let buffer = '';
   let data = null;
   let envelope = { from: null, to: [] };
@@ -29,7 +30,8 @@ const session = (socket, received) => {
           received.push({ ...envelope, data: data.join('\r\n') });
           data = null;
           envelope = { from: null, to: [] };
-          reply(socket, '250 2.0.0 queued as T1');
+          if (control.dropAfterData) socket.destroy();
+          else reply(socket, '250 2.0.0 queued as T1');
         } else data.push(line);
       } else if (/^EHLO/i.test(line)) reply(socket, '250 localhost');
       else if (/^AUTH PLAIN/i.test(line)) reply(socket, '235 2.7.0 accepted');
@@ -57,11 +59,13 @@ export const startTlsSmtp = async (dir) => {
   const before = tls.getCACertificates('default');
   tls.setDefaultCACertificates([...before, certPem]);
   const received = [];
-  const server = tls.createServer({ key: keyPem, cert: certPem }, (socket) => session(socket, received));
+  const control = { dropAfterData: false };
+  const server = tls.createServer({ key: keyPem, cert: certPem }, (socket) => session(socket, received, control));
   const port = await new Promise((resolve) => server.listen(0, 'localhost', () => resolve(server.address().port)));
   return {
     port,
     received,
+    control,
     close: () => new Promise((resolve) => server.close(() => { tls.setDefaultCACertificates(before); resolve(); })),
   };
 };

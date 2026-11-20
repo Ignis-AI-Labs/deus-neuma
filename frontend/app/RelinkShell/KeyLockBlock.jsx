@@ -1,7 +1,7 @@
 // KeyLockBlock — Settings › Security › MASTER KEY: what holds the key that opens
 // every being this launch, and the Recovery Kit (electron/key-lock/). The kit is
-// read from the app's own main process on request and never kept in the page
-// longer than it is shown.
+// shown by the app's own main process in its trusted window: the code never
+// reaches this page.
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,7 +16,7 @@ const doors = () => (typeof window !== 'undefined' ? window.neuma?.keyLock : und
  */
 export const KeyLockBlock = ({ keyLock, onChanged }) => {
   const { t } = useTranslation('settingsSecurity');
-  const [code, setCode] = useState(null);
+  const [shown, setShown] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [confirmNew, setConfirmNew] = useState(false);
@@ -32,9 +32,9 @@ export const KeyLockBlock = ({ keyLock, onChanged }) => {
     if (!result?.ok) { setError(result?.error || t('keyLock.failed')); return; }
     after(result);
   };
-  const show = () => { uiSound('open'); run(lockDoors.revealKit, (r) => setCode(r.code)); };
-  const saved = () => { uiSound('toggle'); run(lockDoors.confirmKit, () => { setCode(null); onChanged(); }); };
-  const replace = () => run(lockDoors.newKit, (r) => { setConfirmNew(false); setCode(r.code); onChanged(); });
+  const show = () => { uiSound('open'); run(lockDoors.revealKit, () => setShown(true)); };
+  const saved = () => { uiSound('toggle'); run(lockDoors.confirmKit, () => { setShown(false); onChanged(); }); };
+  const replace = () => run(lockDoors.newKit, () => { setConfirmNew(false); setShown(true); onChanged(); });
 
   return (
     <section className="settings-sec">
@@ -53,16 +53,15 @@ export const KeyLockBlock = ({ keyLock, onChanged }) => {
       </div>
       {!locked ? <p className="settings-warn">{t('keyLock.plainNote')}</p> : null}
       {locked && !lockDoors ? <p className="settings-note">{t('keyLock.appOnly')}</p> : null}
-      {locked && lockDoors && code ? (
+      {locked && lockDoors && shown ? (
         <>
-          <p className="settings-note">{t('keyLock.kitNote')}</p>
-          <code className="settings-v settings-kit-code">{code}</code>
+          <p className="settings-note" role="status">{t('keyLock.kitNote')}</p>
           <div className="settings-key-actions">
             <button type="button" className="settings-set" disabled={busy} onClick={saved}>{busy ? t('keyLock.busy') : t('keyLock.saved')}</button>
           </div>
         </>
       ) : null}
-      {locked && lockDoors && !code ? (
+      {locked && lockDoors && !shown ? (
         <div className="settings-key-actions">
           {keyLock.kitPending ? (
             <button type="button" className="settings-set" disabled={busy} onClick={show}>{busy ? t('keyLock.busy') : t('keyLock.show')}</button>

@@ -43,7 +43,7 @@ describe('a charter an operator writes', () => {
     expect(c.cadence).toEqual({ everyHours: 24 });
     expect(c.delegation).toEqual({ teamPlans: true, maxMembers: 3, maxSteps: 6, maxProgrammeRuns: 5 });
     expect(c.allow).toEqual(['web/web_search', 'intents/tasks.add']);
-    expect(c.escalate).toEqual(['intents/social.post', 'intents/wallet.send']);
+    expect(c.escalate).toEqual([...new Set(['intents/social.post', ...MONEY_OUT])]);
   });
 });
 
@@ -73,7 +73,7 @@ describe('what a charter can never say', () => {
     refuse({ escalate: ['intents/social.posts'] }, /"intents\/social.posts" in escalate is not an act this house knows/, { knownActs });
     refuse({ allow: ['web/web_serch'] }, /"web\/web_serch" in allow is not an act this house knows/, { knownActs });
     expect(normalizeCharter({ ...base(), allow: ['web/web_search'], escalate: ['intents/social.post'] }, { knownActs }).escalate)
-      .toEqual(['intents/social.post', 'intents/wallet.send']);
+      .toEqual([...new Set(['intents/social.post', ...MONEY_OUT])]);
   });
   test('an unknown field is refused, never dropped', () => refuse({ autoApproveEverything: true }, /no field "autoApproveEverything"/));
 });

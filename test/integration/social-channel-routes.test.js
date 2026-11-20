@@ -203,7 +203,7 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
 
     const approved = await request(app)
       .put(`/api/v1/social-channels/queue/${staged.body.entry.id}/approve`).set(witness.header)
-      .send({});
+      .send({ textSeen: 'first light' });
     expect(approved.status).toBe(200);
     expect(approved.body.entry).toMatchObject({ status: 'approved', decidedBy: witness.address.toLowerCase() });
 
@@ -249,7 +249,7 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     });
 
     // Approve, then a schedule-only edit: the approval PRESERVES.
-    await request(app).put(`/api/v1/social-channels/queue/${id}/approve`).set(witness.header).send({});
+    await request(app).put(`/api/v1/social-channels/queue/${id}/approve`).set(witness.header).send({ textSeen: 'the better line' });
     const retimed = await request(app)
       .put(`/api/v1/social-channels/queue/${id}`).set(witness.header)
       .send({ scheduledFor: '2999-02-02T00:00:00Z' });
@@ -265,7 +265,7 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     expect(reworded.body.entry.decidedBy).toBeUndefined();
 
     // Honest refusals: settled history, unknown ids, invalid patches.
-    await request(app).put(`/api/v1/social-channels/queue/${id}/approve`).set(witness.header).send({});
+    await request(app).put(`/api/v1/social-channels/queue/${id}/approve`).set(witness.header).send({ textSeen: 'different words entirely' });
     const invalid = await request(app)
       .put(`/api/v1/social-channels/queue/${id}`).set(witness.header)
       .send({ scheduledFor: 'whenever' });
@@ -428,6 +428,9 @@ describe('Social channel routes (/api/v1/social-channels)', () => {
     expect(byId['2001'].answers).toEqual([expect.objectContaining({ status: 'draft', text: 'a real answer, staged' })]);
     expect(byId['2002'].answers).toEqual([]);
     expect(byId['2001'].category).toBe('ordinary');
+    // The queue read carries a waiting reply's TIER beside its legal flag (reply-tier.js).
+    const listed = await request(app).get('/api/v1/social-channels/queue').set(witness.header);
+    expect(listed.body.queue.find((e) => e.kind === 'reply').tier).toEqual({ tier: 'easy', reasons: [] });
   });
 
 

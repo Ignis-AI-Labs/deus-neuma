@@ -2,12 +2,12 @@
 //
 // Nothing here is mocked — a real Express app, the REAL requireAuth over a REAL
 // session token, a real temp folder added through the real grant endpoint, and
-// real bytes on disk. That matters especially for the ?token= door: stubbing
+// real bytes on disk. That matters especially for the ?ticket= door: stubbing
 // auth would have "proven" the query works while proving nothing about whether
 // it is actually verified.
 //
 // What it holds down: a plain <img src> can load a tile (no header to give),
-// the token is genuinely checked, the cache validators are honest in BOTH
+// the ticket is genuinely checked, the cache validators are honest in BOTH
 // directions (304 when unchanged, fresh bytes when the file is overwritten),
 // and none of that widened the route's reach by a single path.
 
@@ -33,6 +33,7 @@ describe('Gallery /file — the viewer contract', () => {
   let folder;
   let rootId;
   let filePath;
+  let deskTicketFor;
 
   beforeEach(async () => {
     vi.resetModules();
@@ -53,6 +54,7 @@ describe('Gallery /file — the viewer contract', () => {
     // A fresh install's first owner is seated by the owner claim, never by a first request (owner-claim.js): seated here.
     await makeInstallOwner(WALLET);
 
+    ({ deskTicketFor } = await import('../helpers/desk-ticket-kit.js'));
     const { default: router } = await import('../../backend/routes/gallery-routes.js');
     app = express();
     app.use(express.json());
@@ -73,13 +75,19 @@ describe('Gallery /file — the viewer contract', () => {
     vi.restoreAllMocks();
   });
 
-  const get = (query = {}) => request(app).get('/api/v1/gallery/file').query({ rootId, rel: 'render.png', ...query });
+  const get = (query = {}) => {
+    const params = { rootId, rel: 'render.png', ...query };
+    if (params.token === token) {
+      delete params.token;
+      params.ticket = deskTicketFor(token, '/api/v1/gallery/file', { rootId: params.rootId, rel: params.rel });
+    }
+    return request(app).get('/api/v1/gallery/file').query(params);
+  };
 
-  test('a bare GET with ?token= serves the bytes — this is what lets <img src> work', async () => {
-    // NO Authorization header, exactly like the GET a browser issues for an
-    // <img>. This single behaviour is why the gallery no longer hand-fetches
-    // every tile into an object URL.
-    const res = await get({ token });
+  test('a bare GET with an exact-item ?ticket= serves the bytes', async () => {
+    // NO Authorization header, exactly like the GET a browser issues for an <img>.
+    const ticket = deskTicketFor(token, '/api/v1/gallery/file', { rootId, rel: 'render.png' });
+    const res = await get({ ticket });
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('image/png');
     expect(Buffer.from(res.body).equals(PNG)).toBe(true);
@@ -216,7 +224,7 @@ describe('Gallery /file — the viewer contract', () => {
     // Before the fix this was the red "Too many requests" and a black tile.
     const tile = await request(stacked)
       .get('/api/v1/gallery/file')
-      .query({ rootId, rel: 'render.png', token });
+      .query({ rootId, rel: 'render.png', ticket: deskTicketFor(token, '/api/v1/gallery/file', { rootId, rel: 'render.png' }) });
     expect(tile.status).toBe(200);
     expect(Buffer.from(tile.body).equals(PNG)).toBe(true);
   });
@@ -224,12 +232,12 @@ describe('Gallery /file — the viewer contract', () => {
   test('the token buys no extra reach: traversal and unknown roots still 404', async () => {
     const escape = await request(app)
       .get('/api/v1/gallery/file')
-      .query({ rootId, rel: '../../../etc/passwd', token });
+      .query({ rootId, rel: '../../../etc/passwd', ticket: deskTicketFor(token, '/api/v1/gallery/file', { rootId, rel: '../../../etc/passwd' }) });
     expect(escape.status).toBe(404);
 
     const unknown = await request(app)
       .get('/api/v1/gallery/file')
-      .query({ rootId: 'no-such-root', rel: 'render.png', token });
+      .query({ rootId: 'no-such-root', rel: 'render.png', ticket: deskTicketFor(token, '/api/v1/gallery/file', { rootId: 'no-such-root', rel: 'render.png' }) });
     expect(unknown.status).toBe(404);
   });
 });

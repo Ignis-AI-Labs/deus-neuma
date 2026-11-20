@@ -16,7 +16,7 @@
 // poison the generated dependency set.
 //
 // impure (process IO, spawns rpmbuild).
-import { mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -51,8 +51,8 @@ Release: 1%{?dist}
 Summary: ${pkg.description}
 License: ${pkg.license}
 URL: ${pkg.homepage}
-Vendor: Ignis AI Labs LLC
-Packager: Ignis AI Labs LLC <legal@ignislabs.ai>
+Vendor: Deus Neuma Inc
+Packager: Deus Neuma Inc <legal@ignislabs.ai>
 AutoReqProv: no
 ${REQUIRES.map((r) => `Requires: ${r}`).join('\n')}
 
@@ -74,13 +74,14 @@ install -m 644 @ICON@ %{buildroot}/usr/share/icons/hicolor/512x512/apps/neuma.pn
 chmod 4755 /opt/NEUMA/chrome-sandbox || true
 
 %files
+%defattr(-,root,root,-)
 /opt/NEUMA
 /usr/bin/neuma
 /usr/share/applications/neuma.desktop
 /usr/share/icons/hicolor/512x512/apps/neuma.png
 `;
 
-const work = join(tmpdir(), `neuma-rpm-${process.pid}`);
+const work = mkdtempSync(join(tmpdir(), 'neuma-rpm-'));
 try {
   for (const d of ['BUILD', 'RPMS', 'SOURCES', 'SPECS', 'SRPMS']) mkdirSync(join(work, d), { recursive: true });
   const desktopPath = join(work, 'neuma.desktop');

@@ -27,6 +27,8 @@ userns_blocked() {
 
 if [ -n "$APPIMAGE" ] && userns_blocked; then
   echo "[neuma] this system does not allow unprivileged user namespaces, so the AppImage runs without Chromium's sandbox; the .deb or .rpm keeps it on" >&2
+  NEUMA_APPIMAGE_NO_SANDBOX=1
+  export NEUMA_APPIMAGE_NO_SANDBOX
   exec "$here/neuma-bin" --no-sandbox "$@"
 fi
 exec "$here/neuma-bin" "$@"

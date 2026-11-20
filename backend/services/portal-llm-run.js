@@ -213,7 +213,7 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
       opts.signal = passSignal;
       consume.signal = passSignal;
       try {
-        const streamResult = await createStreamRequest(noThink ? governor.reaskMessages(messages) : messages, opts);
+        const streamResult = await createStreamRequest(noThink ? governor.reaskMessages(messages, { tools: (opts.tools?.length ?? 0) > 0 }) : messages, opts);
         log.info('round stream opened', { companion: companionName, tools: nativeTools.length, noThink });
         const streamed = nativeTools.length > 0
           ? await consumeStreamWithTools(streamResult, guardedOnContent, consume)

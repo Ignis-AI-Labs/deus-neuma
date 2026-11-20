@@ -20,7 +20,7 @@
 // Output: release/neuma_<version>_amd64.deb
 //
 // impure (process IO, spawns ar/tar).
-import { mkdirSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, chmodSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, cpSync, writeFileSync, readFileSync, existsSync, rmSync, chmodSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -59,7 +59,7 @@ const description = [summary, ...extended.map((l) => ` ${l || '.'}`)].join('\n')
 const installedSizeKiB = (dir) =>
   execFileSync('du', ['-sk', dir], { encoding: 'utf8' }).split(/\s+/)[0];
 
-const work = join(tmpdir(), `neuma-deb-${process.pid}`);
+const work = mkdtempSync(join(tmpdir(), 'neuma-deb-'));
 try {
   const dataRoot = join(work, 'data');
   const controlRoot = join(work, 'control');
@@ -92,9 +92,9 @@ update-desktop-database /usr/share/applications || true
   const control = `Package: neuma
 Version: ${pkg.version}
 License: ${pkg.license}
-Vendor: Ignis AI Labs LLC <legal@ignislabs.ai>
+Vendor: Deus Neuma Inc <legal@ignislabs.ai>
 Architecture: amd64
-Maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
+Maintainer: Deus Neuma Inc <legal@ignislabs.ai>
 Installed-Size: ${installedSizeKiB(dataRoot)}
 Depends: ${DEPENDS.join(', ')}
 Recommends: libappindicator3-1

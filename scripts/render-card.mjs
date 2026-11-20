@@ -88,7 +88,8 @@ if (statName) {
 
 const brand = await loadBrand(brandName, { wallet });
 if (!brand.ok) die(brand.error);
-const template = await loadTemplate(templateName);
+// The company's own design of this card wins over the shared one (card-designs.js).
+const template = await loadTemplate(templateName, { brand: brandName, wallet });
 if (!template.ok) die(template.error);
 
 // Fonts ride INSIDE the SVG. A card that reads its faces from the machine it

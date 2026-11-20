@@ -17,7 +17,8 @@ import path from 'path';
 import { readFileSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { resolveComfyConfig, comfyInstallState, ensureComfyReady, noteComfyActivity } from '../image-forge/comfyui-supervisor.js';
-import { resolvePipeline, resolveModel } from '../image-forge/pack-registry.js';
+import { installsWaiting } from '../image-forge/model-install.js';
+import { findPipeline, findModel } from '../image-forge/workflow-store.js';
 import { parameterize } from '../image-forge/parameterizer.js';
 import { loadScreenList } from '../image-forge/prompt-screen.js';
 import { runJob } from '../image-forge/job-lane.js';
@@ -91,10 +92,13 @@ export const imageGenerateIntent = Object.freeze({
       const kind = renderKindOfFiling(payload);
       return { ok: false, status: 'invalid', reason: `image/generate needs {prompt} — what the ${kind} should show, as description` };
     }
-    const resolved = resolvePipeline(payload?.pipeline);
+    const resolved = await findPipeline(payload?.pipeline); // the platform's own, or a workflow registered on this computer
     if (!resolved.ok) return { ok: false, status: 'invalid', reason: resolved.error };
-    const modelRes = resolveModel(resolved.pipeline);
+    const modelRes = findModel(resolved.pipeline);
     if (!modelRes.ok) return { ok: false, status: 'invalid', reason: modelRes.error };
+    // A pipeline whose files the engine lacks is said so before any card, with the installs that bring them.
+    const lacking = await installsWaiting(modelRes.model, resolveComfyConfig(process.env), resolved.pipeline);
+    if (lacking) return { ok: false, status: 'invalid', reason: `'${resolved.pipeline.id}' cannot render yet: ${lacking.words}` };
     const source = resolved.pipeline.requiresSourceImage ? sourceFor(connection, resolved.pipeline, payload?.image) : null;
     if (source && !source.ok) return { ok: false, status: 'invalid', reason: source.reason };
     if (resolved.pipeline.kind === 'video') {
@@ -280,7 +284,7 @@ export const imageGenerateIntent = Object.freeze({
       }
       return {
         ok: true,
-        detail: `Generated with ${pipeline.label} (seed ${built.values.seed}):\n${lines}\nYour operator can see it in the stream. Review it with review_image before you speak — your judgment is kept, and it is how taste accumulates.`,
+        detail: `Generated with ${pipeline.label} (seed ${built.values.seed}):\n${lines}\n${built.values.note ? `${built.values.note}\n` : ''}Your operator can see it in the stream. Review it with review_image before you speak — your judgment is kept, and it is how taste accumulates.`,
         // THE RETURN rides `extra` into the sweep's receipt, so the stream
         // places the render in front of the being's own eyes (image-sight.js).
         extra: { sight: { laneId, imageIds: stored.map((r) => r.imageId) } },

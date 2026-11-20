@@ -12,6 +12,8 @@
 // boolean the human chose.
 
 const { ethers } = require('ethers');
+const { decodeCall, feeFacts, callWarning } = require('./tx-content.cjs');
+const { readMessage, parseSignIn, describeTypedData } = require('./message-content.cjs');
 
 const fmtEther = (v) => {
   try {
@@ -21,65 +23,75 @@ const fmtEther = (v) => {
   }
 };
 
-const clip = (s, n) => (s.length > n ? s.slice(0, n) + '…' : s);
-
-// Decode a sign payload for display. A 0x payload that is not valid UTF-8 is an
-// opaque digest the human cannot evaluate — flag it so the view can warn in the
-// theatrical alert register (this is exactly the case «WARNING» is reserved for).
-// The first line of a Sign-In with Ethereum (EIP-4361) challenge — the login
-// every sign-in asks the wallet to sign. Pure.
-const SIGN_IN_LINE = / wants you to sign in with your Ethereum account:$/;
-const isSignInMessage = (text) => SIGN_IN_LINE.test(String(text ?? '').split('\n')[0]);
-
-const decodeSign = (m) => {
-  if (typeof m === 'string' && m.startsWith('0x')) {
-    try {
-      return { text: ethers.toUtf8String(m), opaque: false };
-    } catch {
-      return { text: m, opaque: true };
-    }
-  }
-  return { text: String(m), opaque: false };
-};
+// The most the window will show of one request. More than this is refused: a
+// request too long to show in full is never signed on a part of it.
+const MAX_SHOWN = 64 * 1024;
 
 const DEFAULT_CHAIN_ID = 8453; // Base mainnet — the one chain this wallet targets
 
-// Shape a signature/transaction request into a display view model. Mirrors the
-// content the old native dialog showed — never less: the same fields, the same
-// opaque-digest warning — so restyling can never quietly hide what is signed.
 /**
- * Shape a signature/transaction request into a display-only view model.
- * @param {{type?: string, to?: string, value?: bigint, data?: string, domain?: object, value?: any, message?: string}} req — the sign request
- * @returns {{kind: string, heading: string, intro: string, fields?: Array<{label:string,value:string,mono:boolean}>, body?: string, warning?: string, tone: string, confirmLabel: string, rejectLabel: string}} display-only model (no key material, no capability)
+ * Is this text a Sign-In with Ethereum challenge for THIS wallet? The whole
+ * message must parse as one (message-content.cjs parseSignIn) and name the
+ * wallet's own address. Pure.
+ * @param {string} text
+ * @param {string} address - the wallet that would sign
+ * @returns {boolean}
  */
-const buildSignConfirmView = (req) => {
-  const base = { kind: req.type || 'signMessage', title: 'NEUMA WALLET', rejectLabel: 'REJECT', tone: 'normal' };
-  if (req.type === 'transaction') {
-    const fields = [
-      { label: 'TO', value: req.to || '—', mono: true },
-      { label: 'VALUE', value: fmtEther(req.value), mono: true },
-      // The chainId the service resolved and will PIN into the signed tx —
-      // the witness must read the real target, never an assumed default.
-      { label: 'CHAIN', value: String(req.chainId ?? DEFAULT_CHAIN_ID), mono: true },
-    ];
-    if (req.data && req.data !== '0x') fields.push({ label: 'DATA', value: clip(String(req.data), 80), mono: true });
-    return { ...base, heading: 'CONFIRM TRANSACTION', intro: 'A transaction is about to be broadcast from this wallet.', fields, confirmLabel: 'CONFIRM & SEND' };
+const isSignInMessage = (text, address) => {
+  const parsed = parseSignIn(text);
+  return Boolean(parsed && address && parsed.address.toLowerCase() === String(address).toLowerCase());
+};
+
+// pure — the transaction view: every field that is signed has a row, the call is read in words
+const transactionView = (base, req) => {
+  const fields = [
+    { label: 'TO', value: req.to || '—', mono: true },
+    { label: 'VALUE', value: fmtEther(req.value), mono: true },
+    // The chainId the service resolved and will PIN into the signed tx —
+    // the witness must read the real target, never an assumed default.
+    { label: 'CHAIN', value: String(req.chainId ?? DEFAULT_CHAIN_ID), mono: true },
+  ];
+  const fee = feeFacts(req);
+  const warnings = [fee.warning];
+  let body;
+  if (req.data && req.data !== '0x') {
+    const call = decodeCall(String(req.data));
+    if (!call) throw new Error('This transaction carries a call the wallet cannot read, so it cannot show you what it does. Nothing was signed.');
+    fields.push({ label: 'CALL', value: call.signature, mono: true });
+    body = [...call.args.map((a) => `${a.name}: ${a.value}`), `data: ${req.data}`].join('\n');
+    warnings.unshift(callWarning(call, req.to));
   }
-  if (req.type === 'signTypedData') {
-    const d = req.domain || {};
-    const fields = [{ label: 'DOMAIN', value: d.name || '—', mono: true }];
-    if (d.verifyingContract) fields.push({ label: 'CONTRACT', value: d.verifyingContract, mono: true });
-    if (d.chainId) fields.push({ label: 'CHAIN', value: String(d.chainId), mono: true });
-    let valueStr;
-    try {
-      valueStr = JSON.stringify(req.value, null, 2);
-    } catch {
-      valueStr = String(req.value);
-    }
-    return { ...base, heading: 'SIGN TYPED DATA', intro: 'A structured message is about to be signed with this wallet.', fields, body: clip(valueStr, 600), confirmLabel: 'SIGN' };
-  }
-  // personal_sign — the login challenge and any plain-message signature.
-  const { text, opaque } = decodeSign(req.message);
+  fields.push(...fee.rows.map((row) => ({ ...row, mono: true })));
+  const warning = warnings.filter(Boolean).join(' ');
+  return {
+    ...base, heading: 'CONFIRM TRANSACTION', intro: 'A transaction is about to be broadcast from this wallet.', fields,
+    ...(body ? { body } : {}), ...(warning ? { warning, tone: 'alert' } : {}), confirmLabel: 'CONFIRM & SEND',
+  };
+};
+
+// pure — the typed-data view: the whole domain, and every signed field in the order its type declares
+const typedDataView = (base, req) => {
+  const d = req.domain || {};
+  const told = describeTypedData(d, req.types || {}, req.value);
+  const fields = [{ label: 'DOMAIN', value: d.name || '—', mono: true }];
+  if (d.version) fields.push({ label: 'VERSION', value: String(d.version), mono: true });
+  if (d.verifyingContract) fields.push({ label: 'CONTRACT', value: d.verifyingContract, mono: true });
+  if (d.chainId) fields.push({ label: 'CHAIN', value: String(d.chainId), mono: true });
+  if (d.salt) fields.push({ label: 'SALT', value: String(d.salt), mono: true });
+  fields.push({ label: 'TYPE', value: told.primaryType, mono: true });
+  const warnings = [
+    told.grantee ? `Signing this can let ${told.grantee} move tokens out of this wallet, with no transaction of yours.` : null,
+    d.chainId && req.chainId && Number(d.chainId) !== Number(req.chainId) ? `This is for chain ${Number(d.chainId)}, and the wallet is on chain ${req.chainId}.` : null,
+  ].filter(Boolean).join(' ');
+  return {
+    ...base, heading: 'SIGN TYPED DATA', intro: 'A structured message is about to be signed with this wallet.', fields,
+    body: told.body, ...(warnings ? { warning: warnings, tone: 'alert' } : {}), confirmLabel: 'SIGN',
+  };
+};
+
+// pure — personal_sign: the login challenge and any plain-message signature
+const messageView = (base, req) => {
+  const { text, opaque } = readMessage(req.message);
   if (opaque) {
     return {
       ...base,
@@ -87,17 +99,24 @@ const buildSignConfirmView = (req) => {
       tone: 'alert',
       intro: 'This request asks you to sign raw, unreadable data.',
       warning: 'Unreadable (raw) data — only sign this if you fully trust the source. Malicious sites use opaque signatures to forge approvals.',
-      body: clip(text, 80),
+      body: text,
       confirmLabel: 'SIGN',
     };
   }
-  // The sign-in challenge says what it is: a plain word for a plain act.
-  if (isSignInMessage(text)) {
+  // The sign-in challenge says what it is: a plain word for a plain act — and
+  // only a whole, well-formed challenge for this wallet is one.
+  if (isSignInMessage(text, req.address)) {
+    const told = parseSignIn(text);
     return {
       ...base,
       heading: 'SIGN IN',
       intro: 'Sign in with this wallet. Signing proves the wallet is yours — it sends nothing and costs nothing.',
-      body: clip(text, 400),
+      fields: [
+        { label: 'SITE', value: told.domain, mono: true },
+        { label: 'ADDRESS', value: told.uri, mono: true },
+        { label: 'CHAIN', value: String(told.chainId), mono: true },
+      ],
+      body: text,
       confirmLabel: 'SIGN IN',
       rejectLabel: 'CANCEL',
     };
@@ -106,9 +125,25 @@ const buildSignConfirmView = (req) => {
     ...base,
     heading: 'SIGN MESSAGE',
     intro: 'A message is about to be signed with this wallet to prove it is yours.',
-    body: clip(text, 400),
+    body: text,
     confirmLabel: 'SIGN',
   };
+};
+
+/**
+ * Shape a signature/transaction request into a display-only view model: the
+ * WHOLE content that is signed, never a part of it. Throws (so nothing is
+ * signed) on a call it cannot read, typed data that does not fit its types, a
+ * message that is neither text nor bytes, or content too long to show in full.
+ * @param {{type?: string, to?: string, value?: *, data?: string, chainId?: number, domain?: object, types?: object, message?: *, address?: string}} req — the sign request
+ * @returns {{kind: string, heading: string, intro: string, fields?: Array<{label:string,value:string,mono:boolean}>, body?: string, warning?: string, tone: string, confirmLabel: string, rejectLabel: string}} display-only model (no key material, no capability)
+ */
+const buildSignConfirmView = (req) => {
+  const base = { kind: req.type || 'signMessage', title: 'NEUMA WALLET', rejectLabel: 'REJECT', tone: 'normal' };
+  const shape = { transaction: transactionView, signTypedData: typedDataView }[req.type] || messageView;
+  const view = shape(base, req);
+  if ((view.body || '').length > MAX_SHOWN) throw new Error('This request is too long for the wallet to show you in full. Nothing was signed.');
+  return view;
 };
 
 // Shape a stern gate (reveal secret / delete vault / reroute RPC) into a view
@@ -119,8 +154,12 @@ const buildSignConfirmView = (req) => {
  * @param {{heading?: string, intro?: string, message?: string, detail?: string, confirmLabel?: string, rejectLabel?: string, tone?: 'normal'|'alert'}} spec — `message` doubles as the intro; `confirmLabel` doubles as the heading when none is given
  * @returns {object} display-only model; alert tone raises `detail` into the warning band
  */
-const buildGateView = ({ heading, intro, message, detail, confirmLabel, rejectLabel = 'CANCEL', tone = 'normal' }) => ({
+const buildGateView = ({ heading, intro, message, detail, confirmLabel, rejectLabel = 'CANCEL', tone = 'normal', subject = null, armMs = 0 }) => ({
   kind: 'gate',
+  // What the gate is about (the wallet's address, the Recovery Kit): a gate never asks without saying for what.
+  ...(subject ? { fields: [{ label: String(subject.label), value: String(subject.value), mono: true }] } : {}),
+  // How long after it shows the window refuses an approval (isArmed): a click already on its way lands on nothing.
+  armMs,
   title: 'NEUMA WALLET',
   // The action label doubles as the mono heading when a caller gives no explicit
   // one — 'Reveal' → «REVEAL», 'Set RPC' → «SET RPC».
@@ -157,4 +196,38 @@ const isTrustedResolve = (event, confirmWebContents) => {
   return event.sender === confirmWebContents;
 };
 
-module.exports = { buildSignConfirmView, buildGateView, isTrustedResolve, isSignInMessage, DEFAULT_CHAIN_ID };
+/**
+ * A secret, shown in the trusted window and nowhere else (audit PR600 P6-10):
+ * a recovery phrase is numbered three words to a line; a key or a kit code
+ * stands as it is. One button, which only closes the window. Pure.
+ * @param {{heading: string, intro: string, secret: string, subject?: {label: string, value: string}}} spec
+ * @returns {object} display-only model
+ */
+const buildSecretView = ({ heading, intro, secret, subject = null }) => {
+  const words = String(secret).trim().split(/\s+/);
+  const rows = [];
+  for (let i = 0; i < words.length; i += 3) {
+    rows.push(words.slice(i, i + 3).map((w, j) => `${String(i + j + 1).padStart(2)} ${w.padEnd(10)}`).join(' ').trimEnd());
+  }
+  return {
+    kind: 'secret', title: 'NEUMA WALLET', tone: 'alert', single: true, armMs: 0,
+    heading: String(heading).toUpperCase(), intro,
+    ...(subject ? { fields: [{ label: String(subject.label), value: String(subject.value), mono: true }] } : {}),
+    body: words.length > 1 ? rows.join('\n') : String(secret),
+    warning: 'Anyone who sees this controls what it opens. It is shown here only, and is gone when you close this window.',
+    confirmLabel: 'DONE', rejectLabel: 'CLOSE',
+  };
+};
+
+/**
+ * May an approval count yet? Not until the window has been showing for the
+ * view's arming delay — a click or key already under way when it appeared
+ * approves nothing. A rejection always counts. Pure.
+ * @param {number|null} shownAt - when the window showed (ms), null before it has
+ * @param {number} now
+ * @param {number} [armMs]
+ * @returns {boolean}
+ */
+const isArmed = (shownAt, now, armMs = 0) => shownAt !== null && now - shownAt >= armMs;
+
+module.exports = { buildSignConfirmView, buildGateView, buildSecretView, isTrustedResolve, isSignInMessage, isArmed, DEFAULT_CHAIN_ID, MAX_SHOWN };

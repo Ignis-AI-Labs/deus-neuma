@@ -11,6 +11,7 @@
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
+import { setTimeout } from 'node:timers';
 import path from 'path';
 import express from 'express';
 import request from 'supertest';
@@ -31,8 +32,9 @@ import { ethers } from 'ethers';
 import { makeReceipt } from '../../backend/services/money-in/receipt-rows.js';
 import { appendReceipts, withHouseLock, readExtras } from '../../backend/services/money-in/money-in-store.js';
 import { readWaiting } from '../../backend/services/waiting/waiting-sources.js';
-import { houseReceipts } from '../../backend/services/accounts/house-receipts.js';
+import { accountsBoard } from '../../backend/services/accounts/accounts-board.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
+import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 
 const { processToolCalls } = __test;
 const PRIOR_KEY = process.env.DNA_ENCRYPTION_KEY;
@@ -49,17 +51,27 @@ describe('THE RAISE ROOM — outreach, sent for real (gnosis)', () => {
   const conn = (neumaId) => ({ ws: serverWs, companion: { name: neumaId, neumaId }, walletAddress: me.address, sessionId: `sess-${neumaId}` });
   const as = (req) => req.set('Authorization', `Bearer ${me.token}`);
   let filed = 0;
-  const act = async (neumaId, payload) => {
+  // Every card the operator's desk is shown, as the real portal carries it.
+  const cards = [];
+  const cardArgs = (card) => JSON.parse(card.fullArgs ?? card.args);
+  const act = async (neumaId, payload, decision = null) => {
     const dir = path.join(workspace.pathFor(neumaId), 'intents');
     await fs.mkdir(dir, { recursive: true });
     filed += 1;
     await fs.writeFile(path.join(dir, `act-${filed}.json`), JSON.stringify({ company: company.id, ...payload }));
-    const [result] = await processToolCalls(serverWs, '', conn(neumaId));
+    const connection = conn(neumaId);
+    const shown = cards.length;
+    let settled = false;
+    const running = processToolCalls(serverWs, '', connection).finally(() => { settled = true; });
+    // The operator answers the card when one is raised; an act refused before any card settles on its own.
+    while (decision && !settled && cards.length === shown) await new Promise((resolve) => { setTimeout(resolve, 20); });
+    if (decision && cards.length > shown) resolveToolApproval(connection, cards.at(-1).id, decision);
+    const [result] = await running;
     return result;
   };
   const raise = async () => (await request(app).get('/api/v1/raise').use(as)).body.raises.find((r) => r.id === company.id).raise;
   const investor = (name) => raise().then((r) => r.investors.find((i) => i.name === name));
-  const reach = (who, body, subject = 'Tidewater — tide sheets for small harbours') => act('merc', { type: 'raise/reach', investor: ids[who], subject, body });
+  const reach = (who, body, subject = 'Tidewater — tide sheets for small harbours', decision = 'allow') => act('merc', { type: 'raise/reach', investor: ids[who], subject, body }, decision);
   const TRUE_BODY = `Three harbours already pay for our weekly sheet, 360 USD a month. We expect thirty harbours within a year (forward-looking). We are raising 250,000 USD on a SAFE, with a 5,000 USD smallest check. ${DISCLOSE} ${PAYMENT_PLACEHOLDER}`;
 
   beforeAll(async () => {
@@ -91,6 +103,7 @@ describe('THE RAISE ROOM — outreach, sent for real (gnosis)', () => {
     const port = await new Promise((resolve) => httpServer.listen(0, () => resolve(httpServer.address().port)));
     const linked = new Promise((resolve) => { wss.on('connection', (ws) => { serverWs = ws; resolve(); }); });
     client = new WebSocket(`ws://localhost:${port}`);
+    client.on('message', (data) => { const frame = JSON.parse(data.toString()); if (frame.type === 'tool:approval_request') cards.push(frame); });
     await linked;
   }, 60000);
 
@@ -143,6 +156,30 @@ describe('THE RAISE ROOM — outreach, sent for real (gnosis)', () => {
     expect(smtp.received).toEqual([]);
   });
 
+  test('P6-39: a pointer the approved sheet does not hold stops the message before any card', async () => {
+    const before = cards.length;
+    const link = await reach('Ann', TRUE_BODY.replace(PAYMENT_PLACEHOLDER, `Reserve your allocation at https://tidewater-invest.example/pay ${PAYMENT_PLACEHOLDER}`));
+    expect(link).toMatchObject({ status: 'error', error: expect.stringMatching(/the facts gate holds this message — "https:\/\/tidewater-invest\.example\/pay" is a link the approved facts sheet does not hold/) });
+    const ens = await reach('Ann', TRUE_BODY.replace(PAYMENT_PLACEHOLDER, `Or send to tidewater-raise.eth ${PAYMENT_PLACEHOLDER}`));
+    expect(ens.error).toMatch(/"tidewater-raise\.eth" is an ENS name/);
+    expect(cards.length).toBe(before);
+    expect(smtp.received).toEqual([]);
+  });
+
+  test('P6-39: a reach waits for the operator — the card carries the investor\'s full address and every word; refused, nothing leaves', async () => {
+    const before = cards.length;
+    const refused = await reach('Ann', TRUE_BODY, 'Tidewater — tide sheets for small harbours', 'deny');
+    expect(refused.status).toBe('denied');
+    expect(cards.length).toBe(before + 1);
+    expect(cards.at(-1).tool).toBe('intents/raise.reach');
+    expect(cardArgs(cards.at(-1))).toEqual({
+      company: 'Tidewater', to: 'ann@fund.example', subject: 'Tidewater — tide sheets for small harbours',
+      text: TRUE_BODY.replace(PAYMENT_PLACEHOLDER, `Funds are received only at ${WALLET_IN} on ethereum, and only once the papers are signed.`),
+    });
+    expect(smtp.received).toEqual([]);
+    expect((await investor('Ann Fund')).thread).toEqual([]);
+  });
+
   test('a true message goes out over real TLS, the payment line filled from the mandate; the record keeps it as written', async () => {
     expect((await reach('Ann', TRUE_BODY)).status).toBe('ok');
     expect(smtp.received).toHaveLength(1);
@@ -189,7 +226,7 @@ describe('THE RAISE ROOM — outreach, sent for real (gnosis)', () => {
     const done = (await close({ receipt: right.key })).body.raise;
     expect(done.investors.find((i) => i.id === ids.Cy)).toMatchObject({ status: 'closed', closed: { amount: 50000, received: { kind: 'money-in', ref: right.key } } });
     expect((await readWaiting(me.address)).items.some((i) => i.where?.raise === 'close')).toBe(false);
-    // The money that closed stands among the receipts the books owe — the Logista books it as investment.
-    expect((await houseReceipts(me.address)).some((r) => r.ref === right.key && r.direction === 'in')).toBe(true);
+    // The receipt has now had its one house-wide consumer: it cannot also be booked as new revenue.
+    expect((await accountsBoard(me.address, Date.now())).unbooked.some((r) => r.ref === right.key && r.direction === 'in')).toBe(false);
   });
 });

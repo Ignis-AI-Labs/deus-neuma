@@ -2,6 +2,12 @@ node_modules/
 .env
 .env.local
 .env.test
+# Production environments and private-key containers stay local at any depth.
+.env.production
+*.pem
+*.key
+*.p8
+*.p12
 *.log
 .DS_Store
 Thumbs.db
@@ -25,6 +31,10 @@ vault/test-dna/
 
 # Runtime data (data/ directory — formerly companions/)
 data/dna-cache/
+# Key custody records the start and the re-key write (sealed; never committed)
+data/retired-masters.json
+data/.retired-masters-healed
+data/master-check.json
 data/memory-store/
 data/temp/
 # Runtime logs (prefix/section drift, summon checks) — written by the running app, never source.
@@ -33,6 +43,10 @@ data/covenant/
 data/capacity/
 # Product-integrated team trial records stay under data; the global harness lives in benchmarks/.
 data/benchmarks/
+# The house's company index (sales/company-index.js): a local database loaded from free bulk files.
+data/lead-index/
+# The RAM keeper's own lock (ram-keeper.js): a running-process marker, never a record.
+data/ram-keeper.lock
 # Chat watches (chat-watch.js) — which conversation waits on what; machine-local state.
 data/watches/
 # Run records + delivery manifests name beings and wallets — local, like arenas
@@ -48,6 +62,12 @@ data/acts/
 data/diagnostics/
 # Brand kits carry a company's private livery (logos, palettes) — local runtime data
 data/brand-kits/
+# The speech engine and its weights (managed-stt.js) and the watch tools and their cache
+# (watch-tools.js) — downloaded binaries, local to this machine
+data/speech/
+data/watch/
+# PDF renders made for Founder to read; the markdown beside them is the record
+docs/work/reviews/*.pdf
 # ComfyUI spike artifacts (outputs, user data) — machine-local runtime, never source
 data/comfyui/
 # The culture library (downloaded images + provenance manifest) — runtime, curated per machine

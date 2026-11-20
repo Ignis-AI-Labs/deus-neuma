@@ -23,6 +23,13 @@
   --line: rgba(228, 234, 240, 0.18);
   --line-hover: rgba(228, 234, 240, 0.4);
   --grid: rgba(228, 234, 240, 0.02);
+  /* THE SURFACE LADDER (design-language.md § SURFACES): four steps of fill and one heavier line, so a rail, a
+     card, a table's head and its rows part from one another by tone and not by hairlines alone. */
+  --line-strong: rgba(228, 234, 240, 0.38);       /* between sections; under a table's head */
+  --surface-sunk: rgba(17, 22, 29, 0.6);          /* a rail or a well: a step below the window */
+  --surface-raised: rgba(228, 234, 240, 0.06);    /* a card: a step above it */
+  --surface-band: rgba(228, 234, 240, 0.11);      /* a head: a table's, an open section's, the chosen row */
+  --surface-stripe: rgba(228, 234, 240, 0.035);   /* every other row */
   --cut: 12px;                 /* structural chamfer */
   --cut-sm: 6px;               /* control chamfer */
   --snap: 140ms linear;        /* lines snap — deterministic */

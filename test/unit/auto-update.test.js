@@ -135,8 +135,9 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
   const CHANNEL = 'latest-linux.yml';
   const key = generateKeyPairSync('ed25519');
   const publicKey = releasePublicKey(embeddedFormOf(key.publicKey));
-  const yml = (version) => Buffer.from(`version: ${version}\nfiles:\n  - url: Deus-Neuma-${version}-x86_64.AppImage\n    sha512: AAAA\n    size: 1\n`);
-  const offered = (version) => require('js-yaml').load(yml(version).toString());
+  const currentDate = new Date().toISOString();
+  const yml = (version, releaseDate = currentDate) => Buffer.from(`version: ${version}\nfiles:\n  - url: Deus-Neuma-${version}-x86_64.AppImage\n    sha512: AAAA\n    size: 1\nreleaseDate: ${releaseDate}\n`);
+  const offered = (version, releaseDate) => require('js-yaml').load(yml(version, releaseDate).toString());
   const servers = [];
   afterEach(async () => { await Promise.all(servers.splice(0).map((s) => new Promise((r) => s.close(r)))); });
 
@@ -192,6 +193,15 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
     const verdict = await siteVerdict({ fetchImpl: fetch, feedUrl, channelFile: CHANNEL, publicKey, offered: offered('0.1.32') });
     expect(verdict.ok).toBe(false);
     expect(verdict.reason).toMatch(/signature does not match latest-linux\.yml/);
+  });
+
+  it('a genuinely signed but expired feed fails both reads', async () => {
+    const date = '2020-01-01T00:00:00.000Z';
+    const stale = { [CHANNEL]: yml('0.1.32', date), [`${CHANNEL}.sig`]: signFeed(CHANNEL, yml('0.1.32', date), key.privateKey) };
+    const { feedUrl, requests } = await cachedFeed({ origin: stale, cached: stale });
+    const verdict = await siteVerdict({ fetchImpl: fetch, feedUrl, channelFile: CHANNEL, publicKey, offered: offered('0.1.32', date) });
+    expect(verdict).toEqual({ ok: false, reason: 'the signed feed is more than 30 days old' });
+    expect(requests).toHaveLength(4);
   });
 });
 

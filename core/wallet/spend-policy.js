@@ -139,5 +139,5 @@ export const classifySpend = (allowlist, thresholdEth, { to, value } = {}) => {
  * @returns {string}
  */
 export const spendMemo = (memo) => (typeof memo === 'string'
-  ? memo.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]+/g, ' ').replace(/ {2,}/g, ' ').trim().slice(0, 280)
+  ? memo.replace(/(?:\u034f|\u061c|\u115f|\u1160|\u17b4|\u17b5|\u180e|[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff])+/g, ' ').replace(/ {2,}/g, ' ').trim().slice(0, 280)
   : '');

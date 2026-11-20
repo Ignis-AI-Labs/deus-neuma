@@ -14,6 +14,7 @@ import path from 'path';
 import { describe, test, expect, beforeEach } from 'vitest';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { SERVING_PARALLEL_SLOTS } from '../../backend/services/serving-launch-config.js';
+import { MONEY_OUT } from '../../backend/services/house-clock/charter-shape.js';
 
 describe('the house charter, through its routes', () => {
   let app, operator, stranger;
@@ -62,7 +63,7 @@ describe('the house charter, through its routes', () => {
     res = await as(operator, request(app).put('/api/v1/house-clock/charter').send(charter()));
     expect(res.status).toBe(200);
     expect(res.body.standing).toBe('unapproved');
-    expect(res.body.charter).toMatchObject({ version: 1, approvedAt: null, paused: false, escalate: ['intents/wallet.send'] });
+    expect(res.body.charter).toMatchObject({ version: 1, approvedAt: null, paused: false, escalate: [...MONEY_OUT] });
 
     // approving a version the operator did not read is refused
     res = await as(operator, request(app).post('/api/v1/house-clock/charter/approve').send({ version: 2 }));
@@ -124,7 +125,7 @@ describe('the house charter, through its routes', () => {
     res = await as(operator, request(app).put('/api/v1/house-clock/charter')
       .send(charter({ allow: ['web/web_search', 'intents/tasks.add'], escalate: ['intents/social.post', 'intents/form.render', 'staff/house_state'] })));
     expect(res.status).toBe(200);
-    expect(res.body.charter.escalate).toEqual(['intents/social.post', 'intents/form.render', 'staff/house_state', 'intents/wallet.send']);
+    expect(res.body.charter.escalate).toEqual(['intents/social.post', 'intents/form.render', 'staff/house_state', ...MONEY_OUT]);
   });
 
   test('readiness names the house\'s own ground once it is set — never another house\'s', async () => {

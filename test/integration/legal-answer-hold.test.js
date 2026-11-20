@@ -39,8 +39,8 @@ describe('the citation hold (real seat, real socket, real web, real tray)', () =
   let houses; let httpServer; let wss; let serverWs; let client;
   const frames = [];
   const savedEnv = {};
-  // A fresh turn: the turn's own controller is what the hold keys "this turn" on.
-  const turn = (neumaId) => ({ ws: serverWs, walletAddress: HOUSE_A, companion: { name: 'LawEcho', neumaId }, activeTurn: new AbortController() });
+  // A turn in a chat: the hold keys what is confirmed on the chat (sessionId).
+  const turn = (neumaId) => ({ ws: serverWs, walletAddress: HOUSE_A, companion: { name: 'LawEcho', neumaId }, sessionId: 'chat-1', activeTurn: new AbortController() });
   const chips = () => frames.filter((f) => f.type === 'tool:usage' && f.tool === 'legal/citation_hold');
   const settle = () => new Promise((resolve) => setTimeout(resolve, 150)); // the socket delivers
 
@@ -78,7 +78,7 @@ describe('the citation hold (real seat, real socket, real web, real tray)', () =
     const [chip] = chips();
     expect(chip).toMatchObject({ status: 'error', neumaId: CLO_LANE });
     expect(chip.summary).toMatch(/^HELD — the app has not confirmed this legal answer \(3 problems\); the CLO is checking it now/);
-    expect(chip.detail).toContain('no citation check passed this turn, yet it cites law');
+    expect(chip.detail).toContain('no citation check has passed in this chat, yet it cites law');
     const owed = takePlatformFollowUp(conn);
     expect(owed).toMatchObject({ origin: 'hold', frame: { type: 'citation:held' } });
     expect(owed.thought.startsWith(HOLD_HEAD)).toBe(true);
@@ -97,7 +97,7 @@ describe('the citation hold (real seat, real socket, real web, real tray)', () =
     expect(records.at(-1)).toMatchObject({ kind: 'legal_alert', title: 'LawEcho gave a legal answer the app could not confirm', ref: { neumaId: CLO_LANE } });
   });
 
-  test('CHECKED — the CLO ran the check this turn on what it cites: nothing held; a re-answer earns a CHECKED chip', async () => {
+  test('CHECKED — the CLO ran the check in this chat on what it cites: nothing held; a re-answer earns a CHECKED chip', async () => {
     frames.length = 0;
     const conn = turn(CLO_LANE);
     const out = await handleLegalTool(serverWs, conn, null, 'auto', { toolName: 'legal_cite_check' }, { citations: [BROKER], text: CHECKED });
@@ -107,12 +107,22 @@ describe('the citation hold (real seat, real socket, real web, real tray)', () =
     await settleCitationHold({ connection: conn, text: CHECKED, interrupted: false, origin: 'hold' });
     await settle();
     expect(chips().map((c) => c.summary)).toEqual(['CHECKED — every citation and quotation in this answer was confirmed by the app']);
-    // A check from an earlier turn confirms nothing in this one.
+    // A check earlier in the chat still covers its next turn; another chat's covers nothing.
     const next = { ...conn, activeTurn: new AbortController() };
     await settleCitationHold({ connection: next, text: CHECKED, interrupted: false, origin: null });
+    expect(takePlatformFollowUp(next)).toBeNull();
+    const otherChat = { ...conn, sessionId: 'chat-2', activeTurn: new AbortController() };
+    await settleCitationHold({ connection: otherChat, text: CHECKED, interrupted: false, origin: null });
+    expect(takePlatformFollowUp(otherChat)?.origin).toBe('hold');
+    // Quoting the operator's own words is not quoting law; a row the platform wrote is not the operator's.
+    const quoting = `You said "keep the referral terms short and plain", so: ${CHECKED}`;
+    const asked = { role: 'user', content: 'Keep the referral terms short and plain, please.' };
+    await settleCitationHold({ connection: next, text: quoting, interrupted: false, origin: null, recent: [asked] });
+    expect(takePlatformFollowUp(next)).toBeNull();
+    await settleCitationHold({ connection: next, text: quoting, interrupted: false, origin: null, recent: [{ ...asked, origin: 'hold' }] });
     expect(takePlatformFollowUp(next)?.origin).toBe('hold');
     await settle();
-    expect(chips().at(-1).summary).toMatch(/^HELD/);
+    expect(chips().slice(1).map((c) => c.summary.slice(0, 4))).toEqual(['HELD', 'HELD']);
   }, 60_000);
 
   test('NOT HELD — another lane, a wake turn, an interrupted turn, or an answer that cites no law', async () => {

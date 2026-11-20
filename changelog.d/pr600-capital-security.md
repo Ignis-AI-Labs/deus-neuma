@@ -1,0 +1,13 @@
+Security
+- Coding commands now use the isolated shell by default.
+- Direct execution requires approval, removes backend and provider secrets from the child's inherited environment, and is refused while identity or wallet data lives under the operator's home folder.
+- Company worksheets can no longer override server-trusted request context or use traversal-shaped filenames.
+- A damaged or incomplete existing secrets file now stops startup instead of being replaced with new master keys; fresh key provisioning is atomic.
+- Undo restores are confined to the real project, refuse symlink escapes and protected paths, and beings cannot plant undo records through their file tools.
+- Fund-moving liquidity actions now need approval in ASK, AUTO, and unattended house wakes. Only verified pools are accepted, token identity is checked on-chain, and new-pool seeds have independent price and size limits.
+- Team workspace scripts cannot run from or modify platform ownership and consent state, and the approval shows the whole script.
+- Paired phones cannot change liquidity limits, recovery settings, payment destinations, or fundraising mandates.
+- Guests cannot grant themselves arbitrary filesystem roots, and a genesis seal alone cannot claim install ownership.
+- Key rotation requires the relevant passwords, secures the retired key before overwriting the current one, and no longer exports raw identity private keys through the HTTP API.
+- Backups now skip volatile coding sandboxes so unreadable overlay files cannot prevent sovereign records from being backed up.
+- House re-keying now includes the active wallet realm and its encrypted account credentials in both migration and old-key verification.

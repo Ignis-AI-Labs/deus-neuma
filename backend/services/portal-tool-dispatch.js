@@ -33,12 +33,13 @@ import { applyToolMode } from './tool-policy.js';
 import { ACT_REFUSALS } from './act-gate.js';
 import { isAskTool, handleAskOperator } from './operator-ask.js';
 import { isPlanTool } from './team-plan.js';
+import { isCloneTool, handleShadowClone } from './shadow-clone.js';
 import { isPlanPresentTool, handlePlanPresent, handlePlanSubmit as _handlePlanSubmit } from './plan-mode.js';
 import { isMindTool, handleMindTool } from './mind-tools.js';
 import { isSovereigntyTool, handleSovereigntyTool } from './sovereignty/gateway-handlers.js';
-import { handleSecurityTool, isSecurityTool } from './security/security-being-tools.js';
+import { handleSecurityTool, isSecurityTool } from './security/security-being-tools.js'; import { handleExtensionTool, isExtensionTool } from './extensions/extension-being-tools.js';
 import { handleLegalTool, isLegalTool } from './legal/legal-being-tools.js';
-import { handleTreasuryTool, isTreasuryTool } from './treasury/treasury-being-tools.js';
+import { handleTreasuryTool, isTreasuryTool } from './treasury/treasury-being-tools.js'; import { handleLpRead, isLpReadTool } from './umbrae-lp/lp-being-tools.js';
 import { handleBenchTool, isBenchTool } from './bench/bench-being-tools.js';
 import { isSkillSearchTool, isSkillTool } from './skill-tool.js';
 import {
@@ -151,8 +152,8 @@ export const dispatchPlatformTool = async (match, ctx) => {
       results.push(result);
       break dispatch;
     }
-    if (_isWalletViewTool(match)) {
-      results.push(await _handleWalletView(ws, companion));
+    if (_isWalletViewTool(match) || isLpReadTool(match)) { // reads of its own wallet, its book and the public market (lp-being-tools.js) run ahead of any mode check
+      results.push(await (isLpReadTool(match) ? handleLpRead(match, ws, companion, args, { sendToolEvent: _sendToolEvent }) : _handleWalletView(ws, companion)));
       break dispatch;
     }
 
@@ -226,10 +227,10 @@ export const dispatchPlatformTool = async (match, ctx) => {
       break dispatch;
     }
 
-    // Platform capability: a team plan submitted for the operator's approval —
-    // execution pauses on their verdict. Never the MCP path.
-    if (isPlanTool(match)) {
-      results.push(await _handlePlanSubmit(connection, args));
+    // Platform capability: a team plan for the operator's approval (pauses on the verdict), or the
+    // speaker's SHADOW CLONES (shadow-clone.js; returns when every clone reports). Never the MCP path.
+    if (isPlanTool(match) || isCloneTool(match)) {
+      results.push(await (isCloneTool(match) ? handleShadowClone(connection, args) : _handlePlanSubmit(connection, args)));
       break dispatch;
     }
 
@@ -330,7 +331,7 @@ export const dispatchPlatformTool = async (match, ctx) => {
     // Platform capability: the house offices' ledgers — the CSO's threats and
     // the CLO's legal matters — read by every bound being (the acts are the
     // seated officer's intents), and the connected benchmarks. Same ACTS gate.
-    const office = isSecurityTool(match) ? handleSecurityTool : isLegalTool(match) ? handleLegalTool : isTreasuryTool(match) ? handleTreasuryTool : isBenchTool(match) ? handleBenchTool : null;
+    const office = isSecurityTool(match) ? handleSecurityTool : isLegalTool(match) ? handleLegalTool : isTreasuryTool(match) ? handleTreasuryTool : isBenchTool(match) ? handleBenchTool : isExtensionTool(match) ? handleExtensionTool : null;
     if (office) {
       results.push(await office(ws, connection, neumaPolicy, toolMode, match, args, { sendToolEvent: _sendToolEvent }));
       break dispatch;
@@ -370,7 +371,7 @@ export const dispatchPlatformTool = async (match, ctx) => {
       }));
       break dispatch;
     }
-    if (isSubstrateFactsTool(match)) { results.push(await handleSubstrateFactsTool(ws, connection)); break dispatch; }
+    if (isSubstrateFactsTool(match)) { results.push(await handleSubstrateFactsTool(ws, connection, match)); break dispatch; }
     if (isMindTool(match)) {
       results.push(await handleMindTool(ws, connection, neumaPolicy, toolMode, match, args, {
         sendToolEvent: _sendToolEvent,

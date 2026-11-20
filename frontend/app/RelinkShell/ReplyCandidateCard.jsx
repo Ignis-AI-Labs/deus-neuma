@@ -4,6 +4,7 @@
 
 import { replyDispositionLabel, replyWhenLabel } from './campaigns-helpers.js';
 import { XPostLink } from './XPostLink.jsx';
+import { AccountMark } from './accounts/AccountMark.jsx';
 
 // THE KNOCK, VISIBLE (Design note, 2026-07-28: […]). One inbound
 // reply to the house's own post, VERBATIM, with its reads attached: who
@@ -41,8 +42,10 @@ export const ReplyCandidateCard = ({ candidate: c, now, children }) => {
             <span className="queue-preview-via">
               {c.verifiedType && c.verifiedType !== 'none'
                 ? `VERIFIED · ${String(c.verifiedType).toUpperCase()}`
-                : 'UNVERIFIED'} · REPLIED TO THE HOUSE
+                : 'UNVERIFIED'} · REPLIED TO
             </span>
+            {/* which of the house's accounts it answers: the one an answer speaks as */}
+            <AccountMark entry={{ ...c, channelId: 'x' }} door={false} />
             {category ? (
               <span className={`queue-preview-via${alert ? ' is-alert' : ''}`}>
                 {category.toUpperCase()}

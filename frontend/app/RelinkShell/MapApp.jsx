@@ -1,7 +1,6 @@
 // MapApp — REPO MAP. Any repository's architecture as an immersive readout.
-// It follows this window's working FOCUS (a bare folder or a project's
-// working folder) — point it at any folder and it maps what's there without
-// touching the project store: void ground,
+// It follows this window's working FOCUS (the folder in focus) — point it at
+// any folder and it maps what's there: void ground,
 // SIGNAL-cyan live wiring, ALERT-red severed links. Two wiring
 // lenses (SYSTEMS = functional subsystems + their dependencies; CHANNELS =
 // message lines producer→channel→consumer) plus ROUTES / FUNCTIONS / ANOMALIES.
@@ -10,10 +9,9 @@
 import { useContext, useEffect, useState } from 'react';
 import './MapApp.css';
 import { loadArchitectureMap } from './map-client.js';
-import { FolderOpenFlow } from './projects/FolderOpenFlow.jsx';
+import { FolderOpenFlow } from './FolderOpenFlow.jsx';
 import { AppTitle } from './app-title.jsx';
 import { FocusContext } from './use-desk-focus.js';
-import { useProjects } from './projects/project-context.js';
 import { focusFolderPath } from './desk-focus.js';
 import {
   groupRoutesByPrefix, isUnpaired, fileFunctionIndex,
@@ -307,13 +305,11 @@ const MapBody = () => {
   const [sys, setSys] = useState(null);
   const [picking, setPicking] = useState(false);
   const [openNote, setOpenNote] = useState('');
-  // This window's focus decides what the map indexes: bare folder → that
-  // path; project focus → its working folder; unfocused → the legacy
-  // active-project/default behavior. Only a HINT — the server re-validates
-  // the path against the opened roots (resolveFocusPath) before scanning.
+  // This window's focus decides what the map indexes: the folder in focus, or
+  // with nothing in focus the NEUMA repo by default. Only a HINT — the server
+  // re-validates the path against the opened roots (resolveFocusPath).
   const focus = useContext(FocusContext);
-  const projects = useProjects();
-  const folder = focusFolderPath(focus?.focus ?? null, projects?.projects || null);
+  const folder = focusFolderPath(focus?.focus ?? null);
 
   const load = () => {
     setState({ phase: 'loading' });
@@ -340,7 +336,7 @@ const MapBody = () => {
     return (
       <div className="elo-state">
         {folderFlow}
-        <p className="elo-state-line">No active project yet.</p>
+        <p className="elo-state-line">Nothing to map yet.</p>
         <button type="button" className="elo-open" onClick={() => setPicking(true)}>OPEN FOLDER…</button>
         <p className="elo-state-hint">Point the map at any folder or repository — it becomes this window's working focus.</p>
         {openNote ? <p className="elo-state-err label-data">{openNote}</p> : null}
@@ -365,7 +361,7 @@ const MapBody = () => {
           <span className="elo-sys">NEUMA // ARCHITECTURE INDEX</span>
           <span className="elo-proj">{project?.name || 'project'}</span>
           {project?.default ? (
-            <span className="elo-default label-data" title="No active project — showing the NEUMA repo by default. OPEN… to map another.">DEFAULT</span>
+            <span className="elo-default label-data" title="Nothing in focus — showing the NEUMA repo by default. OPEN… to map another.">DEFAULT</span>
           ) : null}
           <button type="button" className="elo-open elo-open--head" onClick={() => setPicking(true)}
             title="Open a different folder or repository">OPEN…</button>

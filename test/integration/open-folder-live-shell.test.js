@@ -10,6 +10,7 @@ import fs from 'fs/promises';
 import { existsSync, readdirSync } from 'fs';
 import os from 'os';
 import path from 'path';
+import process from 'node:process';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import neumaWorkspace, { setWitnessesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { ensureWitnessCodingSandbox, runWitnessCommand } from '../../backend/services/witness-coding-sandbox.js';
@@ -100,7 +101,7 @@ describe('the shell in the open folder on AUTO', () => {
         ...sandbox, mode: 'write', live: liveFor(sandbox),
         command: `printf '{"web":{"allowed":["web_fetch"]},"shellNetwork":true}' > house-lanes/kin/config/tool-policy.json; printf x > state/covenant/forged.json; printf ok > docs/still-mine.md; true`,
       });
-      expect(run.live).toBe(true);
+      expect(run).toMatchObject({ live: true, exitCode: 0 });
       expect(await fs.readFile(policy, 'utf8')).toBe('{"web":{"requireApproval":["web_fetch"]}}\n');
       await expect(fs.stat(path.join(dataRoot, 'covenant', 'forged.json'))).rejects.toMatchObject({ code: 'ENOENT' });
       expect(await fs.readFile(path.join(ground, 'docs', 'still-mine.md'), 'utf8')).toBe('ok');
@@ -127,14 +128,28 @@ describe('the shell in the open folder on AUTO', () => {
     } finally { setWorkspacesRoot(null); }
   }, 60_000);
 
+  test('absent agent and hook gates are bound before a being can create them; ordinary writes still land', async () => {
+    const sandbox = await ensureWitnessCodingSandbox(LANE_ID, ground);
+    const run = await runWitnessCommand({
+      ...sandbox, mode: 'write', live: liveFor(sandbox),
+      command: 'mkdir -p .claude scripts/git-hooks; printf hostile > .claude/settings.json; printf hostile > scripts/git-hooks/pre-commit; printf ok > docs/still-mine.md; true',
+    });
+    expect(run.live).toBe(true);
+    await expect(fs.stat(path.join(ground, '.claude', 'settings.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.stat(path.join(ground, 'scripts', 'git-hooks', 'pre-commit'))).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await fs.readFile(path.join(ground, 'docs', 'still-mine.md'), 'utf8')).toBe('ok');
+  }, 60_000);
+
   test('inspect stays read-only on the live folder', async () => {
     const sandbox = await ensureWitnessCodingSandbox(LANE_ID, ground);
     const blocked = await runWitnessCommand({
       ...sandbox, mode: 'inspect', live: liveFor(sandbox), command: 'cat docs/old.md && printf nope > blocked.txt',
     });
-    expect(blocked.stdout).toContain('# old');
+    expect(blocked).toMatchObject({ stdout: expect.stringContaining('# old') });
     expect(blocked.exitCode).not.toBe(0);
     await expect(fs.stat(path.join(ground, 'blocked.txt'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.lstat(path.join(ground, '.claude'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.lstat(path.join(ground, 'scripts'))).rejects.toMatchObject({ code: 'ENOENT' });
   }, 60_000);
 
   // The press and every page render need a browser: the machine's Playwright

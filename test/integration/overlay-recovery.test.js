@@ -192,7 +192,8 @@ describe.each(['portal', 'witness'])('%s recoverable coding shell', (seat) => {
     expect((await batch(seat, [call('sandbox_recover')]))[0].status).toBe('denied');
     expect(kit.frames.filter((frame) => frame.type === 'tool:approval_request')).toHaveLength(0);
     kit.connection.toolMode = 'auto';
-    expect((await batch(seat, [call('sandbox_recover', { discard: true })]))[0].status).toBe('error');
+    // sandbox_recover takes no fields: the one argument check refuses before the handler (tool-args-check.js)
+    expect((await batch(seat, [call('sandbox_recover', { discard: true })]))[0].status).toBe('invalid');
     await populate(seat);
     const before = kit.frames.length;
     const running = batch(seat, [call('sandbox_recover')]);

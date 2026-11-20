@@ -44,6 +44,14 @@ describe('a citation is a record the platform can check', () => {
     expect(citationRecordsProblem([{ ...RELEASE, pages: 'p. 24' }])).toMatch(/pages is a PDF page/);
     expect(citationRecordsProblem([{ ...RELEASE, pages: '20-30' }])).toBeNull();
   });
+
+  it('accepts only declared legal sources, by exact hostname', () => {
+    expect(citationRecordsProblem([{ ...RELEASE, sourceUrl: 'https://www.law.cornell.edu/uscode/text/15/78c' }])).toBeNull();
+    expect(citationRecordsProblem([{ ...RELEASE, sourceUrl: 'https://www.legislation.gov.uk/ukpga/2000/8/section/25' }])).toBeNull();
+    expect(citationRecordsProblem([{ ...RELEASE, sourceUrl: 'https://example.org/law' }])).toMatch(/not one of the legal office's declared sources/);
+    expect(citationRecordsProblem([{ ...RELEASE, sourceUrl: 'https://www.sec.gov.evil.example/release' }])).toMatch(/not one of the legal office's declared sources/);
+    expect(citationRecordsProblem([{ ...RELEASE, sourceUrl: `https://user:${'password'}@www.sec.gov/files/release.pdf` }])).toMatch(/must not carry a username or password/);
+  });
 });
 
 describe('a draft never ships an unresolved mark', () => {

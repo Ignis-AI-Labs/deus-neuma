@@ -85,7 +85,8 @@ describe('team/workspace-run — the being\'s code runs confined, behind a card 
     prevRealm = getRealmRoot();
     setRealmRoot(realm);
     await workspace.create(NEUMA_ID);
-    arena = path.join(house, 'arena');
+    // The arena stands on its own ground: a root inside platform state (the data root) is refused (P6-02).
+    arena = path.join(await createTempDir('ws-run-confine-ground'), 'arena');
     outsideDir = path.join(house, 'beside-the-arena');
     await fs.mkdir(arena, { recursive: true });
     await fs.mkdir(outsideDir, { recursive: true });

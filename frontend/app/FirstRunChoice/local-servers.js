@@ -94,10 +94,25 @@ export const modelLabel = (id) => {
   return m ? `${m[1]}${m[2] ? ` · ${m[2]}` : ''}` : String(id || '');
 };
 
+/**
+ * A served model id as a person reads it, or null when it names nothing to a person. A llama.cpp
+ * server reports the file it was started with: its file name says the model (shards and .gguf
+ * dropped), while a file descriptor or an Ollama blob (…\models\blobs\sha256-66cf…, seen on a
+ * teammate's Windows door 2026-11-13) says nothing. Pure.
+ * @param {string} id
+ * @returns {string|null}
+ */
+export const servedModelLabel = (id) => {
+  const text = String(id || '');
+  if (!text || /^\/proc\/self\/fd\//.test(text)) return null;
+  if (!/^(?:[A-Za-z]:[\\/]|\/|\\\\)/.test(text)) return modelLabel(text);
+  const file = text.split(/[\\/]/).pop();
+  if (!file || /^sha256-[0-9a-f]+$/i.test(file)) return null;
+  return file.replace(/\.gguf$/i, '').replace(/-\d{5}-of-\d{5}$/, '');
+};
+
 /** The first model a ready local server holds, as a person reads it, or null. Pure. */
 export const readyModelLabel = (setup) => {
   const ready = localServers(setup).find((s) => s.state === 'ready');
-  const id = ready?.models[0];
-  // a server launched from a file descriptor reports the descriptor, which names nothing to a person
-  return id && !/^\/proc\/self\/fd\//.test(id) ? modelLabel(id) : null;
+  return servedModelLabel(ready?.models[0]);
 };

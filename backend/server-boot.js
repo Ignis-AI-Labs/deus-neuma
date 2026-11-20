@@ -32,6 +32,8 @@ import { getSubstrateProfile } from './services/substrate-detector.js';
 import { runPreflight, startSubstrateIdleMonitor } from './services/substrate-lifecycle.js';
 import { startHeartbeat, stopHeartbeat } from './services/heartbeat.js';
 import { gracefulShutdown } from './services/shutdown.js';
+import { settleCutTurns, keepTurnsNow } from './services/turn-keep.js';
+import { fireLostWatches } from './services/chat-watch.js';
 import { listenServer } from './services/server-listen.js';
 import { watchDeskParent } from './services/desk-parent-watch.js';
 import { getDataRoot, getVaultRoot } from './services/data-root.js';
@@ -43,8 +45,13 @@ import { startPostScheduler } from './services/social/post-scheduler.js';
 import { startStatsSweep } from './services/social/stats/stats-sweep.js';
 import { startStatusScheduler } from './services/staff/status-sweep.js';
 import { startHouseClock } from './services/house-clock/house-clock.js';
+import { startLpReports } from './services/umbrae-lp/lp-report.js';
+import { startLpWatch } from './services/umbrae-lp/lp-watch.js';
 import { startReplyListener } from './services/social/reply-listener.js';
 import { startSecurityScheduler } from './services/security/security-scheduler.js';
+import { startRamKeeper } from './services/ram-keeper/ram-keeper.js';
+import { startSttAtBoot } from './services/managed-stt.js';
+import { startSystemDictation } from './services/system-dictation/system-dictation.js';
 import { startLegalScheduler } from './services/legal/legal-scheduler.js';
 import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
@@ -99,6 +106,7 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
   let stopChatBridge = null;
   let stopStatusSweep = null;
   let stopHouseClock = null;
+  let stopRamKeeper = null;
 
   // --- Directory bootstrapping ---
 
@@ -289,6 +297,10 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     startGuarded('stats sweep', startStatsSweep);
     // The CSO's standing watch — the 24-hour dependency/secret/host/house scan.
     stopSecurityScheduler = startGuarded('security scheduler', startSecurityScheduler);
+    // Dictation on an installed app: the speech server loads now, so a held key never waits on it.
+    startGuarded('speech server', startSttAtBoot);
+    // Dictation in every app, when the install owner turned it on: it listens for its key now.
+    startGuarded('dictation in every app', () => { startSystemDictation().catch((err) => log.error('dictation in every app did not start', { err: err.message })); });
     // The CLO's standing watch — licences shipped, the house's papers, and
     // what the new work touches, every 24 hours.
     stopLegalScheduler = startGuarded('legal scheduler', startLegalScheduler);
@@ -308,9 +320,21 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopChatBridge = startGuarded('chat bridge', startChatBridge);
     // The Optio office's cadence — standing status checks on open charges.
     stopStatusSweep = startGuarded('status sweep', startStatusScheduler);
+    // A turn a quit or a crash cut short lands on its chat's record, as the take it was (turn-keep.js).
+    settleCutTurns().then((landed) => { if (landed) log.info('cut turns are back on the record', { landed }); })
+      .catch((err) => log.warn('cut turns were not swept at start', { err: err.message }));
+    // Shadow clones working in the background when the app closed: their chat is told, never left waiting (shadow-clone.js).
+    fireLostWatches('clones', (w) => `They were cut off when the app closed before they finished. Each one's sitting is filed under this chat with whatever it had done; nothing was reported back. Resume them where they left off — shadow_clone {resume: "${String(w.ref).split(':')[0]}"} — or your operator presses RESUME on their tabs.`)
+      .catch((err) => log.warn('lost clone splits were not told at start', { err: err.message }));
     // The house clock — the house wakes itself for its own work, inside the
     // charter its operator approved (house-clock.js).
     stopHouseClock = startGuarded('house clock', startHouseClock);
+    // The RAM keeper — idle engines rest, stale /tmp leftovers go, short memory is named (ram-keeper/).
+    stopRamKeeper = startGuarded('RAM keeper', startRamKeeper);
+    // The LP wallets' daily report — once a local day, one card per house
+    // member with positions, actions or a waiting deposit (lp-report.js).
+    startGuarded('LP daily report', startLpReports);
+    startGuarded('LP watch (round the clock)', startLpWatch);
     // The bench watch — sees and says (stalls, crunch, serving incidents);
     // never kills, never relights. No-op when no harness stands on this box.
     startGuarded('bench watchdog', startBenchWatchdog);
@@ -357,6 +381,7 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     stopChatBridge?.(); // every chat bot's line closes with the server
     stopStatusSweep?.(); // the office's cadence stops with the server
     stopHouseClock?.(); // no wake starts into the drain window
+    stopRamKeeper?.(); // the RAM keeper's lock is released with the server
     stopBenchWatchdog(); // the bench watch stops with the server
     stopMeditation?.(); // an in-flight dream aborts; nothing of it lands
     stopRemoteTunnel?.().catch(() => {}); // the native road's listeners close with it
@@ -376,7 +401,10 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
       sockets: [wss, terminalWss, dictateWss].filter(Boolean),
       stopHeartbeat,
       log,
-      exit: (code) => process.exit(code),
+      // Every running turn is written down before the process goes (turn-keep.js).
+      exit: (code) => {
+        Promise.race([keepTurnsNow(), new Promise((resolve) => { setTimeout(resolve, 1000); })]).finally(() => process.exit(code));
+      },
     });
   };
   process.on('SIGTERM', shutdown);

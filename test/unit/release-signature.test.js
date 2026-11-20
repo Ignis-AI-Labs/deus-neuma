@@ -27,12 +27,14 @@ const {
 } = require('../../electron/release-signature.cjs');
 const embeddedKeys = require('../../electron/release-public-key.cjs');
 
-const FEED = Buffer.from('version: 0.1.31\nfiles:\n  - url: Deus-Neuma-0.1.31-x86_64.AppImage\n    sha512: AAAA\n    size: 10\npath: Deus-Neuma-0.1.31-x86_64.AppImage\nsha512: AAAA\n');
+const FEED = Buffer.from('version: 0.1.31\nfiles:\n  - url: Deus-Neuma-0.1.31-x86_64.AppImage\n    sha512: AAAA\n    size: 10\npath: Deus-Neuma-0.1.31-x86_64.AppImage\nsha512: AAAA\nsignedAt: "2026-01-01T00:00:00.000Z"\nminimumVersion: 0.1.31\n');
 const OFFERED = Object.freeze({
   version: '0.1.31',
   files: [{ url: 'Deus-Neuma-0.1.31-x86_64.AppImage', sha512: 'AAAA', size: 10 }],
   path: 'Deus-Neuma-0.1.31-x86_64.AppImage',
   sha512: 'AAAA',
+  signedAt: '2026-01-01T00:00:00.000Z',
+  minimumVersion: '0.1.31',
 });
 const keyA = generateKeyPairSync('ed25519');
 const keyB = generateKeyPairSync('ed25519');
@@ -167,6 +169,13 @@ describe('the trusted key list — the release key and its offline backup', () =
     const outsider = await verifyRelease({ dir, publicKeyText: [TRUSTED[0], embeddedFormOf(keyC.publicKey)] });
     expect(outsider.problems).toContain(`${LINUX}.sig: the signature does not match ${LINUX} (altered, signed for another file, or by another key)`);
   });
+
+  it('--verify refuses malformed or duplicate trusted entries instead of silently dropping them', async () => {
+    const malformed = await verifyRelease({ dir: '/not/read', publicKeyText: [TRUSTED[0], 'bm90IGEga2V5'] });
+    expect(malformed.problems).toEqual(['trusted release key 1 is empty or malformed']);
+    const duplicate = await verifyRelease({ dir: '/not/read', publicKeyText: [TRUSTED[0], TRUSTED[0]] });
+    expect(duplicate.problems).toEqual(['the trusted release key list contains a duplicate']);
+  });
 });
 
 describe('offerDiffers — what the updater will download must be what was signed', () => {
@@ -265,7 +274,7 @@ describe('scripts/release-key.mjs', () => {
     const { keyPath, publicKeyText } = generateReleaseKey(dir);
     expect(keyPath).toBe(join(dir, PRIVATE_KEY_NAME));
     expect(statSync(keyPath).mode & 0o777).toBe(0o600);
-    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN PRIVATE KEY-----/);
+    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN PRIVATE\x20KEY-----/);
     expect(releasePublicKey(publicKeyText)).not.toBeNull();
     expect(() => generateReleaseKey(dir)).toThrow(/EEXIST/);
   });
@@ -281,10 +290,15 @@ describe('scripts/release-key.mjs', () => {
     expect(existsSync(join(release, 'latest-linux.yml.sig'))).toBe(false);
     expect(signFeeds({ dir: release, keyPath, expectedPublicKeyText: publicKeyText })).toEqual(['latest-linux.yml', 'latest.yml']);
     const pub = releasePublicKey(publicKeyText);
+    const linuxBytes = readFileSync(join(release, 'latest-linux.yml'));
+    const windowsBytes = readFileSync(join(release, 'latest.yml'));
     const linuxSig = readFileSync(join(release, 'latest-linux.yml.sig'), 'utf8');
-    expect(signatureHolds(LINUX, FEED, linuxSig, pub)).toBe(true);
-    expect(signatureHolds('latest.yml', FEED, linuxSig, pub)).toBe(false); // same bytes, other channel
-    expect(signatureHolds('latest.yml', FEED, readFileSync(join(release, 'latest.yml.sig'), 'utf8'), pub)).toBe(true);
+    expect(signatureHolds(LINUX, linuxBytes, linuxSig, pub)).toBe(true);
+    expect(signatureHolds('latest.yml', linuxBytes, linuxSig, pub)).toBe(false); // same version, other channel
+    expect(signatureHolds('latest.yml', windowsBytes, readFileSync(join(release, 'latest.yml.sig'), 'utf8'), pub)).toBe(true);
+    const signedDoc = require('js-yaml').load(linuxBytes.toString('utf8'));
+    expect(signedDoc.minimumVersion).toBe('0.1.31');
+    expect(Date.parse(String(signedDoc.signedAt))).toBeLessThanOrEqual(Date.now());
     expect(existsSync(join(release, 'notes.yml.sig'))).toBe(false);
   });
 
@@ -296,10 +310,10 @@ describe('scripts/release-key.mjs', () => {
     const line = out.match(/^module\.exports = \{ RELEASE_PUBLIC_KEY: '([A-Za-z0-9+/=]+)' \};$/m);
     expect(line).not.toBeNull();
     expect(releasePublicKey(line[1])).not.toBeNull();
-    expect(out).not.toMatch(/PRIVATE KEY-----/);
+    expect(out).not.toMatch(/PRIVATE\x20KEY-----/);
     expect(out).not.toContain(phrase);
     const keyPath = join(dir, PRIVATE_KEY_NAME);
-    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN ENCRYPTED PRIVATE KEY-----/);
+    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN ENCRYPTED PRIVATE\x20KEY-----/);
     expect(statSync(keyPath).mode & 0o777).toBe(0o600);
     // no passphrase given: nothing is written
     const bare = join(outside(), 'bare');
@@ -311,14 +325,14 @@ describe('scripts/release-key.mjs', () => {
     const phrase = 'correct horse battery staple';
     const { keyPath, publicKeyText, encrypted } = generateReleaseKey(outside(), { passphrase: phrase });
     expect(encrypted).toBe(true);
-    expect(readFileSync(keyPath, 'utf8')).not.toMatch(/-----BEGIN PRIVATE KEY-----/);
+    expect(readFileSync(keyPath, 'utf8')).not.toMatch(/-----BEGIN PRIVATE\x20KEY-----/);
     const release = outside();
     writeFileSync(join(release, 'latest-linux.yml'), FEED);
     expect(() => signFeeds({ dir: release, keyPath, expectedPublicKeyText: publicKeyText })).toThrow(/locked with a passphrase/);
     expect(() => signFeeds({ dir: release, keyPath, expectedPublicKeyText: publicKeyText, passphrase: 'not the phrase at all' })).toThrow(/does not open this key/);
     expect(existsSync(join(release, 'latest-linux.yml.sig'))).toBe(false);
     expect(signFeeds({ dir: release, keyPath, expectedPublicKeyText: publicKeyText, passphrase: phrase })).toEqual(['latest-linux.yml']);
-    expect(signatureHolds(LINUX, FEED, readFileSync(join(release, 'latest-linux.yml.sig'), 'utf8'), releasePublicKey(publicKeyText))).toBe(true);
+    expect(signatureHolds(LINUX, readFileSync(join(release, 'latest-linux.yml')), readFileSync(join(release, 'latest-linux.yml.sig'), 'utf8'), releasePublicKey(publicKeyText))).toBe(true);
   });
 
   it('refuses a passphrase too short to stand against a copied file', () => {

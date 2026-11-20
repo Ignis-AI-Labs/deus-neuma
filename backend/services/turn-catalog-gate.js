@@ -10,11 +10,15 @@
  * A connection with no stamped catalog (a birth stage, a direct caller) is
  * judged by the gates downstream exactly as before.
  *
+ * `admitCall` adds the one argument check (tool fluency, 2026-11-12): a call
+ * the turn offered is read against its schema before anything dispatches.
+ *
  * Pure.
  */
 import { fsRetiredHint } from './fs-primitives.js';
 import { retiredToolHint } from './tool-policy.js';
 import { doorRefusal, unknownToolHint } from './tool-hud.js';
+import { argsRefusalText, fitToolArgs } from './tool-args-check.js';
 
 // The joiners substrates put between server and tool (portal-tool-loop.js
 // TOOL_NAME_SEPARATORS): a smashed `platform__platform_data` names the
@@ -63,4 +67,33 @@ const offCatalogRefusal = (connection, match) => {
  * @param {Object} connection
  * @param {Object} match - the unwrapped call
  */
-export const refusedBeforeDispatch = (connection, match) => doorRefusal(match) ?? offCatalogRefusal(connection, match);
+const refusedBeforeDispatch = (connection, match) => doorRefusal(match) ?? offCatalogRefusal(connection, match);
+
+// pure — the one catalog tool a call names, or null (no catalog, unknown, ambiguous)
+const catalogToolFor = (catalog, match) => {
+  const named = namedBy(catalog, String(match?.toolName || ''));
+  const held = match?.server ? named.filter((tool) => tool.server === match.server) : [];
+  const pick = held.length > 0 ? held : named;
+  return pick.length === 1 ? pick[0] : null;
+};
+
+/**
+ * pure — the gate every call crosses before any handler: the refusals above,
+ * then its arguments read against the schema the model was shown
+ * (tool-args-check.js). A call that fits goes on with its arguments as read
+ * (`"5"` → 5, `old_string` → `oldText`); one that does not is refused with
+ * what to write instead, status `invalid`, and nothing runs.
+ * @param {Object} connection
+ * @param {Object} match - the unwrapped call
+ * @returns {{match: Object, refused: ?Object}}
+ */
+export const admitCall = (connection, match) => {
+  const refused = refusedBeforeDispatch(connection, match);
+  if (refused) return { match, refused };
+  const tool = Array.isArray(connection?._turnCatalog) ? catalogToolFor(connection._turnCatalog, match) : null;
+  if (!tool?.inputSchema) return { match, refused: null };
+  const { args, problems } = fitToolArgs(tool.inputSchema, match.args);
+  if (problems.length === 0) return { match: Object.freeze({ ...match, args }), refused: null };
+  const id = `${tool.server}/${tool.name}`;
+  return { match, refused: { tool: id, status: 'invalid', error: argsRefusalText(id, tool.inputSchema, problems) } };
+};

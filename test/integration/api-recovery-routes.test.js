@@ -25,6 +25,7 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { claimOwner } from '../helpers/claim-owner.js';
 import neumaWorkspace, { setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { createSessionToken } from '../../backend/services/auth.js';
+import { accessScopeMiddleware } from '../../backend/services/remote/access-guard.js';
 import {
   encryptKeypair, encryptWithRecoveryCodes, generateRecoveryCodes, hashRecoveryCodes,
 } from '../../core/wallet/keypair-vault.js';
@@ -65,6 +66,7 @@ beforeEach(async () => {
 
   app = express();
   app.use(express.json());
+  app.use(accessScopeMiddleware);
   app.use('/api/v1/neuma', recoveryRouter);
 });
 

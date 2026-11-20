@@ -37,6 +37,7 @@ import { firstAccountId } from '../services/social/account-shape.js';
 import { readChannelBoard } from '../services/social/channel-board.js';
 import { withCardFreshness } from '../services/branding/card-provenance.js';
 import { withLegalFlags } from '../services/marketing/draft-review.js';
+import { withReplyTier } from '../services/marketing/mandate/reply-tier.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('SocialChannels');
@@ -93,7 +94,9 @@ router.get('/queue', async (req, res) => {
       onError: (msg) => log.warn('card freshness check skipped', { error: msg }),
     });
     // The claims check's LEGAL flag rides each waiting post; it flags, never holds.
-    res.json({ queue: await withLegalFlags(fresh, req.walletAddress).catch((err) => { log.warn('legal flags skipped', { error: err.message }); return fresh; }) });
+    // A waiting reply's TIER rides beside it: why it waits on the operator.
+    const flagged = await withLegalFlags(fresh, req.walletAddress).catch((err) => { log.warn('legal flags skipped', { error: err.message }); return fresh; });
+    res.json({ queue: flagged.map(withReplyTier) });
   } catch (error) {
     log.error('Queue read failed', { error: error.message });
     res.status(500).json({ error: 'Failed to read the post queue' });
@@ -241,9 +244,11 @@ router.put('/queue/:id/approve', async (req, res) => {
     // judged against the account as TikTok describes it right now.
     const tiktok = target?.channelId === 'tiktok' ? await tiktokApproval(req.walletAddress, target, req.body?.tiktok) : null;
     if (tiktok && !tiktok.ok) return res.status(409).json({ error: tiktok.detail });
+    // A yes names the words and the media seals its card showed (approval-seal.js, P6-124).
+    if (typeof req.body?.textSeen !== 'string') return res.status(409).json({ error: 'an approval names the copy it read — read the post again, then approve' });
     const result = await postQueue.approve(req.params.id, {
-      decidedBy: req.walletAddress, scheduledFor: req.body?.scheduledFor,
-      ...(tiktok ? { tiktokConsent: tiktok.consent, textSeen: req.body?.textSeen } : {}),
+      decidedBy: req.walletAddress, scheduledFor: req.body?.scheduledFor, textSeen: req.body.textSeen, mediaSeen: req.body?.mediaSeen,
+      ...(tiktok ? { tiktokConsent: tiktok.consent } : {}),
     });
     if (!result.ok) return res.status(409).json({ error: result.error });
     log.info('Post approved', { id: req.params.id, wallet: req.walletAddress });

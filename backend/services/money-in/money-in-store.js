@@ -95,6 +95,9 @@ export const readReceipts = async (house) => {
     : row));
 };
 
+/** Receipts eligible to pay an invoice, close a raise, or enter the books. */
+export const readExternalReceipts = async (house) => (await readReceipts(house)).filter((row) => row.internal !== true);
+
 /**
  * Append the rows the ledger does not hold yet. Call inside withHouseLock.
  * impure.

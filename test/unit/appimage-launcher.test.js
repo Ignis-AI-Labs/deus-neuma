@@ -15,13 +15,14 @@ import { fileURLToPath } from 'node:url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const LAUNCHER = path.join(REPO, 'build/appimage-launcher.sh');
 const { afterPack, buildsAppImage } = createRequire(import.meta.url)('../../scripts/appimage-launcher-hook.cjs');
+const { needsAppImageSandboxWarning } = createRequire(import.meta.url)('../../electron/appimage-sandbox-warning.cjs');
 
 // A packed app folder: the launcher as `neuma`, and a neuma-bin that prints its arguments.
 const appDir = () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'appimage-launcher-'));
   fs.copyFileSync(LAUNCHER, path.join(dir, 'neuma'));
   fs.chmodSync(path.join(dir, 'neuma'), 0o755);
-  fs.writeFileSync(path.join(dir, 'neuma-bin'), '#!/bin/sh\nprintf "%s\\n" "$@"\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'neuma-bin'), '#!/bin/sh\nprintf "%s\\n" "$@"\n[ -z "$NEUMA_APPIMAGE_NO_SANDBOX" ] || printf "NEUMA_APPIMAGE_NO_SANDBOX=%s\\n" "$NEUMA_APPIMAGE_NO_SANDBOX" >&2\n', { mode: 0o755 });
   return dir;
 };
 
@@ -58,6 +59,7 @@ describe('the AppImage launcher', () => {
     const { args, stderr } = launch(appDir(), { APPIMAGE: '/apps/Deus-Neuma.AppImage' }, restricted());
     expect(args).toEqual(['--no-sandbox', '--ozone-platform=x11', 'a b']);
     expect(stderr).toMatch(/does not allow unprivileged user namespaces/);
+    expect(stderr).toContain('NEUMA_APPIMAGE_NO_SANDBOX=1');
   });
 
   test.skipIf(!hostUserns)('outside an AppImage, even there, it never turns the sandbox off', () => {
@@ -86,5 +88,14 @@ describe('the afterPack hook', () => {
     await afterPack(context(dir, 'dir'));
     expect(fs.readdirSync(dir)).toEqual(['neuma']);
     expect(buildsAppImage({ electronPlatformName: 'win32', targets: [{ name: 'appImage' }] })).toBe(false);
+  });
+});
+
+describe('the native AppImage sandbox warning', () => {
+  test('is owed only for a Linux AppImage the launcher marked unsandboxed', () => {
+    expect(needsAppImageSandboxWarning({ APPIMAGE: '/apps/Neuma.AppImage', NEUMA_APPIMAGE_NO_SANDBOX: '1' }, 'linux')).toBe(true);
+    expect(needsAppImageSandboxWarning({ APPIMAGE: '/apps/Neuma.AppImage' }, 'linux')).toBe(false);
+    expect(needsAppImageSandboxWarning({ NEUMA_APPIMAGE_NO_SANDBOX: '1' }, 'linux')).toBe(false);
+    expect(needsAppImageSandboxWarning({ APPIMAGE: '/apps/Neuma.AppImage', NEUMA_APPIMAGE_NO_SANDBOX: '1' }, 'darwin')).toBe(false);
   });
 });

@@ -34,7 +34,7 @@ const page = (message) => `<!doctype html><html><head><meta charset="utf-8"><tit
  *   done: Promise<{ok: true, tokens: object}|{ok: false, detail: string}>,
  *   cancel: () => void}>}
  */
-export const openOAuthLoopback = async ({ platform, callbackPath = '', mint, buildAuthUrl, exchange, timeoutMs = CONSENT_TIMEOUT_MS }) => {
+export const openOAuthLoopback = async ({ platform, callbackPath = '', port = 0, mint, buildAuthUrl, exchange, timeoutMs = CONSENT_TIMEOUT_MS }) => {
   const pkce = mint();
   let settle;
   const answered = new Promise((resolve) => { settle = resolve; });
@@ -50,8 +50,9 @@ export const openOAuthLoopback = async ({ platform, callbackPath = '', mint, bui
     }
     if (state !== pkce.state) {
       res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(page('This sign-in link does not belong to the connect in progress. Start CONNECT again from the desk.'));
-      settle({ ok: false, detail: 'the sign-in answer did not match the connect in progress (state mismatch); start CONNECT again' });
+      res.end(page('This sign-in link does not belong to the connect in progress. Return to the original sign-in page; it is still waiting.'));
+      // An unknown state is a stray or hostile probe, not this consent's answer.
+      // The matching callback can still land on this listener.
       return;
     }
     if (error || !code) {
@@ -66,7 +67,9 @@ export const openOAuthLoopback = async ({ platform, callbackPath = '', mint, bui
   });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
+    // port 0: any free port (a platform that accepts any loopback port). A platform that matches the
+    // redirect address exactly names its one port; when that port is taken the consent cannot open.
+    server.listen(port, '127.0.0.1', resolve);
   });
   const redirectUri = `http://127.0.0.1:${server.address().port}${callbackPath}`;
   const timer = setTimeout(() => settle({ ok: false, detail: 'the sign-in was not finished within five minutes; start CONNECT again' }), timeoutMs);

@@ -32,6 +32,8 @@ const {
   _queueUpdateToolChannel, _queueBulkUpdateToolChannel,
 } = __test;
 const NEUMA_ID = 'queueeditlategate';
+// The chip tests edit a SIBLING lane's posts: a lane editing its OWN draft raises no card (queue-retract.test.js).
+const SIBLING = 'queueeditsibling';
 const X_ENV = ['X_API_KEY', 'X_API_SECRET', 'X_ACCESS_TOKEN', 'X_ACCESS_SECRET'];
 const SOCIAL_PATHS = ['NEUMA_SOCIAL_BINDINGS_PATH', 'NEUMA_SOCIAL_CREDENTIALS_PATH', 'NEUMA_SOCIAL_POST_QUEUE_PATH', 'NEUMA_SECTOR_CREW_PATH'];
 
@@ -60,7 +62,7 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
 
   const stage = async (text, { approved = false } = {}) => {
     const entry = await postQueue.add({
-      channelId: 'x', text, scheduledFor: '2999-01-01T09:00:00Z', authorNeumaId: NEUMA_ID,
+      channelId: 'x', text, scheduledFor: '2999-01-01T09:00:00Z', authorNeumaId: SIBLING,
     });
     if (approved) await postQueue.approve(entry.id, { decidedBy: 'Founder' });
     return entry.id;
@@ -85,6 +87,8 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     setWorkspacesRoot(house);
     await workspace.create(NEUMA_ID);
     await ownLane(NEUMA_ID);
+    await workspace.create(SIBLING);
+    await ownLane(SIBLING);
 
     const { getChannel } = await import('../../backend/services/social/channel-registry.js');
     channel = getChannel('x');
@@ -229,6 +233,31 @@ describe('queue edit tools (real WS + real policy cascade + real queue disk, gno
     expect(entry.status).toBe('approved');
     expect(entry.decidedBy).toBe('Founder');
     expect(entry.scheduledFor).toBe('2999-02-02T10:00:00Z');
+  }, 30000);
+
+  test('ITS OWN APPROVED POST — a new slot keeps the approval, so the card rises and a no leaves the slot alone (P6-100)', async () => {
+    const own = await postQueue.add({ channelId: 'x', text: 'my own approved words', scheduledFor: '2999-01-01T09:00:00Z', authorNeumaId: NEUMA_ID });
+    await postQueue.approve(own.id, { decidedBy: 'Founder' });
+    const connection = freshConnection();
+    serverWs.__connection = connection;
+    clientLog.length = 0;
+    decide = () => 'deny';
+
+    const retimed = await _handleNeumaQueueUpdate(serverWs, connection, null, 'ask',
+      { id: own.id, scheduledFor: '2999-02-02T10:00:00Z' }, channel);
+    expect(retimed.status).toBe('denied');
+    const card = await untilClient((m) => m.type === 'tool:approval_request');
+    expect(card.args).toContain('2999-02-02T10:00:00Z');
+    let [entry] = await postQueue.load();
+    expect(entry).toMatchObject({ status: 'approved', scheduledFor: '2999-01-01T09:00:00Z' });
+
+    // New words on its own approved post return it to DRAFT, so no card is owed: the operator decides the draft.
+    clientLog.length = 0;
+    const reworded = await _handleNeumaQueueUpdate(serverWs, connection, null, 'ask', { id: own.id, text: 'my new words' }, channel);
+    expect(reworded.status).toBe('ok');
+    expect(clientLog.filter((m) => m.type === 'tool:approval_request')).toEqual([]);
+    [entry] = await postQueue.load();
+    expect(entry).toMatchObject({ status: 'draft', text: 'my new words' });
   }, 30000);
 
   test('OBSERVE holds the edit — the witness is watching, not acting; the queue is untouched', async () => {

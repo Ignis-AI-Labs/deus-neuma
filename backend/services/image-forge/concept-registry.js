@@ -47,6 +47,16 @@ const CHARACTER_FRAMING = Object.freeze({
   plate: 'simple background, black background, character design reference',
 });
 
+const RIG_FRAMING = Object.freeze({
+  framing: '2D game rig reference, one full-body character in strict side-profile view facing left, '
+    + 'neutral A-pose, one near arm fully visible and held away from the torso, hand open and empty, '
+    + 'legs straight and slightly apart, near-side anatomy readable for segmentation',
+  garment: 'the approved character clothing, hair, gloves and boots, no held equipment',
+  expression: 'neutral side-profile expression',
+  lighting: 'even flat lighting, every part readable for segmentation',
+  plate: 'simple background, black background, no ground shadow, no effects',
+});
+
 const TURNAROUND_FRAMING = Object.freeze({
   framing: 'character turnaround reference sheet, the same single character shown exactly three times, '
     + 'front view, side view, back view in a horizontal row, full body, head to toe, neutral A-pose, '
@@ -143,6 +153,18 @@ export const buildConceptPipelines = (promptSlots, samplerSlots) => {
       CHARACTER_FRAMING,
       'multiple people, character sheet, turnaround, different character, changing outfit',
       { ...slots, fixed: { width: 832, height: 1216 }, loraStrength: 0.75, source: true },
+    ),
+    'concept.pixel.rig': pipeline(
+      'concept.pixel.rig',
+      'GAME — side-on multipart rig source',
+      'Converts an approved character into a strict side-profile A-pose for raster segmentation. Requires the approved source image. The near arm and boots must be readable, with an empty hand and no magic or weapons; far-side parts are derived during rigging.',
+      RIG_FRAMING,
+      'three-quarter view, front view, back view, multiple people, character sheet, '
+        + 'overlapping limbs, hidden near arm, hidden near hand, weapons, magic, particles, glow effects, cape',
+      {
+        ...slots, fixed: { width: 832, height: 1216 }, loraStrength: 0.75, source: true, denoise: 0.95,
+        controlNetId: 'openpose-sdxl', posePlate: 'pose_rig_side_ref.png', controlStrength: 1.2,
+      },
     ),
     'concept.pixel.weapon': pipeline(
       'concept.pixel.weapon',

@@ -6,8 +6,9 @@
  *   - PROCEEDS, no check: what the charter allows, and a read inside the
  *     house's own ground (the seat's lane, the house workspace) — its own
  *     files, its own stored results, its memory and vault;
- *   - THE OPERATOR'S, always: money out; a benchmark launch; posting and email, and taking
- *     something off the operator's own list, unless the charter allows them;
+ *   - THE OPERATOR'S, always: money out; a benchmark launch; posting, email, every other
+ *     publishing act (operator-acts.js) and taking something off the operator's
+ *     own list, unless the charter allows them;
  *     what the charter escalates; deletes; any path
  *     outside the house's ground; every gated act of the Optio herself (no
  *     self-review); and everything, when no chartered Optio is seated;
@@ -31,18 +32,19 @@ import { fsPolicyTarget, routeFsCall } from '../fs-primitives.js';
 import { loadHouseWorkspace } from '../house-workspace.js';
 import { createLogger } from '../logger.js';
 import { MONEY_OUT, charterSeat } from './charter-shape.js';
+import { isPublishing, PUBLISHING_IS_THE_OPERATORS, MONEY_ASKS, MONEY_ASKS_ARE_THE_OPERATORS } from './operator-acts.js';
 
 const log = createLogger('HouseClock.OptioReview');
 
 /** Reads inside the house's own ground: no review, they proceed. */
 const GROUND_READS = Object.freeze(new Set([
   'fs/read', 'fs/list', 'fs/search', 'record/retrieve_result',
-  'memory/memory_search', 'memory/memory_expand', 'memory/memory_list', 'memory/mind_read', 'memory/self_read',
+  'memory/memory_search', 'memory/memory_expand', 'memory/memory_list', 'memory/memory_map', 'memory/mind_read', 'memory/self_read',
   'vault/vault_list', 'vault/vault_read', 'vault/vault_search', 'vault/vault_history',
 ]));
 
 /** Outward acts: the operator's unless the charter's allow list names them. */
-const OUTWARD = Object.freeze(['intents/social.post', 'intents/email.send']);
+export const OUTWARD = Object.freeze(['intents/social.post', 'intents/email.send', 'intents/raise.reach']);
 
 /** A benchmark launch: the operator's explicit yes every time — never the Optio's, never a charter's. */
 export const BENCH_LAUNCH = 'bench/bench_run';
@@ -102,6 +104,8 @@ export const actRoute = ({ charter, tool, args, seat, officer, inGround }) => {
   if (charter.escalate.includes(tool)) return toOperator('the charter sends this act to the operator');
   if (charter.allow.includes(tool)) return { to: 'allow', by: 'charter' };
   if (OUTWARD.includes(tool)) return toOperator('posting and email go to the operator unless the charter allows them');
+  if (isPublishing(tool)) return toOperator(PUBLISHING_IS_THE_OPERATORS);
+  if (MONEY_ASKS.includes(tool)) return toOperator(MONEY_ASKS_ARE_THE_OPERATORS);
   if (THEIR_YES.includes(tool)) return toOperator('taking something off the operator\'s own list is their yes, every time');
   if (isDelete(tool, args)) return toOperator('a delete is the operator\'s to approve');
   if (!inGround) return toOperator('it reaches outside the house\'s ground');

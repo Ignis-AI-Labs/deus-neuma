@@ -82,7 +82,10 @@ const BEFORE = Object.freeze({
 });
 
 // The read load measured after the slice: a later slice lowers it, never raises it.
-const CEILING = Object.freeze({ campaign: 101, grant: 159, seat: 54 });
+// THE HOUSE RAIL (Design note, 2026-11-12, marketing-floor-browser's note) stands beside every view: each ceiling rises by what
+// it measured with it — campaign 101 → 117, the grant 159 → 180 (4 of them the reply tiers' words), SEAT standing 54 → 71.
+// Then its campaigns joined the rail (+2 here: Launch Week; marketing-floor-browser's note): 118, 182, 73.
+const CEILING = Object.freeze({ campaign: 118, grant: 182, seat: 73 });
 
 // The numbers that left the page at rest, each one named press away.
 const BEHIND_A_PRESS = Object.freeze({ campaign: [['STAMP-DAY', 'LOG n'], ['CLOCK', 'LOG n']] });

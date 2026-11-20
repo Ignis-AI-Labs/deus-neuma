@@ -78,9 +78,10 @@ describe('the sensitive-grant door — real MCP, real disk, no mock', () => {
   });
 
   test('a write lands under an EDIT grant (the root law also satisfied)', async () => {
-    const grants = { _grantedWriteRoots: [project], _sensitiveGrants: { edit: [envPath] } };
-    await caller(grants)(SERVER, 'write_file', { path: envPath, content: 'replaced=true\n' });
-    expect(await fs.readFile(envPath, 'utf8')).toBe('replaced=true\n');
+    const editPath = path.join(project, 'granted.env');
+    const grants = { _grantedWriteRoots: [project], _sensitiveGrants: { edit: [editPath] } };
+    await caller(grants)(SERVER, 'write_file', { path: editPath, content: 'replaced=true\n' });
+    expect(await fs.readFile(editPath, 'utf8')).toBe('replaced=true\n');
   });
 
   test('.git/ stays a wall even with a grant claimed — never requestable', async () => {
@@ -96,6 +97,26 @@ describe('the sensitive-grant door — real MCP, real disk, no mock', () => {
     const owner = path.join(project, 'owner.json');
     await expect(caller({ _sensitiveGrants: { read: [owner] } })(SERVER, 'read_file', { path: owner }))
       .rejects.toThrow(/Access denied: owner\.json/);
+  });
+
+  test.each(['vault', '.env', 'node_modules'])('a requestable %s parent never makes owner.json grantable', async (parent) => {
+    const owner = path.join(project, 'nested', parent, 'owner.json');
+    await fs.mkdir(path.dirname(owner), { recursive: true });
+    await fs.writeFile(owner, JSON.stringify({ wallet: '0xabc' }));
+    await expect(caller({ _sensitiveGrants: { read: [owner] } })(SERVER, 'read_file', { path: owner }))
+      .rejects.toThrow(/Access denied: owner\.json/);
+    await expect(caller({ _sensitiveGrants: { read: [owner] } })(SERVER, 'read_file', { path: owner }))
+      .rejects.not.toThrow(/request_file_access/);
+  });
+
+  test('a requestable parent never makes key custody grantable', async () => {
+    const key = path.join(project, 'node_modules', 'keys', 'keypair.json');
+    await fs.mkdir(path.dirname(key), { recursive: true });
+    await fs.writeFile(key, '{}');
+    await expect(caller({ _sensitiveGrants: { read: [key] } })(SERVER, 'read_file', { path: key }))
+      .rejects.toThrow(/Access denied: keys\//);
+    await expect(caller({ _sensitiveGrants: { read: [key] } })(SERVER, 'read_file', { path: key }))
+      .rejects.not.toThrow(/request_file_access/);
   });
 
   test('another being’s DNA stays a wall with a grant claimed', async () => {

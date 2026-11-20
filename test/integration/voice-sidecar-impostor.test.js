@@ -29,7 +29,9 @@ const engineServer = async (honest) => {
       const json = (status, value) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(value)); };
       if (url.pathname === '/health') return json(200, { ok: true, phase: 'ready', model: null, idle_seconds: 0 });
       if (url.pathname === '/identity') {
-        return json(200, { proof: honest ? identityProof(KEY, url.searchParams.get('challenge')) : 'ab'.repeat(32) });
+        const socket = `${req.socket.localAddress === '::1' ? '[::1]' : '127.0.0.1'}:${req.socket.localPort}`;
+        const valid = url.searchParams.get('socket') === socket;
+        return json(valid ? 200 : 403, { proof: honest && valid ? identityProof(KEY, 'kokoro', url.searchParams.get('challenge'), socket) : 'ab'.repeat(32) });
       }
       // the CSO's PoC: refuse the clip's ref so the backend resends the clip itself inline
       if (url.pathname === '/speak' && !body.includes('clip_b64')) return json(409, { error: 'unknown_ref', ref: 'ref-1' });
@@ -70,7 +72,7 @@ describe('an impostor answering /health on a sidecar port', () => {
     const { speak } = await import('../../backend/services/voice/providers/speak.js');
     const voice = { ref: 'ref-1', words: 'the reference words', wav: Buffer.alloc(4096, 7) };
     const run = async () => {
-      for await (const chunk of speak({ endpoint: impostor.base, text: 'hello', voice })) void chunk;
+      for await (const chunk of speak({ endpoint: impostor.base, engine: 'kokoro', text: 'hello', voice })) void chunk;
     };
     const before = impostor.seen.length;
     await expect(run()).rejects.toThrow(/could not prove/);
@@ -79,7 +81,7 @@ describe('an impostor answering /health on a sidecar port', () => {
 
   test('never receives transcription audio: the stream lane refuses to open its socket', async () => {
     const { sidecarSocketHeaders } = await import('../../backend/services/voice/sidecar-trust.js');
-    await expect(sidecarSocketHeaders(impostor.base)).rejects.toThrow(/could not prove/);
+    await expect(sidecarSocketHeaders(impostor.base, 'whisper')).rejects.toThrow(/could not prove/);
   });
 });
 
@@ -93,9 +95,9 @@ describe('a sidecar from before the install key (an app update left it running)'
       return res.end(JSON.stringify({ ok: true, phase: 'ready' }));
     });
     await new Promise((r) => old.listen(0, '127.0.0.1', r));
-    expect(await provenOrRetired('127.0.0.1', old.address().port)).toBe(false);
-    await expect(provenOrRetired('127.0.0.1', impostor.port)).rejects.toThrow(/could not prove/);
-    expect(await provenOrRetired('127.0.0.1', honest.port)).toBe(true);
+    expect(await provenOrRetired('127.0.0.1', old.address().port, 'kokoro')).toBe(false);
+    await expect(provenOrRetired('127.0.0.1', impostor.port, 'kokoro')).rejects.toThrow(/could not prove/);
+    expect(await provenOrRetired('127.0.0.1', honest.port, 'kokoro')).toBe(true);
   }, 30_000);
 });
 
@@ -106,9 +108,9 @@ describe('a sidecar holding the install key', () => {
     await manager.ensureReady('kokoro', { timeoutMs: 5000 });
     expect(manager.getStatus('kokoro').state).toBe('ready');
     const { sidecarFetch } = await import('../../backend/services/voice/sidecar-trust.js');
-    expect((await sidecarFetch(`${honest.base}/synthesize`, { method: 'POST', body: '{}' })).status).toBe(200);
+    expect((await sidecarFetch(`${honest.base}/synthesize`, { method: 'POST', body: '{}' }, 'kokoro')).status).toBe(200);
     const posted = honest.seen.filter((r) => r.method === 'POST');
     expect(posted).toHaveLength(1);
-    expect(posted[0].token).toBe(callerToken(KEY));
+    expect(posted[0].token).toBe(callerToken(KEY, 'kokoro'));
   });
 });

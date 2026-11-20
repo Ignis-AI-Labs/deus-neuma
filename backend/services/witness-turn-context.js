@@ -42,6 +42,7 @@ import { readVoicePack } from '../../core/voice-pack/voice-store.js';
 import { voiceSittingSection } from '../../core/voice/purpose.js';
 import { createLogger } from './logger.js';
 import { loadRecentImageMessages } from './recent-image-turn.js';
+import { besideTurnSections, toolDefinitionsOf } from './wire-sections.js';
 import { witnessHistoryTail, WITNESS_RECENT_MESSAGES_SANITY } from './witness-history.js';
 import { sessionTailBudgetFor } from './envelope-budget.js';
 import { estimateTokens } from './context-budget.js';
@@ -234,13 +235,21 @@ export const buildWitnessTurnContext = async (opts) => {
   const currentTurnText = Array.isArray(turnContent)
     ? turnContent.filter((part) => part?.type === 'text').map((part) => part.text || '').join('\n')
     : turnContent;
+  // The Anthropic cache breakpoint rides the witness lane too: the split of
+  // THIS seat's section list (its clock sits second, so the stable head is the
+  // seal identity alone — honest, and the marker stays off when no head stands).
+  const priorImages = await loadRecentImageMessages(laneId, sessionId, images, routeCapabilities.vision);
+  const beside = { transcript: recent.length, priorImages, queued: takeQueuedActionMessages(connection) };
+  const messages = [systemMessageWithCacheSplit(systemPrompt, stablePromptSplit(promptSections)), ...recent, ...priorImages, ...beside.queued, { role: 'user', content: turnContent }];
   // Unlike the neuma path, witness history rides as prior chat messages —
-  // count those wire sections too, or measured usage misattributes.
+  // count those wire sections too, or measured usage misattributes. So do
+  // earlier images and finished actions, and the tool definitions (wire-sections.js).
   const contextSections = Object.freeze([
     ...promptSections,
     ...(recentText ? [Object.freeze({
       id: 'recentConversation', label: 'RECENT CONVERSATION', text: recentText,
     })] : []),
+    ...besideTurnSections(messages, beside),
     Object.freeze({ id: 'currentTurn', label: 'CURRENT TURN', text: currentTurnText }),
   ]);
   // The session's compaction telemetry, computed on the rows ALREADY in hand
@@ -250,7 +259,7 @@ export const buildWitnessTurnContext = async (opts) => {
   const sessionCompaction = sessionRows.length ? compactionTelemetry(sessionRows) : null;
   const compositionFor = (usage, completionText = '', extraSections = []) => Object.freeze({
     ...buildCompositionEvent({
-      sections: [...contextSections, ...extraSections],
+      sections: [...contextSections, ...extraSections, ...toolDefinitionsOf(connection)],
       usage,
       completionText,
       budget: contextBudget,
@@ -275,11 +284,6 @@ export const buildWitnessTurnContext = async (opts) => {
   connection.contextComposition = initialComposition;
   safeSend(ws, initialComposition);
 
-  // The Anthropic cache breakpoint rides the witness lane too: the split of
-  // THIS seat's section list (its clock sits second, so the stable head is the
-  // seal identity alone — honest, and the marker stays off when no head stands).
-  const priorImages = await loadRecentImageMessages(laneId, sessionId, images, routeCapabilities.vision);
-  const messages = [systemMessageWithCacheSplit(systemPrompt, stablePromptSplit(promptSections)), ...recent, ...priorImages, ...takeQueuedActionMessages(connection), { role: 'user', content: turnContent }];
   // The wire before round one — system, prior chat, the turn — never folds.
   const wireHead = messages.length;
   return { messages, compositionFor, contextBudget, wireHead, runtime };

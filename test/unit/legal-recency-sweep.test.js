@@ -81,6 +81,16 @@ describe('a filing answers for every action the app found', () => {
     expect(sweepVerdict(result(found), 'FR 2026-19388: the exemption needs a permissioned venue — it does not fit.').ok).toBe(true);
     expect(unaddressed(found, `Read ${found[0].link}`)).toEqual([]);
   });
+
+  it('healthy empty feeds pass, but any unread selected feed blocks even with no owed action', () => {
+    expect(sweepVerdict(result([]), '').ok).toBe(true);
+    const partial = result([]);
+    partial.feeds[1] = { ...partial.feeds[1], ok: false, errors: ['connection reset'] };
+    const verdict = sweepVerdict(partial, '');
+    expect(verdict.ok).toBe(false);
+    expect(verdict.unread).toHaveLength(1);
+    expect(verdict.text).toMatch(/1 selected feed\(s\) could not be read completely/);
+  });
 });
 
 describe('the sweep searches what the filing is about', () => {

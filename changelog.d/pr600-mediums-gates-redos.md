@@ -1,0 +1,6 @@
+Security
+- A page, a file or a filing written to stall the app can no longer freeze it. Reading a fetched web page, checking text for planted instructions, checking a legal draft's quotations, and searching files with a regular expression each now finish quickly on text of any shape; before, a single hostile page could stop every chat and every wallet action for seconds to minutes.
+- A file search with a regular expression that would never finish is stopped after two seconds and says so, instead of hanging the app.
+- When a being reads text with instructions planted in it, everything in that paragraph or record is now held for your approval, including an account, address or link written before the planted instruction, and an action that repeats the planted wording no longer passes. Accounts and links written in look-alike full-width characters are recognised as the same value. A being will ask you a little more often after reading such text; naming the value yourself in the chat releases it.
+- An action whose details try to hide extra instructions from the approval card is refused before it reaches you, so the card always shows everything the action will do.
+- A model server can no longer corrupt the app by sending a malformed tool call.

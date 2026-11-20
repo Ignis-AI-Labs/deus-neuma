@@ -135,8 +135,8 @@ describe('a sitting through the real tool loop', () => {
     expect(kit.connection._callerToolCalls).toEqual([{ id: 'rent', name: 'update_scheduled_transaction', arguments: '{"id":7,"amount":1200}' }]);
     expect(kit.connection._taintHeld).toBe(1);
     expect(kit.connection._benchmarkToolTrail).toEqual([
-      { tool: 'caller/send_money', target: null, status: 'denied' },
-      { tool: 'caller/update_scheduled_transaction', target: null, status: 'yielded' },
+      { tool: 'caller/send_money', target: null, argKeys: ['recipient', 'amount', 'subject', 'date'], status: 'denied', message: results[0].error },
+      { tool: 'caller/update_scheduled_transaction', target: null, argKeys: ['id', 'amount'], status: 'yielded' },
     ]);
     // A benchmark sitting carries the tally, not a ledger row.
     expect(await (await threatLedgerFor(kit.connection.walletAddress)).load()).toEqual([]);

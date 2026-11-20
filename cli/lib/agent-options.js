@@ -34,6 +34,11 @@ export const withAgentOptions = (y, { defaultTimeoutS }) => y
     type: 'boolean',
     default: false,
   })
+  .option('read-only', {
+    describe: 'the being may read and search but every acting tool is held: no edit, write, delete or shell',
+    type: 'boolean',
+    default: false,
+  })
   .option('benchmark-base-weights', {
     describe: 'benchmark only: neutralize every loaded refinement adapter',
     type: 'boolean',

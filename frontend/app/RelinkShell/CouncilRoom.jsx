@@ -355,15 +355,13 @@ const CouncilSitting = ({ council, connected }) => {
           send interjects (green — the room hears it at the next boundary).
           With the floor open there is only the one way to speak. busy
           stays false BY DESIGN: the witness queues while members speak;
-          cutting the floor is the strip's INTERRUPT, and the witness's
-          VOICE cutting in (onBargeIn) is an interrupt too. */}
+          cutting the floor is the strip's INTERRUPT. */}
       <StreamInput
         connected={connected}
         busy={false}
         onSend={send('hold')}
         onSendUrgent={memberHoldsFloor ? send('now') : undefined}
         urgentTitle="Interject NOW — the room hears this at the next boundary"
-        onBargeIn={interrupt}
         recall={null}
         sentHistory={sentHistory}
         maxChars={COUNCIL_SAY_MAX_CHARS}

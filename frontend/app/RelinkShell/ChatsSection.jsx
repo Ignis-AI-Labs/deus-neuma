@@ -9,7 +9,7 @@ import './ChatsSection.css';
 import { useCallback, useEffect, useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
 import { getChatBridge, answerChatCode, revokeChat } from '../../services/chat-bridge-client.js';
-import { chatLineWords, whoWords, codeAge } from './chats-view.js';
+import { chatLineWords, whoWords, pairingWhoWords, codeAge } from './chats-view.js';
 
 export const ChatsSection = ({ channelId, focusCode = null }) => {
   const [state, setState] = useState(null);
@@ -34,7 +34,8 @@ export const ChatsSection = ({ channelId, focusCode = null }) => {
           <p className="chats-line" data-chats-line={state.on ? 'on' : 'off'}>{chatLineWords(state.on, accounts)}</p>
           <p className="chats-note">
             Nobody is heard until you say so. Someone who writes to the bot gets a code; approve it here and they can talk with the being who holds
-            the bot. In a group you approve, the bot answers only when it is named.
+            the bot. In a group, each person is approved on their own, and the bot answers only when it is named. Everyone is a visitor: the
+            being keeps its private records closed to them. APPROVE — THIS IS ME is for your own account in a one-to-one chat only.
           </p>
           {accounts.map((a) => (
             <div key={a.accountId} className="chats-account" data-chat-account={a.accountId}>
@@ -42,9 +43,13 @@ export const ChatsSection = ({ channelId, focusCode = null }) => {
               <p className="chats-h">WAITING FOR YOUR YES — {a.pending.length}</p>
               {a.pending.map((p) => (
                 <div key={p.code} className={`chats-row${focusCode === p.code ? ' is-focus' : ''}`} data-chat-code={p.code}>
-                  <span className="chats-who">{whoWords(p)} — CODE <span className="chats-exact">{p.code}</span> · {codeAge(p.at, now)}</span>
+                  <span className="chats-who">{pairingWhoWords(p)} — CODE <span className="chats-exact">{p.code}</span> · {codeAge(p.at, now)}</span>
                   <span className="chats-acts">
                     <button type="button" className="sec-scan" disabled={busy} onClick={() => act(() => answerChatCode(a.accountId, p.code, true))}>APPROVE</button>
+                    {p.kind === 'user' ? (
+                      <button type="button" className="sec-scan" disabled={busy} title="Only for your own account: this chat is then not treated as a visitor's"
+                        onClick={() => act(() => answerChatCode(a.accountId, p.code, true, { mine: true }))}>APPROVE — THIS IS ME</button>
+                    ) : null}
                     <button type="button" className="sec-scan legal-danger" disabled={busy} onClick={() => act(() => answerChatCode(a.accountId, p.code, false))}>DENY</button>
                   </span>
                 </div>

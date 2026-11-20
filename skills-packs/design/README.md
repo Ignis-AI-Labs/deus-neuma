@@ -12,6 +12,7 @@ remnant of an unratified concept ever reaches the tree.
 | Skill | Summon | What it drives |
 |-------|--------|----------------|
 | `design-variations` | `/design-variations` (or via `use_skill`) | The variations loop: 2-4 LINE & CYCLE-bound HTML variants + a contact sheet under `designs/<slug>/`, the operator's ratification, then implementation from the winner |
+| `game-concepting` | via `use_skill` | Game assets from approved concept and turnaround through identity-locked 3D models, deterministic 2D animation sheets, and real-game proof |
 
 ## Requirements
 

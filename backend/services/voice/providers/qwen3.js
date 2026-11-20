@@ -109,7 +109,7 @@ export const qwen3Adapter = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal,
-    });
+    }, 'qwen3');
 
     if (!response.ok) {
       // Every sidecar error throws with its bounded cause: 400 names a

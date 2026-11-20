@@ -57,9 +57,10 @@
 }
 
 /* Monochrome at rest: DEFAULT is the void's natural state and carries no
-   signal. A live non-default bearing marks itself — PLAN in signal, AUTO in
-   alert, because hands-off is the bearing that must never be invisible. */
-.relink-mode-chip.is-plan {
+   signal. A live non-default bearing marks itself — PLAN and RESEARCH in signal,
+   AUTO in alert, because hands-off is the bearing that must never be invisible. */
+.relink-mode-chip.is-plan,
+.relink-mode-chip.is-research {
   border-color: var(--signal);
   color: var(--signal);
 }

@@ -35,7 +35,7 @@ import { renderSpeechPcm, makeDiskWorkDir } from '../helpers/speech-fixture.js';
 import { SIDECAR_CALLER_HEADER, callerToken, sidecarKey } from '../../backend/services/voice/sidecar-trust.js';
 
 // the backend's own token (sidecar-trust.js): the sidecar it launched answers nothing else
-const TOKEN = () => ({ [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) });
+const TOKEN = () => ({ [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey(), 'whisper') });
 
 const PORT = 7872;
 const MISSING_PORT = 7874;
@@ -84,8 +84,8 @@ describe('whisper sidecar is offline by construction (real sidecar, dead proxies
   afterAll(async () => {
     // Whatever happened above, both sidecars this file may have started are gone.
     stop('whisper');
-    await shutdownSidecar('127.0.0.1', PORT, 15_000);
-    await shutdownSidecar('127.0.0.1', MISSING_PORT, 15_000);
+    await shutdownSidecar('127.0.0.1', PORT, 15_000, 'whisper');
+    await shutdownSidecar('127.0.0.1', MISSING_PORT, 15_000, 'whisper');
     if (workDir) await fs.rm(workDir, { recursive: true, force: true });
     for (const [key, value] of Object.entries(saved)) {
       if (value === undefined) delete process.env[key];
@@ -133,7 +133,7 @@ describe('whisper sidecar is offline by construction (real sidecar, dead proxies
 
   test('WHISPER_TRANSCRIBE=whisper loads large-v3 for /transcribe (other languages)', async () => {
     stop('whisper');
-    await shutdownSidecar('127.0.0.1', PORT, 15_000);
+    await shutdownSidecar('127.0.0.1', PORT, 15_000, 'whisper');
     process.env.WHISPER_TRANSCRIBE = 'whisper';
     try {
       const status = await launch('whisper', { timeoutMs: 180_000 });
@@ -156,8 +156,8 @@ describe('whisper sidecar is offline by construction (real sidecar, dead proxies
     ['the base whisper lane', { WHISPER_STREAM_ENGINE: 'base', WHISPER_STREAM_MODEL_DIR: 'dir' }, 'whisper stream model incomplete', 'model.bin'],
   ])('a missing model file fails fast and names the file — never a hang (%s)', async (_lane, env, message, weights) => {
     stop('whisper');
-    await shutdownSidecar('127.0.0.1', PORT, 15_000);
-    await shutdownSidecar('127.0.0.1', MISSING_PORT, 15_000);
+    await shutdownSidecar('127.0.0.1', PORT, 15_000, 'whisper');
+    await shutdownSidecar('127.0.0.1', MISSING_PORT, 15_000, 'whisper');
     process.env.WHISPER_PORT = String(MISSING_PORT);
     for (const key of ['NEMOTRON_MODEL_DIR', 'WHISPER_STREAM_ENGINE', 'WHISPER_STREAM_MODEL_DIR']) delete process.env[key];
     for (const [key, value] of Object.entries(env)) process.env[key] = value === 'dir' ? emptyModelDir : value;

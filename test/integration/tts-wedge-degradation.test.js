@@ -81,7 +81,7 @@ describe('TTS wedge degradation (S-21) — dead/wedged sidecar never hangs or ki
     const { port } = dead.address();
     await new Promise((resolve) => dead.close(resolve)); // a port nothing listens on now
     const t0 = performance.now();
-    await expect(drain(speak({ endpoint: `http://127.0.0.1:${port}`, text: SENTENCE, voice: VOICE }))).rejects.toThrow();
+    await expect(drain(speak({ endpoint: `http://127.0.0.1:${port}`, engine: 'csm', text: SENTENCE, voice: VOICE }))).rejects.toThrow();
     expect(performance.now() - t0).toBeLessThan(5_000);
   });
 

@@ -34,7 +34,7 @@ export const CLOSED_KEEP_MS = 30 * 60_000;
 // Inbound frames that (re)bind a socket to a being and a session — the same
 // set the portal calls navigation — and the two that open a turn.
 const REBIND_TYPES = new Set(['companion:manifest', 'portal:resume', 'portal:new-session']);
-const SPEAK_TYPES = new Set(['consciousness:stream', 'consciousness:retry']);
+const SPEAK_TYPES = new Set(['consciousness:stream', 'consciousness:retry', 'consciousness:continue']);
 const INBOUND_TYPES = new Set([...REBIND_TYPES, ...SPEAK_TYPES]);
 
 /** @returns {{ wallet: string|null, neumaId: string|null, sessionId: string|null, spoke: boolean, inTurn: boolean }} */
@@ -55,6 +55,7 @@ export const bindAfterInbound = (bind, frame) => {
       return { ...bind, sessionId: null, spoke: false, inTurn: false };
     case 'consciousness:stream':
     case 'consciousness:retry':
+    case 'consciousness:continue':
       return { ...bind, spoke: true };
     default:
       return bind;

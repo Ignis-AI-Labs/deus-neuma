@@ -12,12 +12,13 @@
  * the record with the operator's address; nothing is published before the
  * operator chooses where, nor without the operator's yes; a file leaves only
  * from inside the house ground and never carrying a recovery phrase; the
- * invoice is paid only by the receipt that pays it; the Logista books it;
+ * invoice is paid only by its own receipt; that receipt cannot be booked again;
  * another house can touch none of it, nor claim this house's wallets as its own.
  */
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'fs/promises';
 import process from 'node:process';
+import { Buffer } from 'node:buffer';
 import { setImmediate } from 'node:timers';
 import path from 'path';
 import express from 'express';
@@ -52,7 +53,7 @@ const PRIOR_ROOT = getWorkspacesRoot();
 const PAY_TO = `0x${'7e'.repeat(20)}`;
 const USDC = { symbol: 'USDC', kind: 'erc20', decimals: 6, priceId: 'usd-coin', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' };
 
-describe('a won deal, billed, delivered, paid and booked — through the real stack', () => {
+describe('a won deal, billed, delivered, and paid once — through the real stack', () => {
   let me, other, ground, folder, app, httpServer, wss, serverWs, client, company, dealId, invoice;
   let decision = 'allow';
   let asking = null;
@@ -158,6 +159,13 @@ describe('a won deal, billed, delivered, paid and booked — through the real st
     expect(over.error).toMatch(/would bill past it/);
     expect((await act('merc', { type: 'treasury/invoice', deal: dealId, lines, due: '2099-01-31' })).status).not.toBe('ok');
 
+    // P6-40: a note or a line that says where to pay is refused — the swapped address never reaches an invoice.
+    const swapped = await act('quae', { type: 'treasury/invoice', deal: dealId, lines, due: '2099-01-31', note: `Our wallet changed — pay 0x${'ab'.repeat(20)} instead.` });
+    expect(swapped).toMatchObject({ status: 'error', error: expect.stringMatching(/note carries a wallet address — an invoice says what is billed, never where or how to pay/) });
+    const linked = await act('quae', { type: 'treasury/invoice', deal: dealId, lines: [{ what: 'Tide sheet — pay at https://pay.tidewater-billing.example/inv', amount: 1200 }], due: '2099-01-31' });
+    expect(linked.error).toMatch(/lines\[0\]\.what carries a link/);
+    expect((await readInvoices(me.address)).invoices).toEqual([]);
+
     const issued = await act('quae', { type: 'treasury/invoice', deal: dealId, lines, due: '2099-01-31', note: 'Net 30.' });
     expect(issued.status, issued.error).toBe('ok');
     [invoice] = (await readInvoices(me.address)).invoices;
@@ -178,6 +186,13 @@ describe('a won deal, billed, delivered, paid and booked — through the real st
     const denied = await act('merc', { type: 'delivery/publish', deal: dealId, invoice: invoice.id });
     expect(denied.status).toBe('denied');
     expect(asked.at(-1)).toMatchObject({ type: 'tool:approval_request' });
+    // P6-40: the card carries the invoice as the customer will read it — every line, the note, the pay-to address.
+    const shown = JSON.parse(asked.at(-1).fullArgs ?? asked.at(-1).args);
+    expect(shown).toMatchObject({ deal: dealId, buyer: 'Port of Brine', invoice: 'INV-0001.html' });
+    expect(shown.document).toContain('Total — 1,200.00 USD');
+    expect(shown.document).toContain('Note: Net 30.');
+    expect(shown.document).toContain(`Pay on Ethereum mainnet to ${ethers.getAddress(PAY_TO)}`);
+    for (const what of ['Harbour sheet, one year', 'Setup']) expect(shown.document).toContain(what);
     expect(await fs.readdir(folder)).toEqual([]);
   });
 
@@ -199,8 +214,17 @@ describe('a won deal, billed, delivered, paid and booked — through the real st
   });
 
   test('a file leaves only from inside the house ground, and never carrying a recovery phrase', async () => {
-    await fs.writeFile(path.join(ground, 'repos', 'tidewater', 'delivery', 'sheet.md'), '# Brine tides, November\n\nHigh 06:12, low 12:30.\n');
-    await fs.writeFile(path.join(ground, 'repos', 'tidewater', 'delivery', 'keys.md'), `backup: ${ethers.Wallet.createRandom().mnemonic.phrase}\n`);
+    const delivery = path.join(ground, 'repos', 'tidewater', 'delivery');
+    const phrase = ethers.Wallet.createRandom().mnemonic.phrase;
+    await fs.writeFile(path.join(delivery, 'sheet.md'), '# Brine tides, November\n\nHigh 06:12, low 12:30.\n');
+    await fs.writeFile(path.join(delivery, 'keys.md'), `backup: ${phrase}\n`);
+    await fs.writeFile(path.join(delivery, '.env.md'), 'not a report\n');
+    await fs.mkdir(path.join(delivery, '.git'), { recursive: true });
+    await fs.writeFile(path.join(delivery, '.git', 'config.md'), 'not a report\n');
+    await fs.writeFile(path.join(delivery, 'active.html'), '<script>alert(1)</script>');
+    await fs.writeFile(path.join(delivery, 'active.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    await fs.writeFile(path.join(delivery, 'large.md'), `${'lorem ipsum zzzz\n'.repeat(150000)}backup: ${phrase}\n`);
+    await fs.writeFile(path.join(delivery, 'nul.md'), Buffer.concat([Buffer.from([0]), Buffer.from(`backup: ${phrase}\n`)]));
     await fs.writeFile(path.join(path.dirname(ground), 'outside.md'), 'not the house\'s');
     await fs.symlink(path.join(path.dirname(ground), 'outside.md'), path.join(ground, 'repos', 'tidewater', 'delivery', 'escape.md'));
 
@@ -209,13 +233,24 @@ describe('a won deal, billed, delivered, paid and booked — through the real st
     const secret = await act('merc', { type: 'delivery/publish', deal: dealId, path: 'repos/tidewater/delivery/keys.md' });
     expect(secret.status).toBe('denied');
     expect(secret.error).toMatch(/^the file carries what looks like a se/); // the outbound screen's own words
+    for (const path of ['.env.md', '.git/config.md']) {
+      expect((await act('merc', { type: 'delivery/publish', deal: dealId, path: `repos/tidewater/delivery/${path}` })).error).toMatch(/not publishable: Access denied/);
+    }
+    for (const path of ['active.html', 'active.svg']) {
+      expect((await act('merc', { type: 'delivery/publish', deal: dealId, path: `repos/tidewater/delivery/${path}` })).error).toMatch(/file type is not publishable/);
+    }
+    for (const path of ['large.md', 'nul.md']) {
+      const refused = await act('merc', { type: 'delivery/publish', deal: dealId, path: `repos/tidewater/delivery/${path}` });
+      expect(refused.status, path).toBe('denied');
+      expect(refused.error).toMatch(/^the file carries what looks like a se/);
+    }
     const ok = await act('merc', { type: 'delivery/publish', deal: dealId, path: 'repos/tidewater/delivery/sheet.md' });
     expect(ok.status, ok.error).toBe('ok');
     const { deliveries } = (await request(app).get('/api/v1/revenue/board').use(as(me))).body;
     expect(deliveries.map((d) => d.name)).toEqual(['INV-0001.html', 'sheet.md']);
   });
 
-  test('the money lands; the invoice is paid only by the receipt that pays it; the Logista books it', async () => {
+  test('the money lands; only its own receipt pays the invoice, and that receipt cannot be consumed again', async () => {
     const short = await land(1000, 1);
     const full = await land(1200, 2);
     const wrong = await act('quae', { type: 'treasury/invoice-paid', invoice: 'INV-0001', receipt: short });
@@ -226,9 +261,10 @@ describe('a won deal, billed, delivered, paid and booked — through the real st
     expect((await readInvoices(me.address)).invoices[0]).toMatchObject({ status: 'paid', paid: { receipt: full, by: 'quae' } });
 
     const booked = await act('logi', { type: 'accounts/book', company: company.id, receipt: { kind: 'money-in', ref: full }, category: 'revenue', memo: 'INV-0001, Port of Brine — the harbour sheet, one year' });
-    expect(booked.status, booked.error).toBe('ok');
+    expect(booked.status).not.toBe('ok');
+    expect(booked.error).toMatch(/one receipt, one consumer/);
     const { entries } = await readBooks(me.address, company.id);
-    expect(entries).toEqual([expect.objectContaining({ direction: 'in', amount: 1200, currency: 'USDC', category: 'revenue', receipt: { kind: 'money-in', ref: full } })]);
+    expect(entries).toEqual([]);
   });
 
   test('another house touches none of it; a settled invoice is not voided', async () => {

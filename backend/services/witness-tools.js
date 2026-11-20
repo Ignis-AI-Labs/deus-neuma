@@ -26,6 +26,7 @@ import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { readExecutionToolPolicy } from './execution-tool-policy.js';
 import { operationReceiptLabel } from './operation-result.js';
 import { neutraliseResultText } from './tool-exchange.js';
+import { argsRefusalText, fitToolArgs } from './tool-args-check.js';
 import { persistOverCapResult } from './portal-tool-result-store.js';
 import { compressToolResult } from '../../core/runtime/tool-result-compressor.js';
 import { extractMCPContent } from '../routes/mcp-routes.js';
@@ -48,6 +49,7 @@ import { noteTurnSandboxSource, ensureTurnSandbox } from './turn-sandbox.js';
 import { handleCodingTool, handleContextTool } from './witness-coding-tools.js';
 import { hydrateWitnessPathGrants, witnessPathScopeGate } from './witness-path-grants.js';
 import { sendToolEvent } from './witness-tool-events.js';
+import { sendResultDetail } from './portal-tools/tool-events.js';
 // The platform surface, from its decomposed homes directly (size-law
 // breakdown end-sweep) — this was the last static edge closing the
 // portal-stream import ring; the witness lane reads the leaves, not the
@@ -141,13 +143,13 @@ const toolIdentity = (match, catalog) => {
 // path gates through act-gate.js, which resolves the same three policy layers
 // at call time (with this same map_read observation carve-out), so a witness
 // is never told one thing and refused another.
-const effectiveAccess = (policy, mode, server, toolName, operatorPolicy) => {
+const effectiveAccess = (policy, mode, server, toolName, operatorPolicy, direct = false) => {
   const base = checkToolAccess(policy, server, toolName);
   // map_read is pure observation, so witness observe mode keeps it open
   // without broadening READ_TOOLS by name across unrelated servers.
   const contextRead = server === 'context' && toolName === 'map_read';
   return { base, effective: contextRead ? base : applyProtocolGuard(applyToolMode(base, mode, toolName),
-    mode, server, toolName, operatorPolicy[`${server}/${toolName}`] === 'allowed') };
+    mode, server, toolName, operatorPolicy[`${server}/${toolName}`] === 'allowed', direct) };
 };
 
 // impure — resolve this witness's three policy layers for the turn.
@@ -240,7 +242,7 @@ export const toolsForWitness = async (connection, sourceRoot, { nativeTools = fa
   ];
   const stamped = Object.freeze(catalog.map((tool) => Object.freeze({
     ...tool,
-    access: effectiveAccess(policy, mode, tool.server, tool.name, operatorPolicy).effective,
+    access: effectiveAccess(policy, mode, tool.server, tool.name, operatorPolicy, connection.sandboxEnabled === false).effective,
   })));
   // The flight check reports the surface THIS turn is holding — the stamped
   // catalog, the sandbox, and the craft — so it reads them from here rather
@@ -281,7 +283,16 @@ export const processWitnessToolCalls = async (ws, connection, calls, catalog, sa
       results.push({ tool, status: 'unavailable', error: hint || 'tool identity was not uniquely advertised for this witness' });
       continue;
     }
-    const args = match.args || {};
+    // The one argument check (tool-args-check.js) — the being seat's, word for word.
+    const fit = fitToolArgs(identity.definition?.inputSchema, match.args || {});
+    if (fit.problems.length > 0) {
+      const tool = `${identity.server}/${identity.toolName}`;
+      const error = argsRefusalText(tool, identity.definition.inputSchema, fit.problems);
+      sendToolEvent(ws, connection.companion, { tool, status: 'invalid', detail: error });
+      results.push({ tool, status: 'invalid', error });
+      continue;
+    }
+    const args = fit.args;
     // WHAT WAS DONE, AGAINST WHAT IT WAS FOR — the same seam the neuma runtime
     // records at, and for the same reason: the crash this exists for happens
     // BETWEEN turns, so anything the peer had to remember to declare is exactly
@@ -333,7 +344,7 @@ export const processWitnessToolCalls = async (ws, connection, calls, catalog, sa
       args,
     });
     if (platformResult) {
-      await land(platformResult);
+      sendResultDetail(ws, await land(platformResult)); // every act opens to what it returned (tool-events.js)
       continue;
     }
 

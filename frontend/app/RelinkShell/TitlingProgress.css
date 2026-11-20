@@ -1,0 +1,5 @@
+/* A running batch titling job: a hairline bar and its CANCEL (TitlingProgress.jsx). */
+.titling-progress { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) 0; }
+.titling-progress-bar { flex: 1 1 auto; height: 3px; background: var(--line); overflow: hidden; }
+.titling-progress-fill { display: block; height: 100%; background: var(--signal); transition: width var(--snap); }
+@media (prefers-reduced-motion: reduce) { .titling-progress-fill { transition: none; } }

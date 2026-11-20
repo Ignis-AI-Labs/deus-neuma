@@ -21,6 +21,7 @@
  */
 
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import os from 'os';
 import path from 'path';
 import crypto from 'crypto';
@@ -29,6 +30,7 @@ import { createLogger } from './logger.js';
 import { assertCodingShellAvailable } from './coding-shell-availability.js';
 import { confinedBaseArgs, CONFINED_ULIMITS, enumerateSecretMasks } from './witness-coding-sandbox.js';
 import { helperEnvironment } from './agent-terminal-environment.js';
+import { liveShellWalls } from './live-shell-walls.js';
 
 const log = createLogger('WorkspaceRun');
 
@@ -74,7 +76,7 @@ const tail = (s) => {
 };
 
 const SCRIPT_MAX_BYTES = 1024 * 1024;
-const CARD_HEAD_CHARS = 400;
+const CARD_HEAD_CHARS = SCRIPT_MAX_BYTES;
 
 /**
  * Read the file a run would execute, for the operator's card and the run.
@@ -114,13 +116,14 @@ const userSiteBinds = async () => {
   return [...sites.flatMap((site) => ['--ro-bind', site, site]), '--setenv', 'PYTHONUSERBASE', base];
 };
 
-// pure — the sandbox for one run: the shared confinement, the arena bound at
+// impure (existence probes) — the sandbox for one run: shared confinement, arena bound at
 // its own path, its secret-shaped paths masked by empty read-only binds, and
 // the approved bytes bound over the file so a rewrite after the card cannot
 // change what runs.
-const runArgs = ({ root, abs, argv, masks, scratch, siteBinds }) => [
+const runArgs = ({ root, abs, argv, masks, scratch, siteBinds, readOnly }) => [
   ...confinedBaseArgs({ network: false }),
   '--bind', root, root,
+  ...readOnly.flatMap((place) => ['--ro-bind', existsSync(place) ? place : path.join(scratch, 'empty-dir'), place]),
   ...masks.dirs.flatMap((dir) => ['--ro-bind', path.join(scratch, 'empty-dir'), dir]),
   ...masks.files.flatMap((file) => ['--ro-bind', path.join(scratch, 'empty'), file]),
   '--ro-bind', path.join(scratch, 'script'), abs,
@@ -155,6 +158,8 @@ const prepareScratch = async (bytes) => {
  */
 export const runWorkspaceFile = async (teamWs, args, { lane = null } = {}) => {
   const root = path.resolve(teamWs.root);
+  const walls = liveShellWalls(root);
+  if (!walls.live) throw new Error(`workspace_run refuses a root inside platform state: ${walls.reason}`);
   const script = await readScript(root, args?.file);
   if (args?.sha256 && args.sha256 !== script.sha256) {
     throw new Error(`${script.abs} changed after your operator's card showed it — file the run again so the card shows what runs.`);
@@ -168,7 +173,7 @@ export const runWorkspaceFile = async (teamWs, args, { lane = null } = {}) => {
     : WORKSPACE_RUN_DEFAULT_TIMEOUT_MS;
   const masks = await enumerateSecretMasks(root, { lane });
   const scratch = await prepareScratch(script.bytes);
-  const bwrap = runArgs({ root, ...script, masks, scratch, siteBinds: await userSiteBinds() });
+  const bwrap = runArgs({ root, ...script, masks, scratch, siteBinds: await userSiteBinds(), readOnly: walls.readOnly });
 
   return new Promise((resolve) => {
     const started = Date.now();

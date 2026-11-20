@@ -38,6 +38,15 @@ export const ApiTab = ({ focus = null }) => {
     onOpen(key);
   };
   const shared = { stateFilter, openKey, onOpen };
+  // A deep link to one service's key (`service-keys/<id>`): its row opens and its field takes the cursor.
+  useEffect(() => {
+    const [section, serviceId] = String(focus ?? '').split('/');
+    if (section !== 'service-keys' || !serviceId) return undefined;
+    setStateFilter('');
+    setOpenKey(`service:${serviceId}`);
+    const timer = setTimeout(() => globalThis.document?.querySelector(`[data-service-input="${serviceId.replace(/["\\]/g, '')}"]`)?.focus(), 250);
+    return () => clearTimeout(timer);
+  }, [focus]);
   useEffect(() => {
     const to = accountFocus(focus);
     if (!to) return;

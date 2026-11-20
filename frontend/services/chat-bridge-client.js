@@ -10,7 +10,7 @@ const call = authedCall('/api/v1/chat-bridge');
 export const getChatBridge = () => call('GET', '/status', { errorPrefix: 'Could not read the chats' });
 
 /** The operator's yes or no to a pairing code. impure. */
-export const answerChatCode = (accountId, code, approve) => call('POST', `/${encodeURIComponent(accountId)}/codes/${encodeURIComponent(code)}`, { body: { approve }, errorPrefix: 'Could not answer the code' });
+export const answerChatCode = (accountId, code, approve, { mine = false } = {}) => call('POST', `/${encodeURIComponent(accountId)}/codes/${encodeURIComponent(code)}`, { body: { approve, ...(mine ? { mine: true } : {}) }, errorPrefix: 'Could not answer the code' });
 
 /** Take a person or a group off the list. impure. */
 export const revokeChat = (accountId, kind, id) => call('DELETE', `/${encodeURIComponent(accountId)}/allowed/${kind}/${encodeURIComponent(id)}`, { errorPrefix: 'Could not take it back' });

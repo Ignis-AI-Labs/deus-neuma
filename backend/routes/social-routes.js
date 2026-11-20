@@ -20,6 +20,11 @@ const log = createLogger('Social');
 const router = express.Router();
 const socialService = createSocialService();
 
+const walletAuthorType = (requested) => {
+  if (requested == null || requested === 'human') return 'human';
+  throw new Error('authorType is derived from the authenticated wallet; neuma authorship requires an authenticated being lane');
+};
+
 // --- Media upload setup ---
 
 const uploadDir = path.join(getDataRoot(), 'weave/social/uploads');
@@ -56,10 +61,8 @@ const upload = multer({
 router.post('/emanations', requireAuth, async (req, res) => {
   try {
     const { content, meta, authorType, signature } = req.body;
-    const type = authorType || 'human';
-
     const emanation = await socialService.createEmanation(
-      req.walletAddress, type, content, meta, signature
+      req.walletAddress, walletAuthorType(authorType), content, meta, signature
     );
     res.status(201).json(emanation);
   } catch (error) {
@@ -150,7 +153,7 @@ router.post('/emanations/:id/resonate', requireAuth, async (req, res) => {
 router.post('/emanations/:id/echo', requireAuth, async (req, res) => {
   try {
     const echo = await socialService.echoEmanation(
-      req.walletAddress, req.body.authorType || 'human', req.params.id
+      req.walletAddress, walletAuthorType(req.body?.authorType), req.params.id
     );
     res.status(201).json(echo);
   } catch (error) {
@@ -163,7 +166,7 @@ router.post('/emanations/:id/reply', requireAuth, async (req, res) => {
   try {
     const { content, meta, authorType, signature } = req.body;
     const reply = await socialService.replyToEmanation(
-      req.walletAddress, authorType || 'human', req.params.id, content, meta, signature
+      req.walletAddress, walletAuthorType(authorType), req.params.id, content, meta, signature
     );
     res.status(201).json(reply);
   } catch (error) {

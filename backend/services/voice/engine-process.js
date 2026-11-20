@@ -119,8 +119,8 @@ export const spawnEngineProcess = (engineId, host, port, { startModule, extraEnv
     [`${envId}_HOST`]: host,
     [`${envId}_PORT`]: String(port),
     ...extraEnv,
-    // the install key it proves itself with and checks the backend's calls by (sidecar-trust.js)
-    ...sidecarKeyEnv(),
+    // only this engine's derived key proves its socket and authorizes its calls
+    ...sidecarKeyEnv(engineId),
   };
   // Sidecar output goes to a per-engine FILE, never a pipe to this process:
   // a dev-watch backend restart orphans the sidecar, and an orphan holding a
@@ -185,14 +185,14 @@ export const probeHealth = async (host, port, timeoutMs = 1500) => {
 // impure — poll /health until ready, failed, the process died, or timeout.
 // loading/compiling are still-starting: a first-ever compile legitimately
 // takes minutes, so only the caller's timeout (serve.readyTimeoutMs) ends it.
-export const waitForReady = async (endpoint, timeoutMs = 120_000, intervalMs = 1000, isDead = () => false) => {
+export const waitForReady = async (endpoint, timeoutMs = 120_000, intervalMs = 1000, isDead = () => false, engineId) => {
   const { hostname, port } = new URL(endpoint);
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (isDead()) return { ok: false, error: 'sidecar process exited before it was ready' };
     const { verdict, health } = await probeHealth(hostname, Number(port), 2000);
-    // ready is not enough: something else may hold the port, so the answerer proves the install key
-    if (verdict === 'ready') return (await verifySidecar(endpoint)) ? { ok: true, ...health } : { ok: false, error: unprovenSidecar(endpoint).message };
+    // ready is not enough: the expected engine must prove its own key on this socket
+    if (verdict === 'ready') return (await verifySidecar(endpoint, engineId)) ? { ok: true, ...health } : { ok: false, error: unprovenSidecar(endpoint).message };
     if (verdict === 'failed') return { ok: false, ...health, error: health.error || 'model load failed' };
     await new Promise((r) => setTimeout(r, intervalMs));
   }
@@ -204,7 +204,7 @@ export const waitForReady = async (endpoint, timeoutMs = 120_000, intervalMs = 1
 // ends itself. A sidecar abandons an exit while a request is in flight or one
 // ended under 0.5 s ago (the idle contract), so the ask repeats each second
 // until it lands. Resolves true once the port stops answering.
-export const shutdownSidecar = async (host, port, timeoutMs = 10_000) => {
+export const shutdownSidecar = async (host, port, timeoutMs = 10_000, engineId) => {
   const deadline = Date.now() + timeoutMs;
   let askedAt = 0;
   while (Date.now() < deadline) {
@@ -213,7 +213,7 @@ export const shutdownSidecar = async (host, port, timeoutMs = 10_000) => {
       // the proven sidecar is asked with the backend's token; an unproven answerer gets a bare ask with
       // nothing in it, which only a sidecar from before the install key (an app update) honors
       const url = `http://${host}:${port}/shutdown`;
-      await sidecarFetch(url, { method: 'POST', signal: AbortSignal.timeout(2000) })
+      await sidecarFetch(url, { method: 'POST', signal: AbortSignal.timeout(2000) }, engineId)
         .catch(() => fetch(url, { method: 'POST', signal: AbortSignal.timeout(2000) }))
         .catch(() => { /* it may drop the socket while exiting — that IS the shutdown */ });
     }
@@ -249,9 +249,9 @@ export const syncEngineVenv = (engineId, startModule) =>
  * @param {number} port
  * @returns {Promise<boolean>}
  */
-export const provenOrRetired = async (host, port) => {
+export const provenOrRetired = async (host, port, engineId) => {
   const origin = `http://${host}:${port}`;
-  if (await verifySidecar(origin)) return true;
-  if (await shutdownSidecar(host, port, 5000)) return false;
+  if (await verifySidecar(origin, engineId)) return true;
+  if (await shutdownSidecar(host, port, 5000, engineId)) return false;
   throw unprovenSidecar(origin);
 };

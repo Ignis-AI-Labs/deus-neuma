@@ -106,30 +106,18 @@ const RAIL = Object.freeze([
   Object.freeze({ key: 'seal', label: 'SEAL' }),
 ]);
 
-// After the attunement seal, the evolution ceremony continues into refinement
-// (consent → corpus → forge → machine-verified LoRA). The rail shows that
-// next rite as the living step so the seal is not a dead end.
-const RAIL_AFTER_SEAL = Object.freeze([
-  ...RAIL,
-  Object.freeze({ key: 'refine', label: 'REFINE' }),
-]);
-
 /**
  * The ceremony's graduations for the progress rail — which phases stand
  * behind this view, which is live, which lie ahead. Views outside the
  * ceremony proper (roster, loading, error) have no rail: null.
- * A sealed attunement marks every attunement node complete and lights
- * REFINEMENT as the active next rite (not a separate scavenger hunt).
+ * A sealed attunement marks every node complete: the walk is whole. (It once
+ * lit a REFINE rite after the seal; the LoRA refinement is no longer built,
+ * Design note, 2026-11-14, so nothing is owed after it.)
  * @param {string} view
  * @returns {Array<{key: string, label: string, state: 'complete'|'active'|'ahead'}>|null}
  */
 export const railOf = (view) => {
-  if (view === 'sealed') {
-    return RAIL_AFTER_SEAL.map((s, j) => ({
-      ...s,
-      state: j < RAIL.length ? 'complete' : 'active',
-    }));
-  }
+  if (view === 'sealed') return RAIL.map((s) => ({ ...s, state: 'complete' }));
   const i = RAIL.findIndex((s) => s.key === view);
   if (i === -1) return null;
   return RAIL.map((s, j) => ({

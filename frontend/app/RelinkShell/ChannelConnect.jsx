@@ -21,6 +21,7 @@ const POLL_MS = 1500;
 const COPY = Object.freeze({
   youtube: Object.freeze({ waiting: 'channelKeys.connect.waiting', needClient: 'channelKeys.connect.needClient' }),
   tiktok: Object.freeze({ waiting: 'channelKeys.connect.tiktokWaiting', needClient: 'channelKeys.connect.tiktokNeedClient' }),
+  linkedin: Object.freeze({ waiting: 'channelKeys.connect.linkedinWaiting', needClient: 'channelKeys.connect.linkedinNeedClient' }),
 });
 
 /**

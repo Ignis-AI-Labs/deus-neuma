@@ -74,7 +74,7 @@ export const reachLines = ({ focusGround, sandbox }) => {
     : '                without a focused folder, every path raises a card.');
   if (sandbox?.direct) {
     lines.push(`  shell         DIRECT on ${sandbox.sourceRoot} (SANDBOX OFF)`);
-    lines.push('                commands use the operator\'s normal OS user, environment, network and permissions; no overlay or masks.');
+    lines.push('                commands require approval and use the operator\'s OS user, an allowlisted environment, network and permissions; no overlay or masks.');
   } else if (sandbox?.live) {
     lines.push(`  shell         LIVE on ${sandbox.sourceRoot} (SANDBOX ON, AUTO in the operator's open folder)`);
     lines.push('                shell writes land in that folder; .git and secret-shaped paths are masked.');
@@ -236,7 +236,7 @@ const readFlightCheck = async ({ connection, seat, tools, skills = [], sandbox =
     limits: [
       `session tool mode: ${connection?.toolMode || 'ask'} — governs WHETHER an act asks, never WHERE it may reach`,
       ...(sandbox?.direct ? [
-        'shell commands: SANDBOX OFF — direct execution with the normal OS user, environment, network and permissions; no overlay or masks',
+        'shell commands: SANDBOX OFF — approval-required direct execution with the operator\'s OS user, an allowlisted environment, network and permissions; no overlay or masks',
       ] : sandbox ? [
         'shell commands: 30s default timeout (120s max), final 50 KiB per output stream retained (display truncation does not stop execution), network requires its own grant, empty HOME',
         live ? 'shell writes land in the operator\'s open folder (AUTO); .git and secrets stay masked, so history is the safety net'

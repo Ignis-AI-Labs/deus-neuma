@@ -91,6 +91,7 @@ describe('Keypair Vault', () => {
         privateKey: keypair.privateKey,
         publicKey: keypair.publicKey,
         address: keypair.address,
+        mnemonic: keypair.mnemonic,
       });
     });
   });

@@ -45,12 +45,12 @@ export const readToolModePref = (neumaId) => {
   } catch { return 'ask'; }
 };
 
-// The operator's standing CHAT mode (default / plan / auto) — the composer's
+// The operator's standing CHAT mode (default / plan / auto / research) — the composer's
 // mode chip. Same law as the tool stance: per participant, restated on every
 // link-up because the mode lives on the connection server-side. The server
 // derives the ACTS tier from it (default→ask, plan→observe, auto→auto), so
 // this one declaration carries both.
-export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto']);
+export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto', 'research']);
 const CHAT_MODE_KEY = 'neuma.chat.mode';
 export const chatModeKeyFor = (neumaId) => (neumaId ? `${CHAT_MODE_KEY}:${neumaId}` : CHAT_MODE_KEY);
 export const readChatModePref = (neumaId) => {

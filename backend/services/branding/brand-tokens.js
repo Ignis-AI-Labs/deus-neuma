@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import { resolveBrandDir, listBrandNames, brandRoots } from './kit-locate.js';
 import { pressRefusals, ownerRefusals } from './kit-shape.js';
 import { EMBEDDABLE, fontsDir } from './embeddable-faces.js';
+import { readDesign } from './card-designs.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -139,12 +140,20 @@ const kitHomes = async (brand, dir, wallet) => {
  * Load one template: its SVG and the sidecar that declares its fields. A
  * template with no sidecar is refused rather than rendered unchecked — the
  * sidecar is what makes "refuse, never deform" possible. impure — disk.
+ *
+ * Given a brand, that company's OWN design of the card wins (card-designs.js, Design note, 2026-11-16:
+ * cards […]); `source` says which one was drawn.
  * @param {string} template
- * @returns {Promise<{ok: true, svg: string, spec: object} | {ok: false, error: string}>}
+ * @param {{brand?: string, wallet?: string}} [opts]
+ * @returns {Promise<{ok: true, svg: string, spec: object, source: 'company'|'shared'} | {ok: false, error: string}>}
  */
-export const loadTemplate = async (template) => {
+export const loadTemplate = async (template, { brand = null, wallet = null } = {}) => {
   const bad = nameRefusal('template', template);
   if (bad) return { ok: false, error: bad };
+  if (brand) {
+    const own = await readDesign(brand, template, wallet);
+    if (own) return own.ok ? { ok: true, svg: own.svg, spec: own.spec, source: 'company' } : own;
+  }
   const svgPath = path.join(templatesDir(), `${template}.svg`);
   const specPath = path.join(templatesDir(), `${template}.json`);
   try {
@@ -152,7 +161,7 @@ export const loadTemplate = async (template) => {
       readFile(svgPath, 'utf8'),
       readFile(specPath, 'utf8').then(JSON.parse),
     ]);
-    return { ok: true, svg, spec };
+    return { ok: true, svg, spec, source: 'shared' };
   } catch (err) {
     return { ok: false, error: `no template "${template}" (${svgPath} + its .json): ${err.code || err.message}` };
   }

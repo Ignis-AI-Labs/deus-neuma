@@ -1,7 +1,7 @@
 // CampaignMaterial — the files that belong to a campaign.
 //
 // Design note, 2026-07-27: […]
-// Same shape as a project's shared files, read by the same bounded reader, so a
+// Shared files read by the bounded shared-files reader, so a
 // being working this campaign sees the brief and the approved copy without a
 // tool call — and works from THOSE rather than inventing positioning.
 //

@@ -207,9 +207,27 @@ export const statusLimiter = createRateLimiter({
 
 
 /**
+ * THE OPERATOR'S UPLOADS. PURE. A picture dropped in the composer is the
+ * operator's own act, and it rode the 200/min write bucket every local caller
+ * shares (/api is metered BEFORE auth: one IP): a desk busy enough to spend that
+ * minute refused it — "Too many requests" beside the thumbnail, the message
+ * stuck (Design note, 2026-11-20: […]). Its own finite budget, as the status lights have; auth still
+ * gates the route, and a flood of uploads still stops at UPLOAD_MAX.
+ */
+export const isAttachmentUploadPath = (method, p) =>
+  String(method || '').toUpperCase() === 'POST' && p === '/v1/attachments';
+export const UPLOAD_MAX = 60;
+export const uploadLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: UPLOAD_MAX,
+  keyFn: (req) => req.walletAddress || req.ip,
+});
+
+/**
  * What actually guards /api: the global ceiling, minus the unmetered file
- * routes above, with the essential GET status lights on their own finite
- * budget so a spent 200/min bucket cannot starve the two desk lights.
+ * routes above, with the essential GET status lights and the operator's
+ * uploads on their own finite budgets so a spent 200/min bucket cannot starve
+ * the desk lights or refuse a picture the operator is sending.
  */
 export const apiLimiter = (req, res, next) => (
   isUnmeteredApiPath(req.path)
@@ -218,7 +236,9 @@ export const apiLimiter = (req, res, next) => (
     ? next()
     : isEssentialStatusPath(req.method, req.path)
       ? statusLimiter(req, res, next)
-      : globalLimiter(req, res, next)
+      : isAttachmentUploadPath(req.method, req.path)
+        ? uploadLimiter(req, res, next)
+        : globalLimiter(req, res, next)
 );
 
 /**

@@ -10,12 +10,13 @@
 
 import WebSocket from 'ws';
 import { makeMessageEvent, makeSendResult } from '../adapter-contract.js';
+import { testEndpoint } from '../../test-endpoint-door.js';
 
 const TOKEN = /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{20,}$/;
 // GUILD_MESSAGES | DIRECT_MESSAGES | MESSAGE_CONTENT
 export const DISCORD_INTENTS = (1 << 9) | (1 << 12) | (1 << 15);
-const gatewayUrl = () => process.env.NEUMA_DISCORD_GATEWAY || 'wss://gateway.discord.gg/?v=10&encoding=json';
-const apiRoot = () => process.env.NEUMA_DISCORD_API_ROOT || 'https://discord.com/api/v10';
+const gatewayUrl = () => testEndpoint(process.env, 'NEUMA_DISCORD_GATEWAY', 'wss://gateway.discord.gg/?v=10&encoding=json', ['ws:']);
+const apiRoot = () => testEndpoint(process.env, 'NEUMA_DISCORD_API_ROOT', 'https://discord.com/api/v10');
 // Gateway close codes no reconnect mends: a bad token, bad intents, a disallowed intent.
 const FATAL = new Set([4004, 4013, 4014]);
 

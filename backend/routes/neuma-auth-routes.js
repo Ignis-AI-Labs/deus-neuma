@@ -19,8 +19,9 @@ import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
 import {
   decryptKeypair, encryptKeypair, verifyRecoveryCodes, decryptWithRecoveryCodes,
-  MIN_KEY_PASSWORD,
+  MIN_KEY_PASSWORD, KDF_ITERATIONS_LEGACY,
 } from '../../core/wallet/keypair-vault.js';
+import { consumeRecoveryAttempt, recoveryLimitResponse } from '../services/recovery-attempts.js';
 
 const router = Router();
 
@@ -161,6 +162,8 @@ router.post('/unlock', requireAuth, async (req, res) => {
   // Fail-closed ownership (W1-004) — unclaimed lanes cannot unlock keys
   if (!(await assertNeumaOwner(req, res, neumaId))) return;
 
+  if (!await consumeRecoveryAttempt(neumaId)) return recoveryLimitResponse(res);
+
   // Read encrypted keypair
   const encrypted = await neumaWorkspace.readEncryptedKeypair(neumaId);
   if (!encrypted) {
@@ -170,9 +173,15 @@ router.post('/unlock', requireAuth, async (req, res) => {
   // Decrypt
   try {
     const keypair = decryptKeypair(encrypted, password);
-
-    // Cache decrypted key in memory (30-min TTL)
     cacheDecryptedKey(neumaId, keypair);
+    let keyUpgradeRequired = false;
+    if ((encrypted.kdfIterations ?? KDF_ITERATIONS_LEGACY) < 600_000) {
+      try {
+        await neumaWorkspace.writeEncryptedKeypair(neumaId, encryptKeypair(keypair, password));
+      } catch {
+        keyUpgradeRequired = true;
+      }
+    }
 
     // Issue neuma token
     const token = createNeumaToken(neumaId, keypair.address);
@@ -180,6 +189,7 @@ router.post('/unlock', requireAuth, async (req, res) => {
       token,
       neumaId,
       address: keypair.address,
+      keyUpgradeRequired,
     });
   } catch {
     return res.status(401).json({ error: 'Wrong password' });
@@ -205,6 +215,7 @@ router.post('/reset-password', requireAuth, async (req, res) => {
 
   // Fail-closed ownership (W1-004) — unclaimed lanes cannot re-key.
   if (!(await assertNeumaOwner(req, res, neumaId))) return;
+  if (!await consumeRecoveryAttempt(neumaId)) return recoveryLimitResponse(res);
 
   try {
     const storedHash = await neumaWorkspace.readRecoveryHash(neumaId);

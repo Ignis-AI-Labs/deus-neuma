@@ -123,6 +123,18 @@ describe('Social API routes — full coverage', () => {
       expect(res.status).toBe(201);
       expect(res.body.echoOf).toBe(emanation.id);
       expect(res.body.author).toBe(me);
+      expect(res.body.authorType).toBe('human');
+    });
+
+    test('echo refuses a client-forged neuma author without changing the original', async () => {
+      const emanation = await createEmanation('No forged echoes');
+      const res = await request(app)
+        .post(`/api/v1/social/emanations/${emanation.id}/echo`).set(witness.header)
+        .send({ authorType: 'neuma' });
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/derived from the authenticated wallet/);
+      const fetched = await request(app).get(`/api/v1/social/emanations/${emanation.id}`);
+      expect(fetched.body.stats.echoes).toBe(0);
     });
 
     test('echo increments echo count on original', async () => {
@@ -198,15 +210,22 @@ describe('Social API routes — full coverage', () => {
       expect(res.body.error).toContain('not found');
     });
 
-    test('reply with neuma authorType', async () => {
-      const parent = await createEmanation('Neuma can reply');
+    test('reply authorship is server-derived; neuma forgery is refused', async () => {
+      const parent = await createEmanation('A person starts this thread');
 
       const res = await request(app)
         .post(`/api/v1/social/emanations/${parent.id}/reply`).set(witness.header)
         .send({ content: { text: 'I ponder this' }, authorType: 'neuma' });
 
-      expect(res.status).toBe(201);
-      expect(res.body.authorType).toBe('neuma');
+      expect(res.status).toBe(400);
+      expect(res.body.error).toMatch(/derived from the authenticated wallet/);
+      const legitimate = await request(app)
+        .post(`/api/v1/social/emanations/${parent.id}/reply`).set(witness.header)
+        .send({ content: { text: 'A human answer' } });
+      expect(legitimate.status).toBe(201);
+      expect(legitimate.body.authorType).toBe('human');
+      const thread = await request(app).get(`/api/v1/social/thread/${parent.id}`);
+      expect(thread.body.replies).toHaveLength(1);
     });
   });
 

@@ -53,10 +53,9 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     denied: [],
     requireApproval: [],
   },
-  // Execution approval is independent from OS isolation. A neuma's routine
-  // execution is autonomous; witnesses retain execution approval. SANDBOX OFF
-  // runs directly with the operator's normal environment; SANDBOX ON keeps the
-  // original bubblewrap, overlay, network and masked-.git confinement.
+  // Confined neuma execution is autonomous; SANDBOX OFF is an explicit owner
+  // choice with approval, allowlisted env, and home-key-root refusal. SANDBOX
+  // ON is the default with bubblewrap, overlay, network and masked-.git walls.
   //
   // THE GIT-STATE PROTECTION LAW (Design note, 2026-09-05: a git state is the
   // operator's until the operator says otherwise. Every explicit Git tool is
@@ -147,7 +146,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // unchanged). What stays here: recall, the deliberate note, the mind's
     // working thought, and the audit walk.
     allowed: [
-      'memory_search', 'memory_expand', 'memory_list', 'memory_note', 'mind_note', 'mind_read', 'self_read',
+      'memory_search', 'memory_expand', 'memory_list', 'memory_map', 'memory_note', 'mind_note', 'mind_read', 'self_read',
       // The being's own records (self-records-tools.js): its journal and past chats.
       'journal_read', 'chats_list', 'chat_read',
     ],
@@ -212,9 +211,9 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   // policy: with the switch off the family stays discoverable as HELD, while
   // execution refuses. Observe mode holds it — egress is not observation.
   chain: {
-    allowed: ['chain_chains', 'chain_balance', 'chain_token', 'chain_call', 'chain_logs', 'chain_holders'],
+    allowed: ['chain_chains', 'chain_balance', 'chain_token', 'chain_call', 'chain_logs'],
     denied: [],
-    requireApproval: [],
+    requireApproval: ['chain_holders'],
   },
   // The platform's own numbers (Design note, 2026-08-29 — […]).
   // ALLOWED rather than approval: every source is a public unauthenticated GET
@@ -261,7 +260,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     // render_card joins the ALLOWED tier rather than the approval tier: it is
     // deterministic, local to the caller's own lane, and touches nothing in the
     // world. Publishing is still the queue's gate.
-    allowed: ['list_pipelines', 'review_image', 'render_card'],
+    // forge_status reads the engine; forge_control steers it, and only for the house that owns this computer.
+    allowed: ['list_pipelines', 'review_image', 'render_card', 'forge_status', 'forge_control'],
     denied: [],
     requireApproval: [],
   },
@@ -272,7 +272,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   email: {
     allowed: [],
     denied: [],
-    requireApproval: ['check_email_inbox', 'read_email'],
+    requireApproval: ['check_email_inbox', 'read_email', 'list_email_labels', 'label_email'],
   },
   // The press: local rendering, no egress — but the output carries the
   // house's official livery, so the first pressings ask the operator (one
@@ -325,7 +325,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
   social: {
     allowed: ['queue_list', 'queue_get', 'replies_list'],
     denied: [],
-    requireApproval: ['read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'queue_cancel'],
+    requireApproval: ['read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'queue_cancel', 'queue_retract'],
   },
   // The being's own working list, and the house lead ledger. Listing is pure
   // observation (same law as the vault and the inbox); every mutation is a
@@ -386,40 +386,41 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // (posting-pipeline-v2: one decision per post, at the most-informed
       // moment). The draft sits visible as pending until then — never lost.
       'social.queue',
-      // media.keep copies an image the OPERATOR already shared in this chat
-      // into the house library — no egress, nothing published; the post that
-      // carries it is still its own decision.
+      // media.keep copies an image the OPERATOR already shared in this chat into the house library —
+      // no egress, nothing published; the post that carries it is still its own decision.
       'media.keep',
-      // team.post: word between the members of ONE approved, working run (and
-      // its lead) — the plan of record is the consent, nothing leaves the team.
+      // team.post: word between the members of ONE approved, working run (and its lead) — the plan of record is the consent, nothing leaves the team.
       'team.post',
+      // lp.goal/reward only file requests; every fund-moving LP act asks below.
+      'lp.goal', 'lp.reward',
       // team.tune: the run's lead or the house's Optio changes a WORKING run's
       // width and clocks (#577) — the approved plan / the seated office is the
       // consent, and every desk is told who changed what.
       'team.tune',
-      // house.review-packet: the seated Optio orders what already waits on the
-      // operator (validate re-verifies the seat and every ask) — it answers and
-      // grants nothing, so it rides a wake with no card.
-      'house.review-packet',
+      // house.review-packet only orders what already waits; house.seating seats nobody.
+      // Member-authored charters and company/hands links ask below before they steer wakes or the operator.
+      'house.review-packet', 'house.seating', 'house.wake',
       // campaigns.ask: the seated CMO's word to its operator on a campaign (or
       // its answer to theirs) — nothing leaves the house and nothing changes
       // the campaign's declaration, so it carries no card (validate re-verifies
       // the seat).
       'campaigns.ask',
       // No card: board-arrange lays out the operator's board (display only); company-links only PROPOSES — the operator's APPROVE in WAITING ON YOU decides it.
-      'marketing.board-arrange', 'marketing.company-links',
-      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, books, the raise room, invoices (Design note, 2026-10-29; raise.reach writes only inside a signed mandate, through the facts gate) — records on the house's realm, no egress, no spend; validate re-judges the seat.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'company.hands', 'revenue.deal', 'revenue.move', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.reach', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
+      // account-handle: a record the social check re-reads live (marketing-account-acts.js); its holder and company acts ask.
+      'marketing.board-arrange', 'marketing.company-links', 'marketing.account-handle', 'marketing.card',
+      // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, sales.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, the lead engine (Design note, 2026-11-13; the email itself rides email.send), books, the raise room, invoices (Design note, 2026-10-29 — records on the house's realm, no egress, no spend; validate re-judges the seat. raise.reach is email: it asks below.
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'revenue.deal', 'revenue.move', 'sales.segment', 'sales.prospect', 'sales.drop', 'sales.lead', 'sales.suppress', 'sales.facts', 'sales.discover', 'sales.gather', 'sales.candidates', 'sales.shortlist', 'sales.pipeline', 'sales.read-sites', 'sales.find-address', 'sales.confirm-address', 'sales.research', 'sales.email-plan', 'sales.entity', 'sales.prove', 'sales.draft-email', 'sales.withdraw-email', 'registry.lookup', 'sales.contacts', 'sales.campaign', 'campaigns.link', 'company.model', 'sales.mail-scan', 'sales.inbound', 'sales.kind', 'sales.place', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
     ],
     denied: [],
     requireApproval: [
-      'social.post',
+      'house.charter', 'company.hands',
+      'social.post', 'lp.open', 'lp.add', 'lp.claim', 'lp.withdraw', 'lp.close', 'lp.swap', 'lp.send', 'lp.create-pool',
       'security.scan', 'security.assess', 'security.escalate', 'security.circuit-breaker',
       // The CLO office's acts: the operator's one yes per filing (a reading
       // the house will act on, a run, a matter entered on the record).
       'legal.scan', 'legal.assess', 'legal.file', 'legal.opinion',
-      'email.send',
-      'media.save', 'web.download', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
+      'email.send', 'raise.reach', // raise.reach is email to an investor a being listed: the operator reads the address and every word (P6-39)
+      'media.save', 'web.download', 'forge.install', 'forge.workflow', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
       // A video render (image/generate on a video pipeline) asks on its own row:
       // it holds the machine for minutes, so ALWAYS for stills never covers it.
       'video.generate',
@@ -428,7 +429,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'leads.add', 'leads.touch',
       'campaigns.create', 'campaigns.update',
       // The weekly posting plan: CMO authors, the operator's one yes locks.
-      'marketing.plan',
+      'marketing.plan', 'marketing.account-holder', 'marketing.account-company',
       // The Optio office's acts and the house board ASK here, for every lane,
       // and ride `allowed` for the house's SEATED Optio alone
       // (OPTIO_OFFICE_INTENTS below, read by the intent sweep) — Founder

@@ -5,6 +5,7 @@
  * wallet's OWN house. Seating a Mercator seeds its playbook (MAKOTO) — fail
  * soft: a scaffold that cannot land never unseats the designation. Where
  * deliveries go (PUT /delivery-destination) is the operator's alone to set.
+ * The lead engine's operator routes ride under /lead-engine (lead-engine-routes.js).
  */
 
 import express from 'express';
@@ -15,12 +16,14 @@ import { scaffoldRevenueWorkspace } from '../services/revenue/revenue-scaffold.j
 import { readDeals } from '../services/revenue/deal-store.js';
 import { pipeline } from '../services/revenue/deal-shape.js';
 import { readDeliveries, readDestination, setDestination } from '../services/delivery/delivery-store.js';
+import leadEngineRouter from './lead-engine-routes.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Revenue');
 
 const router = express.Router();
 router.use(requireAuth);
+router.use('/lead-engine', leadEngineRouter);
 
 router.get('/seat', async (req, res) => {
   try {

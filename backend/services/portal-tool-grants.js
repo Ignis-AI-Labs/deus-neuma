@@ -14,7 +14,6 @@
  */
 import { createLogger } from './logger.js';
 import { neumaWorkspace } from '../../core/index.js';
-import { readProjectStore } from './user-projects.js';
 import { ensureFilesystemRoots } from './mcp-filesystem.js';
 import { addGrantedReadRoot, addGrantedWriteRoot } from './tool-policy.js';
 import { hydrateShellNetwork } from './shell-network-grants.js';
@@ -73,8 +72,8 @@ export const grantReadScope = async (connection, dirs, persist, origin = capture
 // as grantReadScope does for reads: the connection (sandbox write roots), the
 // filesystem server (reconnected with the root), and — for an ALWAYS — the
 // neuma's persisted policy (pathGrants.write). A write grant is a deliberate
-// escalation, only ever reached for a folder inside the active project (the
-// gate enforces that bound); the sandbox denied-path list still fires first.
+// escalation, scoped to the target's own folder; the sandbox denied-path list
+// still fires first.
 const grantWriteScope = async (connection, dirs, persist, origin = capturePolicyGrant(connection)) => {
   origin.beforeCommit();
   const current = connection._grantedWriteRoots || [];
@@ -117,19 +116,3 @@ export const grantApprovedScope = async (connection, { read, write, decision, or
   };
 };
 
-// impure — the folders attached to the turn's active project (its space). The
-// bound on write grants: a neuma may only be granted write scope INSIDE one of
-// these, never an arbitrary directory. Empty when the turn carries no project
-// space or the project can't be read.
-export const activeProjectFolders = async (connection) => {
-  const space = connection.space;
-  if (!space || space.kind !== 'project' || !connection.walletAddress) return [];
-  try {
-    const store = await readProjectStore(connection.walletAddress);
-    const project = store.projects.find((p) => p.id === space.id);
-    return project ? (project.folders || []).map((f) => f.path) : [];
-  } catch (err) {
-    log.warn('could not resolve project folders for write scope', { project: space.id, err: err.message });
-    return [];
-  }
-};

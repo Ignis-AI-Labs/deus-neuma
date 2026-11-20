@@ -12,21 +12,25 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { createSubstrateLine } from './substrate-line.js';
 import { SERVING_PARALLEL_SLOTS } from './serving-launch-config.js';
 
-// THE LINE'S WIDTH IS THE MEASURED ONE (Design note, 2026-10-15: […] — and never a cap on open tabs). The width is
-// resolveTeamCapacity's: the measured ceiling for the model now served, never
-// wider than the server's --parallel slots; unmeasured or stale, one. The boot
-// starts the watch (server-boot.js); until it reads, and wherever no server
-// booted (a test), the line is the server's slot count.
+// THE LINE'S WIDTH IS THE SLOTS THE SERVER RUNS (Design note, 2026-11-19, three shadow clones and his chat on a 4-slot
+// server, one clone held […]: […]).
+// The width used to be the capacity scan's knee for the model served (Design note, 2026-10-15: […]) — and the scan's knee wobbles: three scans of the
+// T4 model within three minutes on 2026-11-10 read 4, 3, 3, so the line ran 3 on a server running 4 and the desk's
+// SLOTS ring showed a free slot while a clone waited. Now every slot the server runs is used, never more (a chat
+// past the slots would only queue inside the server); the measured knee still plans a team's width
+// (team-coordinator.js resolveTeamCapacity) and still shows on the capacity screen. The house's own work keeps
+// leaving the operator one (substrate-line.js): on 4 slots, 3 clones and the operator's chat run together. With no
+// model served at all, or unmeasured, the width is what the server runs. The boot starts the watch.
 let width = SERVING_PARALLEL_SLOTS;
 const LINE_WIDTH_EVERY_MS = 60_000;
 
 /** The one line in front of the house's local model server — the measured width. */
 export const substrateLine = createSubstrateLine({ capacity: () => width });
 
-// impure — read the measured width now (a lazy import: the coordinator's graph is heavy)
+// impure — read the served width now (a lazy import: the coordinator's graph is heavy)
 const readWidth = async () => {
   const { resolveTeamCapacity } = await import('./team-coordinator.js');
-  const next = (await resolveTeamCapacity()).maxParallel;
+  const next = (await resolveTeamCapacity()).servedSlots;
   if (Number.isInteger(next) && next >= 1) width = next;
   return width;
 };
@@ -65,7 +69,7 @@ export const withLease = async (who, fn) => {
   if (liveLease() || context.getStore()?.exempt) return fn();
   const lease = await substrateLine.acquire(who);
   const held = {
-    release: lease.release, released: false, away: false, returning: null,
+    id: lease.id, release: lease.release, released: false, away: false, returning: null,
     who: { kind: who.kind, label: who.label, neumaId: who.neumaId },
   };
   who.onAdmit?.();
@@ -103,6 +107,7 @@ export const linePlace = () => {
       held.returning ??= substrateLine.acquire({ ...held.who, signal }).then((lease) => {
         held.returning = null;
         if (held.released) { lease.release(); return; }
+        held.id = lease.id;
         held.release = lease.release;
         held.away = false;
       }, (err) => {
@@ -114,6 +119,8 @@ export const linePlace = () => {
   };
 };
 
+/** The kind of place this route holds ('turn', 'member', 'wake'…), or null outside a lease. */
+export const leaseKind = () => context.getStore()?.lease?.who?.kind ?? null;
 /** Run work that takes its places as `kind` (e.g. 'background') — never riding a caller's lease. */
 export const withLineKind = (kind, fn) => context.run({ kind }, fn);
 
@@ -121,15 +128,19 @@ export const withLineKind = (kind, fn) => context.run({ kind }, fn);
 export const withLineExempt = (fn) => context.run({ exempt: true }, fn);
 
 /**
- * A place for ONE request, when its work holds none: null when the route's lease covers it (or
- * the work is exempt), else a lease the caller must release when the answer is done.
+ * A place for ONE request: within a route that holds a lease, a PASS on it (substrate-line.js pass — counted as in
+ * flight, and held back while a machine job takes the card, so a render goes in between rounds, never after whole
+ * turns); for work that holds none, a lease of its own. Null only for exempt work. The caller releases it when the
+ * answer is done (releasingWithBody).
  * @param {{ signal?: AbortSignal }} [opts]
  * @returns {Promise<{ release: () => void } | null>}
  */
 export const leaseForRequest = async ({ signal } = {}) => {
   const store = context.getStore();
-  if (liveLease() || store?.exempt) return null;
-  return substrateLine.acquire({ kind: store?.kind || 'turn', label: store?.kind === 'background' ? 'background work' : 'a request', signal });
+  if (store?.exempt) return null;
+  const held = liveLease();
+  if (held) return substrateLine.pass({ id: held.id, signal });
+  return substrateLine.acquire({ kind: store?.kind || 'turn', label: store?.kind === 'background' ? 'background work' : 'a request', signal, request: true });
 };
 
 /**

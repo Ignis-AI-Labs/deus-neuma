@@ -26,12 +26,16 @@ import os from 'os';
 import path from 'path';
 import { existsSync, realpathSync } from 'fs';
 import { getDataRoot, getSettingsDir } from './data-root.js';
+import { readEngineRecord } from './managed-engine-record.js';
 import { readManagedRecord } from './managed-ollama-record.js';
+import { chosenModelHome } from './model-home.js';
 import { getRealmRoot } from './user-realm.js';
 import { foldName } from './wall-spelling.js';
+import { windowsLoginWalls, windowsPathShapeRefusal } from './windows-path-shape.js';
 
-const PLATFORM_STATE_REFUSAL = 'That path is this install\'s own state (its settings, its model server, its records of acts '
-  + 'and consent, or the realm every house keeps) — '
+const PLATFORM_STATE_REFUSAL = 'That path is this install\'s own state (its settings, its model server, the programs it runs '
+  + '(extensions, the speech engine, model engines and their models), its records of acts and consent, '
+  + 'or the realm every house keeps) — '
   + 'it changes only through the platform\'s own acts, never a file write. Reading it is fine.';
 const PERSISTENCE_REFUSAL = 'That path runs when your operator logs in or on a schedule (a shell profile, autostart, '
   + 'a user service, cron, a command on their PATH) — no grant reaches it. Ask your operator to make that change themselves.';
@@ -44,11 +48,11 @@ const REPO_GATE_REFUSAL = 'That path is a repository\'s own gate (its git hooks,
 // PAM session files, and the directories a session, a desktop (KDE Plasma
 // included), systemd, D-Bus activation or launchd runs from.
 const HOME_PERSISTENCE = Object.freeze([
-  '.bashrc', '.bash_profile', '.bash_login', '.bash_logout', '.profile', '.zshrc', '.zshenv', '.zprofile', '.zlogin',
-  '.zlogout', '.pam_environment', '.xprofile', '.xinitrc', '.xsession', '.xsessionrc', '.Xresources',
+  '.bashrc', '.bash_aliases', '.bash_profile', '.bash_login', '.bash_logout', '.profile', '.zshrc', '.zshenv', '.zprofile', '.zlogin',
+  '.zlogout', '.cshrc', '.tcshrc', '.kshrc', '.pam_environment', '.xprofile', '.xinitrc', '.xsession', '.xsessionrc', '.Xresources',
   '.config/autostart', '.config/autostart-scripts', '.config/plasma-workspace', '.config/systemd',
-  '.config/environment.d', '.config/fish', '.local/share/applications', '.local/share/systemd', '.local/share/dbus-1',
-  '.local/bin', 'bin', 'Library/LaunchAgents',
+  '.config/environment.d', '.config/fish', '.config/nushell', '.local/share/applications', '.local/share/systemd', '.local/share/dbus-1',
+  '.local/bin', 'bin', '.cargo/bin', 'go/bin', '.npm-global/bin', 'Library/LaunchAgents',
 ]);
 // Below the operator's home: what their tools read as the operator's own word.
 const HOME_TRUSTED_CONFIG = Object.freeze([
@@ -63,12 +67,19 @@ const REPO_GATES = Object.freeze([['.git', 'hooks'], ['.git', 'config'], ['scrip
 // platform's own model server (its record names the program every boot starts, and its program and
 // libraries sit in the server's home), the act ledger, and the covenant acceptances. The rest of the
 // data root stays writable under a loan that covers it: a team run's arena lives there.
+//
+// And every other store of programs the app starts as the operator, outside any sandbox (PR600
+// audit P6-58): the extensions (their code, the record of what was checked, their keys), the speech
+// engine, the hooks file, and under every model home (the record's, the engine's, the person's
+// choice for the next setup) the Ollama program, the llama.cpp builds and the GGUF models they load.
+const MODEL_HOME_STORES = Object.freeze(['ollama', 'llama.cpp', 'gguf']);
+const DATA_ROOT_STORES = Object.freeze(['settings-store', 'model-server', 'acts', 'covenant', 'extensions', 'speech', 'hooks']);
 const dataRootState = (dataRoot) => {
-  const home = readManagedRecord()?.home;
+  const homes = [readManagedRecord()?.home, readEngineRecord()?.home, chosenModelHome()]
+    .filter((home) => typeof home === 'string' && path.isAbsolute(home));
   return [
-    path.join(dataRoot, 'settings-store'), path.join(dataRoot, 'model-server'),
-    path.join(dataRoot, 'acts'), path.join(dataRoot, 'covenant'),
-    ...(typeof home === 'string' && path.isAbsolute(home) ? [path.join(home, 'ollama')] : []),
+    ...DATA_ROOT_STORES.map((store) => path.join(dataRoot, store)),
+    ...[...new Set(homes)].flatMap((home) => MODEL_HOME_STORES.map((store) => path.join(home, store))),
   ];
 };
 // The per-user crontab spools (Linux; macOS and the BSDs).
@@ -113,12 +124,15 @@ const homePathDirs = (home, env) => String(env.PATH || '').split(path.delimiter)
  * and the repository gates as path-segment shapes.
  * impure (reads env, the realm root and the disk).
  * @param {Record<string, string|undefined>} [env]
+ * @param {string} [platform] - on Windows the Startup folder and the PowerShell profiles join (P6-119)
  * @returns {Array<{ path: string, reason: string } | { segments: string[], reason: string }>}
  */
-export const platformWriteWalls = (env = process.env) => {
+export const platformWriteWalls = (env = process.env, platform = process.platform) => {
   const home = path.resolve(os.homedir());
   const state = [getSettingsDir(), ...dataRootState(getDataRoot()), getRealmRoot()];
-  const persistence = [...underHome(home, HOME_PERSISTENCE, env), ...homePathDirs(home, env), ...CRON_SPOOLS];
+  const persistence = [
+    ...underHome(home, HOME_PERSISTENCE, env), ...homePathDirs(home, env), ...CRON_SPOOLS, ...windowsLoginWalls(home, env, platform),
+  ];
   const walls = (paths, reason) => paths.flatMap((p) => {
     const lexical = path.resolve(p);
     const real = realOf(lexical);
@@ -132,9 +146,10 @@ export const platformWriteWalls = (env = process.env) => {
 };
 
 // pure — is `inner` the same path as `outer` or below it? Both resolved and folded.
-const atOrBelow = (inner, outer) => {
-  const rel = path.relative(outer, inner);
-  return rel === '' || (rel !== '..' && !rel.startsWith(`..${path.sep}`) && !path.isAbsolute(rel));
+// `lib` is the path rules of the platform the paths belong to.
+const atOrBelow = (inner, outer, lib) => {
+  const rel = lib.relative(outer, inner);
+  return rel === '' || (rel !== '..' && !rel.startsWith(`..${lib.sep}`) && !lib.isAbsolute(rel));
 };
 
 // pure — does `parts` carry `segments` as one contiguous run?
@@ -145,12 +160,12 @@ const carriesRun = (parts, segments) =>
 // anything below it, or a directory that holds one on disk? Moving a checkout,
 // its .git or its scripts/ aside moves the gate with it, and only the disk
 // knows which directory named `scripts` holds a git-hooks.
-const reachesRepoGate = (target, segments) => {
-  const parts = foldName(target).split(path.sep).filter(Boolean);
+const reachesRepoGate = (target, segments, lib) => {
+  const parts = foldName(target).split(lib.sep).filter(Boolean);
   if (carriesRun(parts, segments)) return true;
   return segments.some((_, held) => {
     const tailIsGate = segments.slice(0, held).every((segment, k) => parts[parts.length - held + k] === segment);
-    return tailIsGate && existsSync(path.join(target, ...segments.slice(held)));
+    return tailIsGate && existsSync(lib.join(target, ...segments.slice(held)));
   });
 };
 
@@ -160,20 +175,26 @@ const reachesRepoGate = (target, segments) => {
  * case fold), so a case- or normalization-insensitive volume cannot be asked
  * for `.BashRC` or `.ſſh` instead. Pure for place walls; a repository gate looks
  * at the disk for the gate a directory holds (impure).
+ * On Windows a path spelled as an NTFS stream, a short name or with a dropped
+ * trailing dot is refused first: no wall can compare it (windows-path-shape.js).
  * @param {string} filePath
  * @param {Array<{ path: string, reason: string } | { segments: string[], reason: string }>} walls
+ * @param {string} [platform] - whose path rules the paths follow; the host's by default
  * @returns {string|null} the refusal, or null when no wall is reached
  */
-export const platformWallWriteReason = (filePath, walls) => {
-  const resolved = path.resolve(filePath);
+export const platformWallWriteReason = (filePath, walls, platform = process.platform) => {
+  const shape = windowsPathShapeRefusal(filePath, platform);
+  if (shape) return shape;
+  const lib = platform === 'win32' ? path.win32 : path;
+  const resolved = lib.resolve(filePath);
   const target = foldName(resolved);
   for (const wall of walls) {
     if (wall.segments) {
-      if (reachesRepoGate(resolved, wall.segments)) return wall.reason;
+      if (reachesRepoGate(resolved, wall.segments, lib)) return wall.reason;
       continue;
     }
     const at = foldName(wall.path);
-    if (atOrBelow(target, at) || atOrBelow(at, target)) return wall.reason;
+    if (atOrBelow(target, at, lib) || atOrBelow(at, target, lib)) return wall.reason;
   }
   return null;
 };

@@ -5,7 +5,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { randomBytes } from 'crypto';
-import { writeEditSnapshot, undoRootFor } from './edit-undo.js';
+import { writeEditSnapshot, writeCreateSnapshot, undoRootFor, repositoryRootFor } from './edit-undo.js';
 
 const said = (text) => ({ content: [{ type: 'text', text }], structuredContent: { content: text } });
 const refuse = (reason) => ({ ok: false, reason });
@@ -31,6 +31,21 @@ const readIfExists = async (filePath) => {
   }
 };
 
+// Inside a repository a new file is undoable too. Elsewhere (a being's own
+// notes) no record is left: undo is for work on a project. The file has
+// already landed when this runs, so a record that cannot be written is said,
+// never raised as a failed write.
+const recordCreation = (filePath, content) => {
+  const repository = repositoryRootFor(filePath);
+  if (!repository) return '';
+  try {
+    writeCreateSnapshot(repository, filePath, content);
+    return '';
+  } catch (error) {
+    return ` It could not be recorded for undo (${error.message}).`;
+  }
+};
+
 /**
  * Create a new text file, or deliberately replace an existing one.
  * impure — the caller has already cleared path containment and encoding.
@@ -49,13 +64,15 @@ export const guardedWriteFile = async (args) => {
   }
 
   if (before === null) {
+    let created = true;
     try {
       await fs.writeFile(filePath, args.content, { encoding: 'utf8', flag: 'wx' });
-      return landed(`Created ${path.basename(filePath)}.`);
     } catch (error) {
       if (error.code !== 'EEXIST') return refuse(`Could not create ${filePath}: ${error.message}. Nothing was written.`);
+      created = false;
       before = await readIfExists(filePath);
     }
+    if (created) return landed(`Created ${path.basename(filePath)}.${recordCreation(filePath, args.content)}`);
   }
 
   const name = path.basename(filePath);

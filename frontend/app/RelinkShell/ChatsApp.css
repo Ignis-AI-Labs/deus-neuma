@@ -182,6 +182,7 @@
 }
 .chats-ctx-item:hover:not(:disabled) { color: var(--signal); background: var(--color-glass-hover); }
 .chats-ctx-item:disabled { color: var(--color-text-disabled); cursor: not-allowed; }
+.chats-ctx-sep { height: 1px; margin: var(--space-1) 0; background: var(--line); }
 
 .chats-note {
   margin: 0;

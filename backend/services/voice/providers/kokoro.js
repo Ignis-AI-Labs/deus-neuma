@@ -77,7 +77,7 @@ export const kokoroAdapter = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       signal,
-    });
+    }, 'kokoro');
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '');

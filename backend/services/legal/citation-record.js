@@ -10,6 +10,8 @@
 // record the platform can check (cite-check.js), and a draft cannot carry a
 // quotation no checked record holds, or a [verify] nobody resolved.
 
+import { legalSourceProblem } from './source-url.js';
+
 /** The record, as the office is asked for it. */
 export const CITATION_SHAPE = '{claim, authority, pinCite, heading, sourceUrl, standing, quote?, pages?}';
 
@@ -69,9 +71,13 @@ export const locate = (text, needle) => {
   return k < 0 ? null : { decoded, start: at[k], end: at[k + needle.length - 1] + 1 };
 };
 
+// A bracketed change is short. Unbounded, `\[[^\]]*\]` reran from every `[` of a draft that closes none
+// (PR600 audit P6-125); a longer bracket is now words the source must print, which is the stricter reading.
+const BETWEEN_SEGMENTS = /\.\s?\.\s?\.|…|\[[^\]]{0,200}\]/;
+
 /** A quotation's runs between ellipses and bracketed changes ("w[as]"), squeezed. Pure. */
 export const quoteSegments = (quote) => String(quote ?? '')
-  .split(/\.\s?\.\s?\.|…|\[[^\]]*\]/).map(squeeze).filter(Boolean);
+  .split(BETWEEN_SEGMENTS).map(squeeze).filter(Boolean);
 
 /** Does the squeezed text hold every segment, in order? Pure. */
 export const holdsInOrder = (squeezedText, segments) => {
@@ -97,6 +103,8 @@ const recordProblem = (record, n) => {
     if (value.length > FIELD_MAX) return `citation ${n}: ${field} is over ${FIELD_MAX} characters`;
   }
   if (!/^https?:\/\/\S+$/i.test(record.sourceUrl.trim())) return `citation ${n}: sourceUrl must be the http(s) address you read`;
+  const sourceProblem = legalSourceProblem(record.sourceUrl);
+  if (sourceProblem) return `citation ${n}: ${sourceProblem}`;
   if (record.quote !== undefined && record.quote !== null) {
     if (typeof record.quote !== 'string' || record.quote.length > QUOTE_MAX) return `citation ${n}: quote is the exact words, at most ${QUOTE_MAX} characters`;
     if (squeeze(record.quote).length < QUOTE_MIN_SQUEEZED) return `citation ${n}: a quote of a word or two proves nothing — quote the sentence, or leave quote out and paraphrase`;
@@ -122,28 +130,76 @@ export const citationRecordsProblem = (list, { required = false } = {}) => {
   return records.map((r, i) => recordProblem(r, i + 1)).find(Boolean) ?? null;
 };
 
+// ONE PASS OVER A DRAFT (PR600 audit P6-125). A filing has no length cap and is read on the backend's
+// one thread: `\[verify[^\]]*\]` and `“([^”\n]+)”` reran from every opener of a draft that closes
+// none — 128 KB held every lane and wallet route for 13 seconds, and the filing waited to do it again
+// at the next sweep. Marks and quotations are now found by their opener and ONE search for their closer.
+
 // A mark that says the work is not done. It never reaches the operator.
-const UNRESOLVED = /\[\s*(?:to\s+)?(?:verify|verified\?|unverified|citation needed|cite|source\?|tbd|todo|check)\b[^\]]*\]/gi;
+const UNRESOLVED_OPEN = /\[\s*(?:to\s+)?(?:verify|verified\?|unverified|citation needed|cite|source\?|tbd|todo|check)\b/gi;
 
 /** Every unresolved mark in a draft ("[verify]", "[citation needed]", "[TBD]"). Pure. */
-export const unresolvedMarks = (text) => [...new Set(String(text ?? '').match(UNRESOLVED) ?? [])];
+export const unresolvedMarks = (text) => {
+  const draft = String(text ?? '');
+  const lastClose = draft.lastIndexOf(']');
+  const marks = new Set();
+  const open = new RegExp(UNRESOLVED_OPEN.source, UNRESOLVED_OPEN.flags);
+  for (let m = open.exec(draft); m && m.index < lastClose; m = open.exec(draft)) {
+    const close = draft.indexOf(']', open.lastIndex);
+    marks.add(draft.slice(m.index, close + 1));
+    open.lastIndex = close + 1;
+  }
+  return [...marks];
+};
+
+// pure — the draft with its code blanked IN PLACE, so every line keeps its number: drafted language
+// the office proposes lives in a ``` block or a `span`, outside the quotation rule.
+const proseOf = (text) => String(text ?? '')
+  .replace(/```[\s\S]*?```/g, (block) => block.replace(/[^\n]/g, ' '))
+  .replace(/`[^`\n]*`/g, (code) => ' '.repeat(code.length));
+
+// pure — what one line puts between double quotation marks, straight or curly, left to right.
+const CLOSER = Object.freeze({ '"': '"', '“': '”' });
+const quotedIn = (line) => {
+  const lastCurly = line.lastIndexOf('”');
+  const runs = [];
+  for (let i = 0; i < line.length; i += 1) {
+    const closer = CLOSER[line[i]];
+    if (!closer || (closer === '”' && i >= lastCurly)) continue;
+    const close = line.indexOf(closer, i + 1);
+    if (close <= i + 1) continue;
+    runs.push(line.slice(i + 1, close));
+    i = close;
+  }
+  return runs;
+};
 
 /**
  * Every span a draft puts in double quotation marks that runs three words or
- * more — a quotation, not a term. Drafted language the office proposes lives
- * in a ``` block, outside this rule. Pure.
+ * more — a quotation, not a term — with the draft's own line it sits on. Pure.
+ * @returns {Array<{span: string, line: string}>}
  */
-export const quotedSpans = (text) => {
-  const prose = String(text ?? '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`\n]*`/g, ' ');
-  const spans = [...prose.matchAll(/"([^"\n]+)"|“([^”\n]+)”/g)].map((m) => (m[1] ?? m[2]).trim());
-  return spans.filter((s) => s.split(/\s+/).filter(Boolean).length >= SPAN_MIN_WORDS);
+export const quotedLines = (text) => {
+  const source = String(text ?? '').split('\n');
+  return proseOf(text).split('\n')
+    .flatMap((line, i) => quotedIn(line).map((run) => ({ span: run.trim(), line: source[i] })))
+    .filter(({ span }) => span.split(/\s+/).filter(Boolean).length >= SPAN_MIN_WORDS);
+};
+
+/** The quoted spans alone. Pure. */
+export const quotedSpans = (text) => quotedLines(text).map(({ span }) => span);
+
+/** The draft's quotations that no record's quote holds, each with its line. Pure. */
+export const unboundQuoteLines = (text, records) => {
+  const quotes = (records ?? []).map((r) => squeeze(r?.quote)).filter(Boolean);
+  return quotedLines(text).filter(({ span }) => {
+    const segments = quoteSegments(span);
+    return !quotes.some((q) => holdsInOrder(q, segments));
+  });
 };
 
 /** The draft's quotations that no record's quote holds. Pure. */
-export const unboundQuotes = (text, records) => {
-  const quotes = (records ?? []).map((r) => squeeze(r?.quote)).filter(Boolean);
-  return quotedSpans(text).filter((span) => !quotes.some((q) => holdsInOrder(q, quoteSegments(span))));
-};
+export const unboundQuotes = (text, records) => unboundQuoteLines(text, records).map(({ span }) => span);
 
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n)}…` : s);
 

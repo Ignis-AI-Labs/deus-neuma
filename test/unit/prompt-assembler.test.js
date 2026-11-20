@@ -239,7 +239,7 @@ describe('Prompt Assembler', () => {
       // differ, and the CONTEXT MAP compares them for byte-identity.
       const text = assemblePromptSections({ now: new Date(2026, 6, 4, 12, 0, 0) })
         .find((s) => s.id === 'present').text;
-      expect(text).toMatch(/^## Present Moment\nSaturday, July 4, 2026, \d{2}:\d{2} [AP]M .+\.\nYesterday was Friday, July 3, 2026\.\nUTC \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z( · zone \S+)? \(UTC[+-]\d{2}:\d{2}\)\.\nThis is the real present — your training cutoff is not\. Anchor "today", "now", "recent", "this week", deadlines, and search queries to the date above\.\nWhen you schedule anything public, compute from the UTC instant above and say which timezone you mean\. Never infer today's date\.$/);
+      expect(text).toMatch(/^## Present Moment\nSaturday, July 4, 2026, \d{2}:\d{2} [AP]M .+\.\nYesterday was Friday, July 3, 2026\.\nUTC \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z( · zone \S+)? \(UTC[+-]\d{2}:\d{2}\)\.\nThis is the real present — your training cutoff is not\. Anchor "today", "now", "recent", "this week", deadlines, and search queries to the date above\.\nWhen you schedule anything public, compute from the UTC instant above and say which timezone you mean\. Never infer today's date\.\nInside a system a tool opens \(a calendar, an account, a sandbox\), "today" is that system's own date when it has one: read it from the system before acting there\. Never change a date the request didn't ask you to change\.$/);
     });
 
     test('carries the pinned moment, and an unpinned call reads the real clock', () => {

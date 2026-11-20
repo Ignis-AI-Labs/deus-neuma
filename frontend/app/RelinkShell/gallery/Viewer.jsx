@@ -6,7 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
-import { fileSrc } from '../../../services/gallery-client.js';
+import { useDeskTicketUrl } from '../use-desk-ticket-url.js';
 import { itemKey, plaqueOf } from './gallery-view.js';
 import { useLean } from './use-lean.js';
 import { FIT, displayPercent, transformOf } from './viewer-zoom.js';
@@ -52,10 +52,11 @@ export const Viewer = ({ item, path = null, position, onClose, onStep }) => {
   const hasAccount = Boolean(forgeRefOf(item));
 
   const [account, setAccount] = useState(true);
+  const src = useDeskTicketUrl('/api/v1/gallery/file', { rootId: item.rootId, rel: item.rel });
   // The work's own menu (media-menu.js): the gallery is already here, so it
   // offers the folder on disk, the bytes and the player — never itself.
   const door = mediaMenuDoor({
-    kind: item.kind, src: fileSrc(item), path, name: item.name, mime: item.mime, inGallery: true,
+    kind: item.kind, src, path, name: item.name, mime: item.mime, inGallery: true,
   });
 
   // The lens (shared with the Lightbox). The wheel is suspended for videos:
@@ -130,7 +131,7 @@ export const Viewer = ({ item, path = null, position, onClose, onStep }) => {
             <img
               ref={artRef}
               className="gallery-viewer-media"
-              src={fileSrc(item)}
+              src={src || undefined}
               alt={item.name}
               style={{ transform: transformOf(view) }}
               draggable="false"
@@ -148,7 +149,7 @@ export const Viewer = ({ item, path = null, position, onClose, onStep }) => {
           // threw that away and made a large video sit black until every byte
           // had landed.
           // eslint-disable-next-line jsx-a11y/media-has-caption -- operator's own local media
-          : <video className="gallery-viewer-media" src={fileSrc(item)} controls autoPlay loop {...door} />}
+          : <video className="gallery-viewer-media" src={src || undefined} controls autoPlay loop {...door} />}
 
         {/* Walking the room by hand. Withdrawn while the operator is leaning
             in, because there a drag is a pan and an edge is somewhere to grab,

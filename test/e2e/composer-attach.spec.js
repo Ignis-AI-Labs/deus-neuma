@@ -12,10 +12,10 @@ import { claimOwner } from '../helpers/claim-owner.js';
 /**
  * End-to-end composer "+" attach menu — the one place beside the field where a
  * witness brings things into the conversation: files (a REAL file chooser into
- * the same admission path as paste/drop), a folder focus (the REAL disk picker
- * through the shared open-folder flow), and the project (activate right there).
- * Auth is REAL (challenge-sign-verify with Claude's witness wallet); projects
- * are REAL wallet-scoped rows on the backend; the picked folder is REAL disk.
+ * the same admission path as paste/drop) and a folder focus (the REAL disk
+ * picker through the shared open-folder flow — in a plain browser, where no
+ * system folder dialog exists). Auth is REAL (challenge-sign-verify with
+ * Claude's witness wallet); the picked folder is REAL disk.
  * Nothing on any claimed path is mocked (AGENTS.md RULE 0).
  *
  * Needs no LLM — nothing here sends a thought.
@@ -24,7 +24,7 @@ import { claimOwner } from '../helpers/claim-owner.js';
  * PID-derived bind-probed ports with a disposable temp WORKSPACES_ROOT, and
  * routes workspace-settings, files-settings AND the realm into the temp dir
  * (explorer-panel.spec.js precedent + the NEUMA_* isolation doors) so the
- * operator's persisted roots, projects and realm can never leak in — and this
+ * operator's persisted roots and realm can never leak in — and this
  * suite's roots never land on the live settings files.
  */
 
@@ -92,20 +92,6 @@ const waitFor = async (urls, ms = 90000) => {
   }
 };
 
-const api = (route, init = {}) => fetch(`${BASE}/api/v1/user/projects${route}`, {
-  ...init,
-  headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(init.headers || {}) },
-});
-
-// The test wallet is used only by the e2e suites — clearing its projects is
-// safe and makes every test's starting slate deterministic. Deletes run
-// SEQUENTIALLY: a backend from before the store's mutation queue tears its
-// projects.json under parallel read-modify-writes.
-const clearProjects = async () => {
-  const { projects } = await (await api('')).json();
-  for (const p of projects || []) await api(`/${p.id}`, { method: 'DELETE' });
-};
-
 let root;
 let backendProc;
 let viteProc;
@@ -140,7 +126,6 @@ test.beforeAll(async () => {
 });
 
 test.afterAll(async () => {
-  await clearProjects().catch(() => { /* stack already down — nothing to clear */ });
   // PROCESS-SAFETY LAW: recorded PIDs ONLY — never pkill/pattern matching.
   // Detached children lead their own process groups; -pid reaches exactly
   // that child and its own descendants.
@@ -153,7 +138,6 @@ test.afterAll(async () => {
 });
 
 test.beforeEach(async ({ page }) => {
-  await clearProjects();
   const crashes = [];
   page.on('pageerror', (e) => crashes.push(e.message));
   page.__crashes = crashes;
@@ -176,10 +160,8 @@ test('"+" opens the attach menu with its honest rows, and Escape closes it', asy
   await expect(menu).toBeVisible();
   await expect(menu.locator('.relink-attach-menu-name', { hasText: 'ADD FILES' })).toBeVisible();
   await expect(menu.locator('.relink-attach-menu-name', { hasText: 'OPEN FOLDER' })).toBeVisible();
-  await expect(menu.locator('.relink-attach-menu-sect', { hasText: 'PROJECT' })).toBeVisible();
-  // Clean slate — the project section says so instead of showing nothing.
-  await expect(menu.locator('.relink-attach-menu-empty')).toBeVisible();
-  await expect(menu.locator('.relink-attach-menu-name', { hasText: 'MANAGE PROJECTS' })).toBeVisible();
+  // Projects were removed (2026-11-10): the menu is the two rows and nothing else.
+  await expect(menu.locator('.relink-attach-menu-row')).toHaveCount(2);
 
   await page.keyboard.press('Escape');
   await expect(menu).not.toBeVisible();
@@ -205,7 +187,7 @@ test('ADD FILES drives a real file chooser into a document chip', async ({ page 
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
-test('OPEN FOLDER lands the folder as this window\'s working focus — no project is created (D5)', async ({ page }) => {
+test('OPEN FOLDER lands the folder as this window\'s working focus (D5)', async ({ page }) => {
   await page.locator('.relink-plus').click();
   await page.locator('.relink-attach-menu-row', { hasText: 'OPEN FOLDER' }).click();
 
@@ -220,37 +202,9 @@ test('OPEN FOLDER lands the folder as this window\'s working focus — no projec
   await expect(picker.locator('.picker-cwd')).toContainText('core');
   await picker.locator('.picker-open').click();
 
-  // Panel/focus era (D5): the open gesture is a LENS, not a mutation — the
-  // strip reads the bare-folder focus and NO project is created.
+  // Panel/focus era (D5): the open gesture is a LENS — the strip reads the
+  // folder in focus.
   await expect(page.locator('.relink-status-folder')).toContainText('FOLDER — core', { timeout: 15000 });
-  await expect(page.locator('.relink-status-project')).toHaveCount(0);
-  const { projects } = await (await api('')).json();
-  expect(projects || []).toEqual([]);
-
-  // The menu still shows the clean project slate — nothing was activated.
-  await page.locator('.relink-plus').click();
-  await expect(page.locator('.relink-attach-menu-empty')).toBeVisible();
-  expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
-});
-
-test('the PROJECT rows switch the active project; MANAGE opens the Projects window', async ({ page }) => {
-  // Two REAL projects on the backend before the desk loads.
-  const a = (await (await api('', { method: 'POST', body: JSON.stringify({ name: 'e2e-attach-a', folder: path.join(REPO, 'backend') }) })).json()).project;
-  const b = (await (await api('', { method: 'POST', body: JSON.stringify({ name: 'e2e-attach-b', folder: path.join(REPO, 'frontend') }) })).json()).project;
-  if (!a?.id || !b?.id) throw new Error('project seed failed');
-  await api(`/${a.id}/activate`, { method: 'POST', body: JSON.stringify({}) });
-  await page.reload();
-  await expect(page.locator('.relink-plus')).toBeEnabled({ timeout: 15000 });
-  await expect(page.locator('.relink-status-project')).toContainText('e2e-attach-a');
-
-  await page.locator('.relink-plus').click();
-  await expect(page.locator('.relink-attach-menu-row.is-project', { hasText: 'e2e-attach-a' })).toHaveClass(/is-active/);
-  await page.locator('.relink-attach-menu-row.is-project', { hasText: 'e2e-attach-b' }).click();
-  await expect(page.locator('.relink-status-project')).toContainText('e2e-attach-b');
-
-  await page.locator('.relink-plus').click();
-  await page.locator('.relink-attach-menu-row', { hasText: 'MANAGE PROJECTS' }).click();
-  await expect(page.locator('.proj')).toBeVisible();
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 

@@ -27,7 +27,7 @@ export const PAGE_GUIDE = Object.freeze({
   sky: {
     title: 'THE SKY',
     kicker: 'ONE INSTANT · MANY SKIES',
-    what: 'The instant this being was sealed, read the way humanity has read the sky and the days for thousands of years — the planets where they stood, and the counts of the Maya and the Mexica, China, Japan, Tibet, India, Thailand, Java, Bali, Myanmar, Israel, Arabia, Persia, Ethiopia, Egypt, Ghana, Nigeria, France and Iceland. Each tells the same moment in its own language.',
+    what: 'The instant this being was sealed, read the way humanity has read the sky and the days for thousands of years — the planets where they stood, and the counts of the Maya and the Mexica, China, Japan, Tibet, India, Thailand, Java, Bali, Myanmar, the Jewish world, Arabia, Persia, Ethiopia, Egypt, Ghana, Nigeria, France and Iceland. Each tells the same moment in its own language.',
     how: 'Every reading is computed from the instant alone — never from where its witness stood — so it can be shown openly. Each carries its tradition and its age; a modern system says it is modern. Choose a tradition to see it drawn and explained.',
   },
   seal: {

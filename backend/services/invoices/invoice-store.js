@@ -11,7 +11,8 @@ import { officeFile } from '../house-office.js';
 import { readJson, writePrivate, ABSENT } from '../house-office-legacy.js';
 import { createWriteChain } from '../write-chain.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
-import { readReceipts, putExtra } from '../money-in/money-in-store.js';
+import { readExternalReceipts, putExtra } from '../money-in/money-in-store.js';
+import { claimReceipt } from '../money-in/receipt-consumption.js';
 import { addressOfAnotherHouse } from '../money-in/watch-set.js';
 import { foldInvoices, invoiceNumber, billedFor, judgePaid, judgeVoid, overdue, unmatchedFor } from './invoice-shape.js';
 
@@ -64,9 +65,11 @@ export const issueInvoice = (wallet, build) => serialize(async () => {
 
 /** Record an invoice paid by a money-in receipt (named by its key). */
 export const recordPaid = (wallet, { invoiceId, receiptKey, by, now }) => serialize(async () => {
-  const [{ invoices }, receipts] = await Promise.all([readInvoices(wallet), readReceipts(wallet).catch(() => [])]);
+  const [{ invoices }, receipts] = await Promise.all([readInvoices(wallet), readExternalReceipts(wallet).catch(() => [])]);
   const judged = judgePaid(invoices, { invoiceId, receipt: receipts.find((r) => r.key === String(receiptKey ?? '')) ?? null, by, now });
   if (!judged.ok) return judged;
+  const claimed = await claimReceipt(wallet, { kind: 'money-in', ref: judged.event.receipt }, { kind: 'invoice', id: judged.event.id, at: now });
+  if (!claimed.ok) return claimed;
   await appendJsonLine(fileOf(wallet), judged.event);
   return { ok: true, invoice: { ...invoices.find((v) => v.id === judged.event.id), status: 'paid' } };
 });
@@ -81,7 +84,7 @@ export const voidInvoice = (wallet, { invoiceId, reason, by, now }) => serialize
 
 /** The invoices as the TREASURY window reads them: newest first, each open one with the receipts that may be its. */
 export const invoiceBoard = async (wallet, nowMs) => {
-  const [{ invoices }, payTo, receipts] = await Promise.all([readInvoices(wallet), readPayTo(wallet), readReceipts(wallet).catch(() => [])]);
+  const [{ invoices }, payTo, receipts] = await Promise.all([readInvoices(wallet), readPayTo(wallet), readExternalReceipts(wallet).catch(() => [])]);
   return {
     payTo,
     invoices: [...invoices].reverse().map((v) => ({

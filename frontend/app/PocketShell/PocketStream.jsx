@@ -7,6 +7,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { StreamPanel } from '../RelinkShell/StreamPanel.jsx';
 import { StreamInput } from '../RelinkShell/StreamInput.jsx';
+import { TalkButton } from '../RelinkShell/ComposerTools.jsx';
+import { isComingLater } from '../coming-later.js';
 import { StreamChatTitle } from '../RelinkShell/StreamChatTitle.jsx';
 import { ContextStrip } from '../RelinkShell/ContextStrip.jsx';
 import { VoiceSitting } from '../RelinkShell/VoiceSitting/VoiceSitting.jsx';
@@ -31,7 +33,7 @@ export const PocketStream = () => {
     state, sendThought, sendRetry, sendRevision, switchTake, stopThought, bargeIn,
     respondApproval, respondAsk, respondPlan, respondSeal, activeCompanion, heldCount,
     editQueuedThought, sendQueuedNow, pullQueuedThought, voiceSittingActive,
-    exitVoiceSitting, getPlaybackState, purpose, wsService,
+    exitVoiceSitting, getPlaybackState, wsService,
   } = useConsciousness();
   const council = useCouncil();
   const [recall, setRecall] = useState(null);
@@ -113,13 +115,12 @@ export const PocketStream = () => {
               )}
               urgentTitle="Interject NOW — cut the reply and take the floor"
               onStop={stopThought}
-              onBargeIn={bargeIn}
               onEscapeRecallQueued={heldCount > 0 && state.connected ? () => pullQueuedThought() : null}
               recall={recall}
               sentHistory={sentHistoryOf(state.messages)}
               neumaId={activeCompanion?.neumaId || null}
-              purpose={purpose}
               wsService={wsService}
+              talk={isComingLater('voice') ? null : <TalkButton />}
             />
           </>
         )}

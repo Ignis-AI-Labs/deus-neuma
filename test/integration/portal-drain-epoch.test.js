@@ -24,7 +24,7 @@ beforeAll(async () => {
 afterAll(async () => { await kit?.close(); });
 
 // What each request asked, past the local wire's harness block.
-const asked = () => kit.provider.turns.map((body) => lastUserText(body).split('</harness-context>\n\n').pop());
+const asked = () => kit.provider.turns.map((body) => lastUserText(body).split(/<\/harness-context:[^>]+>\n\n/).pop());
 const send = (frame) => kit.ws.send(JSON.stringify({ type: 'consciousness:stream', ...frame }));
 // A turn in flight: the provider holds its answer back, and the request has arrived.
 const turnInFlight = async (thought) => {

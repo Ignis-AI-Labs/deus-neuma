@@ -32,7 +32,7 @@ describe('secret-sweep (real tmp git repo)', () => {
       `WITNESS_PRIVATE_KEY=${FAKE_EVM_KEY}`,
       'const fine = "nothing here";',
       `token: ${FAKE_GH}`,
-      '-----BEGIN PRIVATE KEY-----',
+      '-----BEGIN PRIVATE\x20KEY-----',
     ].join('\n'));
     expect(hits.map(({ line, patternId }) => ({ line, patternId }))).toEqual([
       { line: 1, patternId: 'evm-private-key' },
@@ -48,11 +48,13 @@ describe('secret-sweep (real tmp git repo)', () => {
     const [a] = scanText(`WITNESS_PRIVATE_KEY=${FAKE_EVM_KEY}`);
     const [b] = scanText(`DEPLOYER_PRIVATE_KEY="${FAKE_EVM_KEY}"`);
     const [c] = scanText(`WITNESS_PRIVATE_KEY=${OTHER_FAKE_KEY}`);
+    const [bare] = scanText(`WITNESS_PRIVATE_KEY=${FAKE_EVM_KEY.slice(2)}`);
     expect(a.fingerprint).toBe(b.fingerprint);
+    expect(a.fingerprint).toBe(bare.fingerprint);
     expect(a.fingerprint).not.toBe(c.fingerprint);
     // Two PEM keys share a header; their first body lines tell them apart.
-    const [pemA] = scanText('-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC');
-    const [pemB] = scanText('-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC');
+    const [pemA] = scanText('-----BEGIN PRIVATE\x20KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC');
+    const [pemB] = scanText('-----BEGIN PRIVATE\x20KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC');
     expect(pemA.fingerprint).not.toBe(pemB.fingerprint);
   });
 
@@ -124,14 +126,19 @@ describe('secret-sweep (real tmp git repo)', () => {
     expect(result.error).toBe(`watched repo path is gone: ${path.join(repo, 'no-such-checkout')}`);
   });
 
-  test('the allowlist holds: examples, test fixtures, and lockfiles are skipped', async () => {
+  test('allowlisted paths still reveal high-signal key blocks, while unrelated shapes stay skipped', async () => {
     await fs.mkdir(path.join(repo, 'test'), { recursive: true });
+    await fs.mkdir(path.join(repo, 'assets'), { recursive: true });
     await fs.writeFile(path.join(repo, '.env.example'), `WITNESS_PRIVATE_KEY=${FAKE_EVM_KEY}\n`);
-    await fs.writeFile(path.join(repo, 'test', 'fixture.txt'), `WITNESS_PRIVATE_KEY=${FAKE_EVM_KEY}\n`);
+    await fs.writeFile(path.join(repo, 'test', 'fixture.txt'), `WITNESS_PRIVATE_KEY=${FAKE_EVM_KEY.slice(2)}\n`);
+    await fs.writeFile(path.join(repo, 'assets', 'backup.zip'), `WITNESS_PRIVATE_KEY=${OTHER_FAKE_KEY.slice(2)}\n`);
     await fs.writeFile(path.join(repo, 'package-lock.json'), `"integrity":"${FAKE_EVM_KEY}"`);
     await execFileP('git', ['add', '-A'], { cwd: repo });
     const result = await sweepRepo({ id: 'tmp-repo', path: repo });
-    expect(result.findings).toEqual([]);
+    expect(result.scanned).toBe(4);
+    expect(result.findings.map((f) => f.file).sort()).toEqual(['.env.example', 'assets/backup.zip', 'test/fixture.txt']);
+    expect(result.findings.every((f) => f.patternId === 'evm-private-key')).toBe(true);
+    expect(JSON.stringify(result)).not.toContain(FAKE_EVM_KEY.slice(2));
     expect(isAllowlisted('.env.example')).toBe(true);
     expect(isAllowlisted('test/fixture.txt')).toBe(true);
     // The ONE directory secrets were actually leaked into is IN SCOPE (#160):

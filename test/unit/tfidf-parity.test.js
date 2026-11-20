@@ -185,20 +185,22 @@ describe('score parity with natural TfIdf (bit-identical)', () => {
 describe('words natural mis-counted (the deliberate difference)', () => {
   const texts = ['the constructor pattern', 'a pattern of light', 'the __proto__ chain', 'a __key field'];
 
-  test('natural scores NaN or corrupts the key; the local index counts them as words', () => {
+  test('natural mis-counts or corrupts the key; the local index counts them as words', () => {
     const reference = naturalIndex(texts);
     const local = localIndex(texts);
 
-    // "constructor" missing from a document reads Object, not 0 → NaN.
+    // "constructor" missing from a document read Object, not 0 → NaN, until natural 8.2 (2026-11-16,
+    // 5c88ebec4) fixed it; the local index scores it finite either way.
     const naturalCtor = naturalScores(reference, 'constructor pattern');
-    expect(Number.isNaN(naturalCtor[1].score)).toBe(true);
+    expect(naturalCtor.every(({ score }) => Number.isFinite(score))).toBe(true);
     const localCtor = tfidfScores(local, 'constructor pattern');
     expect(localCtor.every(({ score }) => Number.isFinite(score))).toBe(true);
     expect(localCtor[0].score).toBeGreaterThan(localCtor[1].score);
     expect(localCtor[1].score).toBeGreaterThan(0);
 
-    // "__proto__" reads Object.prototype in EVERY document → NaN everywhere.
-    expect(naturalScores(reference, '__proto__').every(({ score }) => Number.isNaN(score))).toBe(true);
+    // "__proto__" read Object.prototype in EVERY document → NaN everywhere; natural 8.2 scores it 0
+    // everywhere instead — still blind to the one document that holds the word.
+    expect(naturalScores(reference, '__proto__').every(({ score }) => score === 0)).toBe(true);
     expect(tfidfScores(local, '__proto__').map(({ score }) => score > 0)).toEqual([false, false, true, false]);
 
     // "__key" in a document overwrote natural's key slot with a string.

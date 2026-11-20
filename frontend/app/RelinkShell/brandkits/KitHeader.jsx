@@ -16,7 +16,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Select } from '../Select.jsx';
-import { FolderPicker } from '../picker/FolderPicker.jsx';
+import { ChooseFolder } from '../picker/ChooseFolder.jsx';
 import { setHouseWorkspace } from '../../../services/house-workspace.js';
 import { kitSwitcherOptions } from './brand-kits-view.js';
 
@@ -103,7 +103,7 @@ export const KitHeader = ({
       {/* Portalled by the caller, the way HouseApp mounts the same picker —
           the overlay must escape this header's stacking context. */}
       {picking ? createPortal(
-        <FolderPicker
+        <ChooseFolder
           initialPath={ground.root || undefined}
           onPick={chooseGround}
           onCancel={() => setPicking(false)}

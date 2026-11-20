@@ -49,11 +49,33 @@ describe('answering an ask', () => {
     expect(judgeAnswer(fact, { status: 'done', text: 'Filed: 2026-001234567', now: NOW }).event.text).toBe('Filed: 2026-001234567');
   });
 
+  test('a secret-shaped or oversized answer is refused before an event exists; a real location still lands', () => {
+    const hostile = judgeAnswer(held, { status: 'done', text: `login ${'AKIA'}ABCDEFGHIJKLMNOP`, now: NOW });
+    expect(hostile.ok).toBe(false);
+    expect(hostile.reason).toMatch(/looks like a secret/);
+    expect(hostile.event).toBeUndefined();
+    expect(judgeAnswer(held, { status: 'done', text: 'x'.repeat(401), now: NOW }).reason).toMatch(/at most 400 characters/);
+    expect(judgeAnswer(held, { status: 'done', text: 'in the operator password manager', now: NOW }))
+      .toEqual({ ok: true, event: { type: 'answered', id: held.id, status: 'done', text: 'in the operator password manager', by: 'operator', at: NOW } });
+  });
+
   test('a decline says why; a closed ask does not move; a stranger\'s id is no ask', () => {
     expect(judgeAnswer(fact, { status: 'declined', text: '', now: NOW }).reason).toMatch(/say why/);
     expect(judgeAnswer({ ...fact, status: 'done' }, { status: 'declined', text: 'x', now: NOW }).reason).toBe('this item is already done');
     expect(judgeAnswer(fact, { status: 'maybe', text: 'x', now: NOW }).reason).toBe('an answer is done or declined');
     expect(judgeAnswer(undefined, { status: 'done', now: NOW }).reason).toBe('no such HANDS item on this company');
+  });
+
+  test('the fold revalidates stored links: unsafe schemes and credentials skip, ordinary https folds', () => {
+    const valid = makeHands(ask());
+    const folded = foldHands([
+      { type: 'raised', item: { ...valid, id: 'h-script', where: 'javascript:alert(1)' }, at: NOW },
+      { type: 'raised', item: { ...valid, id: 'h-credentials', where: 'https://operator@wyobiz.wyo.gov/' }, at: NOW },
+      { type: 'raised', item: valid, at: NOW },
+    ]);
+    expect(folded.items.map((i) => i.id)).toEqual([valid.id]);
+    expect(folded.items[0].where).toBe('https://wyobiz.wyo.gov/');
+    expect(folded.skipped).toBe(2);
   });
 
   test('the record folds to one answer per ask; a second answer is skipped and counted', () => {

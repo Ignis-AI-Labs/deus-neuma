@@ -1,14 +1,14 @@
 // @ts-check
 // explorer-panel-focus.spec.js — the rail and the focus lens: expanded by
-// default, dock FILES toggles, OPEN FOLDER as a lens, widen-to-project,
-// the loud release, hostile persisted focus, the /files palette command.
+// default, dock FILES toggles, OPEN FOLDER as a lens, the loud release,
+// hostile persisted focus, the /files palette command.
 // Split from explorer-panel.spec.js (SIZE-033); bodies byte-identical.
 
 import { test, expect } from '@playwright/test';
 import path from 'path';
 import { openDockApp } from './helpers/dock.js';
 import {
-  setupExplorerPanel, makeFolder, apiProjects, settleDesk, openFolderViaPanel, awaitShell, typeInShell, REPO, BASE, token, addr,
+  setupExplorerPanel, makeFolder, settleDesk, openFolderViaPanel, awaitShell, typeInShell, REPO, addr,
 } from './helpers/explorer-panel-harness.js';
 
 setupExplorerPanel();
@@ -45,10 +45,9 @@ test('panel renders expanded with the FILES tree; dock FILES entry toggles the 3
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
-// ————— 2: OPEN FOLDER = a lens, never a project mutation (D5/D7) —————
+// ————— 2: OPEN FOLDER = a lens (D5/D7) —————
 
-test('OPEN FOLDER via the panel header: tree scopes to it, strip reads FOLDER, terminal cwds there, and NO project is created', async ({ page }) => {
-  const before = await apiProjects();
+test('OPEN FOLDER via the panel header: tree scopes to it, strip reads FOLDER, terminal cwds there', async ({ page }) => {
   const dir = await makeFolder('scope');
   const base = path.basename(dir);
 
@@ -56,7 +55,6 @@ test('OPEN FOLDER via the panel header: tree scopes to it, strip reads FOLDER, t
 
   // The window's lens: strip + panel header both read FOLDER — <name>.
   await expect(page.locator('.relink-status-folder')).toContainText(`FOLDER — ${base}`);
-  await expect(page.locator('.relink-status-project')).toHaveCount(0);
   await expect(page.locator('.xp-kind')).toHaveText('FOLDER');
   await expect(page.locator('.xp-name')).toHaveText(base);
 
@@ -78,10 +76,6 @@ test('OPEN FOLDER via the panel header: tree scopes to it, strip reads FOLDER, t
   await awaitShell(page);
   await typeInShell(page, 'pwd');
   await expect(page.locator('.fwin .terminal-stage')).toContainText(base, { timeout: 15000 });
-
-  // The open gesture mutated NO project store (D5).
-  const after = await apiProjects();
-  expect(after).toEqual(before);
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
@@ -98,43 +92,6 @@ test('the tree shows the just-opened focus root WITHOUT a reload (D6)', async ({
   await openFolderViaPanel(page, dir);
   await expect(page.locator('.relink-status-folder')).toContainText(`FOLDER — ${base}`);
   await expect(page.locator('.files-name', { hasText: base })).toBeVisible({ timeout: 15000 });
-});
-
-// ————— 3: the widen-to-project affordance (D5/D6) —————
-
-test('a folder already owned by a project offers WIDEN TO PROJECT; clicking flips the strip to PROJECT', async ({ page }) => {
-  const dir = await makeFolder('widen');
-  const create = await fetch(`${BASE}/api/v1/user/projects`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ name: 'XPANEL PROJECT', folder: dir }),
-  });
-  expect(create.ok).toBe(true);
-  const { project } = await create.json();
-
-  try {
-    // A fresh desk (this test's own context) — the affordance must derive
-    // from the fetched projects list, not the open gesture's memory.
-    await page.reload();
-    await settleDesk(page);
-    await openFolderViaPanel(page, dir);
-
-    // Folder wins the open gesture (witness rule 5); the header offers widen.
-    await expect(page.locator('.relink-status-folder')).toContainText(`FOLDER — ${path.basename(dir)}`);
-    const widen = page.locator('.xp-widen');
-    await expect(widen).toContainText('WIDEN TO PROJECT — XPANEL PROJECT');
-    await widen.click();
-
-    // A pure focus transition: the strip flips to PROJECT — name.
-    await expect(page.locator('.relink-status-project')).toContainText('PROJECT — XPANEL PROJECT');
-    await expect(page.locator('.xp-kind')).toHaveText('PROJECT');
-    await expect(page.locator('.xp-widen')).toHaveCount(0);
-    expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
-  } finally {
-    await fetch(`${BASE}/api/v1/user/projects/${project.id}`, {
-      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
-    });
-  }
 });
 
 // ————— 4: D9 — closing the focused root releases the focus LOUDLY —————
@@ -159,7 +116,6 @@ test('closing the focused root in the tree releases the focus loudly: strip empt
   // Loud release — never a silent refocus: the strip EMPTIES and the tree
   // says exactly what happened.
   await expect(page.locator('.relink-status-folder')).toHaveCount(0);
-  await expect(page.locator('.relink-status-project')).toHaveCount(0);
   await expect(page.locator('.xp-none')).toContainText('NO WORKING FOCUS');
   await expect(page.locator('.files-note')).toContainText(`Working focus released — ${base} closed`);
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
@@ -190,7 +146,6 @@ test('hostile persisted focus — control chars, relative path, __proto__ kind, 
     // The boundary dropped it: no strip label, the panel reads unfocused.
     await expect(page.locator('.xp-none')).toContainText('NO WORKING FOCUS');
     await expect(page.locator('.relink-status-folder')).toHaveCount(0);
-    await expect(page.locator('.relink-status-project')).toHaveCount(0);
   }
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });

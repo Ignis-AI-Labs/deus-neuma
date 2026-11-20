@@ -15,7 +15,8 @@ import { getChannel, CHANNEL_CATALOG } from '../social/channel-registry.js';
 import { resolveAccountCredential } from '../social/account-store.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { usableAccounts, chooseAccount, postsAsWords, accountGuide } from './intent-account.js';
-import { readMediaFile, setAltText, uploadMedia } from '../social/x-media.js';
+import { setAltText } from '../social/x-media.js';
+import { uploadXMedia } from '../social/x-post-media.js';
 import { posterFor } from '../social/poster-registry.js';
 import { resolvePostMedia } from '../social/post-media.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
@@ -65,7 +66,7 @@ export const socialPostIntent = Object.freeze({
     // Media is authorised BEFORE the operator's card: an unreachable path
     // should cost the operator nothing, and the card they answer should
     // describe a post that can actually be sent.
-    const resolvedMedia = await resolvePostMedia(connection, payload?.media);
+    const resolvedMedia = await resolvePostMedia(connection, payload?.media, { channelId: channel.id });
     if (!resolvedMedia.ok) return { ok: false, status: 'invalid', reason: `media refused: ${resolvedMedia.detail}` };
     if (!text || text.length > POST_MAX_CHARS) {
       return { ok: false, status: 'invalid', reason: text ? 'the post text is far beyond any postable length' : 'the post needs text' };
@@ -116,10 +117,8 @@ export const socialPostIntent = Object.freeze({
     // composition is not what was approved.
     const mediaIds = [];
     for (const item of media) {
-      const read = await readMediaFile(item.path);
-      if (!read.ok) return { ok: false, reason: `media refused: ${read.detail}` };
-      const up = await uploadMedia(credentials, read, { signal });
-      if (!up.ok) return { ok: false, reason: `the image did not upload: ${up.detail}` };
+      const up = await uploadXMedia(credentials, item.path, { signal }); // a still, or one video sent in pieces
+      if (!up.ok) return { ok: false, reason: up.refused ? `media refused: ${up.detail}` : `the media did not upload: ${up.detail}` };
       if (item.alt) await setAltText(credentials, up.mediaId, item.alt, { signal });
       mediaIds.push(up.mediaId);
     }

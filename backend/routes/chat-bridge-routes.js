@@ -5,7 +5,8 @@
  * reads or changes only the signed-in wallet's OWN house.
  *
  *   GET    /status                                each chat account: running, its error, who is allowed, the codes waiting
- *   POST   /:accountId/codes/:code   {approve}    the operator's yes or no to a pairing code
+ *   POST   /:accountId/codes/:code   {approve, mine?}  the operator's yes or no to a pairing code; mine: […]
+ *                                                 (a one-to-one chat only) — that chat is not treated as a visitor's
  *   DELETE /:accountId/allowed/:kind/:id          take a person (user) or a group off the list
  */
 
@@ -38,10 +39,12 @@ router.post('/:accountId/codes/:code', async (req, res) => {
   const accountId = chatAccount(req.params.accountId);
   if (!accountId) return res.status(400).json({ error: 'not a Telegram or Discord account' });
   if (typeof req.body?.approve !== 'boolean') return res.status(400).json({ error: 'approve: true or false' });
+  if (req.body.mine !== undefined && typeof req.body.mine !== 'boolean') return res.status(400).json({ error: 'mine: true or false' });
+  const mine = req.body.approve && req.body.mine === true;
   try {
-    const answered = await answerChatCode(req.walletAddress, accountId, { code: req.params.code, approve: req.body.approve, by: 'operator' });
-    if (!answered.ok) return res.status(404).json({ error: answered.reason });
-    log.info('a pairing code answered', { accountId, approve: req.body.approve, kind: answered.entry.kind });
+    const answered = await answerChatCode(req.walletAddress, accountId, { code: req.params.code, approve: req.body.approve, by: 'operator', mine });
+    if (!answered.ok) return res.status(answered.refused ? 400 : 404).json({ error: answered.reason });
+    log.info('a pairing code answered', { accountId, approve: req.body.approve, kind: answered.entry.kind, mine });
     res.json({ ok: true, entry: { kind: answered.entry.kind, name: answered.entry.name }, status: await chatBridgeStatus(req.walletAddress) });
   } catch (error) {
     log.error('a pairing code could not be answered', { error: error.message });

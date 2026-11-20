@@ -152,6 +152,15 @@ describe('YOUR HANDS on the desk', () => {
     expect(html).toContain('NEVER TYPE A SECRET HERE');
   });
 
+  test('an unsafe stored URL remains text and never becomes an href', () => {
+    const hostile = { ...item, where: 'javascript:alert(1)' };
+    const b = boardOf(toChoose.slice(0, 1));
+    const html = render({ ...b, companies: [lineView(COMPANY, foldLine(toChoose.slice(0, 1)), HOLDERS, [hostile])] });
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toContain('<span>javascript:alert(1)</span>');
+    expect(html).toContain('DO IT AT');
+  });
+
   test('a HANDS row is named and lands on its ask', () => {
     const row = { kind: 'hands', where: { app: 'companyline', companyId: COMPANY.id, handsId: item.id } };
     expect(KIND_LABEL[row.kind]).toBe('YOUR HANDS');
@@ -210,7 +219,8 @@ describe('SALES on the desk', () => {
     expect(html).toContain('SALES — MERCATOR · SOL');
     expect(html).toContain('WON · 300 USD + 0.1 ETH');
     expect(html).toContain('data-deal-id="d-0a0b0c0d"');
-    expect(html).toContain('Padstow harbour office — QUALIFIED, 120 USD — NEXT: Send the sample sheet');
+    // A list of records is a sheet: one deal a line, one fact a cell.
+    expect(html).toMatch(/<th scope="row">Padstow harbour office<\/th><td>QUALIFIED<\/td><td>120 USD<\/td><td title="Send the sample sheet">Send the sample sheet<\/td>/);
     expect(html).toContain('>UNSEAT<');
   });
 });
@@ -234,7 +244,7 @@ describe('THE BOOKS on the desk', () => {
     expect(html).toContain('THE BOOKS — LOGISTA · LEDGER');
     expect(html).toContain('USDC NET · IN 120 · OUT 0');
     expect(html).toContain('2 ENTRIES · 1 UNMATCHED · 1 VOIDED');
-    expect(html).toContain('DUE 2027-03-15: Federal return (Form 1065) — TO the IRS — NEEDS A LICENSED CPA');
+    expect(html).toMatch(/<th scope="row" title="Federal return \(Form 1065\)">Federal return \(Form 1065\)<\/th><td>2027-03-15<\/td><td>the IRS<\/td><td class="is-alert">A LICENSED CPA<\/td>/);
     expect(html).toContain('1 RECEIPT NOT YET BOOKED');
   });
 });

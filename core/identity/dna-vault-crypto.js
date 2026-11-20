@@ -140,7 +140,10 @@ export const decryptVaultData = async (encryptionKey, encryptedData, opts = {}) 
   // unauthenticated CBC. Only a tagless envelope is legacy CBC; one claiming GCM without its
   // tag is refused rather than guessed at.
   if (encryptedData.authTag) {
-    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    if (typeof encryptedData.authTag !== 'string' || !/^[0-9a-fA-F]{32}$/.test(encryptedData.authTag)) {
+      throw new Error('vault decrypt: GCM authTag must be 16 bytes (32 hex characters)');
+    }
+    const decipher = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
     decipher.setAuthTag(Buffer.from(encryptedData.authTag, 'hex'));
     let decrypted = decipher.update(encryptedData.encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');

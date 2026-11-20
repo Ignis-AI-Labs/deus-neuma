@@ -192,7 +192,7 @@ describe.skipIf(!runChainTests)('chain routes — REAL Ethereum mainnet, the Pha
       evm.tokenBalance('ethereum', PHASE3, DEPLOYER, 0),
     ]);
     const holders = await evm.tokenHolders('ethereum', PHASE3, {
-      fromBlock: PHASE3_DEPLOY_BLOCK, chunkSize: 10_000,
+      fromBlock: PHASE3_DEPLOY_BLOCK, chunkSize: 10_000, maxRequests: 1000,
     });
     // eslint-disable-next-line no-console -- diagnostic, the gnosis record
     console.log(`[chain integration] holders → count ${holders.holderCount}, events ${holders.events}, totalHeld ${holders.totalHeld}, truncated ${holders.truncated}, window ${holders.fromBlock}–${holders.toBlock}`);

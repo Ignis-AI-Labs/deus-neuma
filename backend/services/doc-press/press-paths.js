@@ -57,3 +57,19 @@ export const resolvePressPaths = async (args, roots) => {
   }
   return out;
 };
+
+/**
+ * The reader a document's images pass: an image is embedded only when its real path stands inside
+ * the same roots, judged by the same checkPathAccess, as the markdownPath the press may read
+ * (deus-neuma #33). impure (realpath)
+ * @param {string[]} roots - the open folder and the being's own workspace
+ * @returns {(file: string) => Promise<{ok: boolean, real?: string, why?: string}>}
+ */
+export const pressImageReader = (roots) => {
+  const realRoots = Promise.all(roots.filter(Boolean).map((r) => realpathOfNearestExisting(r)));
+  return async (file) => {
+    const real = await realpathOfNearestExisting(file);
+    const check = checkPathAccess(real, await realRoots);
+    return check.allowed ? { ok: true, real } : { ok: false, why: `not inside the operator's open folder or your workspace${check.reason ? ` (${check.reason})` : ''}` };
+  };
+};

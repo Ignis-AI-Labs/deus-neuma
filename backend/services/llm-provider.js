@@ -4,9 +4,9 @@
 // All providers normalize to a streaming interface that portal-stream.js consumes.
 //
 // SIZE EXCEPTION: this is the live composer for the whole inference path —
-// config, the adapter/stall guards, the stream pump, and model/capability
+// config, the adapter guard, the stream pump, and model/capability
 // resolution are one custody story a turn crosses end to end. The pure seams
-// already split out (SIZE-026): request builders (llm-request-builders.js),
+// already split out (SIZE-026): request builders (llm-request-builders.js), the stall guard,
 // wire-frame parsing and think filtering. Public exports remain below.
 // The network reasoning probe lives separately in llm-think-probe.js.
 
@@ -34,19 +34,23 @@ import {
 } from './provider-stream-telemetry.js';
 import { dialectOf, buildHeaders, buildChatUrl, buildStreamBody } from './llm-request-builders.js';
 import { isLocalLlamaWire, toolCallBan } from './close-prefix.js';
+import { openReply, stepReply, closeReply } from './reply-meter.js';
 import { readStreamLine } from './llm-stream-frames.js';
+import { readWithStallGuard, stallLimitFor } from './llm-stall-guard.js';
 import { stripThinkTags, createThinkFilter } from './llm-think-filter.js';
 import { probeThinkBehavior } from './llm-think-probe.js';
 import { servedInstance, keptShape, keepShape } from './think-shape-store.js';
 import { capsCacheFresh, runtimeModelCaches } from './llm-runtime-cache.js';
 import { visionSettings } from './vision-settings.js';
 import { isContextOverflow, recoverContextOverflow } from './context-overflow.js';
+import { assertRouteOwned } from './loopback-route-owner.js';
 export { CAPS_CACHE_TTL_MS, capsCacheFresh, _resetCapsCache, _expireCapsCache, expireRuntimeModelCaches } from './llm-runtime-cache.js';
 
 // The extracted seams' public surface, re-exported so every importer of
 // llm-provider.js sees zero change (SIZE-026).
 export { localFamilySampling } from './llm-request-builders.js';
 export { toOpenAIToolCallDeltas, frameChannelBytes, tallyChannelBytes, readStreamLine } from './llm-stream-frames.js';
+export { readWithStallGuard, stallLimitFor } from './llm-stall-guard.js';
 export { stripThinkTags, createThinkFilter, classifyThinkBehavior } from './llm-think-filter.js';
 export {
   getConfig, setConfig, configFromRoute,
@@ -209,6 +213,7 @@ export const createStreamRequest = async (messages, options = {}) => {
   // sampling still falls back to the global config so a preset behaves
   // identically to the default path. Absent a route, nothing changes.
   const config = options.route ? configFromRoute(options.route, getConfig()) : getConfig();
+  assertRouteOwned(config.endpoint); // a saved route found in another account's hands at start (P6-153)
   // A HARNESS lane rides the server its person chose (harness-lane.js) — never
   // the house's supervised model: it is not booted, reloaded or clocked for it.
   if (options.superviseLlamaServer !== false && options.route?.source !== 'harness') {
@@ -382,35 +387,7 @@ export const createStreamRequest = async (messages, options = {}) => {
 
   // The body the substrate just accepted, as it went out — a benchmark sitting reads its images off it (wire-images.js).
   notifyObserver('onWireBody', options.onWireBody, body);
-  return { response: releasingWithBody(response, lease), provider: config.provider, dialect: dialectOf(config), requestStartedAt };
-};
-
-/** Max silence between stream chunks before the stream is declared dead.
- *  Local providers can pause for prompt processing, but a healthy
- *  generation never goes this long without a byte. */
-const STREAM_STALL_MS = 120_000;
-
-// Rejects if the next chunk takes longer than STREAM_STALL_MS — a
-// half-open connection otherwise hangs reader.read() forever and the
-// ceremony stalls with it
-export const readWithStallGuard = async (reader) => {
-  let timer;
-  try {
-    return await Promise.race([
-      reader.read(),
-      new Promise((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`LLM stream stalled — no data for ${STREAM_STALL_MS / 1000}s`)),
-          STREAM_STALL_MS
-        );
-      }),
-    ]);
-  } catch (error) {
-    reader.cancel().catch(() => {});
-    throw error;
-  } finally {
-    clearTimeout(timer);
-  }
+  return { response: releasingWithBody(response, lease), provider: config.provider, dialect: dialectOf(config), requestStartedAt, local: localWire };
 };
 
 /**
@@ -430,6 +407,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
   // ONE channel for both shapes: a vendor's own reasoning field (above) and a
   // local template's <think> markers (here) reach the operator the same way.
   const filteredOnContent = createThinkFilter(onContent, options);
+  const reply = streamResult.local ? openReply(requestStartedAt) : null; // timed by phase for the ACTIVITY panel (reply-meter.js)
   const actionBoundary = createStreamActionBoundary(options.onActionBoundary, options);
   let buffer = '';
   let fullResponse = '';
@@ -438,6 +416,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
   let finishReason = null;
   // The SSE event vocabulary follows the wire DIALECT, not the provider id.
   const wire = dialect || provider;
+  const stallLimit = stallLimitFor(streamResult);
 
   // Single exit for every stream-end path so the usage contract holds:
   // options.onUsage fires exactly once with { promptTokens, completionTokens }
@@ -445,6 +424,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
   // onTelemetry callback; absence remains null and never becomes a fake zero.
   // options.onFinishReason follows the same once-at-end contract.
   const finish = () => {
+    if (reply) closeReply(reply);
     const usage = tokenUsageOnly(observedUsage);
     if (usage === null && wire !== 'ollama' && wire !== 'anthropic') {
       log.debug('Stream ended without a usage chunk — token counts downgrade to approx', { provider });
@@ -463,7 +443,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
   while (true) {
     let read;
     try {
-      read = await readWithStallGuard(reader);
+      read = await readWithStallGuard(reader, stallLimit);
     } catch (error) {
       // A witness interrupt aborts the fetch mid-stream. What already
       // arrived IS the response — a cut, not a failure.
@@ -486,6 +466,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
       if (evt.error) {
         throw Object.assign(new Error(evt.error), evt.code ? { code: evt.code } : {});
       }
+      if (reply) stepReply(reply, evt, performance.now());
       if (evt.usage) observedUsage = mergeStreamUsage(observedUsage, evt.usage);
       if (evt.finishReason) finishReason = evt.finishReason;
       if (firstOutputAt === null && hasProviderOutput(evt)) {
@@ -514,7 +495,7 @@ const _pumpStream = async (streamResult, onContent, options = {}, onToolDelta = 
  * Parse a streaming response, calling onContent for each token.
  * Automatically filters <think>...</think> blocks from thinking models.
  * Returns the full concatenated response text (think tags stripped).
- * Throws if the stream goes silent for STREAM_STALL_MS.
+ * Throws if the stream goes silent past its wire's limit (llm-stall-guard.js).
  * Pass { implicitOpen: true } (from getThinkBehavior) when the active
  * model reasons without an opening marker in its output.
  * Pass { onUsage, onTelemetry }: token counts keep their existing shape/null;
@@ -526,14 +507,20 @@ export const consumeStream = async (streamResult, onContent, options = {}) => {
   return stripThinkTags(fullResponse);
 };
 
+const MAX_TOOL_CALLS_PER_TURN = 64;
+
 /**
  * Merge one OpenAI delta.tool_calls fragment into an assembled-by-index map.
  * The function name arrives on the first fragment; arguments stream across
  * many fragments and are concatenated. Mutates `assembled` in place (caller
- * owns the map); shared by the chat consumer and the birth ceremony loop.
+ * owns the map, made with Object.create(null)); shared by the chat consumer
+ * and the birth ceremony loop. `index` is the model server's word: anything
+ * but a small whole number is dropped — `"__proto__"` named Object.prototype
+ * and wrote id/name/args onto every object in the process (PR600 audit P6-154).
  */
 export const mergeToolCallDelta = (assembled, delta) => {
-  const idx = delta.index ?? 0;
+  const idx = delta?.index ?? 0;
+  if (!delta || !Number.isInteger(idx) || idx < 0 || idx >= MAX_TOOL_CALLS_PER_TURN) return;
   if (!assembled[idx]) assembled[idx] = { id: null, name: '', args: '' };
   if (delta.id && !assembled[idx].id) assembled[idx].id = delta.id;
   if (delta.function?.name) assembled[idx].name = delta.function.name;
@@ -587,7 +574,7 @@ export const decodeToolCallDeltas = (assembled) =>
  * contracts as consumeStream.
  */
 export const consumeStreamWithTools = async (streamResult, onContent, options = {}) => {
-  const assembled = {};
+  const assembled = Object.create(null);
   const onToolDelta = (deltas) => {
     for (const d of deltas) mergeToolCallDelta(assembled, d);
   };

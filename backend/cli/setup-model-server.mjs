@@ -2,7 +2,7 @@
 //
 // THE INSTALL STANDARD (2026-10-22): the installer, not the person, provides what the app needs. The
 // Windows setup wizard runs this after it copies the app (build/installer.nsh), with the app's own
-// runtime: `NEUMA.exe` under ELECTRON_RUN_AS_NODE=1. It is the SAME code the app's first run uses
+// runtime as an Electron utility child. It is the SAME code the app's first run uses
 // (managed-ollama.js): the plan read from this machine, the pinned Ollama checked against its
 // SHA-256, kept under the app's data folder with no admin rights, and the model chosen for this PC.
 // Every line it prints lands in the wizard's install log, so each is written for a person: what this

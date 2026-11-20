@@ -11,6 +11,7 @@
 // to stderr. Exit-code and receipt concerns stay with the callers.
 
 import readline from 'node:readline';
+import { readApproval, approvalTerminalText } from './approval-text.js';
 
 /** Classify one frame emitted by the real consciousness path. Pure. */
 export const classifyFrame = (raw) => {
@@ -18,7 +19,14 @@ export const classifyFrame = (raw) => {
   try { frame = JSON.parse(raw); } catch { return { kind: 'other' }; }
   if (frame?.type === 'tool:approval_request' && frame.id) {
     const args = typeof frame.args === 'string' ? frame.args : JSON.stringify(frame.args ?? {});
-    return { kind: 'approval', id: frame.id, tool: String(frame.tool || '?'), args };
+    // The preview is a window (tool-approval.js): the whole text, the scope a yes
+    // grants and the act's readable name ride beside it and must reach the prompt.
+    return {
+      kind: 'approval', id: frame.id, tool: String(frame.tool || '?'), args,
+      ...(typeof frame.fullArgs === 'string' && frame.fullArgs ? { fullArgs: frame.fullArgs } : {}),
+      ...(typeof frame.scope === 'string' && frame.scope ? { scope: frame.scope } : {}),
+      ...(typeof frame.label === 'string' && frame.label ? { label: frame.label } : {}),
+    };
   }
   if (frame?.type === 'consciousness:stream' && typeof frame.content === 'string') {
     return { kind: 'speech', content: frame.content, error: frame.error === true };
@@ -215,7 +223,13 @@ export const createCliPortal = ({ stdin, stdout, stderr, connection, resolveTool
         resolveToolApproval(connection, frame.id, 'deny');
         return;
       }
-      stderr.write(`\napproval requested: ${frame.tool}\n${frame.args}\n`);
+      const ask = readApproval(frame);
+      if (!ask.showable) {
+        stderr.write(`  · approval refused: ${ask.name} — ${ask.why}\n`);
+        resolveToolApproval(connection, frame.id, 'deny');
+        return;
+      }
+      stderr.write(`\n${approvalTerminalText(ask)}\n`);
       askTerminal(stdin, stderr, `allow ${frame.tool}? [y/N] `)
         .then((decision) => resolveToolApproval(connection, frame.id, decision));
     },

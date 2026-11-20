@@ -8,6 +8,7 @@
 // working resolves to null, and the hold falls back to /transcribe.
 
 import { authTokenOrNull } from '../../utils/http.js';
+import { deskSocketUrl } from '../../services/desk-tickets.js';
 import {
   createWorkletUrl, WORKLET_NAME, downsampleTo16k, floatToS16le, PCM_FRAME_SAMPLES,
 } from './voice-mic-worklet.js';
@@ -43,8 +44,9 @@ export const openDictationStream = async (stream, { onPartial } = {}) => {
     ctx?.close().catch(() => {});
     return null;
   }
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${proto}//${window.location.host}/dictate-ws?token=${encodeURIComponent(token)}`);
+  let ws;
+  try { ws = new WebSocket(await deskSocketUrl('/dictate-ws')); }
+  catch { ctx.close().catch(() => {}); return null; }
   let failed = false;
   let settled = false;
   let lastPartial = '';

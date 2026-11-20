@@ -33,7 +33,7 @@ describe('isLoopbackEndpoint — the speak protocol is loopback-only', () => {
   });
 
   test('speak() refuses a non-loopback endpoint before any request', async () => {
-    const gen = speak({ endpoint: 'http://10.0.0.5:7868', text: 'hi', voice: VOICE });
+    const gen = speak({ endpoint: 'http://10.0.0.5:7868', engine: 'csm', text: 'hi', voice: VOICE });
     await expect(gen.next()).rejects.toThrow(/refusing non-loopback/);
   });
 });

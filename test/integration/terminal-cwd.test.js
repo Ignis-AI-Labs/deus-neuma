@@ -6,15 +6,17 @@
  * client's `?cwd=` is UNTRUSTED: only a path inside the opened explorer
  * roots (symlinks resolved, an existing directory) may become the shell's
  * cwd — /etc, a relative path, a nonexistent path, and an in-root symlink
- * pointing at /etc must ALL degrade to the contained fallback (the first
- * root), never the hostile path. Proven by asking each real shell `pwd` and
- * reading its answer. A client that sends no `?cwd=` (an old client) gets
- * the same fallback — the legacy behavior, unchanged.
+ * pointing at /etc must ALL degrade to the fallback, never the hostile path.
+ * With nothing in focus the shell opens in the home folder, where any terminal
+ * starts (Design note, 2026-11-10: […]); it was the active project's folder or the first opened root.
+ * Proven by asking each real shell `pwd` and reading its answer.
  */
 import { createServer } from 'http';
 import { mkdir, symlink } from 'fs/promises';
 import { realpathSync } from 'fs';
 import path from 'path';
+import os from 'node:os';
+import { setTimeout, clearTimeout } from 'node:timers';
 import WebSocket, { WebSocketServer } from 'ws';
 import { describe, test, expect, beforeAll, afterAll } from 'vitest';
 import { generateChallenge, verifySignature, createSessionToken, verifySessionToken } from '../../backend/services/auth.js';
@@ -23,6 +25,7 @@ import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { setupTerminalRoutes } from '../../backend/routes/terminal-routes.js';
 import { setRoots } from '../../backend/services/user-files.js';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { ticketedWsUrl } from '../helpers/desk-ticket-kit.js';
 
 // Real challenge-sign-verify session token (the repo's integration auth flow).
 const makeAuthToken = async () => {
@@ -39,9 +42,10 @@ const makeAuthToken = async () => {
  * has been seen. A terminal:error or silence rejects loudly (RULE 0: a cwd
  * "verified" without a live shell behind it proves nothing).
  */
+let sessionToken;
 const shellPwd = (baseUrl, cwdParam) =>
   new Promise((resolve, reject) => {
-    const url = cwdParam === undefined ? baseUrl : `${baseUrl}&cwd=${encodeURIComponent(cwdParam)}`;
+    const url = ticketedWsUrl(baseUrl, sessionToken, '/terminal-ws', cwdParam === undefined ? {} : { cwd: cwdParam });
     const ws = new WebSocket(url);
     let output = '';
     let asked = false;
@@ -82,6 +86,9 @@ const shellPwd = (baseUrl, cwdParam) =>
 // A pwd answer is a full line — assert on line boundaries so a prompt that
 // merely mentions a directory cannot fake a match.
 const HOSTILE_PWD = /\r?\n\/etc\s*\r?\n/;
+// the home folder as pwd's own answer line: the path, then the line's end (the shell may write a
+// control sequence right before it; the prompt's own `cwd=` marker is never followed by a line end)
+const HOME_PWD = new RegExp(`(?<![\\w./-])${realpathSync(os.homedir()).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\r?\\n`);
 
 describe('terminal ?cwd= focus containment (D3/D4)', () => {
   let httpServer;
@@ -102,10 +109,10 @@ describe('terminal ?cwd= focus containment (D3/D4)', () => {
     wss = new WebSocketServer({ server: httpServer, maxPayload: 1048576 });
     setupTerminalRoutes(wss);
     await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
-    const token = await makeAuthToken();
+    sessionToken = await makeAuthToken();
     // The shell is the install owner's (terminal-routes.js): this wallet owns the test's install.
-    await makeInstallOwner(verifySessionToken(token).address);
-    baseUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws?token=${encodeURIComponent(token)}`;
+    await makeInstallOwner(verifySessionToken(sessionToken).address);
+    baseUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws`;
   });
 
   afterAll(async () => {
@@ -120,30 +127,30 @@ describe('terminal ?cwd= focus containment (D3/D4)', () => {
     expect(out).toContain(insideDir);
   }, 60000);
 
-  test('cwd=/etc → contained fallback, never /etc', async () => {
+  test('cwd=/etc → the home folder, never /etc', async () => {
     const out = await shellPwd(baseUrl, '/etc');
-    expect(out).toContain(root);
+    expect(out).toMatch(HOME_PWD);
     expect(out).not.toMatch(HOSTILE_PWD);
   }, 60000);
 
-  test('relative cwd → contained fallback', async () => {
+  test('relative cwd → the home folder', async () => {
     const out = await shellPwd(baseUrl, 'etc');
-    expect(out).toContain(root);
+    expect(out).toMatch(HOME_PWD);
   }, 60000);
 
-  test('nonexistent in-root cwd → contained fallback', async () => {
+  test('nonexistent in-root cwd → the home folder', async () => {
     const out = await shellPwd(baseUrl, path.join(root, 'does-not-exist'));
-    expect(out).toContain(root);
+    expect(out).toMatch(HOME_PWD);
   }, 60000);
 
-  test('in-root symlink escaping the roots → contained fallback, never /etc', async () => {
+  test('in-root symlink escaping the roots → the home folder, never /etc', async () => {
     const out = await shellPwd(baseUrl, path.join(root, 'outlink'));
-    expect(out).toContain(root);
+    expect(out).toMatch(HOME_PWD);
     expect(out).not.toMatch(HOSTILE_PWD);
   }, 60000);
 
-  test('no cwd param (old client) → contained fallback, unchanged', async () => {
+  test('nothing in focus (no cwd param) → the home folder', async () => {
     const out = await shellPwd(baseUrl, undefined);
-    expect(out).toContain(root);
+    expect(out).toMatch(HOME_PWD);
   }, 60000);
 });

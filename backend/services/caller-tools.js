@@ -19,6 +19,7 @@ import { RESULTS_FOLLOW_UP } from './tool-exchange.js';
 import { toolCallKey, heldRepeatResult } from './witness-tool-epochs.js';
 import { injectedValueSplit, noteTaintedResults } from './security/injected-value-gate.js';
 import { recordHeldActs } from './security/injected-value-record.js';
+import { trailEntryOf } from './benchmark-tool-trail.js';
 
 export const CALLER_SERVER = 'caller';
 
@@ -242,15 +243,18 @@ export const processRoundActs = async (processToolCalls, ws, response, connectio
     connection._taintHeld = (connection._taintHeld ?? 0) + taint.refused.length;
     recordHeldActs(connection, taint.refused); // fire-and-forget: the hold already happened
   }
-  if (refused.length > 0 && connection._benchmarkControls) {
-    connection._benchmarkToolTrail = [...(connection._benchmarkToolTrail ?? []),
-      ...refusals.map((r) => ({ tool: r.tool, target: null, status: 'denied' }))];
-  }
   const asked = allowed.filter((act) => isCallerAct(connection, act));
   const held = heldCallerRepeats(connection, asked);
   const caller = asked.filter((_, i) => held[i] === null);
   const repeatActs = asked.filter((_, i) => held[i] !== null);
   const repeats = held.filter(Boolean);
+  // Calls that never reach the tool loop ride the trail settled, with their
+  // target and argument names: a refused fetch's URL is what the audit reads.
+  if (connection._benchmarkControls && (refused.length > 0 || repeats.length > 0)) {
+    connection._benchmarkToolTrail = [...(connection._benchmarkToolTrail ?? []),
+      ...refused.map(({ act, result }) => trailEntryOf(result.tool, act.args, result)),
+      ...repeatActs.map((act, i) => trailEntryOf(repeats[i].tool, act.args, repeats[i]))];
+  }
   const refusedActs = refused.map(({ act }) => act);
   // What the being's own acts read is looked at for planted values before the next round.
   if (caller.length === 0 && refused.length === 0 && repeats.length === 0) return noteTaintedResults(connection, await processToolCalls(ws, response, connection, acts, epochs));
@@ -268,7 +272,7 @@ export const processRoundActs = async (processToolCalls, ws, response, connectio
   if (connection._benchmarkControls) {
     connection._benchmarkToolTrail = [
       ...(connection._benchmarkToolTrail ?? []),
-      ...caller.map((act) => ({ tool: `${CALLER_SERVER}/${act.toolName}`, target: null, status: 'yielded' })),
+      ...caller.map((act) => trailEntryOf(`${CALLER_SERVER}/${act.toolName}`, act.args, { status: 'yielded' })),
     ];
   }
   return results;

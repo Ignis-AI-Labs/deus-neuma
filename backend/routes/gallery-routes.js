@@ -15,14 +15,14 @@
  * /file is a FILE SERVER, not an API verb. A gallery is an image viewer: the
  * browser should be able to point an <img>/<video> at a path and be left alone
  * to load, decode, cache and evict it. Two things here make that possible —
- * a ?token= query (an element's own GET carries no Authorization header) and
- * real cache validators (see the route).
+ * an exact-resource ?ticket= query (an element's own GET carries no
+ * Authorization header) and real cache validators (see the route).
  */
 import path from 'path';
 import { createReadStream } from 'fs';
 import { promises as fs } from 'fs';
 import express from 'express';
-import { requireAuth } from '../services/auth.js';
+import { requireDeskAuth } from '../services/desk-tickets.js';
 import { createLogger } from '../services/logger.js';
 import { resolveComfyConfig } from '../services/image-forge/comfyui-supervisor.js';
 import {
@@ -38,19 +38,8 @@ import { explorerRefusal } from '../services/explorer-walls.js';
 const log = createLogger('Gallery.Routes');
 const router = express.Router();
 
-// A native <img src> / <video src> issues the browser's OWN bare GET — it can
-// carry no Authorization header, which is the entire reason the desk used to
-// fetch every thumbnail by hand into an object URL. So for /file ONLY, a
-// ?token= query is mapped into the header BEFORE the blanket requireAuth runs:
-// the same session token, the same verification, nothing else loosened. The
-// portal's WS and /user-files/raw already ride this law.
-router.use((req, res, next) => {
-  if (req.path === '/file' && !req.headers.authorization && typeof req.query.token === 'string' && req.query.token) {
-    req.headers.authorization = `Bearer ${req.query.token}`;
-  }
-  next();
-});
-router.use(requireAuth);
+// Bare media GETs use a short-lived ticket bound to this exact rootId + rel.
+router.use(requireDeskAuth);
 
 // Scoped to the CALLING wallet: a being's art root is its own house's, and the
 // gallery never shows another wallet's beings.

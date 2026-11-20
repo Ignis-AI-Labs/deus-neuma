@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 import { parseSensors } from '../../backend/services/machine-thermals.js';
 import { DIAL_START, DIAL_SWEEP, arcBetween, dialArc, niceCeil, ratioOf, ringSegments, traceMax, tracePath } from '../../frontend/app/RelinkShell/hud-geometry.js';
 import { HISTORY_CAP, pushSample, sampleOf, seriesOf } from '../../frontend/app/RelinkShell/sample-history.js';
-import { boardRows, chipName, cpuView, dimmRows, driveRows, fanGroups, railView, ramParts, tempLine, thermalAxis, vramParts } from '../../frontend/app/RelinkShell/machine-view.js';
+import { boardRows, chipName, cpuView, dimmRows, driveRows, fanGroups, railView, ramParts, tempLine, thermalAxis } from '../../frontend/app/RelinkShell/machine-view.js';
 import { cardParts } from '../../frontend/app/RelinkShell/ServingFitCard.jsx';
 
 // `sensors -j`, trimmed, this rig 2026-10-21 (DIMMs past their 55°C mark).
@@ -139,13 +139,6 @@ describe('memory as parts of a whole', () => {
     const parts = ramParts({ totalMB: 128000, usedMB: 60000, server: { anonMB: 20000 } });
     expect(parts.map((p) => p.value)).toEqual([20000, 40000, 68000]);
     expect(ramParts({})).toEqual([]);
-  });
-  test('VRAM: three largest holders, the rest folded, the unlisted remainder, free — summing to the card', () => {
-    const procs = [{ pid: 4046872, name: '3', memMB: 80000 }, { pid: 2, name: 'a', memMB: 300 }, { pid: 3, name: 'b', memMB: 200 }, { pid: 4, name: 'c', memMB: 100 }];
-    const parts = vramParts({ totalMB: 97887, usedMB: 81000 }, procs);
-    // the model server exec'd from /proc/self/fd/3 reaches the driver as "3": it is named by its PID
-    expect(parts.map((p) => p.label)).toEqual(['PID 4046872', 'A', 'B', '1 MORE', 'UNLISTED', 'FREE']);
-    expect(parts.reduce((a, p) => a + p.value, 0)).toBe(97887);
   });
   test('the GPU share is a mark at share × the card', () => {
     const c = cardParts({ gpu: { totalMiB: 100000, usedMiB: 70000 }, serverMiB: 65000 }, 90);

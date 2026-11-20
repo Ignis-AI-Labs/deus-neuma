@@ -22,7 +22,7 @@ export const APP_ROOT = resolve(join(__dirname, '../../..'));
 
 /**
  * impure — this process's layout. Electron sets process.resourcesPath in the
- * backend child too (ELECTRON_RUN_AS_NODE); under a plain `node` it is unset.
+ * backend utility child too; under a plain `node` it is unset.
  * @returns {{appRoot: string, resourcesPath: string|null}}
  */
 export const currentLayout = () => ({ appRoot: APP_ROOT, resourcesPath: process.resourcesPath || null });

@@ -22,13 +22,14 @@ import { parseTikTokDraft } from '../social/tiktok-metadata.js';
 import { tiktokStagingCheck } from '../social/tiktok-staging.js';
 import { queueDescriptionFor, tiktokStagedWords, TIKTOK_VIDEO_FIX } from './social-queue-guide.js';
 import { approveUnderMandate } from '../marketing/mandate/mandate-act.js';
+import { quoteOf } from '../social/quote-post.js';
 
 // impure — the accounts this lane may STAGE for: crewed (or held) AND
 // credentialed, in the lane's own house (house-positions.js). The queue
 // intent's availability probe (intents-section asks each type once per turn).
 const stageableAccounts = async (laneId) => usableAccounts({ house: await houseOfLane(laneId), laneId, mode: 'stage', needKeys: true });
 
-const DESCRIPTION = 'Stage a post as a DRAFT in the channel\'s campaign queue — nothing is published now; your operator decides the draft, and it goes out at scheduledFor (ISO-8601) once approved. Use this for planned content and calendars. campaignId + angle place it in a campaign (the account it posts as names its sub-campaign); group: one short name shared by the posts that carry ONE asset to several accounts of one company — your operator approves the whole group with one press.';
+const DESCRIPTION = 'Stage a post as a DRAFT in the channel\'s campaign queue — nothing is published now; your operator decides the draft, and it goes out at scheduledFor (ISO-8601) once approved. Use this for planned content and calendars. campaignId + angle place it in a campaign (the account it posts as names its sub-campaign); group: one short name shared by the posts that carry ONE asset to several accounts of one company — your operator approves the whole group with one press. quote (X only): the post to quote, its link or id — the draft goes out as a quote post, the link ending your words and counting as 23 characters; quote only posts that mention the house or are the house\'s own (X restricts quoting anyone else), and every quote waits for your operator.';
 
 // pure — a refused TikTok draft names the way forward when its video is the problem.
 const withVideoFix = (channelId, reason) => (channelId === 'tiktok' ? `${reason}. ${TIKTOK_VIDEO_FIX}` : reason);
@@ -37,7 +38,7 @@ export const socialQueueIntent = Object.freeze({
   name: 'social/queue',
   // The ACTS policy row this intent rides (`intents` server in tool-policy).
   policyTool: 'social.queue',
-  fieldsForPrompt: '{channel, text, scheduledFor?, campaignId?, angle?, group?, media?: [{image|path, alt}], account?}',
+  fieldsForPrompt: '{channel, text, scheduledFor?, campaignId?, angle?, group?, quote?, media?: [{image|path, alt}], account?}',
   descriptionForPrompt: DESCRIPTION,
   // The contract carries the rules of exactly the channels this lane may stage for.
   availableFor: async ({ laneId }) => {
@@ -60,6 +61,10 @@ export const socialQueueIntent = Object.freeze({
     const scheduledFor = (typeof payload?.scheduledFor === 'string' && payload.scheduledFor.trim()) || null;
     const campaignId = (typeof payload?.campaignId === 'string' && payload.campaignId.trim()) || null;
     const pillar = (typeof payload?.pillar === 'string' && payload.pillar.trim()) || '';
+    const quote = payload?.quote == null || payload.quote === '' ? null : quoteOf(String(payload.quote));
+    if (payload?.quote != null && payload.quote !== '' && !quote) {
+      return { ok: false, status: 'invalid', reason: 'quote must be the X post\'s link (x.com/<name>/status/<id>) or its id' };
+    }
 
     const resolvedMedia = await resolvePostMedia(connection, payload?.media, { channelId: channel.id });
     if (!resolvedMedia.ok) return { ok: false, status: 'invalid', reason: withVideoFix(channel.id, `media refused: ${resolvedMedia.detail}`) };
@@ -67,7 +72,7 @@ export const socialQueueIntent = Object.freeze({
 
     // The queue's own validator guards this door — the rules a draft must meet
     // are identical whether it arrives from a being or over REST.
-    const invalid = validateQueueDraft({ channelId: channel.id, text, scheduledFor, campaignId, pillar, media });
+    const invalid = validateQueueDraft({ channelId: channel.id, text, scheduledFor, campaignId, pillar, media, quote });
     if (invalid) return { ok: false, status: 'invalid', reason: media.length === 1 ? invalid : withVideoFix(channel.id, invalid) };
 
     // SECTOR CREW gate. Staging is WORK, not custody: anyone the operator put
@@ -96,7 +101,7 @@ export const socialQueueIntent = Object.freeze({
     return {
       ok: true,
       value: {
-        channel, accountId, text, scheduledFor, media, tiktok, card: { 'posts as': postsAs, ...payload },
+        channel, accountId, text, scheduledFor, media, tiktok, quote, card: { 'posts as': postsAs, ...payload, ...(quote ? { quote: quote.url } : {}) },
         campaignId: placed.campaignId, pillar: placed.pillar, angleId: placed.angleId, groupId: placed.groupId,
       },
     };
@@ -115,7 +120,7 @@ export const socialQueueIntent = Object.freeze({
   },
 
   // impure — the real queue store. Publishing stays the scheduler's act.
-  execute: async ({ channel, accountId, text, scheduledFor, campaignId, pillar, angleId, groupId, media, tiktok }, { connection }) => {
+  execute: async ({ channel, accountId, text, scheduledFor, campaignId, pillar, angleId, groupId, media, tiktok, quote }, { connection }) => {
     const author = connection.companion?.neumaId || null;
     // Its links become counted /go/ links, published to the site counter first (queue-links.js).
     const linkHouse = await houseOfLane(author);
@@ -132,6 +137,7 @@ export const socialQueueIntent = Object.freeze({
         angleId,
         groupId,
         media,
+        ...(quote ? { quote } : {}),
         authorNeumaId: author,
         queuedBy: author || '',
       });
@@ -142,7 +148,8 @@ export const socialQueueIntent = Object.freeze({
     const linkNote = tracked.note ? ` (${tracked.note})` : '';
     if (tiktok) return { ok: true, detail: tiktokStagedWords({ id: entry.id, scheduledFor, ...tiktok }) };
     // THE MANDATE (marketing/mandate/): a post it covers is approved now and needs no card.
-    const mandated = author ? await approveUnderMandate({ laneId: author, entry, sessionId: connection.sessionId || null, text }) : { covered: false };
+    // a quote post always waits for the operator: no mandate covers quoting another account
+    const mandated = author && !quote ? await approveUnderMandate({ laneId: author, entry, sessionId: connection.sessionId || null, text }) : { covered: false };
     const when = scheduledFor ? `at ${scheduledFor}` : 'on the next pass, within a minute';
     if (mandated.covered) {
       return { ok: true, detail: `Staged and approved under your mandate: ${entry.id} goes out on ${channel.name} ${accountId} ${when}. Your operator sees it in DONE FOR YOU.` };

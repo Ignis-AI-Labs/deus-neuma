@@ -13,7 +13,7 @@
  */
 import { createReadStream } from 'fs';
 import { postQueue } from '../services/social/post-queue.js';
-import { reverifyMediaFile } from '../services/social/media-source.js';
+import { verifySealedMedia } from '../services/social/approval-seal.js';
 import { readMediaFile } from '../services/social/x-media.js';
 import { readVideoHead } from '../services/social/video-media.js';
 import { postsOwnMedia } from '../services/social/poster-registry.js';
@@ -34,12 +34,14 @@ export const previewQueueMedia = async (req, res) => {
       ? entry.media?.[index]
       : null;
     if (!item) return res.status(404).json({ error: 'no such media on that queue entry' });
-    const verified = await reverifyMediaFile(item.path);
+    const verified = await verifySealedMedia(item, { requireSeal: false }); // only the sealed bytes are ever shown
     if (!verified.ok) {
       return res.status(404).json({ error: `the staged media no longer stands — ${verified.detail}` });
     }
-    if (postsOwnMedia(entry.channelId)) {
-      const video = await readVideoHead(verified.path);
+    // a video channel's post, or the one video an X post may carry
+    const headed = await readVideoHead(verified.path);
+    if (postsOwnMedia(entry.channelId) || headed.ok) {
+      const video = headed;
       if (!video.ok) return res.status(404).json({ error: `the staged media is unreadable — ${video.detail}` });
       res.set({ 'Content-Type': video.contentType, 'Content-Length': String(video.size), 'Cache-Control': 'private, no-store' });
       return createReadStream(video.path)

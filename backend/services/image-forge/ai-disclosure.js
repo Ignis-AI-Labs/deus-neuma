@@ -18,6 +18,7 @@ import { execFileSync } from 'child_process';
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'fs';
 import { crc32 } from 'zlib';
 import { createLogger } from '../logger.js';
+import { probeEnvironment } from '../agent-terminal-environment.js';
 
 const log = createLogger('ImageForge.Disclosure');
 const FFMPEG = process.env.FFMPEG_PATH || 'ffmpeg';
@@ -70,7 +71,7 @@ const stampMp4 = (file) => {
   try {
     execFileSync(FFMPEG, ['-v', 'error', '-y', '-i', file, '-map', '0', '-c', 'copy',
       '-metadata', `comment=${DISCLOSURE}`, '-metadata', `description=${DISCLOSURE}`,
-      '-movflags', '+use_metadata_tags', tmp], { timeout: 60_000 });
+      '-movflags', '+use_metadata_tags', tmp], { timeout: 60_000, env: probeEnvironment() });
     renameSync(tmp, file);
   } finally {
     rmSync(tmp, { force: true });

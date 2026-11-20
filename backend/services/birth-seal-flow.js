@@ -61,7 +61,7 @@ const RECEIPT_TIMEOUT_MS = 180_000;
  *
  * @param {{
  *   neumaId: string,
- *   network?: string,          // key into SEAL_NETWORKS; testnet default
+ *   network?: string,          // key into SEAL_NETWORKS; defaults to the configured mainnet
  *   witnessAddress: string,    // the portal's AUTHENTICATED witness wallet
  *   cfg: object,               // backend config (natalisAddress, rpc url, …)
  *   createReader?: Function,   // injectable for tests

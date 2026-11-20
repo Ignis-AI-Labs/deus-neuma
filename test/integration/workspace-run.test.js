@@ -10,7 +10,9 @@ import { describe, test, expect, beforeAll } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
-import { resolveRunTarget, runWorkspaceFile } from '../../backend/services/workspace-run.js';
+import { resolveRunTarget, runWorkspaceFile, readScript } from '../../backend/services/workspace-run.js';
+import { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { confinedBaseArgs } from '../../backend/services/witness-coding-sandbox.js';
 
 describe('workspace_run — executed truth, confined to the arena', () => {
   let arena;
@@ -49,5 +51,55 @@ describe('workspace_run — executed truth, confined to the arena', () => {
   test('an unrunnable extension is refused with the honest alternative', () => {
     expect(() => resolveRunTarget(arena, 'index.html')).toThrow(/browser/);
     expect(() => resolveRunTarget(arena, 'notes.txt')).toThrow(/executes/);
+  });
+
+  test('the card receives the whole script, not a hidden tail', async () => {
+    const text = `first line\n${'payload = 1\n'.repeat(80)}last line\n`;
+    await fs.writeFile(path.join(arena, 'whole.py'), text);
+    const script = await readScript(arena, 'whole.py');
+    expect(script.head).toBe(text);
+    expect(script.head).toContain('last line');
+  });
+
+  test('a workspace rooted in platform state is refused before execution', async () => {
+    const previous = getWorkspacesRoot();
+    const house = await createTempDir('ws-run-platform-state');
+    setWorkspacesRoot(house);
+    const lane = path.join(house, 'lane');
+    try {
+      await fs.mkdir(lane, { recursive: true });
+      await fs.writeFile(path.join(lane, 'owner.json'), '{"wallet":"original"}\n');
+      await fs.writeFile(path.join(lane, 'attack.js'), 'require("fs").writeFileSync(require("path").join(__dirname, "owner.json"), "{}")');
+      await expect(runWorkspaceFile({ root: lane }, { file: 'attack.js' })).rejects.toThrow(/refuses a root inside platform state/);
+      expect(await fs.readFile(path.join(lane, 'owner.json'), 'utf8')).toBe('{"wallet":"original"}\n');
+    } finally { setWorkspacesRoot(previous); }
+  });
+
+  test.each([false, true])('an absent or existing .claude gate (%s) cannot be planted from the arena', async (existing) => {
+    const ground = await createTempDir('ws-run-claude-gate');
+    if (existing) await fs.mkdir(path.join(ground, '.claude'));
+    const probe = [
+      'from pathlib import Path',
+      'try:',
+      '    Path(".claude/settings.json").write_text("hostile")',
+      'except OSError as error:',
+      '    print(f"WALLED {error.strerror}")',
+      'print("payload ran")',
+    ].join('\n');
+    await fs.writeFile(path.join(ground, 'probe.py'), probe);
+    const out = await runWorkspaceFile({ root: ground }, { file: 'probe.py' });
+    expect(out.ok).toBe(true);
+    expect(out.report).toContain('RAN CLEAN');
+    expect(out.report).toContain('WALLED');
+    expect(out.report).toContain('payload ran');
+    await expect(fs.stat(path.join(ground, '.claude', 'settings.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  test('the shared arena binds /lib64 read-only when present without requiring it', () => {
+    const args = confinedBaseArgs();
+    const optional = args.indexOf('/lib64');
+    const required = args.indexOf('/lib');
+    expect(args.slice(optional - 1, optional + 2)).toEqual(['--ro-bind-try', '/lib64', '/lib64']);
+    expect(args.slice(required - 1, required + 2)).toEqual(['--ro-bind', '/lib', '/lib']);
   });
 });

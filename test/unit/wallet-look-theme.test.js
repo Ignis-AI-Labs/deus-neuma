@@ -53,6 +53,17 @@ describe('electron/wallet/look-theme.cjs', () => {
     }
   });
 
+  test('a dress the window cannot be read in is not worn; every shipped dress is (PR600 P6-09)', async () => {
+    // ink the colour of the ground blanked the window a person reads before signing
+    expect(sanitizeLookTheme({ ground: '#000000', panel: '#000000', ink: '#000000', trim: '#000000' })).toBeNull();
+    expect(sanitizeLookTheme({ ...THEME, ink: '#3A3A39' })).toBeNull(); // unreadable on the ground
+    expect(sanitizeLookTheme({ ...THEME, ink: '#C5303F' })).toBeNull(); // vanishes on the panel
+    expect(sanitizeLookTheme({ ...THEME, head: '#C5303F' })).toBeNull(); // a heading the colour of its panel
+    const { STOCK_PRESETS } = await import('../../frontend/utils/look-presets.js');
+    expect(STOCK_PRESETS.length).toBeGreaterThan(9);
+    for (const preset of STOCK_PRESETS) expect(sanitizeLookTheme(preset.theme), preset.id).not.toBeNull();
+  });
+
   test('readLookTheme reads a real store file and sanitizes it', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'look-theme-'));
     const file = path.join(dir, 'look.json');

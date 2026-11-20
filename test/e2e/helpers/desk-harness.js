@@ -55,12 +55,6 @@ let seededLane = null;
 export const setupDesk = () => {
   test.beforeAll(async () => {
     ({ token, addr } = await mintToken());
-    // Start from a clean project slate: a prior (or killed) run's ACTIVE project
-    // would auto-focus its folder and perturb the FILES test. The test wallet is
-    // used only by this suite, so clearing its projects is safe + deterministic.
-    const { projects } = await (await fetch(`${BACKEND}/api/v1/user/projects`, { headers: { Authorization: `Bearer ${token}` } })).json();
-    await Promise.all((projects || []).map((p) =>
-      fetch(`${BACKEND}/api/v1/user/projects/${p.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } })));
 
     // The arrival veil HOLDS (full-viewport, pointer-eating, by design) when
     // the bound companion has no lane under the ACTIVE root — so the synthetic

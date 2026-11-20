@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { dflashSpeculativeArgs } from './serving-drafter.js';
 
 export const SERVING_CONTEXT_MIN = 512;
 /** The largest POOL a launch may ask for: a unified pool sized to the GPU
@@ -56,11 +57,13 @@ const CONFIG_FIELDS = Object.freeze([
   'disableCudaGraphs',
   'disableCudaFusion',
   'gpuBinding',
+  'placement',
 ]);
 const CHILD_ENV_INPUT_FIELDS = Object.freeze([
   'disableCudaFusion',
   'disableCudaGraphs',
   'gpuBinding',
+  'rsReplay',
 ]);
 const CHILD_ENV_FIELDS = Object.freeze([
   'HOME',
@@ -72,6 +75,7 @@ const CHILD_ENV_FIELDS = Object.freeze([
   'NVIDIA_VISIBLE_DEVICES',
   'GGML_CUDA_DISABLE_GRAPHS',
   'GGML_CUDA_DISABLE_FUSION',
+  'LLAMA_RS_REPLAY',
 ]);
 
 export const SERVING_GPU_BINDING = Object.freeze({
@@ -162,6 +166,21 @@ const physicalGpuBinding = (value) => {
   return value;
 };
 
+/**
+ * Where the model's layers go: null = every layer on the card (`-ngl 999`); a placement = llama.cpp's
+ * own fit (`--fit on`) leaves `fitTargetMiB` free on the card and runs what does not fit from system
+ * RAM, never shrinking the pool below `minCtx` (memory-plan.js, docs/work/ram-offload.md). Pure.
+ */
+const validatedPlacement = (value) => {
+  if (value === null) return null;
+  exactFields(value, ['fitTargetMiB', 'minCtx'], 'serving placement');
+  if (!Number.isSafeInteger(value.fitTargetMiB) || value.fitTargetMiB < 0 || value.fitTargetMiB > 1_048_576
+    || !Number.isSafeInteger(value.minCtx) || value.minCtx < SERVING_CONTEXT_MIN || value.minCtx > SERVING_CONTEXT_MAX) {
+    throw new Error('serving placement is outside its fixed bounds');
+  }
+  return Object.freeze({ fitTargetMiB: value.fitTargetMiB, minCtx: value.minCtx });
+};
+
 /** Validate and freeze the only configuration shape accepted by args and spawn. Pure. */
 export const validatedServingLaunchConfig = (value) => {
   exactFields(value, CONFIG_FIELDS, 'serving launch configuration');
@@ -194,6 +213,7 @@ export const validatedServingLaunchConfig = (value) => {
     disableCudaGraphs: value.disableCudaGraphs,
     disableCudaFusion: value.disableCudaFusion,
     gpuBinding: exactGpuBinding(value.gpuBinding),
+    placement: validatedPlacement(value.placement),
   });
 };
 
@@ -232,6 +252,8 @@ export const resolveServingLaunchConfig = (env) => {
     disableCudaGraphs: canonicalFlag(env, 'GGML_CUDA_DISABLE_GRAPHS', true),
     disableCudaFusion: canonicalFlag(env, 'GGML_CUDA_DISABLE_FUSION', true),
     gpuBinding: SERVING_GPU_BINDING,
+    // every layer on the card until the fit finds the card too small (serving-fit.js)
+    placement: null,
   });
 };
 
@@ -240,7 +262,7 @@ export const resolveServingLaunchConfig = (env) => {
 export const sameServingLaunch = (a, b) => {
   const identity = (c) => JSON.stringify([
     c.model, c.mmproj, c.loras, c.servingModel, c.contextLength, c.host, c.port,
-    c.disableCudaGraphs, c.disableCudaFusion, c.gpuBinding,
+    c.disableCudaGraphs, c.disableCudaFusion, c.gpuBinding, c.placement,
   ]);
   return identity(a) === identity(b);
 };
@@ -273,16 +295,21 @@ export const MTP_SPECULATIVE_ARGS = Object.freeze(['--spec-type', 'draft-mtp', '
 
 /**
  * Build native argv from only the validated immutable launch snapshot. Pure.
+ * A drafter (serving-drafter.js speculativePlan: present beside the model AND
+ * a replay-capable engine) takes the speculative slot; else the MTP heads.
  * @param {Object} config
- * @param {{mtp?: boolean}} [facts] model facts read at launch (gguf-mtp.js)
+ * @param {{mtp?: boolean, drafter?: string|null}} [facts] facts read at launch
  */
-export const servingLaunchArguments = (config, { mtp = false } = {}) => {
+export const servingLaunchArguments = (config, { mtp = false, drafter = null } = {}) => {
   const cfg = validatedServingLaunchConfig(config);
   const args = ['--model', cfg.model];
   if (cfg.mmproj) args.push('--mmproj', cfg.mmproj);
   args.push(
     '-c', String(cfg.contextLength),
-    '-ngl', '999',
+    // every layer on the card, or llama.cpp's own fit spilling the rest to system RAM
+    ...(cfg.placement
+      ? ['--fit', 'on', '--fit-target', String(cfg.placement.fitTargetMiB), '--fit-ctx', String(cfg.placement.minCtx)]
+      : ['-ngl', '999']),
     // Host prompt-cache law: OFF (0) — it re-seated every warm chat through
     // RAM (see SERVING_CACHE_RAM_MIB); never the default (8192, grows) and
     // never -1 (unlimited).
@@ -303,7 +330,11 @@ export const servingLaunchArguments = (config, { mtp = false } = {}) => {
     // in the content the stream parses.
     '--jinja', '--reasoning', 'auto',
   );
-  if (mtp === true) args.push(...MTP_SPECULATIVE_ARGS);
+  if (drafter !== null) {
+    args.push(...dflashSpeculativeArgs(boundedAbsolutePath(drafter, 'serving drafter')));
+  } else if (mtp === true) {
+    args.push(...MTP_SPECULATIVE_ARGS);
+  }
   return Object.freeze(args);
 };
 
@@ -317,7 +348,8 @@ const validatedServingChildEnvironment = (value) => {
     || !GPU_UUID.test(String(gpuUuid || ''))
     || value.NVIDIA_VISIBLE_DEVICES !== gpuUuid
     || !['0', '1'].includes(value.GGML_CUDA_DISABLE_GRAPHS)
-    || !['0', '1'].includes(value.GGML_CUDA_DISABLE_FUSION)) {
+    || !['0', '1'].includes(value.GGML_CUDA_DISABLE_FUSION)
+    || !['0', '1'].includes(value.LLAMA_RS_REPLAY)) {
     throw new Error('serving child environment differs from its physical device authority');
   }
   return Object.freeze({ ...value });
@@ -327,7 +359,8 @@ const validatedServingChildEnvironment = (value) => {
 export const servingChildEnvironment = (input) => {
   exactFields(input, CHILD_ENV_INPUT_FIELDS, 'serving child environment input');
   if (typeof input.disableCudaGraphs !== 'boolean'
-    || typeof input.disableCudaFusion !== 'boolean') {
+    || typeof input.disableCudaFusion !== 'boolean'
+    || typeof input.rsReplay !== 'boolean') {
     throw new Error('serving child environment flags must be boolean');
   }
   const gpu = physicalGpuBinding(input.gpuBinding);
@@ -341,6 +374,9 @@ export const servingChildEnvironment = (input) => {
     NVIDIA_VISIBLE_DEVICES: gpu.nvidiaVisibleDevices,
     GGML_CUDA_DISABLE_GRAPHS: input.disableCudaGraphs ? '1' : '0',
     GGML_CUDA_DISABLE_FUSION: input.disableCudaFusion ? '1' : '0',
+    // Recurrent replay instead of snapshot rollback (llama.cpp PR #31669);
+    // engines without it ignore the variable. serving-drafter.js decides.
+    LLAMA_RS_REPLAY: input.rsReplay ? '1' : '0',
   });
 };
 

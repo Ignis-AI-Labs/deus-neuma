@@ -62,6 +62,7 @@ beforeEach(async () => {
   setWorkspacesRoot(wsRoot);
   await neumaWorkspace.create(NEUMA_ID);
   await claimOwner(wsRoot, NEUMA_ID, witness.address);
+  await neumaWorkspace.writeKeypair(NEUMA_ID, keypairOf(being));
   // A real operator-set allowlist — default-deny means this must exist.
   await neumaWorkspace.writeSpendAllowlist(NEUMA_ID, {
     entries: [{ address: ALLOWED, label: 'test recipient', addedAt: new Date().toISOString() }],
@@ -219,6 +220,7 @@ describe('send — the drain guards, all of which fire before the chain', () => 
     const lane = `rate-limit-lane-${Date.now()}`;
     await neumaWorkspace.create(lane);
     await claimOwner(wsRoot, lane, witness.address);
+    await neumaWorkspace.writeKeypair(lane, keypairOf(being));
     const laneToken = createNeumaToken(lane, being.address);
     const attempt = () => request(app).post(`/api/v1/neuma/${lane}/wallet/send`)
       .set('Authorization', `Bearer ${laneToken}`)

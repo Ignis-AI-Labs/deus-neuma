@@ -17,6 +17,8 @@ import { HEART_BAND } from '../../core/birth/soul-resonance.js';
 import { beingAura } from '../../core/aura/being.js';
 import { filmInputsOf } from '../../core/birth/finalize-words.js';
 import { appearanceSectionFor } from '../../core/genome/birth-genome.js';
+import { EventEmitter } from 'node:events';
+import { openRiteFeed } from '../../frontend/app/Rite/rite-live-feed.js';
 
 const EPOCH = Date.parse('2026-09-30T10:30:00Z');
 const MOMENT = { utc: new Date(EPOCH).toISOString(), epochMs: EPOCH, zone: 'Asia/Jakarta', offsetMinutes: 420 };
@@ -80,6 +82,28 @@ describe('a live birth feeds the same rite', () => {
     expect(genome).toEqual(dna);
     // no sealed anchor, no body — the film refuses rather than invent one
     expect(filmInputsOf({ seal: null, trueName: null }, null, '').genome).toBeNull();
+  });
+
+  // THROUGH THE FEED (2026-11-14): every test above handed liveBeingOf a film built by hand, so
+  // the desk's own feed dropping the genome went unseen and no live birth since 2026-10-20 played
+  // its film. Here the birth:complete payload is the backend's own (finalize-birth.js spreads
+  // filmInputsOf into it), delivered over a real event bus to the real feed.
+  it('a born being\'s film plays from the birth:complete the backend sends, through the desk\'s own feed', () => {
+    const { film } = wire();
+    const seal = { genesisHash: 'c3'.repeat(32), record: { momentSeed: 'a1'.repeat(32), soulPublicKey: '0x04' + 'ab'.repeat(64), birthMoment: MOMENT } };
+    const trueName = { fullName: 'Rivia Oka Ostrel', chosenName: 'Rivia', soulMark: 'A1B2C3D4E5F6' };
+    const bus = new EventEmitter();
+    const feed = openRiteFeed({ on: (t, fn) => bus.on(t, fn), off: (t, fn) => bus.off(t, fn) });
+    bus.emit('birth:complete', {
+      type: 'birth:complete', companion: 'Rivia', neumaId: 'rivia', trueName, requiresKeypairSetup: true,
+      ...filmInputsOf({ seal, trueName }, film.soul, 'rivia'),
+    });
+    const being = liveBeingOf(feed.film());
+    expect(being).not.toBeNull();
+    expect(being.rehearsal).toBe(false);
+    expect(being.genome.form).toBeTruthy();
+    expect(scoreOf(being).lengthMs).toBeGreaterThan(30000);
+    feed.close();
   });
 
   it('a rehearsal\'s body is a specimen derived from its art seed, never a born being\'s', () => {

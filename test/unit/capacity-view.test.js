@@ -40,6 +40,16 @@ describe('capacityBanner (pure)', () => {
     expect(b.stale).toBe(true);
   });
 
+  it('a scan CARRIED from another model (never scanned on this one) stands, named — no re-scan asked', () => {
+    const b = capacityBanner({
+      latest: { ...latestOn('qwen3.5-122b-a10b', 3), carriedFrom: 'qwen3.5-122b-a10b' },
+      current: { model: 'gemma-4-31b-qat', contextWindow: 65536 },
+      measurable: true,
+    });
+    expect(b.line).toBe('GEMMA-4-31B-QAT · 64K CTX — RUNS UP TO 3 IN PARALLEL (MEASURED WITH QWEN3.5-122B-A10B)');
+    expect(b.stale).toBe(false);
+  });
+
   it('no scan yet: the loaded model is still named, and the gap is honest', () => {
     const b = capacityBanner({
       latest: null,

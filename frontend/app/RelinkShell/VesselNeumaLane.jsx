@@ -1,6 +1,7 @@
 // VesselNeumaLane — a being's lane of VESSEL, extracted verbatim from
-// VesselApp.jsx (size-law breakdown, 2026-08-26): the machine vessel's record,
-// refinement, and memory. The being's self-check lives on its sheet's STATE
+// VesselApp.jsx (size-law breakdown, 2026-08-26): the machine vessel's record
+// and memory. (Its EVOLUTION section, the LoRA refinement's milestone and
+// adapters, left on 2026-11-14: Founder, […].) The being's self-check lives on its sheet's STATE
 // tab, never here (one surface, 2026-10-19). Telemetry is the SUBSTRATE HUD's
 // non-critical poll: 3s while the lane is open and the tab is visible,
 // null-safe, never a fabricated zero.
@@ -11,8 +12,7 @@ import { useSettled } from './use-settled.js';
 import { useVisibleInterval } from './use-visible-interval.js';
 import { shortDate } from './todo-view.js';
 import {
-  fetchNeumaRecord,
-  fetchRefinementStatus, fetchTelemetry, fetchCapacity,
+  fetchNeumaRecord, fetchTelemetry, fetchCapacity,
 } from './vessel-client.js';
 import { Fact, FactRow, n1, n0, pct, gbOf } from './vessel-format.jsx';
 
@@ -31,9 +31,8 @@ export const NeumaLane = ({ neumaId }) => {
     const leg = (p, pick) => p.then((b) => pick(b) ?? null).catch(() => null);
     Promise.all([
       leg(fetchNeumaRecord(neumaId), (b) => b?.record),
-      leg(fetchRefinementStatus(neumaId), (b) => b),
-    ]).then(([record, refinement]) => {
-      if (!settled()) setLegs({ record, refinement });
+    ]).then(([record]) => {
+      if (!settled()) setLegs({ record });
     });
     fetchCapacity()
       .then((b) => { if (!settled()) setCapacity(b ?? null); })
@@ -47,16 +46,12 @@ export const NeumaLane = ({ neumaId }) => {
 
   if (legs === undefined) return <EmptyState title="LOADING…" />;
 
-  const { record, refinement } = legs;
+  const { record } = legs;
   const sub = record?.substrate;
   const memory = record?.record?.memory;
   const relationship = record?.record?.relationship;
   const serving = Boolean(telemetry?.serving);
 
-  const milestone = refinement?.milestone ?? null;
-  const adapters = Array.isArray(refinement?.adapters) ? refinement.adapters : [];
-  const binding = refinement?.binding ?? null;
-  const boundScale = binding?.adapter?.scale || null;
   // latest = the newest run clamped to the served slots — the ceiling the rig RUNS
   const capacityRun = capacity?.latest ?? (Array.isArray(capacity?.runs) && capacity.runs.length ? capacity.runs[0] : null);
 
@@ -92,32 +87,6 @@ export const NeumaLane = ({ neumaId }) => {
               ? `CEILING ${capacityRun.ceiling} · CLASS ${capacityRun.boundClass} · ${shortDate(capacityRun.runAt)}`
               : 'NEVER MEASURED'}
         </p>
-      </section>
-
-      <section className="vl-sec">
-        <h3 className="vl-h label-data">EVOLUTION</h3>
-        {refinement === null ? (
-          <p className="vl-unreadable label-data">UNREADABLE</p>
-        ) : (
-          <>
-            {milestone ? (
-              <p className="vl-quiet label-data">
-                {milestone.sampleCount} / {milestone.minSamples} SAMPLES · {milestone.distinctDays} / {milestone.minDays} DAYS
-                {milestone.ready ? <span className="vl-ready"> · READY</span> : null}
-              </p>
-            ) : (
-              <p className="vl-quiet label-data">NOT STARTED</p>
-            )}
-            <FactRow label="ADAPTERS" value={String(adapters.length)} />
-            {boundScale ? <FactRow label="SCALE" value={boundScale} /> : null}
-            <p className="vl-quiet label-data">
-              {binding?.reason === 'bound'
-                ? <span className="vl-ready">ADAPTER BOUND</span>
-                : binding?.reason || '—'}
-            </p>
-            <FactRow label="LAST REFINEMENT" value={refinement?.lastRefinementAt ? shortDate(refinement.lastRefinementAt) : '—'} />
-          </>
-        )}
       </section>
 
       <section className="vl-sec">

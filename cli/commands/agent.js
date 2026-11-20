@@ -35,6 +35,7 @@ import {
   startWallClock,
   createCliPortal,
 } from '../lib/terminal-portal.js';
+import { authenticateAgentOwner } from '../lib/agent-owner.js';
 
 export { classifyFrame, addAgentRoundUsage, startWallClock, createCliPortal, parsePositiveInt, resolveBenchmarkControls };
 
@@ -205,9 +206,10 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
   const laneId = seat.laneId;
   const descriptor = harnessSeat || seats.find((entry) => entry.laneId === laneId);
   const owner = await workspace.readOwner(laneId);
-  if (!owner?.wallet) return fail(`${laneId} has no operator ownership record`);
+  const authenticated = authenticateAgentOwner({ cwd, laneId, owner });
+  if (authenticated.error) { if (process.cwd() !== seatedCwd) process.chdir(seatedCwd); return fail(authenticated.error); }
   // The transcript's images ride the operator's attachment path (caller-turn.js).
-  const staged = stageCallerImages(caller.images, owner.wallet);
+  const staged = stageCallerImages(caller.images, authenticated.address);
   if (staged.error) return fail(staged.error);
 
   const [
@@ -234,7 +236,7 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
     return fail(`filesystem tool surface unavailable — ${error.message}`);
   }
 
-  const connection = createPortalConnection({ ws: { send() {} }, walletAddress: owner.wallet });
+  const connection = createPortalConnection({ ws: { send() {} }, walletAddress: authenticated.address });
   connection.companion = {
     name: descriptor.name,
     id: descriptor.name,
@@ -245,7 +247,7 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
   connection.sessionId = null;
   connection.space = 'general';
   connection.purpose = 'work';
-  connection.toolMode = 'ask';
+  connection.toolMode = argv.readOnly ? 'observe' : 'ask'; // --read-only: every acting tool is held (tool-policy.js)
   connection.toolWorkspace = ground;
   connection.voiceEnabled = false;
   try { connection._neumaToolPolicy = await readExecutionToolPolicy(laneId); }
@@ -347,6 +349,7 @@ export const runAgent = async ({ cwd, stdin = process.stdin, stdout, stderr, arg
         ground,
         sessionId,
         toolCalls: portal.state.acts,
+        ...(connection.toolMode === 'observe' ? { readOnly: true } : {}), // only when the hands were held
         latestRoundUsage: portal.state.latestRoundUsage,
         totalUsage: portal.state.totalUsage,
         // The ephemeral-sitting law (#553): a benchmark sitting leaves no memory

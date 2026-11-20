@@ -28,14 +28,14 @@ const APP_HOTKEYS = Object.freeze([
 
 /**
  * Pure — the application menu template. Standard role-based menus survive
- * (edit ops, reload, devtools, window management); NEUMA's own entries are
+ * (edit ops, reload, window management; DevTools only in development); NEUMA's own entries are
  * generated from APP_HOTKEYS so the menu can never drift from the registry.
- * @param {{ isMac: boolean, actions: Record<string, () => void> }} deps
+ * @param {{ isMac: boolean, isPackaged?: boolean, actions: Record<string, () => void>, onShowLogs?: Function }} deps
  *   actions maps hotkey id -> click handler; a missing action throws LOUDLY
  *   at build time (a bound key that silently does nothing is a lie).
  * @returns {object[]} template for Menu.buildFromTemplate
  */
-const buildAppMenuTemplate = ({ isMac, actions, onShowLogs = null }) => {
+const buildAppMenuTemplate = ({ isMac, isPackaged = false, actions, onShowLogs = null }) => {
   const item = (id) => {
     const hk = APP_HOTKEYS.find((h) => h.id === id);
     const click = actions[id];
@@ -65,7 +65,19 @@ const buildAppMenuTemplate = ({ isMac, actions, onShowLogs = null }) => {
       ],
     },
     { role: 'editMenu' },
-    { role: 'viewMenu' },
+    isPackaged ? {
+      label: 'View',
+      submenu: [
+        { role: 'reload' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        { role: 'resetZoom' },
+        { role: 'zoomIn' },
+        { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+      ],
+    } : { role: 'viewMenu' },
     { role: 'windowMenu' },
     // HELP exists for one reason: so a person reporting a problem can produce
     // the log without being talked through a hidden path over chat. Four

@@ -1,8 +1,10 @@
 /**
  * Backend listen lifecycle — one seam for binding, collision reporting, and
- * publishing the kernel-assigned port to an Electron parent.
+ * publishing the kernel-assigned port and per-launch health credential to an
+ * Electron parent over its private child-process channel.
  */
 import { setBoundPort } from '../config.js';
+import { randomBytes } from 'node:crypto';
 
 const boundPort = (server, fallback) => {
   const address = server.address();
@@ -53,8 +55,12 @@ export const listenServer = ({ server, config, log, mcpService }) => {
   server.headersTimeout = 70000;
   server.listen(config.port, config.host, () => {
     const port = boundPort(server, config.port);
+    const healthToken = process.env.NEUMA_DESK_PID ? randomBytes(32).toString('base64url') : null;
+    if (healthToken) process.env.NEUMA_DESK_HEALTH_TOKEN = healthToken;
     setBoundPort(port); // the renderer's origin is this port, whatever was asked for
-    if (typeof process.send === 'function') process.send({ type: 'neuma:backend-ready', port });
+    if (typeof process.send === 'function') {
+      process.send({ type: 'neuma:backend-ready', port, ...(healthToken ? { healthToken } : {}) });
+    }
     log.info('Portal active', {
       host: config.host,
       port,

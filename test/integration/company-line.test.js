@@ -27,11 +27,15 @@ import { houseStop } from '../../backend/services/company-line/house-dial.js';
 import { seatHolders } from '../../backend/services/company-line/stage-holders.js';
 import { companyLineBriefing } from '../../backend/services/company-line/company-briefing.js';
 import { makeCompany, openCompany, appendLineEvent, companyPath } from '../../backend/services/company-line/company-store.js';
+import { saveWorksheet } from '../../backend/services/company-line/worksheet-store.js';
 import { cloDesignation } from '../../backend/services/legal/clo-designation.js';
 import { Wallet } from 'ethers';
 import { SHEETS, GAP } from '../helpers/company-line-kit.js';
 import companyLineRouter from '../../backend/routes/company-line-routes.js';
-import { companyHandOnIntent, companyOpenIntent } from '../../backend/services/intents/company-acts.js';
+import { companyHandOnIntent, companyOpenIntent, companyHandsIntent } from '../../backend/services/intents/company-acts.js';
+import { answerHands } from '../../backend/services/company-line/hands-store.js';
+import { checkToolAccess, resolvePolicy, GLOBAL_DEFAULTS } from '../../backend/services/tool-policy.js';
+import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
 
 const { processToolCalls } = __test;
@@ -54,12 +58,16 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
 
   // A being's act exactly as it files one: JSON into its own lane, settled by the real sweep.
   let filed = 0;
+  let approvalDecision = null;
+  const approvalCards = [];
   const act = async (neumaId, payload, wallet = me.address) => {
     const dir = path.join(workspace.pathFor(neumaId), 'intents');
     await fs.mkdir(dir, { recursive: true });
     filed += 1;
     await fs.writeFile(path.join(dir, `act-${filed}.json`), JSON.stringify(payload));
-    const [result] = await processToolCalls(serverWs, '', conn(neumaId, wallet));
+    const connection = conn(neumaId, wallet);
+    serverWs.__connection = connection;
+    const [result] = await processToolCalls(serverWs, '', connection);
     return result;
   };
   // A worksheet stage hands on its worksheet; CHARTER and FORM hand on where the work lies.
@@ -101,8 +109,23 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     httpServer = createServer();
     wss = new WebSocketServer({ server: httpServer });
     const port = await new Promise((resolve) => httpServer.listen(0, () => resolve(httpServer.address().port)));
-    const linked = new Promise((resolve) => { wss.on('connection', (ws) => { serverWs = ws; resolve(); }); });
+    const linked = new Promise((resolve) => {
+      wss.on('connection', (ws) => {
+        serverWs = ws;
+        ws.on('message', (data) => {
+          const message = JSON.parse(data.toString());
+          if (message.type === 'tool:approval_response') resolveToolApproval(serverWs.__connection, message.id, message.decision);
+        });
+        resolve();
+      });
+    });
     client = new WebSocket(`ws://localhost:${port}`);
+    client.on('message', (data) => {
+      const message = JSON.parse(data.toString());
+      if (message.type !== 'tool:approval_request') return;
+      approvalCards.push(message);
+      if (approvalDecision) client.send(JSON.stringify({ type: 'tool:approval_response', id: message.id, decision: approvalDecision }));
+    });
     await linked;
   }, 60000);
 
@@ -139,6 +162,27 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     expect(spec).toContain('YOUR MOVE:');
     expect(spec).toContain(`Tidewater [${tidewater}] SURVEY: yours to master`);
     expect(await companyLineBriefing(conn('arch'))).toContain('Nothing on the line waits on you right now.');
+  });
+
+  test('a signed hand-on cannot override trusted context or escape worksheet storage', async () => {
+    const escaped = path.join(path.dirname(ground), 'escaped.json');
+    const mirror = path.join(ground, 'repos', tidewater, 'line', 'survey-r1.json');
+    const moved = await opHandOn(tidewater, 'survey', {
+      worksheet: SHEETS.survey,
+      wallet: other.address,
+      actor: 'being',
+      holders: { Speculator: 'operator' },
+      line: { round: '1/../../escaped' },
+    });
+    expect(moved.status).toBe(403);
+    expect(moved.body.error).toContain('Speculator');
+    await expect(fs.stat(mirror)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.stat(escaped)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(saveWorksheet({
+      wallet: me.address, companyId: tidewater, stage: 'survey', round: '1/../../escaped',
+      worksheet: SHEETS.survey, groundRoot: ground,
+    })).rejects.toThrow(/positive integer round/);
+    await expect(fs.stat(escaped)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
   test('only the master hands on; the inspector hears it; a return names the flaw and the master mends', async () => {
@@ -225,13 +269,30 @@ describe('THE COMPANY LINE through the real stack (gnosis)', () => {
     const phrase = Wallet.createRandom().mnemonic.phrase;
     expect(await act('prae', { ...asked, why: `use this: ${phrase}` })).toMatchObject({ status: 'denied' });
     expect(await act('prae', { ...asked, where: 'http://www.mercury.com/' })).toMatchObject({ status: 'error', error: expect.stringMatching(/https link/) });
+    const domainRow = companyHandsIntent.policyToolFor({ where: asked.where });
+    expect(domainRow).toBe('company.hands.www.mercury.com');
+    expect(checkToolAccess(resolvePolicy(GLOBAL_DEFAULTS), 'intents', domainRow)).toBe('approval_required');
+    approvalCards.length = 0;
+    approvalDecision = 'always';
     expect((await act('prae', asked)).status).toBe('ok');
+    expect(approvalCards).toHaveLength(1);
+    expect(approvalCards[0].tool).toBe(`intents/${domainRow}`);
+    expect(JSON.parse(approvalCards[0].args)).toMatchObject({ where: asked.where });
+    approvalDecision = 'deny';
+    expect(await act('prae', { ...asked, where: 'https://example.com/phishing' })).toMatchObject({ status: 'denied' });
+    expect(approvalCards.at(-1).tool).toBe('intents/company.hands.example.com');
+    approvalDecision = null;
     const item = (await line(tidewater)).hands.find((i) => i.what === 'Open the business bank account');
     expect(item).toMatchObject({ status: 'open', raisedBy: 'prae', answer: 'held' });
     expect((await readWaiting(me.address)).items.find((i) => i.kind === 'hands')).toMatchObject({
       title: 'Tidewater: Open the business bank account', who: { laneId: 'prae' }, where: { app: 'companyline', companyId: tidewater, handsId: item.id },
     });
     expect((await readNotifications(me.address)).records.some((n) => n.title === 'Tidewater needs your hands: Open the business bank account')).toBe(true);
+    const handsFile = companyPath(me.address, tidewater, 'hands.jsonl');
+    const beforeBypass = await fs.readFile(handsFile, 'utf8');
+    expect(await answerHands(me.address, tidewater, item.id, { status: 'done', text: phrase, now: new Date().toISOString() }))
+      .toMatchObject({ ok: false, reason: expect.stringMatching(/looks like a secret/) });
+    expect(await fs.readFile(handsFile, 'utf8')).toBe(beforeBypass);
     const answer = (body) => request(app).post(`/api/v1/company-line/${tidewater}/hands/${item.id}`).use(as(me)).send(body);
     expect((await answer({ status: 'done' })).body.error).toBe('say where it is kept (never the secret itself)');
     expect((await answer({ status: 'done', text: `my login is ${phrase}` })).status).toBe(400);

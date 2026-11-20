@@ -7,8 +7,11 @@
 import { describe, test, expect } from 'vitest';
 import { planRouting } from '../../backend/services/house-clock/wake-plan.js';
 import { parseVerdicts, wakeThought, WAKE_HEAD } from '../../backend/services/house-clock/wake-thought.js';
-import { holdForWake } from '../../backend/services/protocol-guard.js';
-import { houseHolds } from '../../backend/services/house-clock/wake-approvals.js';
+import { holdForWake, askInWake, escalateInWake } from '../../backend/services/protocol-guard.js';
+import { houseHolds, HOUSE_ASKS } from '../../backend/services/house-clock/wake-approvals.js';
+import { actRoute } from '../../backend/services/house-clock/optio-review.js';
+import { GLOBAL_DEFAULTS } from '../../backend/services/tool-policy-defaults.js';
+import { checkToolAccess } from '../../backend/services/tool-policy.js';
 import { normalizeCharter } from '../../backend/services/house-clock/charter-shape.js';
 
 const charter = (patch = {}) => normalizeCharter({
@@ -37,6 +40,30 @@ describe('what a wake may take without the operator', () => {
     }
     expect(houseHolds(charter()).has('intents/social.post')).toBe(true);
     expect(houseHolds(null).has('intents/social.post')).toBe(false);
+  });
+  test('P6-105: a granted or unasked posting, email, publishing or money-ask act is an ask again in house work, charter or none', () => {
+    const work = { _wakeHolds: houseHolds(null), _wakeAsks: HOUSE_ASKS };
+    const asked = ['social.post', 'email.send', 'raise.reach', 'vault.publish', 'delivery.publish', 'security.escalate',
+      'marketing.plan', 'lp.reward', 'treasury.invoice', 'treasury.invoice-paid'];
+    for (const tool of asked) {
+      expect(holdForWake(work, 'allowed', 'intents', tool)).toBe('approval_required');
+      expect(askInWake(work, 'allowed', 'intents', tool)).toBe('approval_required');
+      // the charter's own holds are a separate set: a cover the operator signed may still answer the ask
+      expect(escalateInWake(work, 'allowed', 'intents', tool)).toBe('allowed');
+      expect(askInWake({}, 'allowed', 'intents', tool)).toBe('allowed');
+    }
+    expect(holdForWake(work, 'allowed', 'social', 'queue_retract')).toBe('approval_required');
+    expect(holdForWake(work, 'allowed', 'intents', 'house.post')).toBe('allowed');
+    expect(holdForWake(work, 'denied', 'intents', 'email.send')).toBe('denied');
+  });
+  test('P6-105: the table sends each of them to the operator, and only the charter\'s allow runs one', () => {
+    for (const tool of ['intents/raise.reach', 'intents/lp.reward', 'intents/treasury.invoice', 'intents/treasury.invoice-paid']) {
+      const act = { tool, args: {}, seat: 'lead', officer: 'optio', inGround: true };
+      expect(actRoute({ ...act, charter: charter() })).toMatchObject({ to: 'operator' });
+      expect(actRoute({ ...act, charter: charter({ allow: [tool] }) })).toEqual({ to: 'allow', by: 'charter' });
+    }
+    // raise.reach asks on its own row since P6-39, so a wake's broker is asked with no grant at all
+    expect(checkToolAccess(GLOBAL_DEFAULTS, 'intents', 'raise.reach')).toBe('approval_required');
   });
 });
 

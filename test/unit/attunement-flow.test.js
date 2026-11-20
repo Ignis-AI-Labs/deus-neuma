@@ -128,13 +128,10 @@ describe('railOf — the ceremony rail graduates honestly by view', () => {
     expect(rail.slice(1).every((n) => n.state === 'ahead')).toBe(true);
   });
 
-  it('a sealed attunement completes the walk and lights REFINEMENT as the next rite', () => {
+  it('a sealed attunement completes the walk, and nothing is owed after it (no refinement rite since 2026-11-14)', () => {
     const rail = railOf('sealed');
-    expect(rail.map((n) => n.label)).toEqual([
-      'OFFER', 'CONSENT', 'OPEN', 'WITNESS', 'SEAL', 'REFINE',
-    ]);
-    expect(rail.filter((n) => n.key !== 'refine').every((n) => n.state === 'complete')).toBe(true);
-    expect(rail.find((n) => n.key === 'refine')).toMatchObject({ state: 'active', label: 'REFINE' });
+    expect(rail.map((n) => n.label)).toEqual(['OFFER', 'CONSENT', 'OPEN', 'WITNESS', 'SEAL']);
+    expect(rail.every((n) => n.state === 'complete')).toBe(true);
   });
 
   it('views outside the ceremony proper carry no rail', () => {

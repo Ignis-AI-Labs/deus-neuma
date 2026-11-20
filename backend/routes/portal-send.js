@@ -7,6 +7,7 @@ import { setNotificationSender, notifyOperator } from '../services/notification-
 import { setActivityNotifier } from '../services/image-forge/forge-activity.js';
 import { renderNoticeTitle } from '../services/image-forge/render-kind.js';
 import { setRunFrameSender } from '../services/team-run-live.js';
+import { setWaitingSender } from '../services/waiting/waiting-pulse.js';
 import { readOwnerStrict } from '../middleware/require-neuma-owner.js';
 import { KIND, STANDING } from '../../core/runtime/notification-record.js';
 import { portalConnections } from './portal-connections.js';
@@ -126,6 +127,9 @@ export const deliverToWallet = (wallet, frame, { quiet = false, state } = {}) =>
 // rather than in server.js keeps this feature out of a file three other
 // workstreams are currently editing.
 setNotificationSender(sendToWallet);
+// The waiting pulse is not a notification: it only tells open windows to read again, so it rides the
+// ungated fan-out and is quiet when no desk is open (waiting-pulse.js).
+setWaitingSender((wallet, frame) => deliverToWallet(wallet, frame, { quiet: true }));
 // A live team run's frames reach every desk of its operator (team-run-live.js)
 // — quietly: a run working while no desk is open is the background working.
 // Teams are the full platform's (beings lead them) — never a harness desk's.

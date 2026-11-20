@@ -17,6 +17,8 @@
 //   - a paused CMO mandate, and each hostile-text hold it raised (marketing/mandate/)
 //   - a company line waiting on the operator's own move (company-line/line-waiting.js)
 //   - a stranger's pairing code on a house chat bot (channels/chat-waiting.js)
+//   - the sales office's own: a facts sheet, a draft audience, a list to approve, a business model a
+//     member filed (sales/sales-waiting.js)
 // Beside the items, not among them: an ACTIVE mandate (`mandate`), which owes
 // no decision but stands as the bell's quiet mark while the CMO acts.
 // Deliberately NOT here: an unsettled intent file (it becomes a chat card the
@@ -44,6 +46,7 @@ import { openLinkChanges } from '../marketing/link-changes.js';
 import { treasuryWaitingItems } from '../treasury/treasury-waiting.js';
 import { lineWaitingItems } from '../company-line/line-waiting.js';
 import { chatWaitingItems } from '../channels/chat-waiting.js';
+import { salesWaitingItems } from '../sales/sales-waiting.js';
 import { readMandate } from '../marketing/mandate/mandate-store.js';
 import { mandateWaitingItem, mandateOnMark } from '../marketing/mandate/mandate-words.js';
 import { readHolds } from '../marketing/mandate/mandate-hold-store.js';
@@ -116,5 +119,6 @@ export const readWaiting = async (wallet) => {
   const kit = await read('key-lock', () => keyLockWaitingItems(wallet), gaps);
   const line = await read('company-line', () => lineWaitingItems(wallet, names), gaps);
   const chats = await read('chat-pairing', () => chatWaitingItems(wallet), gaps);
-  return Object.freeze({ ...foldWaiting([...cards, ...asks, ...charter, ...queue, ...proposals, ...campaignAsks, ...mandate, ...money, ...links, ...kit, ...line, ...chats]), gaps, mandate: standing });
+  const sales = await read('sales', () => salesWaitingItems(wallet, names), gaps);
+  return Object.freeze({ ...foldWaiting([...cards, ...asks, ...charter, ...queue, ...proposals, ...campaignAsks, ...mandate, ...money, ...links, ...kit, ...line, ...chats, ...sales]), gaps, mandate: standing });
 };

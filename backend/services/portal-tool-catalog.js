@@ -15,6 +15,7 @@ import { refinementToolsFor } from './refinement-being-tools.js';
 import { voiceToolsFor } from './voice-being-tools.js';
 import { webToolsFor } from './web-being-tools.js';
 import { chainToolsFor } from './chain/chain-being-tools.js';
+import { lpToolsFor } from './umbrae-lp/lp-being-tools.js';
 import { mediaToolsFor } from './media-being-tools.js';
 import { imageToolsFor, cardToolsFor } from './image-forge/image-being-tools.js';
 import { mapToolsFor } from './map-being-tools.js';
@@ -27,9 +28,11 @@ import { securityToolsFor } from './security/security-being-tools.js';
 import { legalToolsFor } from './legal/legal-being-tools.js';
 import { treasuryToolsFor } from './treasury/treasury-being-tools.js';
 import { benchToolsFor } from './bench/bench-being-tools.js';
+import { extensionToolsFor } from './extensions/extension-being-tools.js';
 import { isAdvertisedTool, normalizeChatMode } from './tool-policy.js';
 import { ASK_OPERATOR_TOOL } from './operator-ask.js';
 import { PLAN_SUBMIT_TOOL } from './team-tool-defs.js';
+import { SHADOW_CLONE_TOOL } from './shadow-clone.js';
 import { PLAN_PRESENT_TOOL } from './plan-mode.js';
 import { SOVEREIGNTY_PROPOSALS_TOOL } from './sovereignty/gateway-tools.js';
 import { skillService } from './skill-service.js';
@@ -112,7 +115,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // a sealed witness the address in its seal (Design note, 2026-07-26: […]). The lane decides which one, so neither seat
     // can name another's. SPENDING is the wallet/send INTENT now (Stage 3) —
     // neuma-only, offered where the operator's standing policy exists.
-    capability('wallet', async () => (connection.companion?.neumaId ? [WALLET_VIEW_TOOL] : [])),
+    capability('wallet', async () => (connection.companion?.neumaId ? [WALLET_VIEW_TOOL, ...await lpToolsFor(connection)] : [])),
     // The Craft: the skills menu rides the prompt; the summoning tool is
     // advertised only when there is something to summon.
     skillService.listSkills().catch(() => []),
@@ -204,6 +207,8 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   // The connected benchmarks repository, from the conversation — the harness
   // measuring itself, and a being measuring itself (bench-being-tools.js).
   const benchTools = await capability('bench', () => benchToolsFor(connection));
+  // The house's checked third-party extensions (MCP servers) — every call asks the gate (extension-being-tools.js).
+  const extensionTools = await capability('extensions', () => extensionToolsFor());
   // The Quaestor's treasury read — the seated CFO's lane alone (treasury-being-tools.js).
   const treasuryTools = isNeuma ? await capability('treasury', () => treasuryToolsFor(connection)) : [];
   const vaultTools = connection.companion?.neumaId ? VAULT_TOOLS.filter(isAdvertisedTool) : []; // #414
@@ -230,8 +235,9 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
   const memoryTools = memoryToolsUnfiltered.filter(isAdvertisedTool);
   const askTools = [ASK_OPERATOR_TOOL];
   const planTools = connection.companion?.neumaId
-    // team/run + team/workspace-run are intents now (Stage 3); plan_submit stays.
-    ? [PLAN_SUBMIT_TOOL]
+    // team/run + team/workspace-run are intents now (Stage 3); plan_submit stays. A being splits
+    // into shadow clones from its own sitting — never from a clone's or a team part's.
+    ? [PLAN_SUBMIT_TOOL, ...(connection._shadowClone || connection._teamMember ? [] : [SHADOW_CLONE_TOOL])]
     : [];
   // PLAN MODE's presentation tool advertises ONLY while the chat bears PLAN —
   // the mode lives on the connection, so a mid-sitting flip lands next turn.
@@ -255,7 +261,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     return {
       skills,
       tools: [...skillTools, ...retrieveTools, ...webTools, ...mediaTools, ...imageTools, ...cardTools,
-        ...mapTools, ...pressTools, ...askTools, ...planPresentTools, ...benchTools],
+        ...mapTools, ...pressTools, ...askTools, ...planPresentTools, ...benchTools, ...extensionTools],
     };
   }
   return {
@@ -266,7 +272,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
       ...leadTools, ...campaignTools, ...socialTools, ...securityTools, ...vesselLogTools,
       ...refinementTools, ...voiceTools, ...retrieveTools, ...memoryTools, ...skiesTools, ...genomeTools,
       ...housePostTools, ...chatLinkTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
-      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools,
+      ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools, ...extensionTools,
   ],
   };
 };

@@ -26,9 +26,9 @@ window.prepareReload = async ({ token, lane }) => {
       historyReadyRef.current = runLinkHistoryLoad({
         wsService, companionRef, navigationSeqRef, historyFailedRef,
         dispatch: (action) => { state = reducer(state, action); },
-        // This fixture has no focused folder/project: merge two actual empty frames.
-        portalFocusFrame: Object.assign, focusRef: ref({}), projectsRef: ref({}),
-        turnStartedRef: ref(false), projectChatSeenRef: ref(null),
+        // This fixture has no focused folder: the frame is an actual empty object.
+        portalFocusFrame: Object.assign, focusRef: ref({}),
+        turnStartedRef: ref(false),
         target: companionRef.current, navigationSeq: 0,
       });
       const pending = gate(fire, 'fixture interrupt');

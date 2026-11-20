@@ -156,15 +156,19 @@ describe('the loopback consent → token exchange → sealed refresh token', () 
     await expect(fetch(`${redirect}/?code=again&state=x`)).rejects.toThrow();
   });
 
-  test('a callback that names another state is refused and seals nothing', async () => {
+  test('a forged state cannot abort the consent; the matching callback still connects', async () => {
     const started = await startYouTubeConnect(HOUSE);
-    const page = await browserReturns(started.authUrl, { code: 'AUTH-CODE', state: 'forged' });
+    const page = await browserReturns(started.authUrl, { code: 'FORGED', state: 'forged' });
     expect(page.status).toBe(400);
-    const outcome = await settled(HOUSE);
-    expect(outcome.status).toBe('error');
-    expect(outcome.error).toMatch(/state mismatch/);
+    expect(pollYouTubeConnect(HOUSE).status).toBe('pending');
     expect(tokenHits).toHaveLength(0);
-    expect(await resolveChannelCredential(HOUSE, 'youtube')).toBeNull();
+
+    const valid = await browserReturns(started.authUrl, {
+      code: 'AUTH-CODE', state: new URL(started.authUrl).searchParams.get('state'), scope: `${UPLOAD} ${READONLY}`,
+    });
+    expect(valid.status).toBe(200);
+    expect((await settled(HOUSE)).status).toBe('complete');
+    expect(tokenHits).toHaveLength(1);
   });
 
   test('declining on Google\'s page, no refresh token, or an unticked upload box: each refused in plain words', async () => {

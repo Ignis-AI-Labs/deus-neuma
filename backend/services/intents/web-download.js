@@ -3,6 +3,7 @@ import workspace from '../../../core/workspace/neuma-workspace.js';
 import { webSettings } from '../web-settings.js';
 import { streamDownload } from '../web-download.js';
 import { saveDownload, validDownloadName } from '../download-store.js';
+import { screenWebEgress } from '../web-egress-screen.js';
 
 // Pure: strip URL query/fragment from public receipts (signed URLs may carry secrets).
 const publicSource = (url) => {
@@ -28,6 +29,9 @@ export const webDownloadIntent = Object.freeze({
     if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !validDownloadName(payload?.name)) {
       return { ok: false, status: 'invalid', reason: 'download needs a public http(s) URL without credentials and a filename (not a path)' };
     }
+    // A key spelled into the address is refused before any card, in every mode (audit P6-04).
+    const secret = screenWebEgress('the download address', url.href);
+    if (!secret.ok) return { ok: false, status: 'denied', reason: secret.reason };
     return { ok: true, value: { url: url.href, name: payload.name } };
   },
   summarize: ({ name, url }) => `download complete file ${name} from ${publicSource(url)} into your workspace`,

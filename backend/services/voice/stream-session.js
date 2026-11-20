@@ -149,7 +149,7 @@ export class VoiceStreamSession {
     await ensureReady('whisper');
     const { host, port } = serve;
     // the transcription audio goes only to a sidecar that proves the install key (sidecar-trust.js)
-    const ws = new WebSocket(`ws://${host}:${port}/stream`, { headers: await sidecarSocketHeaders(`http://${host}:${port}`) });
+    const ws = new WebSocket(`ws://${host}:${port}/stream`, { headers: await sidecarSocketHeaders(`http://${host}:${port}`, 'whisper') });
     this._ws = ws;
     // Open is not admitted: the lane answers `ready`, or refuses (one /stream
     // client at a time — close 1013 while another holds it). Wait for which,

@@ -29,11 +29,17 @@ export const SPAM_DETAIL = 'This request looks like it might be automated. To pr
 // (recorded as X would keep them), and POST /2/tweets that answers live (or
 // refuses as spam while `state.mode === 'spam'`).
 const standX = async () => {
-  const state = { mode: 'ok', posts: [], next: 7000, uploads: 0, alts: [] };
+  const state = { mode: 'ok', posts: [], next: 7000, uploads: 0, alts: [], deleted: [] };
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://loopback');
     const json = (status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
     if (url.pathname === '/2/users/me') return json(200, { data: { id: '1000', username: 'neuma_house', name: 'Neuma' } });
+    // A delete (queue_retract): signed like every write; refused while `state.mode === 'refuse-delete'`.
+    if (url.pathname.startsWith('/2/tweets/') && req.method === 'DELETE') {
+      if (state.mode === 'refuse-delete' || !String(req.headers.authorization || '').startsWith('OAuth ')) return json(403, { title: 'Forbidden', detail: 'You are not allowed to delete this Tweet.' });
+      state.deleted.push(url.pathname.slice('/2/tweets/'.length));
+      return json(200, { data: { deleted: true } });
+    }
     if (url.pathname.startsWith('/2/tweets/') && req.method === 'GET') {
       return json(200, { data: { id: url.pathname.slice('/2/tweets/'.length), author_id: '42' } });
     }
@@ -94,6 +100,7 @@ export const resetHouse = async (h) => {
   h.x.state.mode = 'ok';
   h.x.state.posts.length = 0;
   h.x.state.alts.length = 0;
+  h.x.state.deleted.length = 0;
   h.clientLog.length = 0;
   h.decide = null;
 };

@@ -44,28 +44,18 @@ describe('look-presets.js', () => {
     expect(isSameLook(voidPreset.theme, STOCK_LOOK)).toBe(false);
   });
 
+  // Readable is CONTRAST (the lighter over the darker, as the eye takes it), not a gap in raw luminance: a gap rule
+  // could not tell a mid-tone paper under black ink (perfectly readable) from a failure.
+  const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+
   test('every dress reads: ink, trim, and claimed text voices clear the ground', () => {
+    const need = { ink: 7, body: 7, emph: 7, ital: 4.5, head: 4.5, trim: 4.5, line: 3, alert: 4, warn: 4, okay: 4 };
     for (const { name, theme } of STOCK_PRESETS) {
-      const ground = luminance(theme.ground);
-      expect(Math.abs(luminance(theme.ink) - ground), `${name} ink vs ground`).toBeGreaterThan(0.5);
-      expect(Math.abs(luminance(theme.trim) - ground), `${name} trim vs ground`).toBeGreaterThan(0.25);
-      expect(Math.abs(luminance(theme.panel) - ground), `${name} panel vs ground`).toBeLessThan(0.1);
-      if (theme.head) {
-        expect(Math.abs(luminance(theme.head) - ground), `${name} head vs ground`).toBeGreaterThan(0.3);
+      for (const [voice, least] of Object.entries(need)) {
+        if (theme[voice]) expect(contrast(theme[voice], theme.ground), `${name} ${voice} on its ground`).toBeGreaterThanOrEqual(least);
       }
-      for (const voice of ['body', 'ital', 'emph']) {
-        if (theme[voice]) {
-          expect(Math.abs(luminance(theme[voice]) - ground), `${name} ${voice} vs ground`).toBeGreaterThan(0.3);
-        }
-      }
-      if (theme.line) {
-        expect(Math.abs(luminance(theme.line) - ground), `${name} line vs ground`).toBeGreaterThan(0.2);
-      }
-      for (const reg of ['alert', 'warn', 'okay']) {
-        if (theme[reg]) {
-          expect(Math.abs(luminance(theme[reg]) - ground), `${name} ${reg} vs ground`).toBeGreaterThan(0.25);
-        }
-      }
+      // a panel is barely raised from the ground, never a second surface
+      expect(Math.abs(luminance(theme.panel) - luminance(theme.ground)), `${name} panel vs ground`).toBeLessThan(0.1);
     }
   });
 
@@ -89,5 +79,42 @@ describe('look-presets.js', () => {
       const voices = ['trim', 'alert', 'warn', 'okay'].map((k) => theme[k]).filter(Boolean);
       expect(new Set(voices).size, `${name} voices collide`).toBe(voices.length);
     }
+  });
+});
+
+// The shelf's middle (Design note, 2026-11-16: […]).
+describe('the soft dresses — dark without the pit, light without the glare', () => {
+  const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const of = (tone) => STOCK_PRESETS.filter((p) => p.tone === tone);
+
+  test('every dress has one of the four kinds, and each kind has dresses', async () => {
+    const { PRESET_TONES } = await import('../../frontend/utils/look-presets.js');
+    expect(PRESET_TONES).toEqual(['soft-dark', 'soft-light', 'deep-dark', 'bright-light']);
+    for (const p of STOCK_PRESETS) expect(PRESET_TONES, p.name).toContain(p.tone);
+    expect(PRESET_TONES.map((t) => of(t).length)).toEqual([7, 5, 14, 3]);
+  });
+
+  test('a soft dark is never a void: its ground is lifted off black and its ink is off white', () => {
+    for (const { name, theme } of of('soft-dark').filter((p) => !['cyberdeck', 'stone'].includes(p.id))) {
+      expect(luminance(theme.ground), `${name} ground`).toBeGreaterThan(0.015);
+      expect(luminance(theme.ink), `${name} ink`).toBeLessThan(0.8);
+      // comfortable to read for hours: well clear of the 7:1 that long text needs, well under black-on-white's 21:1
+      expect(contrast(theme.body, theme.ground), `${name} body`).toBeGreaterThan(9);
+      expect(contrast(theme.ink, theme.ground), `${name} ink`).toBeLessThan(13);
+    }
+  });
+
+  test('a soft light is a MID tone, never a dimmed white: about half the light of a bright dress, and still readable', () => {
+    // perceived lightness, 0 black to 100 white
+    const lightness = (hex) => 116 * Math.cbrt(luminance(hex)) - 16;
+    for (const { name, theme } of of('soft-light')) {
+      expect(lightness(theme.ground), `${name} paper`).toBeLessThan(72);
+      expect(lightness(theme.ground), `${name} paper`).toBeGreaterThan(60);
+      expect(luminance(theme.ground), `${name} light put out`).toBeLessThan(0.55 * Math.min(...of('bright-light').map((p) => luminance(p.theme.ground))));
+      expect(contrast(theme.body, theme.ground), `${name} body`).toBeGreaterThanOrEqual(7);
+      expect(contrast(theme.trim, theme.ground), `${name} trim`).toBeGreaterThanOrEqual(4.5);
+    }
+    // the bright lights stay what they were: brighter than every soft one
+    expect(Math.min(...of('bright-light').map((p) => luminance(p.theme.ground)))).toBeGreaterThan(Math.max(...of('soft-light').map((p) => luminance(p.theme.ground))));
   });
 });

@@ -25,6 +25,8 @@ import { materializeReplyCandidates } from '../social/reply-listener.js';
 import { readXMe, readXListings, formatXReadForBeing, renderXListing, postIdFrom } from '../social/x-reader.js';
 import { houseOfLane } from '../social/house-positions.js';
 import { TOOL_RESULT_MAX_CHARS } from '../tool-exchange.js';
+import { listingRoom } from '../read-room.js';
+import { QUEUE_RETRACT_TOOL, handleQueueRetract } from './queue-retract-tool.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { REPLIES_LIST_TOOL, readReplyInbox } from './reply-inbox-tool.js';
 import { PLATFORM_READ_NAMES, readPlatformForBeing } from './platform-read-tools.js';
@@ -45,11 +47,12 @@ const log = createLogger('Portal');
 const QUEUE_LIST_TOOL = Object.freeze({
   name: 'queue_list',
   server: 'social',
-  description: `Read the campaign queue — every arg optional: {status?, campaignId?, channelId?, kind?, pillar?, from?, to?, q?, order?, view?, limit?, offset?}. With no args you get the decision view: what awaits your operator and what is coming, ${PAGE_DEFAULT.full} at a time, each with its copy VERBATIM. To audit a whole month use view:'index' — one line per post, the densest walk there is — then queue_get the ones you mean to change. Every read is fitted to your context window in WHOLE entries: if fewer arrive than the page holds, the answer says so and names the exact next call, so a short page is a window and never a shorter record. status: live (default — withdrawn/declined copy stays out of your context) | all | ${QUEUE_STATUSES.join(' | ')}. kind: ${QUEUE_KINDS.join(' | ')} (a self-reply is a thread follow-up). from/to are ISO times bounding the SCHEDULE, so unscheduled copy falls outside them. q searches the text — the duplicate check before you stage another line. order: decision (default: awaiting you, then coming, then the record) | calendar (the month as it will actually happen). Page with offset; every answer that has more tells you the exact next call. Reading the lane is everyone's; staging follows the marketing team's lead — if you are not on the marketing team, feed them what they need and let them shape the calendar.`,
+  description: `Read the campaign queue — every arg optional: {view?, status?, day?, campaignId?, channelId?, kind?, pillar?, from?, to?, q?, order?, limit?, offset?}. START with view:'summary': the whole record at a glance with no copy — how many posts stand in each standing, the days they went out, were pulled or are coming, each campaign and channel — then read exactly the slice you mean. With no args you get what can still move (status open: draft, approved, sending, failed), ${PAGE_DEFAULT.full} at a time, copy VERBATIM; sent and withdrawn posts stay out until you name them. status: open | live (open + sent) | dead (withdrawn, declined, taken down) | all | ${QUEUE_STATUSES.join(' | ')} — several comma-separated; pending = draft, scheduled = approved, declined = rejected. day: YYYY-MM-DD, today or yesterday — the day a post HAPPENED (a sent post by when it went out, a pulled one by when it was pulled, the rest by their slot); with day and no status you get everything on that day. view:'index' gives one line per post — the densest walk — then queue_get the ones you mean to change. Every read is fitted to your context window in WHOLE entries and names the exact next call, filters kept. kind: ${QUEUE_KINDS.join(' | ')} (a self-reply is a thread follow-up). from/to are ISO times bounding the SCHEDULE. q searches the text — the duplicate check before you stage another line (with q and no status you search open and sent). order: decision (default: awaiting you, then coming, then the record) | calendar. Reading the lane is everyone's; staging follows the marketing team's lead — if you are not on the marketing team, feed them what they need and let them shape the calendar.`,
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({
-      status: Object.freeze({ type: 'string', description: `live (default) | all | ${QUEUE_STATUSES.join(' | ')} — or several, comma-separated` }),
+      status: Object.freeze({ type: 'string', description: `open (default) | live | dead | all | ${QUEUE_STATUSES.join(' | ')} — or several, comma-separated` }),
+      day: Object.freeze({ type: 'string', description: 'YYYY-MM-DD, today or yesterday — only posts that happened that day (sent, pulled, or scheduled for it)' }),
       campaignId: Object.freeze({ type: 'string', description: 'Only posts on this campaign (the id campaign_list shows)' }),
       channelId: Object.freeze({ type: 'string', description: 'Only posts for this channel (x, telegram, discord, …)' }),
       kind: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_KINDS]), description: 'post | reply | self-reply' }),
@@ -58,7 +61,7 @@ const QUEUE_LIST_TOOL = Object.freeze({
       to: Object.freeze({ type: 'string', description: 'ISO-8601 — only posts scheduled at or before this moment' }),
       q: Object.freeze({ type: 'string', description: 'Only posts whose text contains this (case-insensitive)' }),
       order: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_ORDERS]), description: 'decision (default) | calendar' }),
-      view: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_VIEWS]), description: `full (default, verbatim copy) | index (one line each, up to ${PAGE_MAX.index})` }),
+      view: Object.freeze({ type: 'string', enum: Object.freeze([...QUEUE_VIEWS]), description: `summary (the record at a glance, by standing, day, campaign — start here) | full (default, verbatim copy) | index (one line each, up to ${PAGE_MAX.index})` }),
       limit: Object.freeze({ type: 'number', description: `How many to return (full: ${PAGE_DEFAULT.full}, max ${PAGE_MAX.full}; index: ${PAGE_DEFAULT.index}, max ${PAGE_MAX.index})` }),
       offset: Object.freeze({ type: 'number', description: 'Skip this many — how you page through a long calendar' }),
     }),
@@ -89,7 +92,9 @@ const QUEUE_GET_TOOL = Object.freeze({
 // queue rendered 17,396 chars into a 4,000-char window). So a listing fits
 // itself in whole records instead, and the reserve covers the
 // `social/<tool> → ok` line the exchange prepends before the cap is measured.
-const READ_WINDOW = TOOL_RESULT_MAX_CHARS - 120;
+// The window is the ROOM's (read-room.js listingRoom, Design note, 2026-11-12, and the
+// result carries the cap that admits it whole.
+const capFor = (text) => Math.max(TOOL_RESULT_MAX_CHARS, String(text || '').length + 120);
 
 const READ_X_TOOL = Object.freeze({
   name: 'read_x',
@@ -115,7 +120,7 @@ const READ_X_TOOL = Object.freeze({
 const QUEUE_CANCEL_TOOL = Object.freeze({
   name: 'queue_cancel',
   server: 'social',
-  description: 'Pull a staged post back before it publishes — args {id, reason?}. Use the FULL id from queue_list. The entry is marked rejected and will never be sent; it stays in the record so the decision is auditable. A post that already went out cannot be cancelled — say so plainly rather than implying you recalled it.',
+  description: 'Pull a staged post or reply back before it publishes — args {id, reason?}. Use the FULL id from queue_list. One YOU drafted is pulled at once, no card; anyone else\'s asks your operator. The entry is marked withdrawn and will never be sent; it stays in the record so the decision is auditable. A post that already went out cannot be cancelled — say so plainly rather than implying you recalled it.',
   inputSchema: Object.freeze({
     type: 'object',
     properties: Object.freeze({
@@ -126,7 +131,7 @@ const QUEUE_CANCEL_TOOL = Object.freeze({
   }),
 });
 
-const SOCIAL_TOOLS = Object.freeze([QUEUE_LIST_TOOL, QUEUE_GET_TOOL, READ_X_TOOL, QUEUE_CANCEL_TOOL, REPLIES_LIST_TOOL]);
+const SOCIAL_TOOLS = Object.freeze([QUEUE_LIST_TOOL, QUEUE_GET_TOOL, READ_X_TOOL, QUEUE_CANCEL_TOOL, REPLIES_LIST_TOOL, QUEUE_RETRACT_TOOL]);
 // The platform account reads (read_youtube, read_tiktok…) are advertised per
 // connected platform (channelToolsFor); they are handled here.
 const SOCIAL_TOOL_NAMES = new Set([...SOCIAL_TOOLS.map((t) => t.name), ...PLATFORM_READ_NAMES]);
@@ -146,6 +151,9 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     : String(match.tool || '').replace(/^social\//, '');
   const tool = `social/${toolName}`;
   const { companion } = connection;
+  // Taking back what the house already SAID is its own act (queue-retract-tool.js).
+  if (toolName === 'queue_retract') return handleQueueRetract(ws, connection, neumaPolicy, toolMode, args);
+  const budget = listingRoom(connection._turnRoom);
 
   const policy = resolvePolicy(GLOBAL_DEFAULTS, neumaPolicy, connection._sessionToolPolicy || null);
   const baseAccess = checkToolAccess(policy, 'social', toolName);
@@ -201,7 +209,11 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     cancelTarget = entry;
   }
 
-  if (access === 'approval_required') {
+  // A being pulls back ITS OWN unsent post or reply with no card (Founder
+  // 2026-11-12: […]): pulling
+  // makes nothing public. Anyone else's entry still asks the operator.
+  const ownPull = Boolean(cancelTarget?.authorNeumaId) && cancelTarget.authorNeumaId === companion?.neumaId;
+  if (access === 'approval_required' && !ownPull) {
     const cardArgs = toolName === 'read_x'
       ? { what: args?.what, ...(args?.limit !== undefined ? { limit: args.limit } : {}) }
       : toolName === 'queue_get' ? { id: args?.id }
@@ -270,15 +282,20 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
       // middle-fold severs an entry mid-copy, and a queue read is whole posts
       // or it is nothing. `drawn.shown` is what actually crossed, which is
       // what the chip must count.
-      const drawn = drawQueueSelection(selection, { budget: READ_WINDOW });
+      const drawn = drawQueueSelection(selection, { budget });
+      // The chip names what was read: "staged" only for the open queue, never for a day of sent posts.
+      const what = selection.filters.status ? `${selection.filters.status} post(s)` : selection.defaulted === 'open' ? 'staged post(s)' : 'post(s)';
+      const when = selection.filters.day ? ` · ${selection.filters.day}` : '';
       _sendToolEvent(ws, companion, {
         tool,
         status: 'ok',
-        summary: drawn.shown < selection.matched
-          ? `${drawn.shown} of ${selection.matched} staged post(s)`
-          : `${drawn.shown} staged post(s)`,
+        summary: selection.view === 'summary'
+          ? `the queue at a glance · ${selection.matched} post(s)${when}`
+          : drawn.shown < selection.matched
+            ? `${drawn.shown} of ${selection.matched} ${what}${when}`
+            : `${drawn.shown} ${what}${when}`,
       });
-      return { tool, status: 'ok', content: drawn.text };
+      return { tool, status: 'ok', content: drawn.text, cap: capFor(drawn.text) };
     } catch (err) {
       _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: err.message });
       return { tool, status: 'error', error: err.message };
@@ -287,13 +304,13 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
 
   if (toolName === 'replies_list') {
     try {
-      const read = await readReplyInbox(args, await houseOfLane(companion?.neumaId));
+      const read = await readReplyInbox(args, await houseOfLane(companion?.neumaId), { budget });
       if (!read.ok) {
         _sendToolEvent(ws, companion, { tool, status: 'error', summary: 'replies_list — invalid args', detail: read.error });
         return { tool, status: 'error', error: read.error };
       }
       _sendToolEvent(ws, companion, { tool, status: 'ok', summary: read.summary });
-      return { tool, status: 'ok', content: read.text };
+      return { tool, status: 'ok', content: read.text, cap: capFor(read.text) };
     } catch (err) {
       _sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: err.message });
       return { tool, status: 'error', error: err.message };
@@ -352,11 +369,11 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   }
 
   if (PLATFORM_READ_NAMES.has(toolName)) {
-    const read = await readPlatformForBeing(toolName, companion?.neumaId, { signal: connection.activeTurn?.signal, budget: READ_WINDOW, account: args?.account });
+    const read = await readPlatformForBeing(toolName, companion?.neumaId, { signal: connection.activeTurn?.signal, budget, account: args?.account });
     _sendToolEvent(ws, companion, {
       tool, status: read.ok ? 'ok' : 'error', summary: read.ok ? read.summary : `${toolName} — failed`, detail: read.ok ? undefined : read.error,
     });
-    return read.ok ? { tool, status: 'ok', content: read.text } : { tool, status: 'error', error: read.error };
+    return read.ok ? { tool, status: 'ok', content: read.text, cap: capFor(read.text) } : { tool, status: 'error', error: read.error };
   }
 
   // read_x — the reader never throws; a broken lane answers with the honest
@@ -430,7 +447,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
   // listing means half a post arrives with no way to tell which half. Reading
   // fewer whole posts is the honest trade, and the text says so.
   const listing = outcome.ok && what !== 'me'
-    ? renderXListing(what, outcome.data, { ...readOpts, max: limit, budget: READ_WINDOW })
+    ? renderXListing(what, outcome.data, { ...readOpts, max: limit, budget })
     : null;
   const content = !outcome.ok
     ? `The X read did not land: ${outcome.detail}.`
@@ -460,7 +477,7 @@ const _handleSocialTool = async (ws, connection, neumaPolicy, toolMode, match, a
     detail: content,
   });
   return outcome.ok
-    ? { tool, status: 'ok', content }
+    ? { tool, status: 'ok', content, cap: capFor(content) }
     : { tool, status: 'error', error: content };
 };
 

@@ -29,8 +29,6 @@ test('ground reads preserve wallet state and fallbacks while signaling expired a
     await fs.writeFile(path.join(bodies, 'invalid.json'), '{');
     await fs.writeFile(path.join(bodies, 'null.json'), 'null');
     const app = express(); app.use(express.json());
-    let titleRequests = 0;
-    app.use('/api/v1/user/realm/council-labels/autotitle', (_req, _res, next) => { titleRequests++; next(); });
     app.use('/api/v1/user/realm', realmRouter);
     app.use('/bodies', express.static(bodies));
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(root, 'vite'),
@@ -46,8 +44,6 @@ test('ground reads preserve wallet state and fallbacks while signaling expired a
       try { return { ok: true, value: await window.clients[name](...args) }; }
       catch (error) { return { ok: false, name: error.name, message: error.message }; }
     }, { name, args });
-    expect(await call('autotitleCouncils', { councilIds: [] })).toEqual({ ok: true, value: { results: [], labels: null } });
-    expect(titleRequests).toBe(0);
     const houseEmpty = { root: null, repos: [] };
     const allianceEmpty = { root: null, suggestion: null, alliances: [] };
     // a read that could not be made is said (unread), never read as "no ground set"
@@ -61,8 +57,6 @@ test('ground reads preserve wallet state and fallbacks while signaling expired a
     expect(await call('getOperatorName')).toEqual({ ok: true, value: 'Trace fixture' });
     expect((await call('getRealm')).value.root).toBe(getRealmRoot());
     expect((await call('setCouncilLabel', 'council-1', 'Retained label')).value).toEqual({ 'council-1': 'Retained label' });
-    expect(await call('autotitleCouncils', { councilIds: [] })).toEqual({ ok: true, value: { results: [], labels: { 'council-1': 'Retained label' } } });
-    expect(await call('autotitleCouncils', { councilIds: ['invalid-id'] })).toEqual({ ok: true, value: { results: [], labels: null } });
     expect((await call('getCouncilLabels')).value).toEqual({ 'council-1': 'Retained label' });
     expect(await page.evaluate(() => window.expired)).toBe(0);
 
@@ -82,9 +76,7 @@ test('ground reads preserve wallet state and fallbacks while signaling expired a
     expect(await page.evaluate(() => window.expired)).toBe(2);
     expect(await call('getOperatorName')).toEqual({ ok: false, name: 'Error', message: 'Could not read the operator name (401)' });
     expect(await call('getRealm')).toEqual({ ok: false, name: 'Error', message: 'Could not read the data realm (401)' });
-    expect(await call('autotitleCouncils', { councilIds: [] })).toEqual({ ok: true, value: { results: [], labels: null } });
-    expect(await page.evaluate(() => window.expired)).toBe(5);
-    expect(titleRequests).toBe(3);
+    expect(await page.evaluate(() => window.expired)).toBe(4);
     expect(await fs.readdir(house)).toEqual(before);
     expect(await call('apiCall', 'GET', '/bodies/invalid.json', { strictJson: true })).toMatchObject({ ok: false, name: 'SyntaxError' });
     expect(await call('apiCall', 'GET', '/bodies/invalid.json')).toEqual({ ok: true, value: {} });

@@ -19,6 +19,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { isTempPath } from './workspace-settings.js';
 import { decryptEnvelope, encryptEnvelope, isEnvelope } from '../../core/workspace/workspace-crypto.js';
+import { createLogger } from './logger.js';
 
 const NEW_ROOT = path.join(os.homedir(), '.neuma', 'realm');
 const LEGACY_ROOT = path.join(os.homedir(), '.kenorie', 'realm');
@@ -68,7 +69,7 @@ const WALLET_RE = /^0x[a-fA-F0-9]{40}$/;
 const NEUMA_RE = /^[a-zA-Z0-9_-]+$/;
 
 /** Per-wallet directory, format-validated so it can never escape the root.
- *  Exported so sibling realm stores (e.g. user-projects) reuse the same
+ *  Exported so sibling realm stores (e.g. user-tasks) reuse the same
  *  traversal guard rather than reimplementing it. */
 export const walletDir = (wallet) => {
   if (typeof wallet !== 'string' || !WALLET_RE.test(wallet)) {
@@ -109,7 +110,7 @@ export const appendChat = async (wallet, neumaId, neumaName, turns) => {
   const ts = new Date().toISOString();
   // Each line sealed under the install's key, like the beings' own files; EXPORT reads it back (chatText).
   const lines = turns
-    .map((t) => JSON.stringify(encryptEnvelope({ ts, neuma: neumaName || null, role: t.role, content: t.content })) + '\n')
+    .map((t) => JSON.stringify(encryptEnvelope({ ts, neuma: neumaName || null, role: t.role, content: t.content, ...(t.origin ? { origin: t.origin } : {}) })) + '\n')
     .join('');
   await fs.appendFile(file, lines, { mode: 0o600 });
 };
@@ -133,6 +134,17 @@ export const listChats = async (wallet) => {
   }
 };
 
+const log = createLogger('UserRealm');
+
+// impure — say once per file per process that sealed turns in it do not open: a history that reads short
+// because the key changed must never look like a short history (2026-11-17: weeks of chats read as empty).
+const lockedNamed = new Set();
+const nameLockedTurns = (file, locked) => {
+  if (lockedNamed.has(file)) return;
+  lockedNamed.add(file);
+  log.error('sealed turns in this chat copy do not open with any key this desk holds — they are kept, not shown', { file, locked });
+};
+
 // pure (given the key) — a chat line back to its turn: sealed lines open, a line from before the lock reads as it is
 const openLine = (record) => (isEnvelope(record) ? decryptEnvelope(record) : record);
 
@@ -145,9 +157,15 @@ export const readChat = async (wallet, neumaId, { limit = 200 } = {}) => {
     // Skip any unparseable line rather than lose the whole log to one bad
     // record — in practice only the tail line can tear (a crash mid-append);
     // the sovereign workspace's JSONL reader applies the same tolerance.
+    let locked = 0;
     const lines = content.trim().split('\n').filter(Boolean)
-      .map((l) => { try { return openLine(JSON.parse(l)); } catch { return null; } })
+      .map((l) => {
+        let record;
+        try { record = JSON.parse(l); } catch { return null; }
+        try { return openLine(record); } catch { locked += 1; return null; }
+      })
       .filter(Boolean);
+    if (locked) nameLockedTurns(file, locked);
     return limit ? lines.slice(-limit) : lines;
   } catch (err) {
     if (err.code === 'ENOENT') return [];

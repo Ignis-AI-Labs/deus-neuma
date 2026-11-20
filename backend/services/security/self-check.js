@@ -50,6 +50,7 @@ const HARD_GATED = Object.freeze([
   ['intents', 'security.assess'], ['intents', 'security.escalate'], ['intents', 'security.circuit-breaker'],
   ['intents', 'wallet.send'], ['intents', 'team.workspace-run'], ['intents', 'email.send'], ['intents', 'social.post'],
   ['intents', 'tasks.operator-drop'], ['filesystem', 'delete_file'],
+  ['intents', 'web.download'], ['intents', 'media.save'], ['intents', 'forge.install'], ['intents', 'forge.workflow'],
 ]);
 // The machine-wide changes the install-owner ruling gated (ruling, 2026-10-19).
 export const OWNER_GATED_ROUTES = Object.freeze([

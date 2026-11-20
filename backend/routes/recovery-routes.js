@@ -8,7 +8,9 @@
  */
 
 import { Router } from 'express';
+import { ethers } from 'ethers';
 import { requireAuth } from '../services/auth.js';
+import { requireLocalScope } from '../services/remote/access-guard.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.js';
 import {
@@ -17,6 +19,7 @@ import {
 import { rotateKeypair } from '../../core/wallet/keypair-rotation.js';
 import { reissueIdentityCard } from '../../core/weave/identity-card.js';
 import { cacheDecryptedKey, evictCachedKey } from './neuma-auth-routes.js';
+import { consumeRecoveryAttempt, recoveryLimitResponse } from '../services/recovery-attempts.js';
 
 import { createLogger } from '../services/logger.js';
 const log = createLogger('Recovery');
@@ -41,7 +44,7 @@ const verifyOwnership = (req, res, neumaId) => assertNeumaOwner(req, res, neumaI
  * POST /verify-codes — Verify recovery codes against stored hash.
  * Body: { recoveryCodes: string[] }
  */
-router.post('/:neumaId/recovery/verify-codes', async (req, res) => {
+router.post('/:neumaId/recovery/verify-codes', requireLocalScope, async (req, res) => {
   const { neumaId } = req.params;
   if (!await verifyOwnership(req, res, neumaId)) return;
 
@@ -49,6 +52,7 @@ router.post('/:neumaId/recovery/verify-codes', async (req, res) => {
   if (!Array.isArray(recoveryCodes) || recoveryCodes.length !== 8) {
     return res.status(400).json({ error: 'Exactly 8 recovery codes required' });
   }
+  if (!await consumeRecoveryAttempt(neumaId)) return recoveryLimitResponse(res);
 
   try {
     const storedHash = await neumaWorkspace.readRecoveryHash(neumaId);
@@ -76,69 +80,44 @@ router.post('/:neumaId/recovery/verify-codes', async (req, res) => {
 });
 
 /**
- * POST /rotate — Rotate keypair.
- * Requires witness auth + either old password or verified recovery codes (cached key).
- * Body: { newPassword, oldPassword? }
+ * POST /rotate — Rotate keypair with the current password; resume delivery
+ * only by proving the new password chosen for that rotation.
  */
-router.post('/:neumaId/recovery/rotate', async (req, res) => {
+router.post('/:neumaId/recovery/rotate', requireLocalScope, async (req, res) => {
   const { neumaId } = req.params;
   if (!await verifyOwnership(req, res, neumaId)) return;
-
-  const { newPassword, oldPassword } = req.body;
+  const { newPassword, oldPassword } = req.body ?? {};
   if (!newPassword || newPassword.length < 12) {
     return res.status(400).json({ error: 'New password must be at least 12 characters' });
   }
+  if (!await consumeRecoveryAttempt(neumaId)) return recoveryLimitResponse(res);
+
+  const delivered = await neumaWorkspace.readRotationCodes(neumaId);
+  if (delivered) {
+    try {
+      const current = decryptKeypair(await neumaWorkspace.readEncryptedKeypair(neumaId), newPassword);
+      if (current.address !== delivered.address) throw new Error('address mismatch');
+      return res.json({ success: true, newAddress: delivered.address, recoveryCodes: [...delivered.codes], resumed: true });
+    } catch {
+      return res.status(401).json({ error: 'The new password is required to resume recovery-code delivery' });
+    }
+  }
+  if (!oldPassword) return res.status(401).json({ error: 'The current password is required to rotate this keypair' });
 
   try {
-    // Get the old keypair — either from cache (recovery codes path) or decrypt with old password
-    let oldKeypair = null;
-
-    // Try cached key first (set by verify-codes endpoint)
-    const { getCachedKey } = await import('./neuma-auth-routes.js');
-    oldKeypair = getCachedKey(neumaId);
-
-    if (!oldKeypair && oldPassword) {
-      // Decrypt with old password. decryptKeypair THROWS on a wrong password —
-      // letting that reach the outer catch answered 500 "rotation failed",
-      // telling a witness who simply mistyped that the server was broken.
-      // A bad credential is a 401, and the fall-through below says exactly
-      // that. (Found 2026-08-22 when the mock that stubbed this call away
-      // was removed — #390 tranche 0.)
-      const encrypted = await neumaWorkspace.readEncryptedKeypair(neumaId);
-      if (encrypted) {
-        try {
-          oldKeypair = decryptKeypair(encrypted, oldPassword);
-        } catch {
-          oldKeypair = null;
-        }
-      }
+    let oldKeypair;
+    try {
+      oldKeypair = decryptKeypair(await neumaWorkspace.readEncryptedKeypair(neumaId), oldPassword);
+    } catch {
+      return res.status(401).json({ error: 'Could not access current keypair with that password' });
     }
-
-    if (!oldKeypair) {
-      // Try plaintext keypair (pre-encryption migration)
-      const plaintext = await neumaWorkspace.readKeypair(neumaId);
-      if (plaintext?.privateKey) {
-        oldKeypair = plaintext;
-      }
-    }
-
-    if (!oldKeypair) {
-      return res.status(401).json({ error: 'Could not access current keypair — provide old password or verify recovery codes first' });
-    }
-
-    // Rotate
     const { newKeypair, recoveryCodes } = await rotateKeypair(neumaId, oldKeypair, newPassword, 'witness_request');
 
-    // Reissue identity card
     try {
       const oldCard = await neumaWorkspace.readIdentityCard(neumaId);
       const dna = await neumaWorkspace.readDNA(neumaId);
-
-      // Read the full new keypair from the cache (rotateKeypair caches it internally? no, it doesn't)
-      // We need the private key to sign the new card — decrypt the freshly encrypted keypair
       const newEncrypted = await neumaWorkspace.readEncryptedKeypair(neumaId);
       const fullNewKeypair = decryptKeypair(newEncrypted, newPassword);
-
       const newCard = await reissueIdentityCard({
         name: oldCard?.name || dna?.identity?.name || neumaId,
         address: fullNewKeypair.address,
@@ -148,25 +127,43 @@ router.post('/:neumaId/recovery/rotate', async (req, res) => {
         privateKey: fullNewKeypair.privateKey,
       });
       await neumaWorkspace.writeIdentityCard(neumaId, newCard);
-
-      // Cache the new keypair
       cacheDecryptedKey(neumaId, fullNewKeypair);
     } catch (err) {
       log.error('Identity card reissue error (non-critical)', { error: err.message });
     }
-
-    // Evict old cached key
     evictCachedKey(neumaId);
-
-    res.json({
-      success: true,
-      newAddress: newKeypair.address,
-      recoveryCodes: [...recoveryCodes], // Shown once, never stored
-    });
+    return res.json({ success: true, newAddress: newKeypair.address, recoveryCodes: [...recoveryCodes] });
   } catch (err) {
     log.error('Rotate error', { error: err.message });
-    res.status(500).json({ error: 'Keypair rotation failed' });
+    return res.status(500).json({ error: 'Keypair rotation failed' });
   }
+});
+
+router.get('/:neumaId/recovery/rotation/codes', requireLocalScope, async (req, res) => {
+  if (!await verifyOwnership(req, res, req.params.neumaId)) return;
+  res.status(410).json({ error: 'Use recovery/rotate with the new password to resume code delivery.' });
+});
+
+router.post('/:neumaId/recovery/rotation/ack', requireLocalScope, async (req, res) => {
+  const { neumaId } = req.params;
+  if (!await verifyOwnership(req, res, neumaId)) return;
+  try {
+    await neumaWorkspace.acknowledgeRotationCodes(neumaId, req.body?.address);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(409).json({ error: error.message });
+  }
+});
+
+/**
+ * Recover a retired address with the current rotation password or recovery codes.
+ * Raw private-key export is disabled. Retired envelopes stay encrypted on disk.
+ */
+router.post('/:neumaId/recovery/retired/:address/reveal', requireLocalScope, async (req, res) => {
+  const { neumaId, address } = req.params;
+  if (!ethers.isAddress(address)) return res.status(400).json({ error: 'Invalid retired address' });
+  if (!await verifyOwnership(req, res, neumaId)) return;
+  return res.status(410).json({ error: 'Raw identity-key export is disabled. Use the encrypted recovery material kept by the operator.' });
 });
 
 /**

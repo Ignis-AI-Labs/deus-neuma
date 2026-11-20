@@ -7,7 +7,7 @@
  * event sender, and the capped chip detail pane. Leaf module —
  * portal-stream imports it, never the reverse (direction law).
  */
-import { collectToolAction } from '../tool-action-record.js';
+import { collectToolAction, fillToolDetail } from '../tool-action-record.js';
 
 // --- Tool formatting ---
 
@@ -134,4 +134,23 @@ export const chipDetail = (formatted, ref) => {
     ? `[truncated — full result retrievable this session: ${ref}]`
     : '[truncated — full result in session record]';
   return `${formatted.slice(0, TOOL_DETAIL_MAX_CHARS)}\n${marker}`;
+};
+
+// EVERY ACT OPENS TO WHAT IT RETURNED (Design note, 2026-11-14: […]). A platform tool raises its own chip,
+// and some three dozen of them sent a finished chip with a summary and nothing to open ([…], […]): the operator could not see what the being had just read. After any
+// platform tool returns, its result goes to the chip as `tool:detail`; the desk fills it into the
+// newest chip for that tool only when the chip has no detail of its own (stream-reducer-segments.js
+// TOOL_DETAIL), and the turn record does the same, so a resumed chat opens it too.
+/**
+ * impure — one frame and one record fill; nothing when the result carries no text.
+ * @param {Object} ws
+ * @param {{tool?: string, content?: string, error?: string}|null} result
+ * @param {string|null} [ref] - the persisted full result's ref, when it was over the cap
+ */
+export const sendResultDetail = (ws, result, ref = null) => {
+  const text = String(result?.content ?? result?.error ?? '').trim();
+  if (!result?.tool || !text) return;
+  const detail = chipDetail(text, ref);
+  try { ws.send(JSON.stringify({ type: 'tool:detail', tool: result.tool, detail })); } catch { /* the socket closed mid-turn */ }
+  fillToolDetail(ws, result.tool, detail);
 };

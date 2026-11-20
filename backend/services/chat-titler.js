@@ -172,26 +172,34 @@ const titleOneSession = async (neumaId, wallet, sessionId, route) => {
  * @param {boolean} [args.force=false] - retitle even already-labeled chats
  * @returns {Promise<{results: Array<{sessionId: string, status: 'titled'|'skipped'|'failed', label?: string, reason?: string}>, labels: Object}>}
  */
-// impure
-export const autotitleSessions = async ({ wallet, neumaId, sessionIds = null, force = false }) => {
+// impure — the chats a batch would name: the given ones, or every one-on-one; the named ones kept unless forced
+export const pendingSessions = async ({ wallet, neumaId, sessionIds = null, force = false }) => {
   const candidates = sessionIds
     ? [...sessionIds]
     : (await neumaWorkspace.listSessions(neumaId)).filter((id) => !isCouncilSession(id));
   const named = force ? {} : await getChatLabels(wallet);
-  const pending = candidates.filter((id) => force || !named[`${neumaId}:${id}`]);
+  return candidates.filter((id) => force || !named[`${neumaId}:${id}`]);
+};
+
+// impure. `onEach` hears each chat's outcome as it lands (a titling job's progress, titling-jobs.js);
+// `signal` stops the batch between chats — the titles already named stay.
+export const autotitleSessions = async ({ wallet, neumaId, sessionIds = null, force = false, onEach = null, signal = null }) => {
+  const pending = await pendingSessions({ wallet, neumaId, sessionIds, force });
   // The lane's OWN route or nothing: an unresolvable/unconfigured route
   // skips the batch honestly — a witness's words never borrow the machine
   // config, and a neuma's never ride a door the boundary refused.
   const route = await titlingRouteFor(neumaId);
   if (!route) {
-    return {
-      results: pending.map((sessionId) => ({ sessionId, status: 'skipped', reason: 'no-route' })),
-      labels: await getChatLabels(wallet),
-    };
+    const results = pending.map((sessionId) => ({ sessionId, status: 'skipped', reason: 'no-route' }));
+    results.forEach((r) => onEach?.(r));
+    return { results, labels: await getChatLabels(wallet) };
   }
   const results = [];
   for (const sessionId of pending) {
-    results.push(await titleOneSession(neumaId, wallet, sessionId, route));
+    if (signal?.aborted) break;
+    const result = await titleOneSession(neumaId, wallet, sessionId, route);
+    results.push(result);
+    onEach?.(result);
   }
   return { results, labels: await getChatLabels(wallet) };
 };
@@ -253,25 +261,33 @@ const titleOneCouncil = async (wallet, councilId, route) => {
  * @returns {Promise<{results: Array<{councilId: string, status: 'titled'|'skipped'|'failed', label?: string, reason?: string}>, labels: Object}>}
  */
 // impure
-export const autotitleCouncils = async ({ wallet, councilIds = null, force = false }) => {
+// impure — the councils a batch would name, the named ones kept unless forced
+export const pendingCouncils = async ({ wallet, councilIds = null, force = false }) => {
   const candidates = councilIds
     ? [...councilIds]
     : (await listCouncilRecords(wallet)).map((c) => c.councilId);
   const named = force ? {} : await getCouncilLabels(wallet);
-  const pending = candidates.filter((id) => force || !named[id]);
+  return candidates.filter((id) => force || !named[id]);
+};
+
+// impure. `onEach` and `signal` as autotitleSessions.
+export const autotitleCouncils = async ({ wallet, councilIds = null, force = false, onEach = null, signal = null }) => {
+  const pending = await pendingCouncils({ wallet, councilIds, force });
   // A council belongs to no single lane — the house's record is named through
   // the house's sovereign route (titlingRouteFor(null)); if the boundary
   // refuses it, the batch skips honestly rather than riding a foreign door.
   const route = await titlingRouteFor(null);
   if (!route) {
-    return {
-      results: pending.map((councilId) => ({ councilId, status: 'skipped', reason: 'no-route' })),
-      labels: await getCouncilLabels(wallet),
-    };
+    const results = pending.map((councilId) => ({ councilId, status: 'skipped', reason: 'no-route' }));
+    results.forEach((r) => onEach?.(r));
+    return { results, labels: await getCouncilLabels(wallet) };
   }
   const results = [];
   for (const councilId of pending) {
-    results.push(await titleOneCouncil(wallet, councilId, route));
+    if (signal?.aborted) break;
+    const result = await titleOneCouncil(wallet, councilId, route);
+    results.push(result);
+    onEach?.(result);
   }
   return { results, labels: await getCouncilLabels(wallet) };
 };

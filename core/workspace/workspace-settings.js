@@ -22,6 +22,10 @@ import path from 'path';
 import crypto from 'crypto';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
 import { createToolPolicyDomain } from './workspace-tool-policy.js';
+import { createLpNonceDomain } from './lp-nonce-domain.js';
+import { createLpNotionalDomain } from './lp-notional-domain.js';
+import { consumeRateSlot } from './rate-slots.js';
+import { writeExclusiveJson } from './exclusive-json.js';
 
 /**
  * @param {{locks: {withFileLock: Function, appendLine: Function, nextTmpName: Function}}} deps
@@ -29,6 +33,8 @@ import { createToolPolicyDomain } from './workspace-tool-policy.js';
  */
 export const createSettingsDomain = (deps) => Object.freeze({
   ...createToolPolicyDomain(deps),
+  ...createLpNonceDomain(),
+  ...createLpNotionalDomain(),
 
   /**
    * Read the saved settings for a neuma.
@@ -163,6 +169,37 @@ export const createSettingsDomain = (deps) => Object.freeze({
       await this._writeJSON(filePath, { requests: next });
       return next;
     });
+  },
+
+  /** Consume one transfer-rate slot through exclusive cross-process records. */
+  async consumeSpendRateSlot(neumaId, { limit, windowMs, now = Date.now() }) {
+    return consumeRateSlot(this, neumaId, {
+      namespace: 'spend-rate-slots', limit, windowMs, now, legacyFile: 'spend-rate.json',
+    });
+  },
+
+  /**
+   * Consume an owner-approval nonce once, durably and across backend processes.
+   * Exclusive create is atomic and EEXIST is the replay refusal, including on
+   * filesystems without hard-link support.
+   * @param {string} neumaId
+   * @param {string} nonce
+   * @param {number} expiry Unix seconds after which the signed approval stops verifying
+   * @returns {Promise<void>}
+   */
+  async consumeSpendApproval(neumaId, nonce, expiry) {
+    if (typeof nonce !== 'string' || !nonce.length || nonce.length > 256 || !Number.isSafeInteger(expiry)) {
+      throw new Error('Operator approval nonce is invalid');
+    }
+    const nonceHash = crypto.createHash('sha256').update(nonce).digest('hex');
+    const claimed = await writeExclusiveJson(this, {
+      directory: path.join(this._path(neumaId), 'config', 'spend-approvals'),
+      name: nonceHash,
+      record: { version: 1, nonceHash, expiry, usedAt: new Date().toISOString() },
+    });
+    if (!claimed) throw new Error('Operator approval already used');
+    const stored = await this._readTrustedJSON(path.join(this._path(neumaId), 'config', 'spend-approvals', `${nonceHash}.json`));
+    if (stored?.nonceHash !== nonceHash) throw new Error('Operator approval could not be recorded');
   },
 
   /**

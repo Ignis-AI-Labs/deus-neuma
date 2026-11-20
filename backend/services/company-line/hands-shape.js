@@ -17,6 +17,7 @@
 
 import crypto from 'crypto';
 import { FOUNDING_LINE } from './line-stages.js';
+import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 
 export const ANSWERS = Object.freeze(['done', 'fact', 'held']);
 export const OPEN_MAX = 20;
@@ -32,7 +33,7 @@ const clean = (value, max) => (typeof value === 'string' ? value.replace(/\s+/g,
 const linkOf = (value) => {
   try {
     const url = new URL(String(value ?? '').trim());
-    return url.protocol === 'https:' && url.href.length <= URL_MAX ? url.href : null;
+    return url.protocol === 'https:' && !url.username && !url.password && url.href.length <= URL_MAX ? url.href : null;
   } catch {
     return null;
   }
@@ -76,8 +77,8 @@ export const makeHands = ({ what, why, where, answer, unblocks, cost, by, raised
  * @returns {{items: Array<object>, skipped: number}}
  */
 export const foldHands = (events) => events.reduce((acc, e) => {
-  if (e?.type === 'raised' && e.item?.id && !acc.items.some((i) => i.id === e.item.id)) {
-    return { ...acc, items: [...acc.items, { ...e.item, status: 'open', answeredAt: null, text: null }] };
+  if (e?.type === 'raised' && e.item?.id && linkOf(e.item.where) && !acc.items.some((i) => i.id === e.item.id)) {
+    return { ...acc, items: [...acc.items, { ...e.item, where: linkOf(e.item.where), status: 'open', answeredAt: null, text: null }] };
   }
   const open = e?.type === 'answered' && acc.items.find((i) => i.id === e.id && i.status === 'open');
   if (open && ['done', 'declined'].includes(e.status)) {
@@ -97,6 +98,11 @@ export const judgeAnswer = (item, { status, text, now }) => {
   if (!item) return { ok: false, reason: 'no such HANDS item on this company' };
   if (item.status !== 'open') return { ok: false, reason: `this item is already ${item.status}` };
   if (!['done', 'declined'].includes(status)) return { ok: false, reason: 'an answer is done or declined' };
+  if (typeof text === 'string' && text.length > TEXT_MAX) {
+    return { ok: false, reason: `the answer is at most ${TEXT_MAX} characters — name where a secret is kept, never its value` };
+  }
+  const secret = checkOutboundSecrets('the HANDS answer', [text], 'nothing was recorded');
+  if (!secret.ok) return { ok: false, reason: secret.reason };
   const t = clean(text, TEXT_MAX);
   if (status === 'declined' && !t) return { ok: false, reason: 'say why it will not be done, so the house can find another way' };
   if (status === 'done' && item.answer !== 'done' && !t) {

@@ -20,6 +20,10 @@
 // without exception (card-svg.js), and the template around them is our own
 // source, not user content. Nothing an operator types reaches this markup
 // unescaped. A reviewer will ask; this is the answer.
+// A company's OWN design (card-designs.js, 2026-11-16) IS authored content, so
+// the server holds it to card-safety.js — shapes, text, paint and the kit's own
+// marks; no script, handler, link or outside file — before it is saved, read or
+// previewed. A design that fails never reaches this element.
 
 import { useEffect, useRef } from 'react';
 

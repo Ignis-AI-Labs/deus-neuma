@@ -244,7 +244,7 @@ class _Guard:
         if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
         # browser_guard.py: a web page never reaches a sidecar, and only the backend holding the key does
-        answer = guard(scope.get("headers") or [], scope.get("path", ""), (scope.get("query_string") or b"").decode("latin-1"))
+        answer = guard(scope.get("headers") or [], scope.get("path", ""), (scope.get("query_string") or b"").decode("latin-1"), local=scope.get("server"))
         if scope["type"] == "websocket" and answer:
             return await send({"type": "websocket.close", "code": 1008})
         if answer:

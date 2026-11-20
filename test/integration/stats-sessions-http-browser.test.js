@@ -2,9 +2,8 @@
 // Real Chromium, signed auth, the production workspace router, and real
 // workspace damage — no mocks. Proves every stats-client/workspace-sessions
 // contract the shared-http migration (#174 family F9) must keep: failure
-// nulls vs honest empties, the verbatim strict strings, and the autotitle
-// keep-current-names sentinel. No model inference is run (the autotitle
-// happy path names an EMPTY candidate list).
+// nulls vs honest empties and the verbatim strict strings. (Batch titling is a job
+// now, with its own proof: test/integration/titling-jobs.test.js.)
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -53,10 +52,10 @@ test('stats and session clients keep null/empty/strict contracts through the sha
       appType: 'custom', optimizeDeps: { noDiscovery: true }, server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null } });
     app.get('/', (_req, res) => res.type('html').send(`<script type="module">
       import { loadRecord, loadProtocolDeviations, loadSelfCheck } from '/frontend/app/RelinkShell/stats-client.js';
-      import { listSessions, listSessionsStrict, loadSessionMessages, loadSessionMessagesStrict, autotitleChats }
+      import { listSessions, listSessionsStrict, loadSessionMessages, loadSessionMessagesStrict }
         from '/frontend/app/RelinkShell/workspace-sessions.js';
       window.clients = { loadRecord, loadProtocolDeviations, loadSelfCheck,
-        listSessions, listSessionsStrict, loadSessionMessages, loadSessionMessagesStrict, autotitleChats };
+        listSessions, listSessionsStrict, loadSessionMessages, loadSessionMessagesStrict };
       window.expired = 0;
       window.addEventListener('neuma:auth_expired', () => window.expired++);
     </script>`));
@@ -73,7 +72,6 @@ test('stats and session clients keep null/empty/strict contracts through the sha
     // Anonymous: every site short-circuits to its failure value, no request made.
     expect(await page.evaluate((id) => window.clients.loadRecord(id), lane)).toBeNull();
     expect(await page.evaluate((id) => window.clients.listSessions(id), lane)).toEqual([]);
-    expect(await page.evaluate((id) => window.clients.autotitleChats(id), lane)).toEqual({ results: [], labels: null });
     expect(requests).toEqual([]);
 
     await page.evaluate((token) => sessionStorage.setItem('authToken', token), auth.token);
@@ -96,10 +94,6 @@ test('stats and session clients keep null/empty/strict contracts through the sha
       expect(messages).toHaveLength(1);
       expect(messages[0]).toMatchObject({ role: 'user', content: 'hello fixture' });
     }
-    // Autotitle happy path: an empty candidate list names nothing and never
-    // calls a model; the label map rides back as an object, never null.
-    expect(await page.evaluate((id) => window.clients.autotitleChats(id, { sessionIds: [] }), lane))
-      .toEqual({ results: [], labels: {} });
     expect(await page.evaluate(() => window.expired)).toBe(0);
 
     // Damaged sessions dir — a REAL 500 through the real router.
@@ -134,23 +128,18 @@ test('stats and session clients keep null/empty/strict contracts through the sha
     expect(await page.evaluate((id) => window.clients.loadSelfCheck(id), lane)).toBeNull();
     expect(await page.evaluate((id) => window.clients.listSessions(id), lane)).toEqual([]);
     expect(await page.evaluate(([f, id]) => window.clients[f](id, 'session-one'), ['loadSessionMessages', lane])).toEqual([]);
-    expect(await page.evaluate((id) => window.clients.autotitleChats(id, { sessionIds: [] }), lane))
-      .toEqual({ results: [], labels: null });
     expect(await page.evaluate((id) => window.clients.listSessionsStrict(id).then(
       () => 'NO-THROW', (error) => error.message), lane)).toBe('sessions list failed: HTTP 401');
     expect(await page.evaluate(([f, id]) => window.clients[f](id, 'session-one').then(
       () => 'NO-THROW', (error) => error.message), ['loadSessionMessagesStrict', lane]))
       .toBe('session load failed: HTTP 401');
-    expect(await page.evaluate(() => window.expired)).toBe(8);
+    expect(await page.evaluate(() => window.expired)).toBe(7);
 
-    // Recovery with a valid token, and the autotitle 400 refusal → sentinel.
+    // Recovery with a valid token.
     await page.evaluate((token) => sessionStorage.setItem('authToken', token), auth.token);
     expect((await page.evaluate((id) => window.clients.loadRecord(id), lane))?.identity?.chosenName)
       .toBe('Http Fixture');
-    expect(await page.evaluate((id) => window.clients.autotitleChats(id, { sessionIds: ['bad id!'] }), lane))
-      .toEqual({ results: [], labels: null });
-    expect(await page.evaluate(() => window.expired)).toBe(8);
-    expect(requests.filter((r) => r.path.endsWith('/sessions/autotitle')).every((r) => r.method === 'POST')).toBe(true);
+    expect(await page.evaluate(() => window.expired)).toBe(7);
     expect(errors).toEqual([]);
   } finally {
     await browser?.close();

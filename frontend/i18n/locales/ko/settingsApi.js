@@ -34,6 +34,8 @@ export default Object.freeze({
       failed: '연결이 끝나지 않았습니다.',
       tiktokWaiting: '브라우저에서 TikTok 로그인을 마쳐 주세요…',
       tiktokNeedClient: '먼저 TikTok 클라이언트 키와 시크릿을 저장한 뒤 연결하세요.',
+      linkedinWaiting: '브라우저에서 LinkedIn 로그인을 완료하세요…',
+      linkedinNeedClient: '먼저 LinkedIn 앱의 클라이언트 ID와 시크릿을 저장한 다음 CONNECT를 누르세요.',
     }),
   }),
 

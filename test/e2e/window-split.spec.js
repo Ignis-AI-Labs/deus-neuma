@@ -140,7 +140,7 @@ test.afterAll(async () => {
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
-// Seed a session AND a deliberate two-window layout: the target (PROJECTS)
+// Seed a session AND a deliberate two-window layout: the target (TASKS)
 // roomy enough to halve (halves must clear the 320x220 minimum), the
 // dragged window (CHATS) beside it, both clear of the desk's aero bands.
 const initSession = (page) => page.addInitScript(({ t, a, id }) => {
@@ -150,7 +150,7 @@ const initSession = (page) => page.addInitScript(({ t, a, id }) => {
   // Seed-if-absent: init scripts re-run on EVERY navigation, and a reload
   // must see what the desk PERSISTED (the divide), never a re-clobbered seed.
   const seed = (k, v) => { if (!localStorage.getItem(k)) localStorage.setItem(k, JSON.stringify(v)); };
-  seed(`${w}:win:projects`, { x: 850, y: 120, w: 700, h: 500 });
+  seed(`${w}:win:todo`, { x: 850, y: 120, w: 700, h: 500 });
   seed(`${w}:win:chats`, { x: 340, y: 120, w: 340, h: 300 });
   sessionStorage.setItem('authToken', t);
 }, { t: token, a: addr, id: NEUMA_ID });
@@ -202,19 +202,19 @@ const expectRect = (box, want) => {
 };
 
 test('dragging a window onto a sibling\'s side divides the sibling\'s space perfectly in half — and the divide persists', async ({ page }) => {
-  await openDockApp(page, 'PROJECTS');
+  await openDockApp(page, 'TASKS');
   await openDockApp(page, 'CHATS');
-  const projects = winByTitle(page, 'PROJECTS');
+  const tasks = winByTitle(page, 'TASKS');
   const chats = winByTitle(page, 'CHATS');
-  await expect(projects).toBeVisible();
+  await expect(tasks).toBeVisible();
   await expect(chats).toBeVisible();
 
   // The target's rect BEFORE the divide is the whole truth the halves must
   // tile — measured live, never assumed.
-  const target = await projects.boundingBox();
+  const target = await tasks.boundingBox();
 
   // Real pointer choreography: grab CHATS by its bar, carry it into the
-  // left quarter of PROJECTS (fx ≈ 0.06 — inside the split band, clear of
+  // left quarter of TASKS (fx ≈ 0.06 — inside the split band, clear of
   // the desk's own aero bands), and let go.
   // A DIVIDE IS ASKED FOR (ruling, 2026-10-05): Shift held, and the pointer resting
   // on the seam until the preview lights — only then does a release apply it.
@@ -226,40 +226,40 @@ test('dragging a window onto a sibling\'s side divides the sibling\'s space perf
   await page.mouse.up();
   await page.keyboard.up('Shift');
 
-  // The divide: CHATS takes the left half, PROJECTS keeps the right.
+  // The divide: CHATS takes the left half, TASKS keeps the right.
   const half = { w: target.width / 2, h: target.height };
   await expect(async () => {
     expectRect(await chats.boundingBox(), { x: target.x, y: target.y, ...half });
-    expectRect(await projects.boundingBox(), { x: target.x + target.width / 2, y: target.y, ...half });
+    expectRect(await tasks.boundingBox(), { x: target.x + target.width / 2, y: target.y, ...half });
   }).toPass({ timeout: 10000 });
 
   // Both sides persisted: a fresh arrival re-raises the same divide.
   await page.reload();
   await settleDesk(page);
-  await expect(winByTitle(page, 'PROJECTS')).toBeVisible();
+  await expect(winByTitle(page, 'TASKS')).toBeVisible();
   await expect(winByTitle(page, 'CHATS')).toBeVisible();
   expectRect(await winByTitle(page, 'CHATS').boundingBox(), { x: target.x, y: target.y, ...half });
-  expectRect(await winByTitle(page, 'PROJECTS').boundingBox(), { x: target.x + target.width / 2, y: target.y, ...half });
+  expectRect(await winByTitle(page, 'TASKS').boundingBox(), { x: target.x + target.width / 2, y: target.y, ...half });
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });
 
 test('the calm middle never splits — a drop there is a plain move', async ({ page }) => {
-  await openDockApp(page, 'PROJECTS');
+  await openDockApp(page, 'TASKS');
   await openDockApp(page, 'CHATS');
-  const projects = winByTitle(page, 'PROJECTS');
+  const tasks = winByTitle(page, 'TASKS');
   const chats = winByTitle(page, 'CHATS');
   await expect(chats).toBeVisible();
 
-  const target = await projects.boundingBox();
+  const target = await tasks.boundingBox();
   const source = await chats.boundingBox();
 
-  // Drop dead-centre of PROJECTS: no divide — CHATS simply moves, PROJECTS
+  // Drop dead-centre of TASKS: no divide — CHATS simply moves, TASKS
   // stands exactly where and how it stood.
   await engageDrag(page, chats);
   await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 });
   await page.mouse.up();
 
-  expectRect(await projects.boundingBox(), { x: target.x, y: target.y, w: target.width, h: target.height });
+  expectRect(await tasks.boundingBox(), { x: target.x, y: target.y, w: target.width, h: target.height });
   const moved = await chats.boundingBox();
   expect(near(moved.width, source.width) && near(moved.height, source.height),
     'a plain move never resizes the dragged window').toBe(true);
@@ -269,12 +269,12 @@ test('the calm middle never splits — a drop there is a plain move', async ({ p
 // THE HELD SNAP (Design note, 2026-10-05: […]). Reaching a zone decides nothing; a
 // window carried THROUGH one and let go stays exactly where it was let go.
 test('resting on a sibling\'s seam WITHOUT Shift — a plain move, never a divide', async ({ page }) => {
-  await openDockApp(page, 'PROJECTS');
+  await openDockApp(page, 'TASKS');
   await openDockApp(page, 'CHATS');
-  const projects = winByTitle(page, 'PROJECTS');
+  const tasks = winByTitle(page, 'TASKS');
   const chats = winByTitle(page, 'CHATS');
   await expect(chats).toBeVisible();
-  const target = await projects.boundingBox();
+  const target = await tasks.boundingBox();
   const source = await chats.boundingBox();
 
   await engageDrag(page, chats);
@@ -283,7 +283,7 @@ test('resting on a sibling\'s seam WITHOUT Shift — a plain move, never a divid
   await expect(page.locator('.fwin-snap-cell')).toHaveCount(0);
   await page.mouse.up();
 
-  expectRect(await projects.boundingBox(), { x: target.x, y: target.y, w: target.width, h: target.height });
+  expectRect(await tasks.boundingBox(), { x: target.x, y: target.y, w: target.width, h: target.height });
   const moved = await chats.boundingBox();
   expect(near(moved.width, source.width) && near(moved.height, source.height),
     'a window carried over another keeps its own size').toBe(true);
@@ -317,7 +317,7 @@ test('the top edge maximizes only when HELD there — touched in passing, it nev
 
 // ESCAPE ×5, OUTSIDE EVERYTHING, CLOSES EVERY WINDOW (ruling, 2026-10-05).
 test('Escape five times on the bare desk closes every window — four never does, typing never does', async ({ page }) => {
-  await openDockApp(page, 'PROJECTS');
+  await openDockApp(page, 'TASKS');
   await openDockApp(page, 'CHATS');
   const open = page.locator('.fwin');
   const before = await open.count();

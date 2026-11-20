@@ -25,6 +25,10 @@ import { registerModelCommand } from '../commands/model.js';
 import { registerVaultCommand } from '../commands/vault.js';
 import { registerAgentCommand } from '../commands/agent.js';
 import { registerCodeCommand, runCode } from '../commands/code.js';
+import { registerReviewCommand } from '../commands/review.js';
+import { registerAcpCommand } from '../commands/acp.js';
+import { registerHooksCommand } from '../commands/hooks.js';
+import { registerExtensionsCommand } from '../commands/extensions.js';
 import { registerWitnessCommand } from '../commands/witness.js';
 import { findProjectRoot } from './project-root.js';
 import { peekActiveBeing } from './active-being.js';
@@ -130,6 +134,10 @@ const buildCli = (argv, { stdout = process.stdout, stderr = process.stderr } = {
   cli = registerVaultCommand(cli, { stdout, stderr });
   cli = registerAgentCommand(cli, { stdout, stderr });
   cli = registerCodeCommand(cli, { stdout, stderr });
+  cli = registerReviewCommand(cli, { stdout, stderr });
+  cli = registerAcpCommand(cli);
+  cli = registerHooksCommand(cli, { stdout, stderr });
+  cli = registerExtensionsCommand(cli, { stdout, stderr });
   cli = registerWitnessCommand(cli, { stdout, stderr });
 
   return cli

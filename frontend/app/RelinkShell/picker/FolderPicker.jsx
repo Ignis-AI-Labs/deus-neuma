@@ -1,6 +1,7 @@
-// FolderPicker — the "Open Folder" instrument: browse the real disk, jump to
-// a place, and pick a directory. A reusable overlay used by Files (open a
-// root), Projects and House (set a folder), brand kits (choose a file). The
+// FolderPicker — the desk's own "Open Folder" instrument: browse the real disk,
+// jump to a place, and pick a directory. In the app every folder choice is the
+// system's own dialog (ChooseFolder); this overlay serves only where none
+// exists — the desk in a plain web browser, or a dialog that failed. The
 // backend serves the directory tree (a browser sandbox can't hand a server a
 // native path), directories only unless `pickFile`. The picker just returns
 // an absolute path via onPick — the caller decides what to do with it.

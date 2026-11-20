@@ -8,7 +8,7 @@
 //   else cli/lib/active-being.resolveActiveBeing (env → file → auto-single → throw)
 //
 // Connection chain (C-02 ports):
-//   1. readOperatorWallet(NEUMA_WALLET_ENV or <repo>/.env) → private key
+//   1. readOperatorWallet(explicit NEUMA_WALLET_ENV) → private key
 //   2. getToken(backend, walletEnv, privateKey) → session token (cached)
 //   3. listNeuma(backend, token) → residency snapshot
 //   4. resolveNeuma(snapshot.neuma, beingNameOrId) → target being record

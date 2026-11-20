@@ -116,6 +116,27 @@ describe('a being\'s own DNA and soul writes land as amendments (house outside t
     expect(await fs.readFile(dnaFile(), 'utf8')).toBe(bytes);
   });
 
+  test('a rename to a seat\'s word or to a name another being bears is refused; a free name lands (PR600 P6-22)', async () => {
+    const kin = await workspace.readDNA(KIN);
+    await workspace.writeDNA(KIN, { ...kin, name: 'Vesper' });
+    const bytes = await fs.readFile(dnaFile(), 'utf8');
+    for (const [fields, refusal] of [
+      [{ name: 'Operator' }, /person's seat/],
+      [{ identity: { name: ' OPERATOR ' } }, /person's seat/],
+      [{ name: 'operator-2' }, /person's seat/],
+      [{ name: 'Neuma' }, /platform's word/],
+      [{ name: 'Amendsb' }, /already borne by another being/],
+      [{ name: 'Vésper' }, /already borne by another being/],
+      [{ name: 7 }, /a name is written as text/],
+    ]) {
+      await expect(being()('fs', 'write', { path: dnaFile(), content: JSON.stringify(fields) })).rejects.toThrow(refusal);
+    }
+    expect(await fs.readFile(dnaFile(), 'utf8')).toBe(bytes);
+    expect((await being()('fs', 'write', { path: dnaFile(), content: JSON.stringify({ name: 'Quill' }) }))?.isError).toBeFalsy();
+    expect((await workspace.readDNA(BEING)).name).toBe('Quill');
+    await workspace.writeDNA(KIN, kin);
+  });
+
   test('an edit, a move, a copy or a delete of its DNA or soul record is refused with the way that works', async () => {
     const [dnaBytes, soulBytes] = [await fs.readFile(dnaFile(), 'utf8'), await fs.readFile(soulFile(), 'utf8')];
     const call = being();

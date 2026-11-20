@@ -27,6 +27,11 @@ export const KIND_LABEL = Object.freeze({
   raise: 'RAISE',
   'chat-pairing': 'CHAT',
   security: 'SECURITY',
+  'sales-facts': 'FACTS',
+  'sales-audience': 'AUDIENCE',
+  'sales-list': 'LEAD LIST',
+  'sales-email': 'EMAILS TO REVIEW',
+  'business-model': 'BUSINESS MODEL',
 });
 
 /** The most copy a band row shows whole — and so the most it may approve in one press. */
@@ -171,5 +176,9 @@ export const cardSelector = (item) => {
   if (w.section === 'chats' && w.code) return `[data-chat-code="${safe(w.code)}"]`;
   if (w.app === 'companyline' && w.companyId) return `[data-company-line="${safe(w.companyId)}"]`;
   if (w.tab === 'charter') return '[data-charter-pending]';
+  // The sales office's own rows, inside the POSITIONS window (sales/sales-waiting.js).
+  if (w.app === 'positions' && w.segmentId) return `[data-window-id="positions"] [data-segment-id="${safe(w.segmentId)}"]`;
+  if (w.app === 'positions' && w.modelCompany) return `[data-window-id="positions"] [data-model-company="${safe(w.modelCompany)}"]`;
+  if (w.app === 'positions' && w.factsSheet) return '[data-window-id="positions"] [data-facts-sheet]';
   return null;
 };

@@ -13,12 +13,12 @@
 //   ipc-handlers.cjs   — every renderer-facing IPC registration + the app menu
 //   tray.cjs           — the corner tab + the once-per-install "still running" notice
 //   update-bar.cjs     — the desk's update bar + WHAT'S NEW (what auto-update.cjs found)
-//   connections-main.cjs — the CONNECTIONS switches main applies (spellcheck)
+//   spellcheck-main.cjs — offline spelling: shipped dictionaries, no download
 //
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
 const { app, BrowserWindow, Notification, dialog, ipcMain, safeStorage, shell, session } = require('electron');
-const { getOrigin, killBackendTree, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
+const { getOrigin, killBackendTree, stopBackend, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
 const { fromDesk } = require('./desk-links.cjs');
@@ -26,8 +26,17 @@ const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
 const { registerUpdateBar } = require('./update-bar.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
-const { registerConnections } = require('./connections-main.cjs');
+const { placeDictionaries, registerSpellcheck } = require('./spellcheck-main.cjs');
 const { openAtRestKeys, registerKeyLockIpc } = require('./key-lock/key-lock-main.cjs');
+const { registerWalletBridgeIpc } = require('./wallet-bridge-ipc.cjs');
+const { showAppImageSandboxWarning } = require('./appimage-sandbox-warning.cjs');
+
+if (process.env.NEUMA_SETUP_MODEL_SERVER === '1') {
+  require('./setup-model-server.cjs').run();
+} else {
+// The spellcheck dictionaries go where Chromium looks before the app is ready (spellcheck-main.cjs):
+// userData is final once backend-spawn.cjs has loaded, and after ready the download has already begun.
+const spellcheckLanguages = placeDictionaries({ app });
 
 // Windows: the ID of the Start menu entry the installer makes (electron-builder.yml appId). Windows
 // shows an app's notices (the update alert) only under its shortcut's ID, and "open at login" is the
@@ -62,9 +71,11 @@ if (!app.requestSingleInstanceLock()) {
     // Electron grants every camera/mic/screen/location ask by default; the
     // floor is deny, before any page exists (permission-guard.cjs).
     guardAppSessions(session, getOrigin);
-    // Spellcheck's dictionary fetch is off until the person turns it on — set before any page exists.
-    registerConnections({ app, ipcMain, session });
-    registerKeyLockIpc({ ipcMain, safeStorage, isDesk });
+    // Spellcheck checks the shipped languages and never downloads — set before any page exists.
+    registerSpellcheck({ app, session, shipped: spellcheckLanguages });
+    registerKeyLockIpc({ ipcMain, safeStorage, isDesk, getWindow: deskWindows.fallbackWindow });
+    registerWalletBridgeIpc({ ipcMain, isDesk });
+    await showAppImageSandboxWarning({ dialog });
 
     // The port question is asked BEFORE spawning anything; a held or exhausted
     // lane shows its honest dialog and quits inside the resolver.
@@ -79,7 +90,7 @@ if (!app.requestSingleInstanceLock()) {
       tray.ensureTray(); // the corner tab — present from the first desk onward
       // An offer that changes reaches the tray and every desk's bar together.
       const refreshTray = () => { tray.rebuildTrayMenu(); updateBar.publish(); };
-      autoUpdate.init({ app, shell, Notification, refreshTray });
+      autoUpdate.init({ app, shell, Notification, refreshTray, stopBackend });
     } catch (err) {
       dialog.showErrorBox('Deus Neuma', `Could not start the local backend.\n\n${err.message}`);
       app.quit();
@@ -120,4 +131,5 @@ if (!app.requestSingleInstanceLock()) {
       app.quit();
     });
   });
+}
 }

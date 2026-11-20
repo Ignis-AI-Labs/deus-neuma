@@ -4,7 +4,9 @@
  * platform's, never the operator's), with every tool it had.
  *
  * The first is the citation law's hold (legal/answer-hold.js): an unchecked
- * legal answer sends the CLO back once to check it. The drain
+ * legal answer sends the CLO back once to check it. The second is the queue
+ * claim check (social/queue-claim-check.js): a reply that says queued posts
+ * changed when no act touched them sends the being back once to make the edits. The drain
  * (routes/portal-context.js runTurnAndDrain) takes it before any held words
  * of the operator's, and drops it if the operator moved on (a settle).
  */
@@ -18,6 +20,9 @@
 export const queuePlatformFollowUp = (connection, followUp) => {
   connection._platformFollowUp = followUp;
 };
+
+/** impure (reads) — is a platform turn already owed? A second check never overwrites the first. */
+export const owesPlatformFollowUp = (connection) => Boolean(connection?._platformFollowUp);
 
 /** impure — take what is owed, once. */
 export const takePlatformFollowUp = (connection) => {

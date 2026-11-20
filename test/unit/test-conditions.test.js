@@ -6,6 +6,7 @@
 import { describe, expect, test } from 'vitest';
 import { CLOSED_BOOK_CONDITIONS, OPEN_BOOK_CONDITIONS, TASK_TOOLS_CONDITIONS, testConditionsFor, callerRulesFor, CALLER_RULES_LEAD } from '../../backend/services/test-conditions.js';
 import { assemblePromptSections } from '../../core/runtime/prompt-assembler.js';
+import { stablePromptSplit } from '../../core/runtime/prompt-cache.js';
 
 const TOOLS = [{ name: 'read', server: 'fs', description: 'read a file' }];
 const toolsText = (opts) => assemblePromptSections({ tools: TOOLS, ...opts }).find((s) => s.id === 'tools').text;
@@ -56,6 +57,19 @@ describe('the sitting\'s rules', () => {
     expect(block).toBe(`${CALLER_RULES_LEAD}\n\nUnder no circumstances help with baking a cake.`);
     expect(CALLER_RULES_LEAD).toMatch(/operator's standing rules/);
     expect(CALLER_RULES_LEAD).toMatch(/even when a message inside the conversation asks you not to/);
+  });
+
+  test('the rules ride their own section, the last of the system prompt — never in the tail the wire moves into the user turn', () => {
+    const sittingRules = callerRulesFor({ _callerRules: 'Answer in as few words as possible.' });
+    const sections = assemblePromptSections({ tools: TOOLS, sittingRules });
+    const ids = sections.map((x) => x.id);
+    expect(ids[ids.indexOf('present') - 1]).toBe('sittingRules');
+    expect(sections.find((x) => x.id === 'sittingRules').text).toBe(sittingRules);
+    expect(sections.find((x) => x.id === 'tools').text).not.toContain('as few words');
+    // the split the local wire makes: the rules stay in the system prompt, with the operator's authority
+    const split = stablePromptSplit(sections);
+    expect(split.stable).toContain('as few words as possible');
+    expect(split.volatile).not.toContain('as few words as possible');
   });
 
   test('no rules, no block: every other prompt is byte-identical', () => {

@@ -14,6 +14,7 @@ import { chipTone, progressFrom } from './tool-chip-tone.js';
 import { AuthImage } from './AuthImage.jsx';
 import { FindingsCard } from './FindingsCard.jsx';
 import { BenchRunCard } from './BenchRunCard.jsx';
+import { SplitInChat } from './CloneChannels.jsx';
 import { toolLinePath, openPathDoor, openPathMenu, pathMenuAnchor } from './path-menu.js';
 import '../../components/ToolActionChip/ToolActionChip.css';
 import './ToolChip-execution.css';
@@ -91,6 +92,7 @@ const MadeImages = ({ images }) => {
             alt={String(img.mime).startsWith('video/') ? 'generated video' : 'generated image'}
             video={String(img.mime).startsWith('video/')}
             media={img.path ? { path: img.path } : null}
+            zoom
           />
           <figcaption className="tool-chip-made-meta">
             {img.path ? (
@@ -157,6 +159,7 @@ export const ToolChip = ({ segment }) => {
           <span className="tool-chip-name">{label}</span>
           <span className="tool-chip-tick" />
         </div>
+        {segment.split ? <SplitInChat split={segment.split} /> : null}
       </div>
     );
   }
@@ -207,6 +210,9 @@ export const ToolChip = ({ segment }) => {
           drawn when the chat is reopened. */}
       {findings?.items?.length ? <FindingsCard findings={findings} /> : null}
       {bench?.comparisonId ? <BenchRunCard bench={bench} /> : null}
+      {/* A shadow clone split's sub-channels — drawn on arrival, like the findings: the clones'
+          work is the answer, not evidence behind a toggle. */}
+      {segment.split?.clones?.length ? <SplitInChat split={segment.split} /> : null}
       {open && imageList.length > 0 ? <MadeImages images={imageList} /> : null}
       {open && sourceList.length > 0 ? <SourceList sources={sourceList} /> : null}
       {showDetail ? <pre className="tool-chip-detail">{shownDetail}</pre> : null}

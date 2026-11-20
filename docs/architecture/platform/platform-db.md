@@ -92,9 +92,9 @@ specific Node.js **ABI** (`NODE_MODULE_VERSION`). This repo runs the backend und
 
 - **System Node** — `npm start`, `npm run dev:backend`, and the whole vitest suite
   (system Node's ABI, e.g. 137 on Node 24).
-- **Electron's bundled Node** — the packaged/dev Electron app spawns the backend
-  with `ELECTRON_RUN_AS_NODE=1` (`electron/main.cjs`), so it runs under Electron's
-  Node ABI (e.g. 149 on Electron 44 → Node 24.22).
+- **Electron's bundled Node** — the packaged/dev Electron app starts the backend
+  with `utilityProcess.fork` (`electron/backend-spawn.cjs`), so it runs under
+  Electron's Node ABI without `ELECTRON_RUN_AS_NODE` (e.g. 149 on Electron 44 → Node 24.22).
 
 A single install builds the binary for **one** ABI. `npm install` builds for system
 Node, so the **Electron app** will fail to load it with:

@@ -1,3 +1,4 @@
+/* global process, fetch, AbortSignal, setTimeout, clearTimeout */
 /**
  * THE HARNESS LANE — the platform used with no being, proven end to end
  * (RULE 0): real signed-wallet auth, the REAL harness routes on a real
@@ -202,8 +203,11 @@ describe('a harness lane — the platform with no being', () => {
     // and the person's own ask (currentTurn) — never an identity layer. On the
     // local wire the gauge also names the harness block's own frame and the
     // earlier turns' carried blocks (turn-context-carry.js wireContextSections,
-    // 4e713b352): platform machinery, measured, never a being's layer.
-    const allowed = new Set(['platformSeat', 'recentConversation', 'currentTurn', 'harnessFrame', 'harnessCarry', ...PLATFORM_SECTION_IDS]);
+    // 4e713b352): platform machinery, measured, never a being's layer. So are
+    // the tool definitions and the messages beside the ask, which every request
+    // carries and the map now counts (wire-sections.js, 2026-11-20).
+    const allowed = new Set(['platformSeat', 'recentConversation', 'currentTurn', 'harnessFrame', 'harnessCarry', ...PLATFORM_SECTION_IDS,
+      'toolDefinitions', 'priorImages', 'queuedActions', 'formatEcho', 'callerTail']);
     for (const event of composed) {
       const ids = (event.sections || event.composition?.sections || []).map((s) => s.id);
       expect(ids).toContain('platformSeat');

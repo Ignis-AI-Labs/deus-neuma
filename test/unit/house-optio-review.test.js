@@ -7,7 +7,8 @@
  */
 import { describe, test, expect } from 'vitest';
 import { actRoute, actPaths, parseReview, reviewMessages, REVIEW_PROMPT } from '../../backend/services/house-clock/optio-review.js';
-import { normalizeCharter } from '../../backend/services/house-clock/charter-shape.js';
+import { normalizeCharter, MONEY_OUT } from '../../backend/services/house-clock/charter-shape.js';
+import { PUBLISHING } from '../../backend/services/house-clock/operator-acts.js';
 
 const charter = (patch = {}) => normalizeCharter({
   goal: 'Ship one digest a week.',
@@ -51,6 +52,16 @@ describe('where a gated act in house work goes', () => {
   test('taking something off the operator\'s own list is their yes every time, unless their charter allows it', () => {
     expect(route('intents/tasks.operator-drop')).toEqual({ to: 'operator', why: expect.stringMatching(/their yes, every time/) });
     expect(route('intents/tasks.operator-drop', { charter: charter({ allow: ['intents/tasks.operator-drop'] }) })).toEqual({ to: 'allow', by: 'charter' });
+  });
+
+  test('P6-105: every publishing act is the operator\'s by the platform\'s own list, never the review\'s; only the charter\'s allow lets one run', () => {
+    expect(PUBLISHING).toEqual(expect.arrayContaining(['intents/delivery.publish', 'intents/vault.publish', 'intents/security.escalate', 'intents/marketing.plan', 'social/queue_retract']));
+    for (const tool of PUBLISHING) {
+      expect(route(tool)).toEqual({ to: 'operator', why: expect.stringMatching(/posting and email|publishing goes to the operator/) });
+      expect(route(tool, { charter: charter({ allow: [tool] }) })).toEqual({ to: 'allow', by: 'charter' });
+    }
+    expect(route('intents/raise.reach').to).toBe('operator');
+    for (const money of MONEY_OUT) expect(route(money).why).toMatch(/money out/);
   });
 
   test('no Optio seated, or one the charter does not seat: the operator\'s', () => {

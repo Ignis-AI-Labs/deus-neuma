@@ -17,6 +17,7 @@ import express from 'express';
 
 import neumaDatabaseRoutes from './neuma-database-routes.js';
 import mcpRouter from './mcp-routes.js';
+import extensionRouter from './extension-routes.js';
 import memoryRouter from './memory-routes.js';
 import llmRouter from './llm-routes.js';
 import attachmentRouter from './attachment-routes.js';
@@ -51,6 +52,7 @@ import raiseRouter from './raise-routes.js';
 import chatBridgeRouter from './chat-bridge-routes.js';
 import houseClockRouter from './house-clock-routes.js';
 import waitingRouter from './waiting-routes.js';
+import positionsRouter from './positions-routes.js';
 import mandateRouter from './mandate-routes.js';
 import benchRouter from './bench-routes.js';
 import chainRouter from './chain-routes.js';
@@ -58,6 +60,8 @@ import moneyInRouter from './money-in-routes.js';
 import treasuryRouter from './treasury-routes.js';
 import emailRouter from './email-routes.js';
 import docPressRouter from './doc-press-routes.js';
+import chatLineRouter from './chat-line-routes.js';
+import hookRouter from './hook-routes.js';
 import imageForgeRouter from './image-forge-routes.js';
 import galleryRouter from './gallery-routes.js';
 import invariantsRouter from './invariants-routes.js';
@@ -70,6 +74,7 @@ import { authLimiter, neumaAuthLimiter, bridgeLimiter } from '../services/rate-l
 import healthRouter from './health-routes.js';
 import neumaAuthRouter from './neuma-auth-routes.js';
 import neumaWalletRouter from './neuma-wallet-routes.js';
+import lpWalletRouter from './lp-wallet-routes.js';
 import recoveryRouter from './recovery-routes.js';
 import covenantRouter from './covenant-routes.js';
 import preflightRouter from './preflight-routes.js';
@@ -86,7 +91,6 @@ import userRealmRouter from './user-realm-routes.js';
 import dreamRouter from './dream-routes.js';
 import lookRouter from './look-routes.js';
 import userFilesRouter, { mapLaneQueryToken } from './user-files-routes.js';
-import userProjectsRouter from './user-projects-routes.js';
 import taskRouter, { calendarFeedRouter } from './task-routes.js';
 import vitalRouter from './vital-routes.js';
 import modelFolderRouter from './model-folder-routes.js';
@@ -98,6 +102,8 @@ import expressionRouter from './expression-routes.js';
 import sovereigntyRouter from './sovereignty-routes.js';
 import voiceRouter from './voice-routes.js';
 import sttRouter from './stt-routes.js';
+import titlingRouter from './titling-routes.js';
+import systemDictationRouter from './system-dictation-routes.js';
 import refineRouter from './refine-routes.js';
 import voiceEngineRouter from './voice-engine-routes.js';
 import voiceForgeRouter from './voice-forge-routes.js';
@@ -112,13 +118,14 @@ import inferenceRouter from './inference-routes.js';
 import refinementRouter from './refinement-routes.js';
 import attunementRouter from './attunement-routes.js';
 import remiaRouter from './remia-routes.js';
+import deskTicketRouter from './desk-ticket-routes.js';
 
 /**
  * Mount the whole v1 API surface on `app`, in mount-order law.
  * // impure — registers handlers on the app
  */
 export const mountApiRoutes = (app) => {
-  // ?token= → header for the headerless lanes (EventSource, native download) BEFORE any /api/v1 blanket requireAuth 401s them
+  // Exact-resource ?ticket= capabilities map internally before blanket auth routers.
   app.use(mapLaneQueryToken);
 
   // GENESIS, the install's once-ever opening, plays before anyone signs in —
@@ -134,6 +141,11 @@ export const mountApiRoutes = (app) => {
   // Keyed per (IP, being) — nine founders' unlocks are nine buckets, while a
   // single keypair's password still takes at most 10 tries per window.
   app.use('/api/v1/neuma-auth', neumaAuthLimiter, neumaAuthRouter);
+  // WEBHOOKS: a delivery from GitHub, Slack, Linear or a signed script cannot
+  // sign in, so its door is mounted before the blanket requireAuth routers and
+  // rests on the hook's signature; the management routes require auth inside.
+  // Off (404) until the operator turns the webhooks connection on.
+  app.use('/api/v1/hooks', hookRouter);
   // Covenant documents are public (GET /); mounted before the routers that
   // apply blanket requireAuth at /api/v1, which would 401 the fall-through
   app.use('/api/v1/covenant', covenantRouter);
@@ -144,6 +156,7 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/roster', rosterRouter);
   // What the operator has permanently granted, read back (read-only by law).
   app.use('/api/v1/permissions', permissionsRouter);
+  app.use('/api/v1/desk-tickets', deskTicketRouter);
   // The operator's brand kits — listed, and authored by hand when they want to.
   app.use('/api/v1/brands', brandRouter);
   app.use('/api/v1/birth-setup', birthSetupRouter);
@@ -209,6 +222,8 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/house-clock', houseClockRouter);
   // Everything waiting on the operator, one read — the desk's WAITING ON YOU.
   app.use('/api/v1/waiting', waitingRouter);
+  // Every position of the house, one read — the POSITIONS window.
+  app.use('/api/v1/positions', positionsRouter);
   // The CMO's MANDATE: grant, withdraw, resume, renew, DONE FOR YOU. Router-level requireAuth inside.
   app.use('/api/v1/mandate', mandateRouter);
 
@@ -239,6 +254,10 @@ export const mountApiRoutes = (app) => {
   // router with its own wide limit. requireAuth inside.
   app.use('/api/v1/doc-press', docPressRouter);
 
+  // THE CHAT LINE — a sealed AI witness the operator let in speaks in their open chats from any terminal
+  // (services/chat-line.js). requireAuth inside; the witness is proven by its sealed wallet.
+  app.use('/api/v1/chat-line', chatLineRouter);
+
   // THE IMAGE FORGE — supervised ComfyUI manage surface (status/launch/stop/
   // free). The backend is the engine's SOLE client (loopback, no auth on the
   // engine side — NFR-3); the desk only ever talks to these routes.
@@ -267,12 +286,18 @@ export const mountApiRoutes = (app) => {
 
   // Auth-protected routes (order no longer matters among these)
   app.use('/api/v1/mcp', mcpRouter);
+  // The house's checked third-party MCP extensions; changes are the install owner's.
+  app.use('/api/v1/extensions', extensionRouter);
   app.use('/api/v1', memoryRouter);
   app.use('/api/v1', llmRouter);
   app.use('/api/v1/attachments', attachmentRouter);
   app.use('/api/v1', skillRouter);
   app.use('/api/v1', neumaDatabaseRoutes);
   app.use('/api/v1/workspace', workspaceRouter);
+  // naming chats in batch as a job the desk watches and can stop (deus-neuma #28)
+  app.use('/api/v1/titling', titlingRouter);
+  // dictation in every app: hold a key anywhere on this computer, and the words are typed there
+  app.use('/api/v1/system-dictation', systemDictationRouter);
   // The operator's own record of what their beings did (SEC-035 #213).
   app.use('/api/v1/acts', actRouter);
   app.use('/api/v1/weave', weaveRouter);
@@ -281,7 +306,6 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/user/dreams', dreamRouter);
   app.use('/api/v1/look', lookRouter);
   app.use('/api/v1/user/files', userFilesRouter);
-  app.use('/api/v1/user/projects', userProjectsRouter);
   app.use('/api/v1/tasks', taskRouter);
   app.use('/api/v1/vitals', vitalRouter);
   app.use('/api/v1/llm/model-folders', modelFolderRouter);
@@ -298,6 +322,7 @@ export const mountApiRoutes = (app) => {
   // inside the router (keeps the auth posture; blocks anon-driven outbound fetches).
   app.use('/api/v1/prices', priceRouter);
   app.use('/api/v1/neuma', neumaWalletRouter);
+  app.use('/api/v1/neuma', lpWalletRouter);
   app.use('/api/v1/neuma', recoveryRouter);
   app.use('/api/v1/neuma', neumaRouteRouter);
   // The composer's model bar — one being's models + effort rung (neuma or witness

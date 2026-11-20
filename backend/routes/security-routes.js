@@ -32,11 +32,15 @@ import {
 import { createLogger } from '../services/logger.js';
 import { requestState } from '../../core/runtime/operator-state.js';
 import { keyLockState } from '../services/desk-keys.js';
+import { addWriteLimitRoutes } from './write-limit-routes.js';
 
 const router = Router();
 const log = createLogger('Security');
 
 router.use(requireAuth);
+
+// The WRITE LIMIT: how many files a being writes in one message where nobody opened the ground to it (write-limit.js).
+addWriteLimitRoutes(router);
 
 // Resolve the active + persisted workspace roots. They can legitimately differ
 // (env WORKSPACES_ROOT vs the persisted data/settings/workspace.json choice the

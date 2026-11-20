@@ -11,18 +11,19 @@ import { atTheDoor, answerCode, revoke, emptyAccess, pairingWords, pairingCode, 
 import { normalizeTelegram, telegramReply, createTelegramAdapter } from '../../backend/services/channels/adapters/telegram.js';
 import { normalizeDiscord, discordReply, createDiscordAdapter, DISCORD_INTENTS } from '../../backend/services/channels/adapters/discord.js';
 import { validateAdapter, makeMessageEvent } from '../../backend/services/channels/adapter-contract.js';
+import { applyToolMode, normalizeToolMode } from '../../backend/services/tool-policy.js';
 import { chatWaitingRows } from '../../backend/services/channels/chat-waiting.js';
-import { chatLineWords, whoWords, codeAge } from '../../frontend/app/RelinkShell/chats-view.js';
+import { chatLineWords, whoWords, pairingWhoWords, codeAge } from '../../frontend/app/RelinkShell/chats-view.js';
 
 const NOW = Date.parse('2026-10-30T10:00:00Z');
 const dm = (userId, text = 'hello', name = 'Cy') => makeMessageEvent({ channelId: 'telegram', connectionId: 'h:telegram-1', chat: { id: userId, type: 'dm' }, user: { id: userId, name }, text, messageId: '7' });
-const group = (chatId, userId = '55') => makeMessageEvent({ channelId: 'telegram', connectionId: 'h:telegram-1', chat: { id: chatId, type: 'group' }, user: { id: userId, name: 'Pell' }, text: '@tidewater_bot tides?', messageId: '8' });
+const group = (chatId, userId = '55', name = 'Pell') => makeMessageEvent({ channelId: 'telegram', connectionId: 'h:telegram-1', chat: { id: chatId, type: 'group', title: 'Harbour' }, user: { id: userId, name }, text: '@tidewater_bot tides?', messageId: '8' });
 
 describe('the door: nobody is heard until the operator says so', () => {
   test('a stranger gets one code; their next words wait quietly; past the attempts they are dropped', () => {
     const first = atTheDoor(emptyAccess(), dm('42'), { nowMs: NOW, code: 'ABCD2345' });
     expect(first).toMatchObject({ door: 'pair', code: 'ABCD2345' });
-    expect(first.access.pending).toEqual([{ code: 'ABCD2345', kind: 'user', id: '42', name: 'Cy', chat: { id: '42', type: 'dm' }, at: new Date(NOW).toISOString(), attempts: 1 }]);
+    expect(first.access.pending).toEqual([{ code: 'ABCD2345', kind: 'user', id: '42', senderId: '42', senderName: 'Cy', name: 'Cy', chat: { id: '42', type: 'dm' }, at: new Date(NOW).toISOString(), attempts: 1 }]);
     let access = first.access;
     for (let i = 2; i <= PAIR_ATTEMPTS_MAX; i += 1) {
       const again = atTheDoor(access, dm('42'), { nowMs: NOW + i });
@@ -46,13 +47,47 @@ describe('the door: nobody is heard until the operator says so', () => {
     expect(answerCode(access, { code: 'ABCD2345', approve: true, by: 'operator', nowMs: NOW + PAIR_TTL_MS + 1 }).ok).toBe(false);
   });
 
-  test('a group: never heard unless it names the bot; then it pairs as a group, and once approved anyone in it is heard', () => {
+  test('a group: never heard unless it names the bot; a yes admits the one person who asked, never the whole group (P6-42)', () => {
     expect(atTheDoor(emptyAccess(), group('-100'), { nowMs: NOW })).toMatchObject({ door: 'quiet', why: 'a group message that does not name the bot' });
     const paired = atTheDoor(emptyAccess(), group('-100'), { nowMs: NOW, mentioned: true, code: 'GRP23456' });
-    expect(paired.access.pending[0]).toMatchObject({ kind: 'group', id: '-100' });
+    expect(paired.access.pending[0]).toMatchObject({ kind: 'group', id: '-100', senderId: '55' });
     const yes = answerCode(paired.access, { code: 'GRP23456', approve: true, by: 'operator', nowMs: NOW });
-    expect(atTheDoor(yes.access, group('-100', '77'), { nowMs: NOW, mentioned: true })).toEqual({ door: 'hear' });
-    expect(atTheDoor(yes.access, group('-100', '77'), { nowMs: NOW, mentioned: false }).door).toBe('quiet');
+    expect(yes.access.allowed).toEqual([expect.objectContaining({ kind: 'group', id: '-100', members: [{ id: '55', name: 'Pell' }] })]);
+    expect(atTheDoor(yes.access, group('-100', '55'), { nowMs: NOW, mentioned: true })).toEqual({ door: 'hear' });
+    expect(atTheDoor(yes.access, group('-100', '55'), { nowMs: NOW, mentioned: false }).door).toBe('quiet');
+    // Another member of the approved group, whatever they call themselves, is a stranger with their own code.
+    const stranger = atTheDoor(yes.access, group('-100', '77', 'The Operator'), { nowMs: NOW, mentioned: true, code: 'STR23456' });
+    expect(stranger).toMatchObject({ door: 'pair', code: 'STR23456' });
+    expect(stranger.access.pending[0]).toMatchObject({ kind: 'group', id: '-100', senderId: '77', senderName: 'The Operator', name: 'Harbour' });
+    expect(atTheDoor(stranger.access, group('-100', '77', 'The Operator'), { nowMs: NOW, mentioned: true }).door).toBe('quiet');
+    expect(atTheDoor(stranger.access, group('-100', '55'), { nowMs: NOW, mentioned: true })).toEqual({ door: 'hear' });
+    // Their own yes adds them beside the first; a group approved before members were kept admits nobody.
+    const both = answerCode(stranger.access, { code: 'STR23456', approve: true, by: 'operator', nowMs: NOW });
+    expect(both.access.allowed[0].members.map((m) => m.id)).toEqual(['55', '77']);
+    const old = { allowed: [{ kind: 'group', id: '-100', name: 'group -100', by: 'operator', at: new Date(NOW).toISOString() }], pending: [] };
+    expect(atTheDoor(old, group('-100', '55'), { nowMs: NOW, mentioned: true, code: 'AGA23456' }).door).toBe('pair');
+  });
+
+  test('a visitor turn reads none of the being\'s private records, and nothing acts (P6-42)', () => {
+    for (const tool of ['chat_read', 'chats_list', 'journal_read', 'memory_search', 'memory_expand', 'mind_read', 'self_read', 'read', 'search', 'post_check', 'wallet_view']) {
+      expect(applyToolMode('allowed', 'observe', tool), tool).toBe('allowed');
+      expect(applyToolMode('allowed', 'visitor', tool), tool).toBe('denied');
+    }
+    expect(applyToolMode('allowed', 'visitor', 'write')).toBe('denied');
+    expect(applyToolMode('allowed', 'visitor', 'skies_read')).toBe('allowed');
+    expect(normalizeToolMode('visitor')).toBe('visitor');
+  });
+
+  test('one sender cannot fill the pending list across groups; another sender still pairs', () => {
+    let access = emptyAccess();
+    for (const [i, chatId] of ['-201', '-202', '-203'].entries()) {
+      const result = atTheDoor(access, group(chatId, '55'), { nowMs: NOW + i, mentioned: true, code: `GRP${i}2345` });
+      expect(result.door).toBe('pair');
+      access = result.access;
+    }
+    expect(atTheDoor(access, group('-204', '55'), { nowMs: NOW + 4, mentioned: true })).toMatchObject({ door: 'quiet', why: 'too many codes from this sender wait on the operator' });
+    expect(access.pending).toHaveLength(3);
+    expect(atTheDoor(access, group('-204', '77'), { nowMs: NOW + 4, mentioned: true, code: 'FREE2345' })).toMatchObject({ door: 'pair', code: 'FREE2345' });
   });
 
   test('a code: eight characters with no 0, O, 1, I or L', () => {
@@ -101,11 +136,11 @@ describe('the operator\'s view', () => {
   test('WAITING ON YOU: one row per live code, landing on the platform\'s CHATS at that code', () => {
     const rows = chatWaitingRows({
       'telegram-1': { allowed: [], pending: [{ code: 'ABCD2345', kind: 'user', id: '42', name: 'Cy', at: new Date(NOW - 60_000).toISOString() }, { code: 'OLDC0DE2', kind: 'user', id: '9', name: 'Old', at: new Date(NOW - PAIR_TTL_MS - 1).toISOString() }] },
-      'discord-1': { allowed: [], pending: [{ code: 'GRP23456', kind: 'group', id: '-1', name: 'Harbour', at: new Date(NOW).toISOString() }] },
+      'discord-1': { allowed: [], pending: [{ code: 'GRP23456', kind: 'group', id: '-1', senderId: '55', senderName: 'Pell', name: 'Harbour', at: new Date(NOW).toISOString() }] },
     }, NOW);
     expect(rows).toEqual([
       { id: 'chat-pairing:telegram-1:ABCD2345', kind: 'chat-pairing', title: 'Cy asks to talk with the house on Telegram — code ABCD2345', where: { app: 'telegram', channelId: 'telegram', section: 'chats', accountId: 'telegram-1', code: 'ABCD2345' }, at: new Date(NOW - 60_000).toISOString() },
-      { id: 'chat-pairing:discord-1:GRP23456', kind: 'chat-pairing', title: 'The group "Harbour" asks to talk with the house on Discord — code GRP23456', where: { app: 'discord', channelId: 'discord', section: 'chats', accountId: 'discord-1', code: 'GRP23456' }, at: new Date(NOW).toISOString() },
+      { id: 'chat-pairing:discord-1:GRP23456', kind: 'chat-pairing', title: 'Pell in the group "Harbour" asks to talk with the house on Discord — code GRP23456', where: { app: 'discord', channelId: 'discord', section: 'chats', accountId: 'discord-1', code: 'GRP23456' }, at: new Date(NOW).toISOString() },
     ]);
   });
 
@@ -113,7 +148,13 @@ describe('the operator\'s view', () => {
     expect(chatLineWords(false, [])).toBe('THE BOT HEARS NOBODY — TURN ON "CHATS WITH THE HOUSE" IN SETTINGS → SECURITY → CONNECTIONS');
     expect(chatLineWords(true, [])).toBe('ON — NO BOT OF THIS HOUSE HERE HAS A HOLDER AND ITS KEYS YET');
     expect(chatLineWords(true, [{ running: true }])).toBe('ON — HEARING THE BOT');
-    expect(whoWords({ kind: 'group', name: 'Harbour' })).toBe('THE GROUP HARBOUR');
+    expect(whoWords({ kind: 'group', name: 'Harbour' })).toBe('THE GROUP HARBOUR — NOBODY YET — EACH PERSON ASKS WITH THEIR OWN CODE');
+    expect(whoWords({ kind: 'group', name: 'Harbour', members: [{ id: '55', name: 'Pell' }] })).toBe('THE GROUP HARBOUR — PELL (55)');
+    expect(pairingWhoWords({ kind: 'group', id: '-100', senderId: '55', senderName: 'Pell', name: 'Harbour' })).toBe('SENDER 55 · PELL · THE GROUP HARBOUR · GROUP -100');
+    expect(pairingWhoWords({ kind: 'user', id: '42', name: 'Cy' })).toBe('SENDER 42 · CY');
+    expect(pairingWhoWords({ kind: 'user', id: '43', name: 'Cy' })).toBe('SENDER 43 · CY');
+    expect(pairingWhoWords({ kind: 'group', id: '-100', senderId: '55', name: 'Harbour' })).toBe('SENDER 55 · THE GROUP HARBOUR · GROUP -100');
+    expect(pairingWhoWords({ kind: 'group', id: '-100', name: 'Harbour' })).toBe('SENDER NOT RECORDED · THE GROUP HARBOUR · GROUP -100');
     expect(codeAge(new Date(NOW - 5 * 60000).toISOString(), NOW)).toBe('5 MIN AGO');
   });
 });

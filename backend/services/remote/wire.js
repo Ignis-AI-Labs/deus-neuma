@@ -24,7 +24,7 @@ import {
 // its substrate, rewrite a wallet's spending consent or a house's posting
 // credentials, or strand itself. Each guard passes local requests straight
 // through to the router mounted after it.
-const LOCAL_ONLY_ROUTES = Object.freeze([
+export const LOCAL_ONLY_ROUTES = Object.freeze([
   ['post', '/api/v1/license/activate'],
   ['put', '/api/v1/llm/provider'],
   ['post', '/api/v1/llm/substrate/ignite'],
@@ -35,6 +35,23 @@ const LOCAL_ONLY_ROUTES = Object.freeze([
   // asking) and the credentials a house posts with are set at the desk, never from a paired phone
   ['post', '/api/v1/neuma/:neumaId/wallet/allowlist'],
   ['put', '/api/v1/neuma/:neumaId/wallet/threshold'],
+  ['delete', '/api/v1/neuma/:neumaId/wallet/allowlist'],
+  ['post', '/api/v1/neuma/:neumaId/lp/open'],
+  ['put', '/api/v1/neuma/:neumaId/lp/budget'],
+  ['put', '/api/v1/neuma/:neumaId/lp/controls'],
+  ['put', '/api/v1/neuma/:neumaId/lp/vault'],
+  ['put', '/api/v1/neuma/:neumaId/lp/pace'],
+  ['post', '/api/v1/neuma/:neumaId/lp/pending/:id/approve'],
+  ['post', '/api/v1/neuma/:neumaId/lp/pending/:id/decline'],
+  ['post', '/api/v1/neuma/:neumaId/lp/rewards/:id/approve'],
+  ['post', '/api/v1/neuma/:neumaId/lp/rewards/:id/decline'],
+  ['post', '/api/v1/neuma/:neumaId/lp/rewards/:id/delivered'],
+  ['post', '/api/v1/neuma/:neumaId/recovery/verify-codes'],
+  ['post', '/api/v1/neuma/:neumaId/recovery/rotate'],
+  ['post', '/api/v1/neuma-auth/reset-password'],
+  ['put', '/api/v1/treasury/invoice-wallet'],
+  ['post', '/api/v1/raise/:id/sign'],
+  ['put', '/api/v1/revenue/delivery-destination'],
   ['put', '/api/v1/social-channels/:channelId/credentials'],
   ['delete', '/api/v1/social-channels/:channelId/credentials'],
   ['post', '/api/v1/social-channels/accounts'],
@@ -64,12 +81,16 @@ export const installRemoteGate = async (app) => {
  * tier. impure (app state).
  * @param {import('express').Express} app
  */
-export const mountRemoteRoutes = (app) => {
-  app.use('/r', createEnrollRouter());
-  app.use('/api/v1/remote', createRemoteRouter());
+export const mountLocalOnlyRoutes = (app) => {
   for (const [method, route] of LOCAL_ONLY_ROUTES) {
     app[method](route, requireLocalScope, passThrough);
   }
+};
+
+export const mountRemoteRoutes = (app) => {
+  app.use('/r', createEnrollRouter());
+  app.use('/api/v1/remote', createRemoteRouter());
+  mountLocalOnlyRoutes(app);
 };
 
 /**

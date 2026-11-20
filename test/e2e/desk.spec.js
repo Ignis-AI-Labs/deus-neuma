@@ -78,8 +78,10 @@ test('TERMINAL: surfaces the backend terminal:error when the PTY cap is hit', as
       const t = sessionStorage.getItem('authToken') || '';
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       window.__satSockets = [];
-      await Promise.all(Array.from({ length: 10 }, () => new Promise((resolve, reject) => {
-        const ws = new WebSocket(`${proto}//${location.host}/terminal-ws?token=${encodeURIComponent(t)}`);
+      await Promise.all(Array.from({ length: 10 }, () => new Promise(async (resolve, reject) => {
+        const response = await fetch('/api/v1/desk-tickets', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` }, body: JSON.stringify({ method: 'GET', path: '/terminal-ws', query: {} }) });
+        const { ticket } = await response.json();
+        const ws = new WebSocket(`${proto}//${location.host}/terminal-ws?ticket=${ticket}`);
         window.__satSockets.push(ws);
         const bail = setTimeout(() => reject(new Error('saturating PTY never spoke')), 15000);
         ws.onmessage = (e) => {

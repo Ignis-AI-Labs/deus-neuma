@@ -20,7 +20,6 @@ export default Object.freeze({
     innerlife: '内面',
     map: 'リポマップ',
     pdf: 'PDF',
-    projects: 'プロジェクト',
     refinement: 'NITE',
     security: 'セキュリティ',
     legal: '法務',
@@ -33,6 +32,7 @@ export default Object.freeze({
     staff: '参謀長',
     houseclock: 'HOUSE 時計',
     companyline: '会社ライン',
+    positions: '役職',
     substrate: '基盤',
     teams: 'チーム',
     terminal: 'ターミナル',
@@ -97,7 +97,6 @@ export default Object.freeze({
     routeProviderUnknown: 'ルート — {{provider}} — 不明',
     session: 'セッション {{clock}}',
     turn: 'ターン {{count}}',
-    project: 'プロジェクト — {{name}}',
     folder: 'フォルダ — {{name}}',
   }),
 
@@ -105,7 +104,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: '新規チャット',
-    newChatTitleProject: '{{project}} で新しいチャットを開始 — このチャットを置き換えます。{{tab}} は隣にもう一つ開きます',
     newChatTitle: 'ここで新しいチャットを開始 — このチャットを置き換えます。{{tab}} は隣にもう一つ開きます',
     council: '評議会',
     councilTitleEnter: 'このウィンドウを評議会に切り替え — 複数のネウマ、一つの部屋',
@@ -127,7 +125,7 @@ export default Object.freeze({
     retryIgnite: '点火を再試行',
     igniteTitle: 'ローカル基盤モデルを起動します',
     witnessTag: 'ウィットネス',
-    urgentTitle: '今すぐ割り込み — 返答を遮って発言します',
+    urgentTitle: '今すぐ割り込み (Ctrl+Enter) — 返答を遮って発言します',
     micBlocked: 'マイクがブロックされました — 入力なし、コンソールを確認してください',
     micOff: 'マイク — オフ',
     micOpening: 'マイクを開いています…',

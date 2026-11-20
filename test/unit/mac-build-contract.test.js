@@ -82,8 +82,14 @@ describe('the mac settings the app boots with', () => {
     expect(builder.mac.extendInfo.NSMicrophoneUsageDescription).toMatch(/microphone|listen|speak/i);
   });
 
-  it('ships unpacked, because the backend is a spawned Node child that cannot read asar', () => {
-    expect(builder.asar).toBe(false);
+  it('ships the app in asar with native addons unpacked and RunAsNode disabled', () => {
+    expect(builder.asar).toBe(true);
+    expect(builder.asarUnpack).toContain('node_modules/**/*');
+    expect(builder.electronFuses).toMatchObject({
+      runAsNode: false,
+      enableEmbeddedAsarIntegrityValidation: true,
+      onlyLoadAppFromAsar: true,
+    });
   });
 
   it('prunes the prebuild directories this chip cannot load, after packing', () => {

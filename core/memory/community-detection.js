@@ -10,7 +10,7 @@
 // whether or not it appears here, so this list is a fast path and not the
 // mechanism. It grew on 2026-08-13 (#230) with the words a live lane's labels
 // actually surfaced: `ANSWER AUDITOR BECAUSE BEFORE`, `ALL ARTIFACTS CAN CLEAR`.
-const STOP = new Set([
+export const STOP = new Set([
   'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'of', 'to', 'in', 'on',
   'for', 'with', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'it', 'this',
   'that', 'these', 'those', 'i', 'you', 'we', 'they', 'he', 'she', 'as', 'at',

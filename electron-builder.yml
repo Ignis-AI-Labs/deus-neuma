@@ -28,7 +28,7 @@ appId: ai.neuma.app
 # person SEES carries the trademark, DEUS NEUMA (Design note, 2026-10-04: the
 # installer file, the shortcut and menu entry, the display name, the uninstaller.
 productName: NEUMA
-copyright: © Ignis AI Labs LLC
+copyright: © Deus Neuma Inc
 artifactName: Deus-Neuma-${version}-${arch}.${ext}
 
 directories:
@@ -65,7 +65,7 @@ files:
   - build/release-notes.md
   # The few frontend modules the backend imports (council-session.js →
   # stripToolBlocks; the TikTok poster's consent rules; the marketing board lines and the
-  # folds they pull in); everything else under frontend/ is dev-only source.
+  # folds they pull in; the clone frame fold); everything else under frontend/ is dev-only source.
   # test/unit/packaged-frontend-imports.test.js fails when a backend import is missing here:
   # the 2026-10-24 installer booted to […] without them.
   - frontend/utils/tool-stream-filter.js
@@ -74,6 +74,8 @@ files:
   - frontend/app/RelinkShell/marketing/board-edit.js
   - frontend/app/RelinkShell/marketing/platform-fold.js
   - frontend/app/RelinkShell/marketing-overview/overview-fold.js
+  # A shadow clone split's frame fold — the turn keeper writes a running split to disk (turn-keep-record.js).
+  - frontend/app/RelinkShell/clone-frames.js
   # The voice engine registry imports this manifest; the engines themselves
   # (Python sidecars + 54GB of models) are host-provisioned at runtime, never
   # shipped — voice on a clean host is its own slice.
@@ -98,12 +100,15 @@ extraResources:
   - from: package-lock.json
     to: package-lock.json
 
-# NO asar — the backend runs as a SPAWNED Node child (ELECTRON_RUN_AS_NODE),
-# and a plain-Node child cannot read inside an asar archive (spawn ENOTDIR:
-# cwd/script paths inside app.asar are not real directories). Every tree the
-# backend touches — backend/, core/, dist/, node_modules — must be real files,
-# so the whole app ships unpacked. Proven by the 2026-07-31 boot test.
-asar: false
+# The backend and its helper JavaScript run as Electron utility children, so the
+# application can live in asar. Native addons stay real files for the OS loader.
+asar: true
+asarUnpack:
+  - node_modules/**/*
+electronFuses:
+  runAsNode: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
 
 # afterPack is ONE slot and two platforms need it, so the hook is a dispatcher:
 #   linux + AppImage → ./scripts/appimage-launcher-hook.cjs (the launcher in
@@ -169,7 +174,7 @@ linux:
     entry:
       Name: Deus Neuma
       Comment: Sovereign relationships with AI.
-  maintainer: Ignis AI Labs LLC <legal@ignislabs.ai>
+  maintainer: Deus Neuma Inc <legal@ignislabs.ai>
   # NOTE: neither rpm nor deb is here — BOTH of electron-builder's targets go
   # through its bundled fpm (2017-era ruby), and fpm cannot run on a modern
   # Fedora at all: its interpreter links against libcrypt.so.1, dropped in

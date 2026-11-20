@@ -139,7 +139,7 @@ export const foldRaise = (events) => events.reduce((s, e) => {
   const who = INVESTOR_EVENTS.includes(e?.type) && s.investors.find((i) => i.id === e.id);
   if (who) {
     const next = e.type === 'cleared' ? { status: e.verdict === 'cleared' ? 'cleared' : 'refused', note: e.note }
-      : e.type === 'reach' ? { status: who.status === 'interested' ? 'interested' : 'contacted', thread: [...who.thread, { to: e.to, subject: e.subject, text: e.text, messageId: e.messageId, by: e.by, at: e.at }] }
+      : e.type === 'reach' ? { status: who.status === 'interested' ? 'interested' : 'contacted', thread: [...who.thread, { to: e.to, subject: e.subject, text: e.text, messageId: e.messageId, delivery: e.delivery ?? 'sent', by: e.by, at: e.at }] }
         : e.type === 'terms' ? { status: 'terms', terms: { amount: e.amount, valuation: e.valuation, notes: e.notes, at: e.at }, note: null }
           : e.type === 'terms-check' ? { status: e.verdict === 'sound' ? 'sound' : 'interested', note: e.note }
             : e.type === 'closed-in' ? { status: 'closed', closed: { amount: e.amount, received: e.received, at: e.at } }
@@ -203,6 +203,7 @@ export const judgeCloseInvestor = (state, { investorId, signedPapers, accredited
   const a = state.account;
   if (a.kind === 'wallet') {
     if (!receipt) return { ok: false, reason: 'no such receipt in the house\'s money-in ledger — the money has not landed' };
+    if (receipt.internal === true) return { ok: false, reason: 'house-internal transfers are not investor funds' };
     if (state.investors.some((x) => x.closed?.received?.ref === receipt.key)) return { ok: false, reason: 'that receipt already closed another investor — one receipt, one close' };
     if (String(receipt.to).toLowerCase() !== String(a.address).toLowerCase() || receipt.network !== a.network) {
       return { ok: false, reason: `that receipt landed at ${receipt.to} on ${receipt.network}, not the mandate's ${a.address} on ${a.network}` };

@@ -23,7 +23,7 @@ import { shouldMountVoiceSitting } from './VoiceSitting/voice-sitting-model.js';
 import {
   getSittingPurpose, setSittingPurpose, isLiveArmed, setLiveArmed, subscribeVoiceSitting,
 } from './voice-purpose-state.js';
-import { focusSpaceFrame, focusToolFrame } from './desk-focus.js';
+import { focusToolFrame } from './desk-focus.js';
 import { useSettled } from './use-settled.js';
 import { readToolModePref, readChatModePref } from './stream-preferences.js';
 import { useVoiceEnabled } from './use-voice-enabled.js';
@@ -32,13 +32,10 @@ import { createStreamActions } from './stream-actions.js';
 
 export { TOOL_MODES, CHAT_MODES } from './stream-preferences.js';
 
-// Pure — episodic scope and execution focus travel together, but remain
-// distinct authorities: project space scopes memory; toolWorkspace is only a
+// Pure — the execution focus a frame carries: toolWorkspace is only a
 // server-validated source hint for the operator's disposable coding snapshot.
-const portalFocusFrame = (focus, projects) => ({
-  ...focusSpaceFrame(focus, projects),
-  ...focusToolFrame(focus, projects),
-});
+// No space rides it: every chat is general.
+const portalFocusFrame = (focus) => focusToolFrame(focus);
 
 /**
  * @param {object} wsService - the portal this stream speaks through
@@ -51,7 +48,7 @@ const portalFocusFrame = (focus, projects) => ({
  *   so every window reading it lands on the same truth rather than a multiple.
  */
 export const useConsciousnessStream = (wsService, {
-  focus = null, projects = null, onProjectChatCreated = null, house = true,
+  focus = null, house = true,
 } = {}) => {
   // Read through a ref: the handlers below are registered once and must see the
   // current answer without re-subscribing the whole portal.
@@ -66,20 +63,10 @@ export const useConsciousnessStream = (wsService, {
     const take = currentTakeRef.current;
     return rawDispatch({ at: Date.now(), ...(take ? { take } : {}), ...action });
   }, []);
-  // THIS window's focus and the fetched projects list, mirrored in refs so
-  // the stable send/resume handlers stamp the CURRENT lens on each frame
-  // without re-subscribing. Frames derive from focus (D7): project focus
-  // stamps that project's space; a bare folder or no focus stamps NOTHING.
+  // THIS window's focus, mirrored in a ref so the stable send/resume handlers
+  // stamp the CURRENT lens on each frame without re-subscribing (D7).
   const focusRef = useRef(focus);
   focusRef.current = focus;
-  const projectsRef = useRef(projects);
-  projectsRef.current = projects;
-  const onProjectChatCreatedRef = useRef(onProjectChatCreated);
-  onProjectChatCreatedRef.current = onProjectChatCreated;
-  // The last session id we've accounted for against the active project — so a
-  // newly-minted project chat refreshes the projects view exactly once, while
-  // a resumed chat (ref pre-seeded) triggers no spurious refetch.
-  const projectChatSeenRef = useRef(null);
   // Last announced storage assessment — repeats of the same picture from the
   // heartbeat stay silent (see shouldAnnounceStorage).
   const storageWarningRef = useRef(null);
@@ -264,7 +251,7 @@ export const useConsciousnessStream = (wsService, {
     wsService, dispatch, ensureSink, portalFocusFrame, setToolModeState, setChatModeState,
     turnStartedRef, erroredRef, streamSeenRef, sinkRef, holdSeqRef,
     voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
-    companionRef, focusRef, projectsRef, historyReadyRef, historyFailedRef, navigationSeqRef,
+    companionRef, focusRef, historyReadyRef, historyFailedRef, navigationSeqRef,
     toolModeRef, chatModeRef,
   }), [wsService, ensureSink]);
 
@@ -274,7 +261,7 @@ export const useConsciousnessStream = (wsService, {
     const { onLinkUp, entries } = createStreamHandlers({
       wsService, dispatch, flushSpeech, ensureFilter, ensureSink, applyPurpose,
       setHeldCount, setToolModeState, setChatModeState, sendThought, portalFocusFrame,
-      houseRef, focusRef, projectsRef, onProjectChatCreatedRef, projectChatSeenRef,
+      houseRef, focusRef,
       storageWarningRef, companionRef, navigationSeqRef, transitioningRef, filterRef,
       streamSeenRef, historyLoadedRef, currentTakeRef, erroredRef, connectedRef,
       turnStartedRef, voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
@@ -341,10 +328,7 @@ export const useConsciousnessStream = (wsService, {
     clearStreamPipeline();
     streamSeenRef.current = false;
     wsService.emit('portal:navigation-start', { neumaId, sessionId });
-    // This resumed chat already exists — account for it so its completes don't
-    // read as a new project chat and re-refresh the projects view.
-    projectChatSeenRef.current = sessionId;
-    wsService.send('portal:resume', { neumaId, companionName, sessionId, ...portalFocusFrame(focusRef.current, projectsRef.current) });
+    wsService.send('portal:resume', { neumaId, companionName, sessionId, ...portalFocusFrame(focusRef.current) });
     // Hold the binding client-side too — a reconnect must resume THIS chat,
     // not silently sever it (the next message would fork a new session).
     wsService.setSessionState({ neumaId, companionName, sessionId });
@@ -357,21 +341,16 @@ export const useConsciousnessStream = (wsService, {
   }, [wsService, clearStreamPipeline]);
 
   // Start a fresh chat: sever the bound session (the next message mints a new
-  // one server-side) and clear the display. An explicit `frame` overrides the
-  // window-focus frame for THIS mint — the projects view starts a chat in the
-  // project it is showing, whose setFocus hasn't flushed into focusRef yet.
-  const newSession = useCallback((frame = null) => {
+  // one server-side) and clear the display.
+  const newSession = useCallback(() => {
     navigationSeqRef.current += 1;
     historyReadyRef.current = null;
     historyFailedRef.current = false;
     transitioningRef.current = true;
-    // The next message mints a fresh session; clear the accounted-for id so
-    // that mint's complete fires the one project refresh.
-    projectChatSeenRef.current = null;
     wsService.emit('portal:navigation-start', { neumaId: companionRef.current?.neumaId, sessionId: null });
     // The sitting's declared purpose rides the mint — a NEW sitting opened as
     // CONVERSATION is a voice sitting from its first frame (B-12).
-    wsService.send('portal:new-session', { ...(frame ?? portalFocusFrame(focusRef.current, projectsRef.current)), purpose: purposeRef.current });
+    wsService.send('portal:new-session', { ...portalFocusFrame(focusRef.current), purpose: purposeRef.current });
     // Clear the held binding so a reconnect doesn't resurrect the severed
     // chat. The first message mints the new session server-side, and its
     // complete echoes the minted id back into this state.
@@ -442,10 +421,7 @@ export const useConsciousnessStream = (wsService, {
       onLoaded: ({ sessionId }) => {
         const bind = { neumaId: companion.neumaId, companionName: companion.name, sessionId };
         wsService.setSessionState(bind);
-        if (sessionId) {
-          projectChatSeenRef.current = sessionId;
-          wsService.send('portal:resume', { ...bind, ...portalFocusFrame(focusRef.current, projectsRef.current) });
-        }
+        if (sessionId) wsService.send('portal:resume', { ...bind, ...portalFocusFrame(focusRef.current) });
       },
     });
   }, [wsService, clearStreamPipeline]);

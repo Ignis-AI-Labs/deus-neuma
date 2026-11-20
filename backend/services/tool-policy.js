@@ -98,28 +98,31 @@ export { retiredToolHint } from './intents/retired-tools.js';
  * auto    — approval-required calls run without prompting; denials still hold
  * observe — only read-shaped tools act; every acting tool is held, even
  *           policy-allowed ones (the operator wants to watch, not act)
+ * visitor — a turn someone outside the house speaks in (the chat bridge):
+ *           nothing acts, and of the reads only VISITOR_TOOLS stay open
  */
-export const TOOL_MODES = Object.freeze(['ask', 'auto', 'observe']);
+export const TOOL_MODES = Object.freeze(['ask', 'auto', 'observe', 'visitor']);
 
 /**
  * Normalize an untrusted mode value to a valid tool mode (fail to 'ask').
  * @param {*} raw - Untrusted mode value (client input)
- * @returns {'ask'|'auto'|'observe'} Valid mode
+ * @returns {'ask'|'auto'|'observe'|'visitor'} Valid mode
  */
 export const normalizeToolMode = (raw) => (TOOL_MODES.includes(raw) ? raw : 'ask');
 
 // --- Chat modes (the operator's standing mode for this conversation) ---
 //
 // The composer's mode chip. One declaration carries both meanings: the chat's
-// bearing (free flow / strictly planning / hands-off) AND the ACTS tier the
-// gate enforces, derived below — the operator never sets the two separately.
-export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto']);
+// bearing (free flow / strictly planning / hands-off / deep research) AND the
+// ACTS tier the gate enforces, derived below — the operator never sets the two
+// separately. RESEARCH (research-mode.js) acts under DEFAULT's tier.
+export const CHAT_MODES = Object.freeze(['default', 'plan', 'auto', 'research']);
 
 /**
  * Normalize an untrusted chat mode value (fail to 'default' — free flow
  * with per-act cards, the least authority a mode can carry).
  * @param {*} raw - Untrusted mode value (client input)
- * @returns {'default'|'plan'|'auto'} Valid chat mode
+ * @returns {'default'|'plan'|'auto'|'research'} Valid chat mode
  */
 export const normalizeChatMode = (raw) => (CHAT_MODES.includes(raw) ? raw : 'default');
 
@@ -147,6 +150,8 @@ export const READ_TOOLS = Object.freeze(new Set([
   // Self-knowledge is observation. Held in observe mode, a being could not
   // answer […] precisely when its operator is watching.
   'flight_check', 'get_telemetry', 'get_view',
+  // Reading the image engine and the machine's holders changes nothing; steering the engine (forge_control) acts.
+  'forge_status', 'machine_map',
   // A being reading its own refinement state is pure observation; the dial
   // (refinement_dial) acts, so observe mode holds it like any acting tool.
   'refinement_sense',
@@ -154,7 +159,7 @@ export const READ_TOOLS = Object.freeze(new Set([
   // (memory_note/pin/unpin/supersede/retract/merge/archive) write to its
   // store, so observe mode holds them. memory_list only WALKS the record —
   // the audit lane stays open while the operator watches.
-  'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
+  'memory_search', 'memory_expand', 'memory_list', 'memory_map', 'mind_read', 'self_read',
   // Its own journal and past conversations are its own record too.
   'journal_read', 'chats_list', 'chat_read',
   // A being reading its own skies is pure observation of a write-once record;
@@ -175,7 +180,7 @@ export const READ_TOOLS = Object.freeze(new Set([
   // balance, no key and no send. The dispatcher has always run it ahead of any
   // mode check for a neuma; naming it here makes the advertised tier match
   // that, instead of promising a hold the runtime does not honour.
-  'wallet_view',
+  'wallet_view', 'lp_market', 'lp_book', 'market_map', // lp_market: the public market a house member trades on (pool data, the router's quote); lp_book: its own earnings book; market_map: the market outside Umbrae; no key, no send
   // NOTE — the queue, bench, ledger and task-list reads are policy-`allowed`
   // (no approval card) but deliberately NOT here. The line this set draws is
   // the being's OWN record — its memory, its skies, its mail — which opens
@@ -184,6 +189,12 @@ export const READ_TOOLS = Object.freeze(new Set([
   // saying […], and that stance holds over shared
   // state too. Same law as vault_list: allowed, still held in observe.
 ]));
+
+// What stays open in a VISITOR turn (audit P6-42): public data and the being's
+// own given form. Its memory, mind, journal, past chats, mail, wallet and the
+// operator's files are private records — a person on Telegram or Discord who
+// asks the being to look something up must not be reading them through it.
+export const VISITOR_TOOLS = Object.freeze(new Set(['skies_read', 'genome_read', 'lp_market', 'market_map']));
 
 // Tools that OBSERVE and cannot change state (BE-142 #214).
 //
@@ -201,11 +212,11 @@ export const READ_TOOLS = Object.freeze(new Set([
 // would be running it twice.
 export const OBSERVATION_TOOLS = Object.freeze(new Set([
   // The being's own record
-  'memory_search', 'memory_expand', 'memory_list', 'mind_read', 'self_read',
+  'memory_search', 'memory_expand', 'memory_list', 'memory_map', 'mind_read', 'self_read',
   'journal_read', 'chats_list', 'chat_read', 'charter_read',
   // vault reads retired (prompt + fs); vault mutations are intents only
-  'skies_read', 'genome_read', 'post_check', 'open_chats', 'refinement_sense', 'wallet_view',
-  'flight_check', 'get_telemetry', 'get_view', 'inspect', 'sandbox_status', 'ground_git',
+  'skies_read', 'genome_read', 'post_check', 'open_chats', 'refinement_sense', 'wallet_view', 'lp_market', 'lp_book', 'market_map',
+  'flight_check', 'get_telemetry', 'get_view', 'inspect', 'sandbox_status', 'ground_git', 'forge_status', 'machine_map',
   // Handing the operator a list REACHES NOTHING — no egress, no store, no
   // change to anything but this conversation's own card. Observe mode holds
   // acts, and reporting to the person watching is not an act on the world.
@@ -259,12 +270,13 @@ export const isObservationTool = (call) => {
  * Apply the session tool mode on top of a resolved access level. Pure.
  * A policy denial always survives — no mode widens past 'denied'.
  * @param {'allowed'|'denied'|'approval_required'} access - Resolved policy access
- * @param {'ask'|'auto'|'observe'} mode - Session tool mode
+ * @param {'ask'|'auto'|'observe'|'visitor'} mode - Session tool mode
  * @param {string} toolName - Tool name (mode-sensitive for observe)
  * @returns {'allowed'|'denied'|'approval_required'} Effective access
  */
 export const applyToolMode = (access, mode, toolName) => {
   if (access === 'denied') return 'denied';
+  if (mode === 'visitor') return VISITOR_TOOLS.has(toolName) ? access : 'denied';
   if (mode === 'observe') return READ_TOOLS.has(toolName) ? access : 'denied';
   if (mode === 'auto' && access === 'approval_required'
     && !['ground_git', 'ground_sync', 'read_history', 'sandbox_recover'].includes(toolName)) return 'allowed';
@@ -285,10 +297,10 @@ export const applyToolMode = (access, mode, toolName) => {
  * @param {'ask'|'auto'|'observe'} mode - session tool mode
  * @returns {Array<Object>} new tool objects carrying `access`
  */
-export const annotateToolAccess = (tools, policy, mode, operatorPolicy = {}) => (tools || []).map((tool) => ({
+export const annotateToolAccess = (tools, policy, mode, operatorPolicy = {}, direct = false) => (tools || []).map((tool) => ({
   ...tool,
   access: applyProtocolGuard(applyToolMode(checkToolAccess(policy, tool.server, tool.name), mode, tool.name),
-    mode, tool.server, tool.name, operatorPolicy[`${tool.server}/${tool.name}`] === 'allowed'),
+    mode, tool.server, tool.name, operatorPolicy[`${tool.server}/${tool.name}`] === 'allowed', direct),
 }));
 
 /**
@@ -333,8 +345,8 @@ export const addGrantedReadRoot = (layer, dir) => {
  * Return a new policy layer with `dir` added to the operator-granted WRITE
  * scopes (pathGrants.write). Pure — never mutates; null grows a fresh layer.
  * A write grant is a deliberate escalation past the being's own lane, so it is
- * only ever handed out for a folder inside the ACTIVE project (the portal write
- * gate enforces that bound + default-deny), and the sandbox's denied-path list
+ * only ever handed out for the target's own folder on the operator's yes (the
+ * portal write gate asks; default-deny), and the sandbox's denied-path list
  * still fires first — a granted folder never opens .git/.env/keys/config or
  * another being's DNA. Write scope also grants read (you can read where you can
  * write); the sandbox folds pathGrants.write into the read roots.

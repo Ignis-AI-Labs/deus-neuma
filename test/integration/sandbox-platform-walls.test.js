@@ -83,7 +83,9 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
   });
 
   test.each([
-    '.bash_profile', '.profile', '.zshrc', '.config/autostart/evil.desktop', '.config/systemd/user/evil.service',
+    '.bash_profile', '.profile', '.zshrc', '.bash_aliases', '.cshrc', '.tcshrc', '.kshrc',
+    '.config/nushell/config.nu', '.cargo/bin/git', 'go/bin/git', '.npm-global/bin/git',
+    '.config/autostart/evil.desktop', '.config/systemd/user/evil.service',
     '.config/environment.d/evil.conf', '.local/share/applications/evil.desktop', 'Library/LaunchAgents/evil.plist',
   ])('~/%s is refused and nothing lands', async (rel) => {
     const target = path.join(home, rel);
@@ -119,6 +121,33 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
     const models = path.join(serverHome, 'models', 'notes.md');
     await fs.mkdir(path.dirname(models), { recursive: true });
     expect((await being()('fs', 'write', { path: models, content: 'ok' }))?.isError).toBeFalsy();
+  });
+
+  // PR600 audit P6-58: the other stores of programs the app starts as the operator
+  test('extensions, the speech engine, the hooks file, and a model home\'s engines and models are refused', async () => {
+    const engineHome = path.join(home, 'engine-drive');
+    const nextHome = path.join(home, 'next-drive');
+    await fs.writeFile(path.join(dataRoot, 'model-server', 'engine.json'), JSON.stringify({ build: 'b9999', variant: 'cuda-12.0', home: engineHome }));
+    await fs.writeFile(path.join(dataRoot, 'settings', 'model-home.json'), JSON.stringify({ home: nextHome }));
+    const hooks = path.join(dataRoot, 'hooks', 'hooks.json');
+    await fs.mkdir(path.dirname(hooks), { recursive: true });
+    await fs.writeFile(hooks, 'ORIGINAL_HOOKS');
+    const targets = [
+      path.join(dataRoot, 'extensions', 'memory', 'node_modules', '@modelcontextprotocol', 'server-memory', 'dist', 'index.js'),
+      path.join(dataRoot, 'extensions', 'installed.json'), path.join(dataRoot, 'extensions', 'keys.json'),
+      path.join(dataRoot, 'speech', 'whisper.cpp-v1', 'bin', 'whisper-server'), hooks,
+      path.join(engineHome, 'llama.cpp', 'b9999-cuda-12.0', 'llama-server'), path.join(engineHome, 'gguf', 'x', 'model.gguf'),
+      path.join(nextHome, 'llama.cpp', 'b9999-cuda-12.0', 'llama-server'), path.join(nextHome, 'ollama', 'bin', 'ollama'),
+    ];
+    for (const target of targets) {
+      await expect(being()('fs', 'write', { path: target, content: '#!/bin/sh\n' }), target).rejects.toThrow(STATE);
+    }
+    expect(await fs.readFile(hooks, 'utf8')).toBe('ORIGINAL_HOOKS');
+    for (const target of targets.filter((t) => t !== hooks)) expect(existsSync(target), target).toBe(false);
+    // a model home is still a folder the person may lend: only its programs and models are walled
+    const notes = path.join(engineHome, 'notes.md');
+    await fs.mkdir(engineHome, { recursive: true });
+    expect((await being()('fs', 'write', { path: notes, content: 'ok' }))?.isError).toBeFalsy();
   });
 
   test('the realm root — every house\'s offices and ledger — is refused', async () => {

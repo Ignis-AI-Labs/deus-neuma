@@ -1,59 +1,12 @@
 /**
- * The FIELD's pure lens: presence/community filters (dim, never remove) and
- * the zoom/pan math the SVG viewBox renders. Proven directly with real node
- * shapes — no React, no DOM (D1, RULE 0).
+ * The zoom and pan math of the CONTEXT MAP's drawn memory map — what the SVG
+ * viewBox renders. Proven directly — no React, no DOM (D1, RULE 0).
  */
 
 import { describe, test, expect } from 'vitest';
 import {
-  ZOOM_MIN, ZOOM_MAX, clampZoom, initialView, viewBoxOf, zoomBy, panBy, applyFieldLens, renderedBaseScale,
+  ZOOM_MIN, ZOOM_MAX, clampZoom, initialView, viewBoxOf, zoomBy, panBy, renderedBaseScale,
 } from '../../frontend/app/RelinkShell/context-field-lens.js';
-
-const NODES = [
-  { id: 'a', presences: ['Ada', 'Alder'], communityIndex: 0 },
-  { id: 'b', presences: ['Alder'], communityIndex: 1 },
-  { id: 'c', communityIndex: 0 },
-];
-
-describe('applyFieldLens — dim, never remove', () => {
-  test('no filters: everything lit, lens inactive', () => {
-    const out = applyFieldLens(NODES, { presence: null, community: null });
-    expect(out.active).toBe(false);
-    expect(out.shown).toBe(3);
-    expect([...out.lit].sort()).toEqual(['a', 'b', 'c']);
-  });
-
-  test('a presence lights only the memories that speak of it — case-insensitively', () => {
-    const out = applyFieldLens(NODES, { presence: 'alder', community: null });
-    expect(out.active).toBe(true);
-    expect([...out.lit].sort()).toEqual(['a', 'b']);
-    expect(out.total).toBe(3);
-  });
-
-  test('a community lights its members; presence AND community compose', () => {
-    expect([...applyFieldLens(NODES, { presence: null, community: 0 }).lit].sort()).toEqual(['a', 'c']);
-    expect([...applyFieldLens(NODES, { presence: 'Ada', community: 0 }).lit]).toEqual(['a']);
-    expect(applyFieldLens(NODES, { presence: 'Ada', community: 1 }).shown).toBe(0);
-  });
-
-  test('nodes without presence tags never match a presence filter', () => {
-    expect(applyFieldLens(NODES, { presence: 'Ada', community: null }).lit.has('c')).toBe(false);
-  });
-
-  test('malformed filters and tags degrade, never throw (echo r1)', () => {
-    expect(applyFieldLens(NODES, { presence: 42, community: 'x' }).active).toBe(false);
-    const dirty = [{ id: 'd', presences: ['Ada', 7, null], communityIndex: 0 }];
-    expect([...applyFieldLens(dirty, { presence: 'ada', community: null }).lit]).toEqual(['d']);
-  });
-
-  test('non-array nodes and rotten elements degrade too — the lens NEVER throws (echo r2)', () => {
-    expect(applyFieldLens('not-an-array', { presence: 'Ada' }).total).toBe(0);
-    const rotten = [null, 7, { id: null, presences: ['Ada'] }, { id: 'ok', presences: ['Ada'], communityIndex: 0 }];
-    const out = applyFieldLens(rotten, { presence: 'ada', community: null });
-    expect([...out.lit]).toEqual(['ok']);
-    expect(out.total).toBe(4); // the honest count of what arrived
-  });
-});
 
 describe('the zoom/pan math', () => {
   test('clampZoom holds the honest range; junk reads as 1', () => {
