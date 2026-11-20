@@ -68,7 +68,7 @@ describe('the wallet\'s recovery secret', () => {
       const drawn = seen.secrets[i];
       expect(drawn.fields[0].value).toBe(made.address);
       expect(drawn.body.match(/[a-z]+/g)).toEqual(words);
-      for (const word of words) expect(Object.values(made).join(' ')).not.toContain(word);
+      for (const word of words) expect(Object.values(made).filter((value) => typeof value === 'string').join(' ')).not.toContain(word);
     }
     expect(seen.secrets).toHaveLength(2);
     expect(seen.prompts).toHaveLength(0);

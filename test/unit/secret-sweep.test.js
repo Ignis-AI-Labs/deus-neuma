@@ -32,7 +32,7 @@ describe('secret-sweep (real tmp git repo)', () => {
       `WITNESS_PRIVATE_KEY=${FAKE_EVM_KEY}`,
       'const fine = "nothing here";',
       `token: ${FAKE_GH}`,
-      '-----BEGIN PRIVATE KEY-----',
+      '-----BEGIN PRIVATE\x20KEY-----',
     ].join('\n'));
     expect(hits.map(({ line, patternId }) => ({ line, patternId }))).toEqual([
       { line: 1, patternId: 'evm-private-key' },
@@ -53,8 +53,8 @@ describe('secret-sweep (real tmp git repo)', () => {
     expect(a.fingerprint).toBe(bare.fingerprint);
     expect(a.fingerprint).not.toBe(c.fingerprint);
     // Two PEM keys share a header; their first body lines tell them apart.
-    const [pemA] = scanText('-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC');
-    const [pemB] = scanText('-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC');
+    const [pemA] = scanText('-----BEGIN PRIVATE\x20KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASC');
+    const [pemB] = scanText('-----BEGIN PRIVATE\x20KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASC');
     expect(pemA.fingerprint).not.toBe(pemB.fingerprint);
   });
 

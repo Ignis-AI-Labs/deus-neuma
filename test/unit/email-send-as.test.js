@@ -27,12 +27,12 @@ describe('send as', () => {
   });
 
   test('a member has its own address (Design note, 2026-11-18: what it writes leaves from it, over its company\'s', () => {
-    const house = { address: 'founder@example.com', sendAs: 'umbrae = sales@umbrae.io, firepos = Firepos@IgnisLabs.ai' };
-    expect(memberAddress(house, 'firepos')).toBe('firepos@example.com');
+    const house = { address: 'founder@house.example', sendAs: 'umbrae = sales@umbrae.io, firepos = Firepos@House.Example' };
+    expect(memberAddress(house, 'firepos')).toBe('firepos@house.example');
     expect(memberAddress(house, 'metidar')).toBe(null);
-    expect(fromFor(house, { company: 'umbrae', member: 'firepos' })).toEqual({ ok: true, from: 'firepos@example.com' });
+    expect(fromFor(house, { company: 'umbrae', member: 'firepos' })).toEqual({ ok: true, from: 'firepos@house.example' });
     expect(fromFor(house, { company: 'umbrae', member: 'metidar' })).toEqual({ ok: true, from: 'sales@umbrae.io' });
-    expect(fromFor(house, { member: 'metidar' })).toEqual({ ok: true, from: 'founder@example.com' });
+    expect(fromFor(house, { member: 'metidar' })).toEqual({ ok: true, from: 'founder@house.example' });
     // An address asked for by name still wins, when the mailbox holds it.
     expect(fromFor(house, { from: 'sales@umbrae.io', member: 'firepos' })).toEqual({ ok: true, from: 'sales@umbrae.io' });
   });

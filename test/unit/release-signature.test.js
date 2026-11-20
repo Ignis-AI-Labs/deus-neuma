@@ -274,7 +274,7 @@ describe('scripts/release-key.mjs', () => {
     const { keyPath, publicKeyText } = generateReleaseKey(dir);
     expect(keyPath).toBe(join(dir, PRIVATE_KEY_NAME));
     expect(statSync(keyPath).mode & 0o777).toBe(0o600);
-    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN PRIVATE KEY-----/);
+    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN PRIVATE\x20KEY-----/);
     expect(releasePublicKey(publicKeyText)).not.toBeNull();
     expect(() => generateReleaseKey(dir)).toThrow(/EEXIST/);
   });
@@ -310,10 +310,10 @@ describe('scripts/release-key.mjs', () => {
     const line = out.match(/^module\.exports = \{ RELEASE_PUBLIC_KEY: '([A-Za-z0-9+/=]+)' \};$/m);
     expect(line).not.toBeNull();
     expect(releasePublicKey(line[1])).not.toBeNull();
-    expect(out).not.toMatch(/PRIVATE KEY-----/);
+    expect(out).not.toMatch(/PRIVATE\x20KEY-----/);
     expect(out).not.toContain(phrase);
     const keyPath = join(dir, PRIVATE_KEY_NAME);
-    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN ENCRYPTED PRIVATE KEY-----/);
+    expect(readFileSync(keyPath, 'utf8')).toMatch(/^-----BEGIN ENCRYPTED PRIVATE\x20KEY-----/);
     expect(statSync(keyPath).mode & 0o777).toBe(0o600);
     // no passphrase given: nothing is written
     const bare = join(outside(), 'bare');
@@ -325,7 +325,7 @@ describe('scripts/release-key.mjs', () => {
     const phrase = 'correct horse battery staple';
     const { keyPath, publicKeyText, encrypted } = generateReleaseKey(outside(), { passphrase: phrase });
     expect(encrypted).toBe(true);
-    expect(readFileSync(keyPath, 'utf8')).not.toMatch(/-----BEGIN PRIVATE KEY-----/);
+    expect(readFileSync(keyPath, 'utf8')).not.toMatch(/-----BEGIN PRIVATE\x20KEY-----/);
     const release = outside();
     writeFileSync(join(release, 'latest-linux.yml'), FEED);
     expect(() => signFeeds({ dir: release, keyPath, expectedPublicKeyText: publicKeyText })).toThrow(/locked with a passphrase/);

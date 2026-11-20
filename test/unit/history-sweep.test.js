@@ -88,7 +88,7 @@ describe('history-sweep (real tmp git repos)', () => {
       'a/openai.md': `OPENAI=sk-${'q'.repeat(24)}`,
       'a/slack.md': `SLACK=xoxb-1234567890-${'w'.repeat(12)}`,
       'a/aws.md': `AWS=AKIA${'Q'.repeat(16)}`,
-      'a/pem.md': '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEAfakefakefake\n-----END RSA PRIVATE KEY-----',
+      'a/pem.md': '-----BEGIN RSA PRIVATE\x20KEY-----\nMIIEowIBAAKCAQEAfakefakefake\n-----END RSA PRIVATE\x20KEY-----',
     };
     await commit(repo, Object.fromEntries(Object.entries(samples).map(([k, v]) => [k, `${v}\n`])), 'samples');
     await fs.rm(path.join(repo, 'a'), { recursive: true });

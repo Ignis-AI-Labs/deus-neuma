@@ -190,7 +190,7 @@ describe('what the engine must hold', () => {
       const cfg = { modelsDir: path.join(root, 'models'), extraModelPaths: path.join(root, 'extra.yaml') };
       const none = await installsWaiting(model, cfg, pipeline);
       expect(none.missing.map((f) => f.name)).toEqual(['novaAnimeXL_ilV190.safetensors', 'RealESRGAN_x4plus_anime_6B.safetensors']);
-      expect(none.words).toMatch(/checkpoints\/haleAnimeXL_ilV190\.safetensors \(no install is named; ask your operator\)/);
+      expect(none.words).toMatch(/checkpoints\/novaAnimeXL_ilV190\.safetensors \(no install is named; ask your operator\)/);
       // The checkpoint in the operator's library (an extra model path), the upscaler in the engine's own folder.
       await fs.mkdir(path.join(root, 'library', 'checkpoints'), { recursive: true });
       await fs.writeFile(path.join(root, 'library', 'checkpoints', 'novaAnimeXL_ilV190.safetensors'), 'x');
