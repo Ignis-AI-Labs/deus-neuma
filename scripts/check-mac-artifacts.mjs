@@ -50,7 +50,15 @@ export function appRootOf(bundle) {
   const archive = path.join(resources, 'app.asar');
   if (!fs.existsSync(archive)) throw new Error(`${bundle} holds neither Contents/Resources/app nor app.asar`);
   const into = fs.mkdtempSync(path.join(os.tmpdir(), 'neuma-app-root-'));
-  createRequire(import.meta.url)('@electron/asar').extractAll(archive, into);
+  try {
+    createRequire(import.meta.url)('@electron/asar').extractAll(archive, into);
+  } catch (error) {
+    // The archive's own list still names the other chip's native files, which the build pruned on purpose
+    // (prune-foreign-prebuilds.cjs). Everything else was opened; only a miss that is NOT one of those is a fault.
+    const misses = String(error.message).split('\n').filter((line) => /^Error: /.test(line));
+    const pruned = (line) => /^Error: ENOENT\b/.test(line) && line.includes(`${archive}.unpacked${path.sep}`);
+    if (!misses.length || !misses.every(pruned)) throw error;
+  }
   return into;
 }
 

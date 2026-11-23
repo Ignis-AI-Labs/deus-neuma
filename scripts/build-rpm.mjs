@@ -45,7 +45,14 @@ const REQUIRES = [
 
 const desktop = menuEntry(pkg.description);
 
-const spec = `Name: neuma
+// The package carries the app's files EXACTLY as built. rpmbuild's own clean-up of the build root (rewriting
+// "#!/usr/bin/env node" to "#!/usr/bin/node" in eighteen scripts, re-linking the native modules) made the rpm's app
+// differ from the AppImage's and the deb's, so the release check that the three hold the same app refused it
+// (0.1.185). A repackaging of finished binaries wants none of it: no post-install policy, no debug package.
+const spec = `%global __os_install_post %{nil}
+%global debug_package %{nil}
+%global _build_id_links none
+Name: neuma
 Version: ${pkg.version}
 Release: 1%{?dist}
 Summary: ${pkg.description}
