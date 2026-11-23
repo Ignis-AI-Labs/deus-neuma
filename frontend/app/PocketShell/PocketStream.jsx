@@ -113,7 +113,7 @@ export const PocketStream = () => {
                   ? sendRevision(revisionTurnId, text, preset, attachments, 'now')
                   : sendThought(text, preset, attachments, 'now')
               )}
-              urgentTitle="Interject NOW — cut the reply and take the floor"
+              urgentTitle="Send NOW — they read it at once and carry on with what they are doing"
               onStop={stopThought}
               onEscapeRecallQueued={heldCount > 0 && state.connected ? () => pullQueuedThought() : null}
               recall={recall}

@@ -126,6 +126,10 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     const quay = (await engine()).prospects.find((p) => p.domain === 'quay.co.uk');
     expect(await act('merc', { ...lead, id: quay.id, email: 'ada@quay.co.uk', emailSource: 'https://quay.co.uk/team' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is in GB, and "Non-developer founders" may only be sent to US/) });
     expect(await act('merc', { ...lead, email: 'ada@acme.co.uk', emailSource: 'https://acme.dev/contact' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is a GB address, and "Non-developer founders" may only be sent to US/) });
+    // EVERY LEAD IS VALIDATED FIRST (Design note, 2026-11-21: a scored company becomes a lead only once the house's screening confirmed it — a lead run does it.
+    expect((await act('merc', { ...lead, emailSource: 'https://acme.dev/contact' })).error).toMatch(/has not been VALIDATED yet/);
+    const { listScreened } = await import('../../backend/services/sales/sales-store.js');
+    expect(await listScreened(me.address, segment.id, [(await engine()).prospects.find((p) => p.domain === 'acme.dev').id], 'lead-run:merc')).toBe(1);
     expect((await act('merc', { ...lead, emailSource: 'https://acme.dev/contact' })).status).toBe('ok');
     const [onLedger] = await (await leadLedgerFor(me.address)).load();
     expect(onLedger).toMatchObject({ name: 'Ada Lovelace, Founder at acme', contact: 'ada@acme.dev', status: 'cold', ownerNeumaId: 'merc', channelId: 'email' });
@@ -138,6 +142,7 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     const late = { type: 'sales/lead', id: delta.id, email: 'team@delta.dev', emailSource: 'https://delta.dev/contact' };
     expect(await act('merc', { ...late, person: 0 })).toMatchObject({ status: 'error', error: expect.stringMatching(/has no person filed yet — give \{name, role\}/) });
     expect(await act('merc', { ...late, person: { name: 'Delta team', role: '' } })).toMatchObject({ status: 'error', error: expect.stringMatching(/person: \{name, role\} — who the address belongs to/) });
+    expect(await listScreened(me.address, segment.id, [delta.id], 'lead-run:merc')).toBe(1); // validated, as a lead run does
     expect((await act('merc', { ...late, person: { name: 'Delta team', role: 'contact' } })).status).toBe('ok');
     expect((await (await leadLedgerFor(me.address)).load()).find((l) => l.contact === 'team@delta.dev')).toMatchObject({ name: 'Delta team, contact at delta', status: 'cold' });
     expect((await engine()).prospects.find((p) => p.domain === 'delta.dev')).toMatchObject({ stage: 'promoted', people: [{ name: 'Delta team', role: 'contact', sourceUrl: 'https://delta.dev/contact' }] });
@@ -202,7 +207,12 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     expect(await leadEmailRefusal(me.address, email('It starts at 250 dollars.'))).toMatch(/250 is not on the approved facts sheet/);
     // Her own company's figure passes the facts check; her address a database confirmed live (a first email needs that,
     // 2026-11-19); what stops it next is only that no model is here to read its claims.
-    const { noteAddressCheck } = await import('../../backend/services/sales/sales-store.js');
+    const { noteAddressCheck, setSegmentState, readSegments } = await import('../../backend/services/sales/sales-store.js');
+    // Her audience was filed again above and waits for the operator: a first email is written only once it is approved
+    // again (lead-screen.js), and says so until then.
+    const hers = (await readSegments(me.address)).find((sg) => sg.name === 'Non-developer founders');
+    expect(await leadEmailRefusal(me.address, email('A session runs 60 minutes.'))).toMatch(/"Non-developer founders" is draft, not approved/);
+    await setSegmentState(me.address, hers.id, 'approved', 'operator');
     await noteAddressCheck(me.address, { email: 'ada@acme.dev', check: { status: 'valid', score: 98, checker: 'Hunter' }, spent: 0.5, by: 'test' });
     expect(await leadEmailRefusal(me.address, email('A session runs 60 minutes.'))).toMatch(/the claims check could not run/);
   });
@@ -237,7 +247,7 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
 
   test('P6-123: an address away from its company\'s domain is filed, and no approved list covers it — every email to it asks', async () => {
     const [segment] = (await engine()).segments;
-    expect((await request(app).post(`/api/v1/revenue/lead-engine/segments/${segment.id}/state`).use(as).send({ state: 'approved' })).status).toBe(200);
+    expect(segment.state).toBe('approved'); // approved again above, before the first email to anyone in it
     const companies = [company('epsilon.dev', 5), company('zeta.dev', 5)];
     expect((await act('merc', { type: 'sales/prospect', segment: segment.id, companies })).status).toBe('ok');
     const pool = (await engine()).prospects.filter((p) => ['epsilon.dev', 'zeta.dev'].includes(p.domain));
@@ -254,6 +264,57 @@ describe('THE LEAD ENGINE through the real stack (gnosis)', () => {
     const state = { leads, prospects: (await engine()).prospects, segments: (await engine()).segments, now: Date.now() };
     expect(judgeCover({ ...state, recipients: ['ada@zeta.dev'] })).toEqual({ covered: true });
     expect(judgeCover({ ...state, recipients: ['epsilon.studio@mailbox.example'] })).toEqual({ covered: false, reason: 'epsilon.studio@mailbox.example is not at epsilon.dev — the list the operator approved is companies' });
+  });
+
+  test('a fit whose country is not known is still filed as a lead, marked, and NOT held for it; once its country is known, one outside the audience is not written to', async () => {
+    const [segment] = (await engine()).segments;
+    const { listScreened } = await import('../../backend/services/sales/sales-store.js');
+    expect((await act('merc', { type: 'sales/prospect', segment: segment.id, companies: [company('eta.dev', 5, { country: undefined }), company('theta.dev', 5, { country: undefined })] })).status).toBe('ok');
+    const pool = (await engine()).prospects.filter((p) => ['eta.dev', 'theta.dev'].includes(p.domain));
+    expect(pool.map((p) => p.country)).toEqual([null, null]);
+    expect(await listScreened(me.address, segment.id, pool.map((p) => p.id), 'lead-run:merc')).toBe(2);
+    const idOf = (domain) => pool.find((p) => p.domain === domain).id;
+    for (const domain of ['eta.dev', 'theta.dev']) {
+      const put = await act('merc', { type: 'sales/lead', id: idOf(domain), person: 0, email: `ada@${domain}`, emailSource: `https://${domain}/contact` });
+      expect(put, JSON.stringify(put)).toMatchObject({ status: 'ok', content: expect.stringMatching(/Its country is not on its pages, and nothing places it anywhere the house never writes to: write as for any lead/) });
+    }
+    const lead = (await engine()).leads.find((l) => l.contact === 'ada@eta.dev');
+    expect(lead.origin).toMatchObject({ country: null, countryOpen: true });
+    const email = (to) => ({ to: [to], subject: 'Your build', text: 'A session runs 60 minutes. May I send two ideas?\n\nMerc', promise: 'two short written ideas', laneId: 'merc' });
+    // Not known is not a reason: whatever else the email still owes, its country is not it (Design note, 2026-11-22.
+    expect(String(await leadEmailRefusal(me.address, email('ada@eta.dev')))).not.toMatch(/country/i);
+    // The country is filed from a page, never guessed; one outside the audience's is never written to for it.
+    expect(await act('merc', { type: 'sales/country', id: idOf('eta.dev'), country: 'Germany', source: 'https://eta.dev/imprint' })).toMatchObject({ status: 'error', error: expect.stringMatching(/two-letter ISO code/) });
+    expect(await act('merc', { type: 'sales/country', id: idOf('eta.dev'), country: 'DE', source: 'eta.dev' })).toMatchObject({ status: 'error', error: expect.stringMatching(/a country is never guessed/) });
+    expect(await act('merc', { type: 'sales/country', id: idOf('eta.dev'), country: 'DE', source: 'https://eta.dev/imprint' })).toMatchObject({ status: 'ok', content: expect.stringMatching(/may only be sent to US — it is not written to for this audience/) });
+    expect(await leadEmailRefusal(me.address, email('ada@eta.dev'))).toMatch(/eta is in DE, and "Non-developer founders" may only be sent to US/);
+    expect(await act('merc', { type: 'sales/country', id: idOf('theta.dev'), country: 'us', source: 'https://theta.dev/about' })).toMatchObject({ status: 'ok', content: expect.stringMatching(/on record in US .* Its lead may be written to now/) });
+    expect((await engine()).leads.find((l) => l.contact === 'ada@theta.dev').origin).toMatchObject({ country: 'US', countryOpen: false });
+    expect(await act('merc', { type: 'sales/country', id: idOf('theta.dev'), country: 'US', source: 'https://theta.dev/about' })).toMatchObject({ status: 'error', error: expect.stringMatching(/already on record in US/) });
+  });
+
+  test('the pipeline review grades the same leads at every stage, for the seat and for the operator, from the records alone', async () => {
+    const [segment] = (await engine()).segments;
+    // The seat: one line an audience, then one audience whole, each failed check named with its companies.
+    expect(await act('merc', { type: 'sales/review' })).toMatchObject({ status: 'ok', content: expect.stringMatching(new RegExp(`THE PIPELINE REVIEW[^]*\\[${segment.id}\\] ${segment.name}: \\d+ graded · FILTER \\d+%`)) });
+    const one = await act('merc', { type: 'sales/review', segment: segment.id });
+    expect(one.status, JSON.stringify(one)).toBe('ok');
+    expect(one.content).toMatch(/^PIPELINE REVIEW — "Non-developer founders"/);
+    expect(one.content).toMatch(/SETUP: this audience has no hard condition/);
+    expect(one.content).toMatch(/VALIDATION — \d+ of \d+ meet the standard[^]*MUST — A checker confirmed the address exists \(valid\)\. FAILED BY \d+: [a-z]+\.dev \(never checked\)/);
+    expect(one.content).toMatch(/RESEARCH — no lead of the batch has reached it/);
+    expect(await act('merc', { type: 'sales/review', segment: 's-nope' })).toMatchObject({ status: 'error', error: expect.stringMatching(/is not one of this house's audiences/) });
+    // The operator: every audience on a line (counts, no rows); one audience whole (every lead with its grades).
+    expect((await request(app).get('/api/v1/revenue/lead-engine/review')).status).toBe(401);
+    const all = (await request(app).get('/api/v1/revenue/lead-engine/review').use(as)).body;
+    expect(all.stages.map((s) => s.id)).toEqual(['filter', 'address', 'validate', 'research', 'email']);
+    expect(all.standard.find((c) => c.id === 'mail.once')).toMatchObject({ stage: 'email', must: true, says: expect.stringMatching(/Nothing is said twice/) });
+    const line = all.reviews.find((r) => r.segment.id === segment.id);
+    expect(line.rows).toBeUndefined();
+    const whole = (await request(app).get(`/api/v1/revenue/lead-engine/review?segment=${segment.id}&size=2`).use(as)).body.reviews[0];
+    expect(whole).toMatchObject({ size: 2, of: line.of });
+    expect(whole.rows[0]).toMatchObject({ grades: { filter: expect.stringMatching(/meets|weak|fails/), validate: 'fails', research: 'none', email: 'none' } });
+    expect(whole.rows[0].fails).toEqual(expect.arrayContaining([expect.objectContaining({ stage: 'validate', check: 'addr.valid', must: true, why: 'never checked' })]));
   });
 
   test('P6-70: the operator lifts a do-not-contact entry through the real route; an entry not listed is a 404', async () => {

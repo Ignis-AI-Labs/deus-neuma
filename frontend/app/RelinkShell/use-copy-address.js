@@ -1,9 +1,12 @@
 // useCopyAddress — click-to-copy with a transient "copied" flag; clears its
 // timer on unmount. Shared by every wallet surface that shows an address or a
 // transaction hash (balance header, receive layer, receipt, witness settings).
+// A copied address is then watched for a moment: a different address taking
+// its place on the clipboard is a hijacker, and is reported (clipboard-guard.js).
 
 import { useEffect, useState, useRef } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
+import { guardCopiedAddress } from '../../services/clipboard-guard.js';
 
 export const useCopyAddress = (value) => {
   const [copied, setCopied] = useState(false);
@@ -14,6 +17,7 @@ export const useCopyAddress = (value) => {
     uiSound('tick');
     try {
       await navigator.clipboard.writeText(value);
+      guardCopiedAddress(value).catch((err) => console.warn('[clipboard] the swap check did not run', err));
       setCopied(true);
       clearTimeout(timer.current);
       timer.current = setTimeout(() => setCopied(false), 1500);

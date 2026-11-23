@@ -50,13 +50,19 @@ const scoresFor = (criteria, given, label, required) => {
 
 /**
  * The match level from the scores: any disqualifier at 3+ is no match; the
- * signs of a fit averaging 4+ with none under 3 is strong; averaging 2.5+ is
- * weak. pure.
+ * signs of a fit averaging 4+ with none under 3 is strong; the FIRST sign met
+ * (3+), or all of them averaging 2.5+, is weak. pure.
  */
 export const matchLevel = (fit, misfit) => {
   if (misfit.some((s) => s.score >= 3) || !fit.length) return 1;
   const mean = fit.reduce((n, s) => n + s.score, 0) / fit.length;
   if (mean >= 4 && fit.every((s) => s.score >= 3)) return 3;
+  // THE FIRST SIGN DECIDES WHAT A COMPANY IS; THE OTHERS ONLY RANK IT (the sales bench, 2026-11-22: a fund that invests
+  // in AI companies met an audience's first sign and was still no match, every run, because that audience's side signs
+  // — […], […] — scored 0 and pulled its average under the line. The
+  // same fault had already cost a crypto fund its match for a country its site does not name). A company that meets
+  // the first sign is at least a weak match, whatever the side signs say; they lift it to strong, never throw it out.
+  if (fit[0].score >= 3) return 2;
   return mean >= 2.5 ? 2 : 1;
 };
 
@@ -129,12 +135,20 @@ export const foldProspects = (events) => {
     if (e?.type === 'people' && prior && Array.isArray(e.people)) byId.set(e.id, { ...prior, people: [...prior.people, ...e.people] });
     // Proofs filed after the company was scored (sales/prove): an audience that gained a required sign.
     if (e?.type === 'proved' && prior && Array.isArray(e.proofs)) byId.set(e.id, { ...prior, proofs: e.proofs });
+    // A placed lead's company scored after it was placed (sales-store.js addProspects): its record takes the scores
+    // and keeps its lead, its audience and its place on the ledger.
+    if (e?.type === 'scored' && prior && e.prospect) {
+      const { fit, misfit, match, proofs, failedRequired, belongsTo, description, country, size, people, source } = e.prospect;
+      byId.set(e.id, { ...prior, fit, misfit, match, description: description ?? prior.description, country: country ?? prior.country, size: size ?? prior.size, source, people: [...prior.people, ...(people ?? [])], ...(proofs ? { proofs } : {}), ...(failedRequired ? { failedRequired, belongsTo } : {}), scoredAt: e.at });
+    }
     if (e?.type === 'promoted' && prior) byId.set(e.id, { ...prior, stage: 'promoted', leadId: e.leadId, promotedAt: e.at });
     if (e?.type === 'listed' && Array.isArray(e.ids)) {
       for (const id of e.ids) if (byId.has(id)) byId.set(id, { ...byId.get(id), listApproved: true, listedAt: e.at });
     }
     // The operator's hands on one company (Design note, 2026-11-18: taken off the approved list, or moved under another
     // audience — a move leaves the old audience's list approval behind.
+    // Where a scored company is, read from its own pages after it was scored (lead-run.js): only ever fills an empty country.
+    if (e?.type === 'country' && prior && !prior.country && /^[A-Z]{2}$/.test(String(e.country))) byId.set(e.id, { ...prior, country: e.country });
     if (e?.type === 'unlisted' && prior) byId.set(e.id, { ...prior, listApproved: false, listedAt: null });
     if (e?.type === 'moved' && prior && e.segmentId) byId.set(e.id, { ...prior, segmentId: e.segmentId, listApproved: false, movedAt: e.at });
     if (e?.type === 'placed' && e.leadId && e.segmentId) {
@@ -160,7 +174,9 @@ export const poolRefusal = (prospect, pool, suppressedDomain) => {
 };
 
 // Country-code domains used worldwide as generic names: they say nothing about where a company is.
-const GENERIC_TLDS = new Set(['io', 'ai', 'co', 'me', 'tv', 'cc', 'gg', 'ly', 'so', 'to', 'fm', 'sh', 'ws', 'is', 'it', 'gl', 'im', 'la', 'vc', 'xyz']);
+// (.fi and .ag are how "finance" and "aggregator" are spelt across DeFi — moonwell.fi is not in Finland, jup.ag not in Antigua:
+// the sales bench, 2026-11-22, found a Base lending protocol skipped as a company in a country the audience does not write to.)
+const GENERIC_TLDS = new Set(['io', 'ai', 'co', 'me', 'tv', 'cc', 'gg', 'ly', 'so', 'to', 'fm', 'sh', 'ws', 'is', 'it', 'gl', 'im', 'la', 'vc', 'fi', 'ag', 'st', 'ac', 'am', 'id', 'xyz']);
 
 /** The country an email address's domain names, as an ISO code, or null when it names none. pure. */
 export const countryOfAddress = (email) => {

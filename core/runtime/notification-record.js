@@ -194,6 +194,10 @@ export const KIND = Object.freeze({
   // when one did, rides as the actor.
   companyLine: 'company_line',
 
+  // A MEETING on a calendar the operator keeps elsewhere (calendar/meeting-reminders.js; Design note, 2026-11-20: […]): it was just booked, or it starts in an hour, or in ten minutes. System
+  // standing — the calendar reports; nobody acted.
+  meeting: 'meeting',
+
   // A being put a decision before its operator and its turn is PARKED on the
   // answer — an ask_operator card or a plan_submit verdict, neither carrying
   // a clock (ruling, 2026-07-27). The in-stream card cannot reach an operator in

@@ -14,6 +14,7 @@ import { createLogger } from './logger.js';
 import { refinementToolsFor } from './refinement-being-tools.js';
 import { voiceToolsFor } from './voice-being-tools.js';
 import { webToolsFor } from './web-being-tools.js';
+import { browserToolsFor } from './browser/browser-being-tools.js';
 import { chainToolsFor } from './chain/chain-being-tools.js';
 import { lpToolsFor } from './umbrae-lp/lp-being-tools.js';
 import { mediaToolsFor } from './media-being-tools.js';
@@ -22,6 +23,7 @@ import { mapToolsFor } from './map-being-tools.js';
 import { platformFeedToolsFor } from './platform-feed/platform-feed-tools.js';
 import { flightCheckToolsFor } from './flight-check.js';
 import { kspToolsFor } from './ksp/ksp-being-tools.js';
+import { unrealToolsFor } from './unreal/unreal-being-tools.js';
 import { emailToolsFor } from './email/email-being-tools.js';
 import { pressToolsFor } from './doc-press/press-being-tools.js';
 import { securityToolsFor } from './security/security-being-tools.js';
@@ -108,8 +110,8 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // here and every family after it shifted by one: the harness seat took the
     // chain tools as "media", and the last family (legal) fell off the end for
     // every seat (found 2026-10-14; test/integration/tool-catalog-seats.test.js).
-    memoryToolsUnfiltered, skiesTools, genomeTools, housePostTools, chatLinkTools, staffTools, webTools, chainTools, mediaTools, imageTools, cardTools, mapTools,
-    platformTools, flightTools, kspTools, emailTools, pressTools, sealTools, legalTools,
+    memoryToolsUnfiltered, skiesTools, genomeTools, housePostTools, chatLinkTools, staffTools, webTools, browserTools, chainTools, mediaTools, imageTools, cardTools, mapTools,
+    platformTools, flightTools, kspTools, unrealTools, emailTools, pressTools, sealTools, legalTools,
   ] = await Promise.all([
     // A being can always inspect ITS OWN wallet — a neuma its workspace keypair,
     // a sealed witness the address in its seal (Design note, 2026-07-26: […]). The lane decides which one, so neither seat
@@ -160,6 +162,8 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // a flip takes effect on the very next turn); OFF is not advertised, and
     // a call that still arrives is answered honestly by the handler.
     capability('web', () => webToolsFor(connection)),
+    // The being's own browser rides the same switch (docs/work/being-browser.md).
+    capability('browser', () => browserToolsFor(connection)),
     // Chain truth rides only while the operator's switch is ON (read per turn
     // — a flip lands next turn); OFF advertises HELD with the door named, and
     // the handler re-reads the switch fail-closed. The web law, verbatim.
@@ -186,6 +190,9 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
     // Available at every bound seat and behind no switch.
     capability('flightCheck', () => flightCheckToolsFor(connection)),
     isNeuma ? capability('ksp', () => kspToolsFor(connection)) : [],
+    // The Unreal editor on this computer: sovereign lanes only, and only while the operator's
+    // switch is on (docs/work/unreal-editor-tools.md).
+    isNeuma ? capability('unreal', () => unrealToolsFor(connection)) : [],
     // The mailbox rides only with its one bound holder AND full credentials
     // (read per turn — a bind or credential change lands next turn).
     capability('email', () => emailToolsFor(connection.companion?.neumaId || null)),
@@ -271,7 +278,7 @@ export const platformToolsFor = async (connection, { seat = 'neuma' } = {}) => {
       ...skillTools, ...postTools, ...vaultTools, ...taskTools, ...operatorTaskTools,
       ...leadTools, ...campaignTools, ...socialTools, ...securityTools, ...vesselLogTools,
       ...refinementTools, ...voiceTools, ...retrieveTools, ...memoryTools, ...skiesTools, ...genomeTools,
-      ...housePostTools, ...chatLinkTools, ...staffTools, ...findingsTools, ...webTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...emailTools, ...pressTools, ...askTools,
+      ...housePostTools, ...chatLinkTools, ...staffTools, ...findingsTools, ...webTools, ...browserTools, ...chainTools, ...mediaTools, ...imageTools, ...cardTools, ...mapTools, ...platformTools, ...flightTools, ...kspTools, ...unrealTools, ...emailTools, ...pressTools, ...askTools,
       ...planTools, ...planPresentTools, ...sovereigntyTools, ...sealTools, ...legalTools, ...treasuryTools, ...benchTools, ...extensionTools,
   ],
   };

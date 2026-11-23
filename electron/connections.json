@@ -78,6 +78,17 @@
       "default": false
     },
     {
+      "id": "calendar-feeds",
+      "name": "Your calendars",
+      "to": "the calendar service whose address you pasted (Google, Outlook, iCloud or another)",
+      "when": "every 5 minutes while a calendar is added, and when you open the house calendar",
+      "sends": "a request to the private address you pasted for each calendar; nothing about you or the house beyond the request itself",
+      "whileOff": "calendars you added stay listed and are not read: their meetings do not show on the house calendar and nothing reminds you of them",
+      "detail": "When you add a calendar under TASKS, CALENDAR, you paste its private iCal address (in Google Calendar: Settings, the calendar, Secret address in iCal format). Once you turn this on, the app asks that address every 5 minutes for the calendar and reads it on this computer. It is read-only and one way: nothing is ever written to that calendar. Each meeting shows on the house calendar, you are told when one is added, an hour before it starts and ten minutes before, and a meeting with someone on your lead list is noted on that lead. The address is kept in your house's private files and is never shown again or sent anywhere but to the service it belongs to. While it is off, nothing is asked.",
+      "control": "switch",
+      "default": false
+    },
+    {
       "id": "lead-sources",
       "name": "Lead sources",
       "to": "the public lists your sales seat gathers companies from (GeckoTerminal, DefiLlama), the own websites of the companies it gathered, and the contact-data providers you attached, if any (Hunter, Tomba, Apollo)",
@@ -85,6 +96,17 @@
       "sends": "a request for the public list; to a gathered company's own site, a request for its public pages; to an attached provider, a company's web address and your own key for it; to an attached provider's company search (Hunter's, Tomba's or Apollo's), the words or keywords your sales seat describes the companies with, the audience's countries and sizes, and your own key; to find or check one person's address, that person's name and their company's web address, or the address itself, and your own key",
       "whileOff": "your sales seat finds companies one at a time by reading the web",
       "detail": "Once you turn it on, the member who holds your sales seat can gather companies in bulk for an audience you can read. The free sources are public lists read without any account: the tokens trading on Base (GeckoTerminal) and the DeFi protocols on Base (DefiLlama). They see a request from this computer and nothing about your house. If you attach a contact-data provider with your own key (Hunter, Tomba or Apollo, under Settings, API, Service keys), the seat can also ask it for the people at one company it gathered: that provider receives the company's web address and your key, and nothing else. It can also ask Tomba's or Apollo's company search for companies, and find one named person's address. Those lookups and searches spend your credits there, so none runs until you turn Paid lead data on in that position's Settings, and it stops at the monthly limit you set beside the switch. Every address an email goes to is checked first by Hunter, Tomba or Apollo, whichever is attached and answers first, whether Paid lead data is on or off, within that limit; that provider receives the address and your key. You can have every attached provider check an address too. A gathered company is only a candidate until your sales seat scores it, and nobody is emailed before you approve the audience and its list. While it is off, the seat finds companies one at a time by reading the web.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "card-payments",
+      "name": "Card payments",
+      "to": "Stripe (api.stripe.com), on your own Stripe account",
+      "when": "when an invoice that can be paid by card is issued, voided or paid another way, and every 10 minutes while such an invoice is open",
+      "sends": "your own Stripe key; to make an invoice's payment link, the invoice's lines, amounts, currency, number and your company's name; to learn whether it was paid, the link's id",
+      "whileOff": "invoices carry no card link and are paid in crypto only; an invoice already sent with a card link can still be paid on Stripe, but the house is not told until this is on again",
+      "detail": "Attach your own Stripe key under Settings, API, Payments (a restricted key is enough: write on Payment Links, read on Checkout Sessions). Once you turn this on, an invoice issued for a deal gets its own payment link on your Stripe account, with the invoice's lines as the items. Stripe hosts the page the buyer pays on, takes the payment into your Stripe balance and sends the buyer its receipt. The link closes after one payment. This computer has no public address for Stripe to call, so the app asks Stripe every 10 minutes whether each open card invoice has been paid, and tells you when one has. Your key is kept in your house's private files, is never shown to a being and is sent only to Stripe. Stripe's own fees apply on your account. While it is off, nothing is sent to Stripe.",
       "control": "switch",
       "default": false
     },
@@ -118,6 +140,17 @@
       "sends": "nothing: services you chose send events in; each must be signed with the secret you gave it",
       "whileOff": "every hook address answers as if it did not exist, and nothing outside can wake your beings",
       "detail": "Once you turn it on, the hooks you made (Settings, or neuma hooks add) answer at /api/v1/hooks/in/<id> on this computer. A service such as GitHub, Slack or Linear sends events there, signed with the secret the hook was given; an unsigned, wrongly signed, stale or repeated event is refused. A signed event is kept in the house's event log and wakes the being the hook names, through the house clock: the charter still decides whether and when it works, and every act it takes asks the same gates as always. To reach this computer from the internet you must expose its port yourself (a tunnel or a reverse proxy); the app opens nothing to the internet on its own. While it is off, nothing outside can wake your beings.",
+      "control": "switch",
+      "default": false
+    },
+    {
+      "id": "unreal-editor",
+      "name": "The Unreal editor on this computer",
+      "to": "an Unreal Engine editor open on this computer (127.0.0.1 only); when a neuma reads your Fab library or installs from it, that editor talks to fab.com and Epic's download servers",
+      "when": "only when a neuma uses it; looking is free, and running code, changing the project or installing from Fab asks your approval every time, even in AUTO, unless you allow that neuma always",
+      "sends": "to the editor: the code and commands a neuma runs in it; to Fab, through the editor's own sign-in: library searches and the downloads you approve",
+      "whileOff": "a neuma cannot see or use your Unreal editor",
+      "detail": "Once you turn it on, a neuma can work in an Unreal Engine editor that is open on this computer: see which project and level are open, look at the viewport, run Python in the editor, use Epic's built-in tools, read the Fab library of the account signed in inside the editor and add a listing to the project. It reaches the editor through Unreal's Remote Control server on this computer only (port 30010 unless you set NEUMA_UNREAL_PORT); the editor must have the Remote Control plugin on with remote Python allowed. Python in the editor runs as you, outside the neuma's sandbox, so every run shows you the whole code first and waits for your approval, and so does every change through Epic's tools and every Fab install. Fab traffic is the editor's own: fab.com sees your Epic account and IP address as it does when you use Fab yourself. While it is off, nothing is sent to the editor.",
       "control": "switch",
       "default": false
     },

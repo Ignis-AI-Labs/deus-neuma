@@ -19,6 +19,7 @@ import { NO_SENSE } from './machine-sense.js';
 import { pushSample, sampleOf } from './sample-history.js';
 import { AppTitle } from './app-title.jsx';
 import { POLL_MS, SubstrateConsole } from './SubstrateConsole.jsx';
+import { SubstrateNetwork } from './SubstrateNetwork.jsx';
 
 const SubstrateIcon = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.1" aria-hidden="true">
@@ -32,6 +33,7 @@ const SubstrateBody = () => {
   const [tel, setTel] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [acting, setActing] = useState(false);
+  const [tab, setTab] = useState('machine');
   const [history, setHistory] = useState([]);
   const [machine, watchMachine, sense] = useMachine();
   const [shownSense, setShownSense] = useState(NO_SENSE);
@@ -73,9 +75,21 @@ const SubstrateBody = () => {
     }
   };
 
+  // TWO TABS: the machine (the engine room), and the network (what this machine is connected to right now).
   return (
-    <SubstrateConsole tel={tel} loaded={loaded} machine={machine} sense={shownSense} history={history}
-      acting={acting} act={act} watch={watch} watchMachine={watchMachine} calm={calm.handlers} />
+    <>
+      <div className="sub-tabs" role="tablist" aria-label="Substrate views">
+        {[['machine', 'MACHINE'], ['network', 'NETWORK']].map(([id, words]) => (
+          <button key={id} type="button" role="tab" id={`sub-tab-${id}`} aria-selected={tab === id} aria-controls={`sub-view-${id}`} className={`sub-tab label-data${tab === id ? ' is-on' : ''}`} data-substrate-tab={id} onClick={() => setTab(id)}>{words}</button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`sub-view-${tab}`} aria-labelledby={`sub-tab-${tab}`}>
+        {tab === 'network' ? <SubstrateNetwork /> : (
+          <SubstrateConsole tel={tel} loaded={loaded} machine={machine} sense={shownSense} history={history}
+            acting={acting} act={act} watch={watch} watchMachine={watchMachine} calm={calm.handlers} />
+        )}
+      </div>
+    </>
   );
 };
 

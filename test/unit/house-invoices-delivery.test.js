@@ -39,7 +39,7 @@ describe('an invoice bills a won deal, to where the operator said', () => {
   test('refused: a deal not won, no address set, a currency the wallet cannot take, a bill past the deal, a due date gone', () => {
     expect(() => issue({ deal: deal({ stage: 'proposed' }) })).toThrow(/an invoice bills a deal the Mercator won/);
     expect(() => issue({ payTo: null })).toThrow(/no being writes payment details/);
-    expect(() => issue({ deal: deal({ value: { amount: 1200, currency: 'EUR' } }) })).toThrow(/takes USD .* or ETH today/);
+    expect(() => issue({ deal: deal({ value: { amount: 1200, currency: 'EUR' } }) })).toThrow(/^the deal is in EUR; in crypto the house takes USD \(in dollar stablecoins\) or ETH — by card it could be billed in EUR: the operator attaches Stripe/);
     expect(() => issue({ billed: 400.5 })).toThrow(/would bill past it/);
     expect(() => issue({ lines: [] })).toThrow(/lines: 1 to 20/);
     expect(() => issue({ lines: [{ what: 'x', amount: 5 }] })).toThrow(/lines\[0\]\.what/);
@@ -133,9 +133,11 @@ describe('an invoice bills a won deal, to where the operator said', () => {
     const v = issue();
     const lines = invoiceBriefingLines({ deals: [deal(), deal({ id: 'd-11111111', buyer: 'Wharf Co', value: { amount: 90, currency: 'USD' } })], invoices: foldInvoices([{ type: 'issued', invoice: v, at: NOW }]).invoices, receipts: [receipt()], payTo: PAY_TO, nowMs: Date.parse(NOW) });
     expect(lines).toContain('- to bill: deal [d-11111111] Wharf Co, won at 90 USD; billed 0 — treasury/invoice');
-    expect(lines).toContain(`- open: INV-0001 [${v.id}] Port of <Brine> 1200 USD, due 2026-11-15`);
+    expect(lines).toContain(`- open: INV-0001 [${v.id}] Port of <Brine> 1200 USD, due 2026-11-15 · not sent to the buyer yet`);
     expect(lines).toContain('  - a receipt that may be its: 1200.0 USDC on 2026-10-30, key ethereum:0x22:0 — treasury/invoice-paid if it is');
-    expect(invoiceBriefingLines({ deals: [deal()], invoices: [], receipts: [], payTo: null, nowMs: 0 })[2]).toMatch(/has not set where invoices are paid/);
+    expect(invoiceBriefingLines({ deals: [deal()], invoices: [], receipts: [], payTo: null, nowMs: 0 })[2]).toMatch(/has not set how invoices are paid — no invoice can be issued until they do \(a crypto address in TREASURY, or Stripe in SETTINGS, API, Payments\)/);
+    // With Stripe attached, the seat is told invoices can be paid by card and that the house makes the link.
+    expect(invoiceBriefingLines({ deals: [deal()], invoices: [], receipts: [], payTo: null, nowMs: Date.now(), cardReady: true })[2]).toMatch(/^Invoices are paid by card: the house makes each one its own Stripe payment link/);
   });
 });
 
@@ -190,7 +192,8 @@ describe('on the desk', () => {
     expect(html).toContain('INTO <span class="cline-exact">/srv/d</span> · SERVED AT <span class="cline-exact">https://files.example.com/out</span>');
     // A list of records is a plain table: the won deal is one row of the "won deals" sheet.
     const wonSheet = html.slice(html.indexOf('<table class="sheet-table" aria-label="won deals">'));
-    expect(wonSheet).toContain('<th scope="row">Port of &lt;Brine&gt;</th><td class="is-on">WON</td><td>1200 USD</td>');
+    // Its row opens onto its invoices and the form that bills it (DealInvoices.jsx); the invoices are read once the screen is up.
+    expect(wonSheet).toContain('aria-label="Port of &lt;Brine&gt; — its invoices, and bill it"><span aria-hidden="true">▸</span> Port of &lt;Brine&gt;</button></th><td class="is-on">WON</td><td>1200 USD</td><td class="is-alert">NOT BILLED</td>');
     expect(wonSheet).toContain('INV-0001.html: <a class="cline-link" href="https://files.example.com/out/c/t/INV-0001.html"');
     expect(html).toContain('href="https://files.example.com/out/c/t/INV-0001.html"');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>CHANGE WHERE DELIVERIES GO<\/button>/);

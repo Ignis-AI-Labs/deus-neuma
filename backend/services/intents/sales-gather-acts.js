@@ -19,14 +19,18 @@
 import { officeContext } from './revenue-acts.js';
 import { isConnectionOn } from '../connections/connection-switches.js';
 import { resolveUsableCredential } from '../oauth-token-broker.js';
-import { LEAD_SOURCES, GATHER_MAX, INDEX_GATHER_MAX, candidateLine } from '../sales/lead-sources.js';
+import { searchPast, searchVerdict } from '../sales/search-memory.js';
+import { apolloAsked } from '../sales/company-search.js';
+import { FROM_FITS_MAX } from '../sales/fits-discovery.js';
+import { LEAD_SOURCES, GATHER_MAX, PROTOCOLS_GATHER_MAX, TOKENS_GATHER_MAX, INDEX_GATHER_MAX, candidateLine } from '../sales/lead-sources.js';
 import { pagesFor, PAID_SEARCH_MAX } from '../sales/company-search.js';
 import { DISCOVER_MAX, previewDiscover, industryRefusal, heldWords } from '../sales/hunter-discover.js';
+import { isWide, wideRefusal, wideLookWords } from '../sales/wide-search.js';
 import { topFirst } from '../sales/top-first.js';
 import { readAudienceSites } from '../sales/site-reads.js';
 import { READ_MAX, siteLine } from '../sales/company-reader.js';
 import { SIZES, trafficOf, trafficLoaded, trafficWords } from '../sales/company-index.js';
-import { readSegments, readProspects, readCandidates, addCandidates, noteContacts, readContactLookups, noteSearch } from '../sales/sales-store.js';
+import { readSegments, readProspects, readCandidates, addCandidates, noteContacts, readContactLookups, noteSearch, readSearches } from '../sales/sales-store.js';
 import { readSpend, readSpendReservations, spentThisMonth, spendRefusal, reserveSpend, releaseSpend, attachedProviders } from '../sales/lead-spend.js';
 
 const SHOWN_GATHERED = 40;
@@ -58,8 +62,8 @@ const PEOPLE_SOURCES = Object.entries(LEAD_SOURCES).filter(([, s]) => s.kind ===
 const salesGatherIntent = Object.freeze({
   name: 'sales/gather',
   policyTool: 'sales.gather',
-  fieldsForPrompt: `{segment, source: ${COMPANY_SOURCES.map(([id]) => `"${id}"`).join(' | ')}, count?, words?, industries?: [name], keywords?: [phrase], exclude?: [word], match?: "any" | "all", sizes?: [${SIZES.map((s) => `"${s}"`).join(' | ')}], foundedFrom?: year, live?: boolean}`,
-  descriptionForPrompt: `THE LEAD ENGINE. Gather companies for an audience in bulk from a public list (new ones only; count caps how many: at most ${GATHER_MAX} from base-protocols or base-tokens, ${INDEX_GATHER_MAX} from company-index, ${DISCOVER_MAX} from hunter-discover, ${PAID_SEARCH_MAX} from tomba-discover or apollo-discover, which spend your operator's credits a page at a time under PAID LEAD DATA, so use them when the free sources run dry): ${COMPANY_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}. hunter-discover is free with your operator's Hunter key and is THE FIRST STEP, A WIDE NET: leave count out and one gather pulls everything Hunter answers for free — its own ranked list (exactly what its screen shows), then every size, then each of the audience's countries by size, each its own first hundred — up to ${DISCOVER_MAX} companies, the most addresses first, each with the count Hunter's screen shows. Then filter down: sales/read-sites, then score. Aim the net with keywords (phrases; match any or all — the operator's own Hunter search is a good start), industries (Hunter's own names, e.g. Blockchain Services, Financial Services, Venture Capital and Private Equity Principals, Software Development; a wrong one is answered with the nearest) and exclude; with those, Hunter's guess at your words is not used. Words alone are read by Hunter's assistant, loosely (it once took the chain Base for the word base). sales/discover shows what a search reads as before you gather it. company-index is the big one: it takes a SEARCH (words: matched in a company's name, industry and city; industries: exact names, a wrong one is answered with the right ones; sizes; foundedFrom; live: true keeps only companies whose site is among the million most visited, which drops dead ones) and returns up to ${INDEX_GATHER_MAX} a call, most visited first, in the audience's own countries. Gather wide there, then read and score. They land as CANDIDATES in your briefing with what the list says about each. Score the ones that fit with sales/prospect; a candidate is nobody's lead until you have.`,
+  fieldsForPrompt: `{segment, source: ${COMPANY_SOURCES.map(([id]) => `"${id}"`).join(' | ')}, count?, words?, industries?: [name], keywords?: [phrase], exclude?: [word], match?: "any" | "all", sizes?: [${SIZES.map((s) => `"${s}"`).join(' | ')}], foundedFrom?: year, live?: boolean, from?: audience id}`,
+  descriptionForPrompt: `THE LEAD ENGINE. THE BEST FREE SOURCE ONCE AN AUDIENCE HAS FITS: source "from-fits" takes the companies your own confirmed fits NAME on their portfolio, backers, partners and ecosystem pages (free, up to ${FROM_FITS_MAX}; from: another audience's id reads its fits — a funds audience's portfolios feed a projects audience, a projects audience's backers feed a funds audience). A PAID SEARCH REMEMBERS: the same words for the same audience continue from the page after the last one taken, and one that matched nothing, was too wide or has no page left is refused before a credit is spent. Gather companies for an audience in bulk from a public list (new ones only; count caps how many: from the Base lists ${GATHER_MAX} unless you give count — up to ${PROTOCOLS_GATHER_MAX} from base-protocols in one free read (ask for them all: it is the best source for an on-chain audience) and up to ${TOKENS_GATHER_MAX} from base-tokens (paced by the list, about two a minute), ${INDEX_GATHER_MAX} from company-index, ${DISCOVER_MAX} from hunter-discover, ${PAID_SEARCH_MAX} from tomba-discover or apollo-discover, which spend your operator's credits a page at a time under PAID LEAD DATA): ${COMPANY_SOURCES.map(([id, s]) => `${id} = ${s.label}`).join('; ')}. WHICH SOURCE FIRST: the one with the best record for this audience (your briefing says, per audience, how many of each source's companies were a fit). No source is first by habit. hunter-discover is free with your operator's Hunter key and is A WIDE NET — many companies, and so far few of them fits; a paid company search has found what an audience IS far more often, so with PAID LEAD DATA on take the better record first. About hunter-discover: leave count out and one gather pulls everything Hunter answers for free — its own ranked list (exactly what its screen shows), then every size, then each of the audience's countries by size, each its own first hundred — up to ${DISCOVER_MAX} companies, the most addresses first, each with the count Hunter's screen shows. Then filter down: sales/read-sites, then score. Aim the net with keywords (phrases; match any or all — the operator's own Hunter search is a good start), industries (Hunter's own names, e.g. Blockchain Services, Financial Services, Venture Capital and Private Equity Principals, Software Development; a wrong one is answered with the nearest) and exclude; with those, Hunter's guess at your words is not used. Words alone are read by Hunter's assistant, loosely (it once took the chain Base for the word base). sales/discover shows what a search reads as before you gather it. company-index is the big one: it takes a SEARCH (words: matched in a company's name, industry and city; industries: exact names, a wrong one is answered with the right ones; sizes; foundedFrom; live: true keeps only companies whose site is among the million most visited, which drops dead ones) and returns up to ${INDEX_GATHER_MAX} a call, most visited first, in the audience's own countries. Gather wide there, then read and score. They land as CANDIDATES in your briefing with what the list says about each. Score the ones that fit with sales/prospect; a candidate is nobody's lead until you have.`,
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -81,15 +85,22 @@ const salesGatherIntent = Object.freeze({
     const secret = source[1].secret ? (await resolveUsableCredential(source[1].secret).catch(() => null))?.apiKey ?? null : null;
     // A PAID company search (Tomba's, Apollo's) spends a credit a page: the operator's rule decides, like every paid lookup.
     const cost = source[1].paid ? pagesFor(payload?.count, source[1].perPage, source[1].max) : 0;
+    // SEARCH MEMORY (search-memory.js): what this audience already asked this source in these words decides, before a credit is spent.
+    let startPage = 1; let continued = null;
+    if (cost && source[0] === 'apollo-discover') {
+      const verdict = searchVerdict(searchPast(await readSearches(context.wallet), { segmentId: segment.id, source: source[0], asked: apolloAsked(query) }), { perPage: source[1].perPage, resumes: true });
+      if (verdict.refusal) return invalid(verdict.refusal);
+      ({ startPage, words: continued } = verdict);
+    }
     if (cost) {
       const [rule, lookups, reservations] = await Promise.all([readSpend(context.wallet), readContactLookups(context.wallet), readSpendReservations(context.wallet)]);
       const refusal = spendRefusal({ rule, spent: spentThisMonth([...lookups, ...reservations], Date.now()), cost });
       if (refusal) return { ok: false, status: 'denied', reason: refusal };
     }
-    return { ok: true, value: { context, segment, sourceId: source[0], count: payload?.count, query, apiKey, secret, cost } };
+    return { ok: true, value: { context, segment, sourceId: source[0], count: payload?.count, query, apiKey, secret, cost, startPage, continued, from: payload?.from ? String(payload.from).trim() : null } };
   },
   summarize: (payload) => `gather companies from ${payload?.source ?? '?'} for audience ${payload?.segment ?? '?'}`,
-  execute: async ({ context, segment, sourceId, count, query, apiKey, secret, cost = 0 }, { signal, emit } = {}) => {
+  execute: async ({ context, segment, sourceId, count, query, apiKey, secret, cost = 0, startPage = 1, continued = null, from = null }, { signal, emit } = {}) => {
     const [candidates, prospects] = await Promise.all([readCandidates(context.wallet), readProspects(context.wallet)]);
     const known = { domains: new Set([...candidates.map((c) => c.domain), ...prospects.map((p) => p.domain)]), tokens: new Set(candidates.map((c) => c.token).filter(Boolean)) };
     // A paid search holds the most it may spend while it runs; what it really spent is kept with the search below.
@@ -97,19 +108,24 @@ const salesGatherIntent = Object.freeze({
     if (reserved && !reserved.ok) return { ok: false, reason: reserved.reason };
     let found;
     try {
-      found = await LEAD_SOURCES[sourceId].gather({ count, known, signal, segment, query, apiKey, secret, onProgress: saying(emit, 'sales.gather', `gathering from ${sourceId}`) });
+      found = await LEAD_SOURCES[sourceId].gather({ count, known, signal, segment, query, apiKey, secret, startPage, wallet: context.wallet, from, onProgress: saying(emit, 'sales.gather', `gathering from ${sourceId}`) });
     } finally {
       if (reserved) await releaseSpend(context.wallet, reserved.reservation.id);
+    }
+    // A SEARCH TOO WIDE keeps nothing (wide-search.js): kept on record as a search that gathered none, and said with how to narrow.
+    if (found.wide || isWide(found.matched)) {
+      await noteSearch(context.wallet, { segmentId: segment.id, source: sourceId, asked: found.asked ?? [query.words, ...query.keywords, ...query.industries].filter(Boolean).join(', '), matched: found.matched, gathered: 0, spent: found.spent ?? 0, pages: found.pages, fromPage: found.fromPage, by: context.laneId }).catch(() => {});
+      return { ok: false, reason: wideRefusal({ matched: found.matched, source: sourceId, spent: found.spent ?? 0 }) };
     }
     // Every gathered company carries its traffic, whatever list it came from: the free answer to "is anybody there".
     const ranks = trafficLoaded() ? trafficOf(found.candidates.filter((c) => !('trafficRank' in c)).map((c) => c.domain)) : null;
     const rows = ranks ? found.candidates.map((c) => ('trafficRank' in c ? c : { ...c, trafficRank: ranks.get(c.domain) ?? null, signal: `${c.signal} · ${trafficWords(ranks.get(c.domain) ?? null)}` })) : found.candidates;
     const added = await addCandidates(context.wallet, segment.id, rows, context.laneId);
     // THE PIPELINE'S FIRST STEP, on record: this audience's own search (lead-pipeline.js).
-    await noteSearch(context.wallet, { segmentId: segment.id, source: sourceId, asked: found.asked ?? [query.words, ...query.keywords, ...query.industries].filter(Boolean).join(', '), matched: found.matched, gathered: added.length, spent: found.spent ?? 0, by: context.laneId })
+    await noteSearch(context.wallet, { segmentId: segment.id, source: sourceId, asked: found.asked ?? [query.words, ...query.keywords, ...query.industries].filter(Boolean).join(', '), matched: found.matched, gathered: added.length, spent: found.spent ?? 0, pages: found.pages, fromPage: found.fromPage, by: context.laneId })
       .catch(() => {});
     if (!added.length) return { ok: false, reason: `Nothing new was gathered from ${sourceId}${found.stopped ? `: ${found.stopped}` : ' — the house already holds every company it returned'}.` };
-    return { ok: true, detail: [`${added.length} new candidate(s) for "${segment.name}" from ${sourceId}${found.spent ? ` (${found.spent} credit(s) spent)` : ''}${found.asked ? ` (asked as ${found.asked})` : ''}${found.stopped ? ` (it stopped early: ${found.stopped})` : ''}:`, ...added.slice(0, SHOWN_GATHERED).map((c) => `- [${c.id}] ${candidateLine(c)}`), ...(added.length > SHOWN_GATHERED ? [`… and ${added.length - SHOWN_GATHERED} more, all in your briefing and on the campaign's screen.`] : []), 'Read the ones that could fit, then score them with sales/prospect (source: the candidate\'s own page).'].join('\n') };
+    return { ok: true, detail: [`${added.length} new candidate(s) for "${segment.name}" from ${sourceId}${found.spent ? ` (${found.spent} credit(s) spent)` : ''}${found.asked ? ` (asked as ${found.asked})` : ''}${continued ? ` (${continued})` : ''}${found.stopped ? ` (it stopped early: ${found.stopped})` : ''}:`, ...added.slice(0, SHOWN_GATHERED).map((c) => `- [${c.id}] ${candidateLine(c)}`), ...(added.length > SHOWN_GATHERED ? [`… and ${added.length - SHOWN_GATHERED} more, all in your briefing and on the campaign's screen.`] : []), 'Read the ones that could fit, then score them with sales/prospect (source: the candidate\'s own page).'].join('\n') };
   },
 });
 
@@ -119,7 +135,7 @@ const salesDiscoverIntent = Object.freeze({
   name: 'sales/discover',
   policyTool: 'sales.discover',
   fieldsForPrompt: `{segment, industries?: [Hunter industry], keywords?: [phrase], exclude?: [word], match?: "any" | "all", words?, sizes?: [${SIZES.map((s) => `"${s}"`).join(' | ')}]}`,
-  descriptionForPrompt: 'THE LEAD ENGINE, FIRST STEP. Look before you gather (free, with your operator\'s Hunter key; nothing is kept): how the search is asked of Hunter, how many companies match in the audience\'s countries, and the first 15 with how many named people Hunter holds at each. Aim it with industries (Hunter\'s own names, e.g. Blockchain Services; a wrong one is answered with the nearest), keywords (phrases; match any or all) and exclude. When the first companies are the audience, gather them with sales/gather, source hunter-discover, the same fields. When they are not, sharpen and look again.',
+  descriptionForPrompt: 'THE LEAD ENGINE. Look at what HUNTER holds before you gather from it (free, with your operator\'s Hunter key; nothing is kept): how the search is asked of Hunter, how many companies match in the audience\'s countries, and the first 15 with how many named people Hunter holds at each. Aim it with industries (Hunter\'s own names, e.g. Blockchain Services; a wrong one is answered with the nearest), keywords (phrases; match any or all) and exclude. When the first companies are the audience, gather them with sales/gather, source hunter-discover, the same fields. When they are not, sharpen and look again.',
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -141,6 +157,7 @@ const salesDiscoverIntent = Object.freeze({
     return { ok: true, detail: [
       `Hunter, asked as ${look.asked} (its assistant's reading of ${query.words.trim() ? 'your words' : 'the audience\'s signs of fit'}${query.keywords.length || query.industries.length ? ', sharpened by your keywords and industries' : ' — sharpen it with keywords and industries'}): ${look.matched.toLocaleString('en-US')} compan${look.matched === 1 ? 'y matches' : 'ies match'} in the countries of "${segment.name}". Nothing was kept or spent.`,
       ...look.sample.map((c) => `- ${c.name} — ${c.domain}${c.size ? ` — ${c.size} people` : ''} — ${heldWords(c.hunterEmails)}`),
+      ...(wideLookWords(look.matched) ? [wideLookWords(look.matched)] : []),
       look.sample.length ? 'Are these the audience? Then sales/gather, source hunter-discover, with the same fields. If not, sharpen (industries, keywords, exclude) and look again.' : 'Nothing matches: loosen the search (fewer keywords, match any, another industry) and look again.',
     ].join('\n') };
   },
@@ -184,10 +201,12 @@ const salesContactsIntent = Object.freeze({
     const [rule, lookups, reservations] = await Promise.all([readSpend(context.wallet), readContactLookups(context.wallet), readSpendReservations(context.wallet)]);
     const refusal = spendRefusal({ rule, spent: spentThisMonth([...lookups, ...reservations], Date.now()), cost: attached.source.cost * domains.length });
     if (refusal) return { ok: false, status: 'denied', reason: refusal };
-    return { ok: true, value: { context, domains, empty: empty.map(emptyWords), attached } };
+    // people: how many people the caller needs at each company (a lead run needs one): a provider that charges a person stops there.
+    const want = Number.isInteger(payload?.people) && payload.people >= 1 ? payload.people : undefined;
+    return { ok: true, value: { context, domains, empty: empty.map(emptyWords), attached, want } };
   },
   summarize: (payload) => `contacts at ${payload?.domain ?? (Array.isArray(payload?.domains) ? payload.domains.join(', ') : '?')}${payload?.source ? ` from ${payload.source}` : ''}`,
-  execute: async ({ context, domains, empty = [], attached }, { signal } = {}) => {
+  execute: async ({ context, domains, empty = [], attached, want }, { signal } = {}) => {
     const reserved = await reserveSpend(context.wallet, attached.source.cost * domains.length);
     if (!reserved.ok) return { ok: false, reason: reserved.reason };
     try {
@@ -196,7 +215,7 @@ const salesContactsIntent = Object.freeze({
       for (const domain of domains) {
         let found = { ok: false, detail: 'the lookup did not answer', spent: 0 };
         try {
-          found = await attached.source.contacts({ domain, apiKey: attached.apiKey, secret: attached.secret, signal });
+          found = await attached.source.contacts({ domain, apiKey: attached.apiKey, secret: attached.secret, signal, ...(want ? { want } : {}) });
         } finally {
           const charge = Number.isFinite(found?.spent) ? found.spent : 0;
           await noteContacts(context.wallet, domain, attached.id, found.ok ? found.people : [], context.laneId, charge);

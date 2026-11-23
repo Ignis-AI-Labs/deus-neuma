@@ -57,6 +57,19 @@ describe('a file becomes leads', () => {
     expect(p.skip.map((s) => s.why)).toEqual(['the tool hid the address (it shows it only once someone replies)', 'already on the lead list']);
   });
 
+  it('a mistyped address is left out with what it was most likely meant to be; a real provider and a company\'s own domain are never called a typo', async () => {
+    const { typoOf } = await import('../../backend/services/sales/address-typo.js');
+    // The big providers' addresses are put together here, never written whole: a mailbox at one of them is a real person's.
+    const at = (who, host) => [who, host].join('@');
+    expect(typoOf('dana@gmial.com')).toEqual({ meant: at('dana', 'gmail.com'), why: 'gmial.com is one letter from gmail.com' });
+    expect([typoOf('a@gmal.com')?.meant, typoOf('a@gmaill.com')?.meant, typoOf('a@yaho.com')?.meant, typoOf('a@hotmial.com')?.meant, typoOf('a@outlok.com')?.meant, typoOf('A@Fundone.con')?.meant])
+      .toEqual([at('a', 'gmail.com'), at('a', 'gmail.com'), at('a', 'yahoo.com'), at('a', 'hotmail.com'), at('a', 'outlook.com'), 'a@fundone.com']);
+    for (const real of [at('a', 'gmail.com'), 'a@mail.com', 'a@email.com', 'a@ymail.com', 'a@aon.com', 'a@fundone.example', 'a@east.vc', at('a', 'yahoo.co.uk'), 'not an address', '', null]) expect(typoOf(real)).toBeNull();
+    const plan = planImport([{ name: 'Dana Reyes', email: 'dana@gmial.com' }, { name: 'Otto Brandt', email: 'otto@outbox.io' }], { source: 'sheet', onLedger: new Set(), suppressed: () => false, by: 'operator' });
+    expect(plan.add.map((a) => a.contact)).toEqual(['otto@outbox.io']);
+    expect(plan.skip).toEqual([{ n: 0, who: 'Dana Reyes', email: 'dana@gmial.com', why: `the address looks mistyped — did you mean ${at('dana', 'gmail.com')}? (gmial.com is one letter from gmail.com) Correct it in the file and bring it in again` }]);
+  });
+
   it('the ledger takes them in one write, each with its history at the moments it passed: a reply waits for an answer, every message opens whole', async () => {
     const ledger = createLeadLedger({ path: path.join(await createTempDir('lead-import'), 'leads.json') });
     const written = await ledger.addMany(plan().add.map(({ outcome, flags, ...lead }) => lead));

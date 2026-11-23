@@ -54,3 +54,37 @@ export const nextSort = (current, head, column, rows) => {
   if (current?.head === head) return { head, dir: current.dir === 'asc' ? 'desc' : 'asc' };
   return { head, dir: rows.some((r) => typeof sortValue(column, r) === 'number') ? 'desc' : 'asc' };
 };
+
+// EVERY SHEET CAN BE TAKEN AWAY AS A SPREADSHEET (Design note, 2026-11-21: match what a CRM does, then better — theirs exports
+// some lists; here every list of records on the desk does). The file is the sheet as it stands: every row, not only
+// the page in view, in the order shown, one column a fact.
+
+/** What a cell says, as plain words: text and numbers as they are, an element's own text, nothing for a control. pure. */
+export const cellText = (value) => {
+  if (value === null || value === undefined || value === false || value === true) return '';
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map(cellText).filter(Boolean).join(' ');
+  if (typeof value === 'object' && value.props) {
+    if (['input', 'button', 'select', 'textarea'].includes(value.type)) return '';
+    return cellText(value.props.children);
+  }
+  return '';
+};
+
+// A value that a spreadsheet would run as a formula is written as text.
+const safe = (text) => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
+const quoted = (text) => `"${safe(String(text).replace(/\s+/g, ' ').trim()).replace(/"/g, '""')}"`;
+
+/**
+ * The sheet as a spreadsheet file's text. A column may give `text(row)` where its cell is not words. pure.
+ * @param {Array<{head: string, cell: Function, text?: Function, check?: boolean}>} columns
+ * @param {object[]} rows
+ * @returns {string}
+ */
+export const sheetCsv = (columns = [], rows = []) => {
+  const kept = columns.filter((c) => c.head && !c.check);
+  return [kept.map((c) => quoted(c.head)).join(','), ...rows.map((r) => kept.map((c) => quoted(c.text ? c.text(r) ?? '' : cellText(c.cell(r)))).join(','))].join('\r\n');
+};
+
+/** A file name from the sheet's label: "open deals" → "open-deals.csv". pure. */
+export const sheetFileName = (label) => `${String(label || 'sheet').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'sheet'}.csv`;

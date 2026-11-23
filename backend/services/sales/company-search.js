@@ -11,6 +11,7 @@
 //                    Up to 100 a page, 1 credit a page. Paid Apollo plans only (a free key is answered 403).
 // Read from docs.tomba.io and docs.apollo.io on 2026-11-18. The shaping is PURE; the search is impure, never throws.
 
+import { isWide } from './wide-search.js';
 import process from 'node:process';
 import { sourceText } from './source-text.js';
 import { testEndpoint } from '../test-endpoint-door.js';
@@ -114,6 +115,8 @@ export const gatherTombaReveal = async ({ count = TOMBA_PAGE, known = { domains:
       if (rows.length) spent += 1;
       if (page === 1) { filters = got?.meta?.filters ?? null; matched = num(got?.meta?.total); first = rows.map((c) => c.website_url).join('|'); }
       else if (rows.map((c) => c.website_url).join('|') === first) return { candidates, spent, matched, asked, stopped: 'this Tomba plan sees the first page only' };
+      // Too wide to be an audience's (wide-search.js): nothing is kept and no further page is paid for.
+      if (isWide(matched)) return { candidates: [], spent, matched, asked, wide: true };
       candidates.push(...fresh(rows.map(candidateOfTomba), known, seen));
       if (!rows.length || !filters || page >= num(got?.meta?.pages)) break;
     }
@@ -123,11 +126,14 @@ export const gatherTombaReveal = async ({ count = TOMBA_PAGE, known = { domains:
   }
 };
 
+/** pure — the terms Apollo's company search is asked with, as they are kept on a search's record. */
+export const apolloAsked = (query = {}) => [...(query.keywords ?? []), ...(query.industries ?? [])].join(', ');
+
 /**
  * impure — companies from Apollo's company search for an audience (paid Apollo plans only).
  * @returns {Promise<{candidates: object[], spent: number, matched: number, asked: string, stopped?: string}>}
  */
-export const gatherApolloCompanies = async ({ count = APOLLO_PAGE, known = { domains: new Set() }, segment = null, query = {}, apiKey, signal, onProgress = () => {} } = {}) => {
+export const gatherApolloCompanies = async ({ count = APOLLO_PAGE, known = { domains: new Set() }, segment = null, query = {}, apiKey, signal, onProgress = () => {}, startPage = 1 } = {}) => {
   const asked = [...(query.keywords ?? []), ...(query.industries ?? [])].join(', ');
   if (!asked) return { candidates: [], spent: 0, matched: 0, asked, stopped: 'Apollo searches companies by keywords — give keywords (phrases such as "defi", "market making") or industries' };
   const base = testEndpoint(process.env, 'NEUMA_LEAD_SOURCE_APOLLO', APOLLO_URL);
@@ -135,16 +141,20 @@ export const gatherApolloCompanies = async ({ count = APOLLO_PAGE, known = { dom
   const seen = new Set();
   let spent = 0; let matched = 0;
   try {
-    for (let page = 1; page <= pagesFor(count, APOLLO_PAGE); page += 1) {
+    // It continues where the house left this search (search-memory.js): the pages before startPage were taken already.
+    const from = Math.max(1, parseInt(startPage, 10) || 1);
+    for (let page = from; page < from + pagesFor(count, APOLLO_PAGE); page += 1) {
       onProgress(`Apollo, page ${page}`);
       const got = await askJson(`${base}/mixed_companies/search?${apolloSearchQuery(query, segment, page)}`, { method: 'POST', headers: { 'x-api-key': apiKey }, signal, name: 'Apollo' });
       spent += 1;
       const rows = got?.organizations ?? [];
-      if (page === 1) matched = num(got?.pagination?.total_entries);
+      if (page === from) matched = num(got?.pagination?.total_entries);
+      // Too wide to be an audience's (wide-search.js): nothing is kept and no further page is paid for.
+      if (isWide(matched)) return { candidates: [], spent, matched, asked, wide: true, pages: spent, fromPage: from };
       candidates.push(...fresh(rows.map(candidateOfApollo), known, seen));
       if (rows.length < APOLLO_PAGE || page >= num(got?.pagination?.total_pages)) break;
     }
-    return { candidates: candidates.slice(0, Number(count) || APOLLO_PAGE), spent, matched, asked };
+    return { candidates: candidates.slice(0, Number(count) || APOLLO_PAGE), spent, matched, asked, pages: spent, fromPage: from };
   } catch (err) {
     return { candidates, spent, matched, asked, stopped: err.message };
   }

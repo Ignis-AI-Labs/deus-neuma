@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-752 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install; `requireLocalScope`: the local desk, never a paired remote).
+794 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install; `requireLocalScope`: the local desk, never a paired remote).
 > `?ticket=` marks only the headerless file lanes that accept a short-lived exact-resource ticket;
 > it is not an alternate authentication transport on any other route.
 
@@ -236,6 +236,10 @@
 | GET | `/api/v1/cso/threats/:id/attack-surface` | `requireAuth` |
 | PUT | `/api/v1/cso/threats/:id/reopen` | `requireAuth` |
 | PUT | `/api/v1/cso/threats/:id/revoked` | `requireAuth` |
+| GET | `/api/v1/cso/tripwire` | `requireAuth` |
+| PUT | `/api/v1/cso/tripwire` | `requireAuth`, `requireInstallOwner` |
+| POST | `/api/v1/cso/tripwire/clipboard` | `requireAuth` |
+| POST | `/api/v1/cso/tripwire/release` | `requireAuth`, `requireInstallOwner` |
 | GET | `/api/v1/cso/watch` | `requireAuth` |
 | PUT | `/api/v1/cso/watch/host` | `requireAuth` |
 | POST | `/api/v1/cso/watch/repos` | `requireAuth` |
@@ -357,6 +361,14 @@
 | POST | `/api/v1/image-forge/launch` | `requireAuth`, `requireInstallOwner` |
 | GET | `/api/v1/image-forge/status` | `requireAuth` |
 | POST | `/api/v1/image-forge/stop` | `requireAuth`, `requireInstallOwner` |
+
+## /api/v1/imports
+
+| Method | Path | Guards |
+| --- | --- | --- |
+| POST | `/api/v1/imports/assistant` | `requireAuth`, `requireInstallOwner`, `jsonParser` |
+| GET | `/api/v1/imports/found` | `requireAuth`, `requireInstallOwner`, `jsonParser` |
+| POST | `/api/v1/imports/pasted` | `requireAuth`, `requireInstallOwner`, `jsonParser` |
 
 ## /api/v1/inference
 
@@ -718,7 +730,14 @@
 | Method | Path | Guards |
 | --- | --- | --- |
 | GET | `/api/v1/revenue/board` | `requireAuth` |
+| POST | `/api/v1/revenue/deals` | `requireAuth` |
+| POST | `/api/v1/revenue/deals/:id/invoice` | `requireAuth` |
+| POST | `/api/v1/revenue/deals/:id/move` | `requireAuth` |
 | PUT | `/api/v1/revenue/delivery-destination` | `requireLocalScope`, `requireAuth` |
+| GET | `/api/v1/revenue/invoices` | `requireAuth` |
+| POST | `/api/v1/revenue/invoices/:id/send` | `requireAuth` |
+| POST | `/api/v1/revenue/invoices/:id/void` | `requireAuth` |
+| POST | `/api/v1/revenue/invoices/check` | `requireAuth` |
 | GET | `/api/v1/revenue/lead-engine` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/campaigns` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/campaigns/:id` | `requireAuth` |
@@ -727,10 +746,17 @@
 | POST | `/api/v1/revenue/lead-engine/candidates/pass` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/facts/:sheetId` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/facts/:sheetId/fact` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/gather-list` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/import` | `requireAuth`, `textParser` |
+| DELETE | `/api/v1/revenue/lead-engine/leads/:id/call` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/leads/:id/call` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/leads/:id/kind` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/leads/:id/said` | `requireAuth` |
 | GET | `/api/v1/revenue/lead-engine/mail/:uid` | `requireAuth` |
 | GET | `/api/v1/revenue/lead-engine/names` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/never-list` | `requireAuth` |
+| PUT | `/api/v1/revenue/lead-engine/never-list` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/never-list/review` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/outbox/:id` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/outbox/:id/return` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/outbox/check` | `requireAuth` |
@@ -738,11 +764,26 @@
 | POST | `/api/v1/revenue/lead-engine/outbox/delete` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/outbox/review` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/outbox/send` | `requireAuth` |
+| PUT | `/api/v1/revenue/lead-engine/plans` | `requireAuth` |
+| DELETE | `/api/v1/revenue/lead-engine/plans/:partner` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/prospects/:id/hand` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/review` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/run` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/run` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/run/clear` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/run/schedule` | `requireAuth` |
+| PUT | `/api/v1/revenue/lead-engine/run/schedule` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/run/standing` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/run/stop` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/runs` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/runs/:id/lines` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/searches/pass-wide` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/campaign` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/list` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/read-sites` | `requireAuth` |
+| PUT | `/api/v1/revenue/lead-engine/segments/:id/required` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/state` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/segments/:id/test` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/spend` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/suppress` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/suppress/lift` | `requireAuth` |
@@ -909,6 +950,8 @@
 | GET | `/api/v1/substrate/holders` | `requireAuth` |
 | GET | `/api/v1/substrate/image-engine` | `requireAuth` |
 | GET | `/api/v1/substrate/machine` | `requireAuth` |
+| GET | `/api/v1/substrate/network` | `requireAuth` |
+| GET | `/api/v1/substrate/network/history` | `requireAuth` |
 | GET | `/api/v1/substrate/standby` | `requireAuth` |
 | PUT | `/api/v1/substrate/standby` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
 | GET | `/api/v1/substrate/telemetry` | `requireAuth` |
@@ -925,10 +968,14 @@
 
 | Method | Path | Guards |
 | --- | --- | --- |
+| GET | `/api/v1/tasks/active` | `requireAuth` |
 | GET | `/api/v1/tasks/agenda` | `requireAuth` |
 | DELETE | `/api/v1/tasks/calendar-token` | `requireAuth` |
 | POST | `/api/v1/tasks/calendar-token` | `requireAuth` |
 | GET | `/api/v1/tasks/calendar.ics` | — |
+| GET | `/api/v1/tasks/calendars` | `requireAuth` |
+| POST | `/api/v1/tasks/calendars` | `requireAuth` |
+| DELETE | `/api/v1/tasks/calendars/:id` | `requireAuth` |
 | GET | `/api/v1/tasks/deadlines` | `requireAuth` |
 | GET | `/api/v1/tasks/live` | `requireAuth` |
 | GET | `/api/v1/tasks/mine` | `requireAuth` |

@@ -104,7 +104,7 @@ const ThreatDetail = ({ threat, onClose, onReopen, busy }) => {
 export const SecurityBody = ({
   posture, scan, watch, all, entries, detail, busy, error, now,
   onPickThreat, onCloseDetail, onRunScan, onReopenThreat,
-  filters, onFilter,
+  filters, onFilter, decoys = null,
 }) => (
   <div className="sec">
     <header className="sec-head">
@@ -155,6 +155,8 @@ export const SecurityBody = ({
       )}
       {detail ? <ThreatDetail threat={detail} onClose={onCloseDetail} onReopen={onReopenThreat} busy={busy} /> : null}
     </section>
+
+    {decoys}
 
     <section className="sec-watch">
       <p className="sec-watch-head label-data">THE WATCH</p>

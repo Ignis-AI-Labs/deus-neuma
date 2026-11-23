@@ -14,7 +14,7 @@ import { sendEmail, SEND_MAX_RECIPIENTS } from '../email/smtp-sender.js';
 import { journalEmailCall } from '../email/email-being-tools.js';
 import { fromFor } from '../email/send-as.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
-import { suppressedRecipients, recordSent, leadEmailRefusal, companyOfRecipients } from '../sales/email-ledger.js';
+import { suppressedRecipients, recordSent, leadEmailRefusal, companyOfRecipients, threadFor } from '../sales/email-ledger.js';
 import { reviewRefusal } from '../sales/email-outbox.js';
 
 // impure — the mailbox position: this lane holds its own house's mailbox AND
@@ -88,7 +88,7 @@ export const emailSendIntent = Object.freeze({
   execute: async (value, { connection, signal }) => {
     const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
     // The promise is the house's own record of what it owes; it never rides the wire.
-    const outcome = await sendEmail(credentials, { to: value.to, subject: value.subject, text: value.text, from: value.from }, { signal });
+    const outcome = await sendEmail(credentials, { to: value.to, subject: value.subject, text: value.text, from: value.from, references: connection.walletAddress ? await threadFor(connection.walletAddress, [].concat(value.to)) : [] }, { signal });
     await journalEmailCall(
       connection, 'email/send',
       outcome.ok ? `to ${outcome.to.join(', ')} — "${String(value.subject).slice(0, 120)}"` : outcome.detail,

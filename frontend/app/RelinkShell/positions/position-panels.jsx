@@ -54,7 +54,7 @@ const Deals = ({ names }) => {
   return (
     <div className="cline">
       <Failed error={error || failed} />
-      <SalesSection sales={board} names={names} busy={busy} seatless drafts={drafts}
+      <SalesSection sales={board} names={names} busy={busy} seatless drafts={drafts} onChanged={load}
         onDraft={(key, field, value) => setDrafts((d) => ({ ...d, [key]: { ...(d[key] ?? {}), [field]: value } }))} onDestination={onDestination} />
     </div>
   );

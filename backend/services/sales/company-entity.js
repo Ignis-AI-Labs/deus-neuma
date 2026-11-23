@@ -10,8 +10,8 @@
 // quote must stand on it; a page that turns readers away leaves the record standing, marked unchecked, with why.
 // Pure, but for verifyQuote (the page read).
 
-import { guardedPage } from './company-reader.js';
-import { htmlToText } from '../html-to-text.js';
+import { guardedPage, describedAs } from './company-reader.js';
+import { htmlToText, extractTitle } from '../html-to-text.js';
 
 export const ENTITY_TYPES = Object.freeze({
   'vc-fund': { investor: true, words: 'a venture capital fund' },
@@ -25,7 +25,7 @@ export const ENTITY_TYPES = Object.freeze({
   'service-company': { investor: false, words: 'a company that sells a service' },
   other: { investor: false, words: 'something else' },
 });
-const EVIDENCE = /\b(we invest|invest(s|ing|ed)?|investments?|portfolio|funds?|fund (i|ii|iii|iv)|aum|assets under management|limited partners|lps?|we back|backs|backing|backed|pre-seed|seed|series a|venture capital|check sizes?|cheques?|grants?|cohorts?)\b/i;
+export const EVIDENCE = /\b(we invest|invest(s|ing|ed)?|investments?|portfolio|funds?|fund (i|ii|iii|iv)|aum|assets under management|limited partners|lps?|we back|backs|backing|backed|pre-seed|seed|series a|venture capital|check sizes?|cheques?|grants?|cohorts?)\b/i;
 
 const clean = (v, max) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '').slice(0, max);
 const hostOf = (u) => { try { return new URL(u).hostname.toLowerCase().replace(/^www\./, ''); } catch { return ''; } };
@@ -66,7 +66,8 @@ export const makeEntity = (f) => {
 export const verifyQuote = async ({ source, quote }, { fetchPage = guardedPage, signal } = {}) => {
   const page = await fetchPage(source, { signal }).catch((err) => ({ ok: false, why: err.message }));
   if (!page?.ok) return { ok: true, verified: false, why: `the page could not be read to check the quote (${page?.why ?? 'no answer'})` };
-  return flat(htmlToText(page.html, 200_000)).includes(flat(quote))
+  // The page's own description of itself (its meta description) is its words too: many sites show little else unrendered.
+  return `${flat(htmlToText(page.html, 200_000))} ${flat(describedAs(page.html) ?? '')} ${flat(extractTitle(page.html) ?? '')}`.includes(flat(quote))
     ? { ok: true, verified: true, why: null }
     : { ok: false, why: `the quote is not on ${source} — copy its own words exactly from the page you read` };
 };

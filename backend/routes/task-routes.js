@@ -25,12 +25,15 @@ import { getUserTasks, addUserTask, updateUserTask, addSubtaskToTask, updateSubt
 import { houseDeadlineRecords, ownedLanes } from '../services/house-deadlines.js';
 import { houseAgenda } from '../services/house-agenda/house-agenda.js';
 import { mintCalendarToken, revokeCalendarToken, walletForCalendarToken } from '../services/calendar-share.js';
+import { addFeed, listFeeds, removeFeed, CONNECTION_ID as CALENDARS_CONNECTION } from '../services/calendar/calendar-feeds.js';
+import { isConnectionOn } from '../services/connections/connection-switches.js';
 import { buildTasksIcs, liveDeadlines } from '../services/tasks-ics.js';
 import { listPresets, createCustomPreset, deleteCustomPreset, resolvePreset } from '../services/task-presets.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { addAssigned, updateAssigned, materializeRecurrence, addSubtask, updateSubtask, removeSubtask } from '../../core/tasks/assigned-plan.js';
 import { instantiatePreset } from '../../core/tasks/task-presets.js';
 import { bridgeMineCompletion } from '../services/vessel-daily-bridge.js';
+import { activeWork } from '../services/active-work.js';
 
 const router = Router();
 const log = createLogger('Tasks');
@@ -79,6 +82,9 @@ const authoredFields = (body, { withStatus, withChat = false }) => {
 // --- The witness's own list ---
 
 // GET /mine — recurrence rolled forward (and persisted when it rolled)
+// Everything running for the house right now (active-work.js): the tray's ACTIVE tab reads it.
+router.get('/active', (req, res) => res.json({ active: activeWork(req.walletAddress) }));
+
 router.get('/mine', async (req, res) => {
   try {
     res.json({ plan: await getUserTasks(req.walletAddress) });
@@ -398,6 +404,35 @@ router.get('/agenda', async (req, res) => {
   } catch (error) {
     if (error.status === 400) return res.status(400).json({ error: error.message });
     answerError(res, error, 'Could not read the house agenda');
+  }
+});
+
+// --- Your calendars: the ones kept elsewhere, read into the house calendar (calendar/calendar-feeds.js) ---
+// The address a calendar is read by is a secret: it comes in once and never goes back out.
+router.get('/calendars', async (req, res) => {
+  try {
+    res.json({ calendars: await listFeeds(req.walletAddress), on: isConnectionOn(CALENDARS_CONNECTION) });
+  } catch (error) {
+    answerError(res, error, 'Could not read your calendars');
+  }
+});
+
+router.post('/calendars', async (req, res) => {
+  try {
+    const added = await addFeed(req.walletAddress, { url: req.body?.url, label: req.body?.label });
+    if (!added.ok) return res.status(400).json({ error: added.reason });
+    return res.json({ ok: true, calendar: added.feed, events: added.events, on: isConnectionOn(CALENDARS_CONNECTION) });
+  } catch (error) {
+    return answerError(res, error, 'Could not add the calendar');
+  }
+});
+
+router.delete('/calendars/:id', async (req, res) => {
+  try {
+    if (!(await removeFeed(req.walletAddress, req.params.id))) return res.status(404).json({ error: 'no such calendar' });
+    return res.json({ ok: true });
+  } catch (error) {
+    return answerError(res, error, 'Could not remove the calendar');
   }
 });
 

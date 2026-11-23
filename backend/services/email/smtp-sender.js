@@ -55,19 +55,30 @@ export const validateSendRequest = ({ to, subject, text } = {}) => {
   return { ok: true, to: toList.map((a) => a.trim()), subject, text };
 };
 
+// A CONVERSATION STAYS ONE THREAD: a message that follows earlier ones names them (RFC 5322 3.6.4), so the other
+// person's mail program files it under the conversation instead of as a new, unrelated email. Only well-formed
+// <id@host> values are ever written into a header; the newest twelve are kept.
+const MESSAGE_ID = /^<[^<>\s@]+@[^<>\s@]+>$/;
+/** The In-Reply-To and References lines for the earlier messages of a conversation, oldest first. pure. */
+export const threadHeaders = (references = []) => {
+  const ids = [...new Set((Array.isArray(references) ? references : []).map((r) => String(r ?? '').trim()).filter((r) => MESSAGE_ID.test(r) && r.length <= 250))].slice(-12);
+  return ids.length ? [`In-Reply-To: ${ids.at(-1)}`, `References: ${ids.join(' ')}`] : [];
+};
+
 /**
  * Build the RFC 5322 message (pure — date and messageId supplied by the
  * caller). Body travels base64 so charset and dot-stuffing hazards vanish.
  * @param {{from: string, to: string[], subject: string, text: string,
- *   date: Date, messageId: string}} msg
+ *   date: Date, messageId: string, references?: string[]}} msg
  * @returns {string} CRLF-terminated raw message
  */
-export const buildMimeMessage = ({ from, to, subject, text, date, messageId }) => [
+export const buildMimeMessage = ({ from, to, subject, text, date, messageId, references = [] }) => [
   `From: <${from}>`,
   `To: ${to.map((a) => `<${a}>`).join(', ')}`,
   `Subject: ${encodeHeaderWord(subject)}`,
   `Date: ${date.toUTCString()}`,
   `Message-ID: ${messageId}`,
+  ...threadHeaders(references),
   'MIME-Version: 1.0',
   'Content-Type: text/plain; charset=utf-8',
   'Content-Transfer-Encoding: base64',
@@ -181,7 +192,8 @@ const _runSmtpSession = (credentials, steps, { signal, interrupted }) => {
  * Send one email. Never throws — every failure lands as {ok:false, detail}.
  * @param {{address: string, username: string, password: string,
  *   smtpHost: string, smtpPort: string}|null} credentials
- * @param {{to: string[]|string, subject: string, text: string}} request
+ * @param {{to: string[]|string, subject: string, text: string, references?: string[]}} request - references: the
+ *   message ids of the conversation this continues, oldest first (the lead ledger keeps them)
  * @param {{signal?: AbortSignal}} [opts]
  * @returns {Promise<{ok: true, messageId: string, to: string[]}
  *   |{ok: false, uncertain?: boolean, messageId?: string, to?: string[], detail: string}>}
@@ -206,6 +218,7 @@ export const sendEmail = async (credentials, request, { signal } = {}) => {
     text: valid.text,
     date: new Date(),
     messageId,
+    references: request?.references,
   });
   const steps = buildSmtpDialogue(credentials, { from: sender.from, to: valid.to, message });
   const outcome = await _runSmtpSession(credentials, steps, { signal, interrupted });

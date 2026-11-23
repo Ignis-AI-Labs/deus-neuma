@@ -16,7 +16,7 @@ To install, read and accept the End User License Agreement below.
 
 NEUMA END USER LICENSE AGREEMENT
 
-Version 1.6 - Early access - Effective 13 November 2026 - Deus Neuma Inc, a Delaware corporation
+Version 1.7 - Early access - Effective 21 November 2026 - Deus Neuma Inc, a Delaware corporation
 
 Between you and Deus Neuma Inc, a Delaware corporation, for the Neuma software you install or run - the platform, portal client, and neuma engine ("Software"). The Terms of Service and Neuma Covenant are incorporated by reference.
 
@@ -52,7 +52,8 @@ The Software is designed to work with the following third-party models. None is 
 - Image models (the forge):
   - FLUX.2 [klein] 4B (Black Forest Labs), Z-Image Turbo (Tongyi-MAI) and Z-Image Turbo Fun ControlNet Union (alibaba-pai): Apache-2.0.
   - SDXL Base 1.0 (Stability AI): CreativeML Open RAIL++-M, including its use restrictions. xinsir ControlNet OpenPose SDXL: Apache-2.0.
-  - perfectDeliberate v10 and the Illustrious LoRAs it uses: the Illustrious License (Fair AI Public License 1.0-SD), which does not permit selling the model.
+  - perfectDeliberate v10, WAI-illustrious-SDXL v17, Nova Anime XL IL v19 and the Illustrious LoRAs: the Illustrious License (Fair AI Public License 1.0-SD), which does not permit selling the model. Nova Anime XL's author also asks that its images not be used commercially without editing.
+  - Real-ESRGAN x4plus anime 6B (xinntao), the upscaler of the character pipelines: BSD-3-Clause.
   - Anima Aesthetic v1.1 (CircleStone Labs): the CircleStone Labs Non-Commercial License, which does not permit use in a monetized product or service without a commercial licence from CircleStone Labs.
 - Video models (the forge):
   - LTX-2.5 (Lightricks): the LTX-2.x Community License and its Acceptable Use Policy (commercial use under US$10 million in annual revenue; no sexually explicit content).

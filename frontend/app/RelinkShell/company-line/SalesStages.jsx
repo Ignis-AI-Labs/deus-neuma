@@ -3,16 +3,18 @@
 // the filter left them. VALIDATE: every company past the filter, its site checked, scored, its right person found,
 // and the one decision that is the operator's here, APPROVE THE LIST. Pure rendering over sales-pipeline-view.js.
 
+import { isWide } from '../../../../backend/services/sales/wide-search.js';
 import { useState } from 'react';
 import { Sheet } from '../sheet/Sheet.jsx';
 import { Select } from '../Select.jsx';
-import { STATE_WORDS, LIST_WORDS, segmentMoves } from './lead-engine-view.js';
+import { STATE_WORDS, segmentMoves } from './lead-engine-view.js';
 import { Pitch } from './LeadAudienceCard.jsx';
 import { discoverRows, filterRows, validateRows, listApprovals, FILTER_PICKS, ALL, FIT_RANK, SITE_RANK, STANDING_RANK, STATE_RANK } from './sales-pipeline-view.js';
 import { foundByLine, searchesOf, sourceRows, companyPartners, partnerOfCompany } from './sales-sources-view.js';
 
 const n = (v) => Number(v || 0).toLocaleString('en-US');
 const stateShort = (state) => String(STATE_WORDS[state] ?? state).split(' — ')[0];
+// The campaign stands BEFORE its audience wherever an audience is named (Design note, 2026-11-21: […]).
 const campaignColumn = (view, cell) => (view === ALL ? [{ head: 'CAMPAIGN', cell }] : []);
 const dash = (v) => (v === null || v === undefined ? '—' : n(v));
 
@@ -23,7 +25,7 @@ const Searches = ({ engine, segmentId }) => {
   return (
     <ul className="spl-detail" aria-label="its searches, newest first">
       {list.map((s, i) => (
-        <li key={`${s.at}:${i}`} data-search-source={s.source}>{String(s.at ?? '').slice(0, 10)} · {s.partner} · {s.asked || 'no words recorded'} · {n(s.gathered)} gathered</li>
+        <li key={`${s.at}:${i}`} data-search-source={s.source}>{String(s.at ?? '').slice(0, 10)} · {s.partner} · {s.asked || 'no words recorded'} · {s.matched ? `${n(s.matched)} matched · ` : ''}{n(s.gathered)} gathered{isWide(s.matched) ? <b className="spl-wide-mark"> · TOO WIDE{s.gathered ? '' : ' — KEPT NOTHING'}</b> : null}</li>
       ))}
     </ul>
   );
@@ -59,8 +61,8 @@ export const DiscoverStage = ({ engine, view, busy, onMove }) => (
     detail={(r) => <div className="spl-detail"><Pitch s={r.segment} /><Searches engine={engine} segmentId={r.id} /></div>} detailLabel={(r) => `the pitch and the searches of ${r.segment.name}`}
     empty={<p className="spl-empty label-data">NO AUDIENCE YET — THE SALES SEAT FILES ONE UNDER A CAMPAIGN</p>}
     columns={[
-      { head: 'AUDIENCE', cell: (r) => r.segment.name },
       ...campaignColumn(view, (r) => r.campaign),
+      { head: 'AUDIENCE', cell: (r) => r.segment.name },
       { head: 'STATE', sort: (r) => STATE_RANK[r.segment.state] ?? null, cell: (r) => (r.segment.state === 'draft' ? 'WAITS FOR YOU' : stateShort(r.segment.state)), tone: (r) => (r.segment.state === 'draft' ? 'alert' : r.segment.state === 'approved' ? 'on' : null) },
       { head: 'SEARCHES', sort: (r) => r.searches, cell: (r) => n(r.searches) },
       { head: 'FOUND', sort: (r) => r.found, cell: (r) => n(r.found) },
@@ -103,6 +105,7 @@ export const FilterStage = ({ engine, view }) => {
         columns={[
           { head: 'COMPANY', cell: (c) => c.name },
           { head: 'DOMAIN', cell: (c) => c.domain, exact: true },
+          ...campaignColumn(view, (c) => c.campaign),
           { head: 'AUDIENCE', cell: (c) => c.audience },
           { head: 'FOUND BY', cell: (c) => partnerOfCompany(c) },
           { head: 'AT HUNTER', sort: (c) => (c.hunterEmails ? Number(c.hunterEmails.total) || 0 : null), cell: (c) => (c.hunterEmails ? n(Number(c.hunterEmails.total) || 0) : '—') },
@@ -133,7 +136,7 @@ const CompanyHands = ({ row, audiences, busy, onHand, onPass }) => {
     if (!sure) { setSure(true); return; }
     setSure(false);
     if (row.kind === 'candidate') onPass(row, 'removed by the operator at validation');
-    else onHand(row, { move: 'drop', reason: row.waits ? 'not this one — taken off by the operator before the list was approved' : 'removed by the operator: not a fit' }, `${row.name} is removed${row.prospect?.leadId ? ': its lead is closed and anything staged to it withdrawn' : ''}.`);
+    else onHand(row, { move: 'drop', reason: row.waits ? 'not this one — taken off by the operator before it was validated' : 'removed by the operator: not a fit' }, `${row.name} is removed${row.prospect?.leadId ? ': its lead is closed and anything staged to it withdrawn' : ''}.`);
   };
   const removeWord = row.waits ? 'NOT THIS ONE' : 'REMOVE';
   return (
@@ -160,20 +163,7 @@ export const ValidateStage = ({ engine, view, busy, onList, onHand, onPass }) =>
   return (
     <>
       {approvals.length ? (
-        <div className="spl-decide" data-list-approvals="">
-          <p className="spl-decide-h label-data">YOURS TO DECIDE · {approvals.length}</p>
-          <ul>
-            {approvals.map((a) => (
-              <li key={a.segment.id} className="spl-decide-row" data-segment-id={a.segment.id} data-list-approve="">
-                <span className="spl-decide-what">{a.segment.name}</span>
-                <span className="label-data">{n(a.count)} FOUND COMPAN{a.count === 1 ? 'Y' : 'IES'} WAIT FOR YOUR LIST APPROVAL</span>
-                <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`APPROVE THE LIST of ${a.count} for ${a.segment.name}`}
-                  onClick={() => onList(a.segment, a.ids ?? a.count)}>APPROVE THE LIST ({a.count})</button>
-              </li>
-            ))}
-          </ul>
-          <p className="spl-note">The companies waiting stand first in the sheet below, marked. Take off any that does not belong (NOT THIS ONE), then approve the list. {LIST_WORDS}</p>
-        </div>
+        <p className="spl-note label-data" data-list-waits="">{n(approvals.reduce((t, a) => t + a.count, 0))} COMPANIES WAIT TO BE VALIDATED ({approvals.map((a) => `${a.count} · ${a.segment.name}`).join('; ')}). YOU APPROVE NO LIST: START A LEAD RUN ABOVE AND IT VALIDATES EVERY ONE FROM ITS OWN PAGE, THEN GOES ON TO FILE LEADS.</p>
       ) : null}
       <Sheet label="companies being validated" rows={validateRows(engine, view)} rowKey={(r) => `${r.kind}:${r.id}`} rowName={(r) => r.name}
         rowAttrs={(r) => ({ ...(r.kind === 'prospect' ? { 'data-prospect-id': r.id } : { 'data-company': r.domain }), ...(r.waits ? { 'data-waits': '1' } : {}) })}
@@ -182,6 +172,7 @@ export const ValidateStage = ({ engine, view, busy, onList, onHand, onPass }) =>
         columns={[
           { head: 'COMPANY', cell: (r) => r.name },
           { head: 'DOMAIN', cell: (r) => r.domain, exact: true },
+          ...campaignColumn(view, (r) => r.campaign),
           { head: 'AUDIENCE', cell: (r) => r.audience },
           { head: 'FOUND BY', cell: (r) => foundBy(r.segmentId, r.domain) },
           { head: 'SITE', sort: (r) => SITE_RANK[r.site] ?? null, cell: (r) => r.site, tone: (r) => (r.site === 'DEAD' ? 'alert' : r.site === 'ALIVE' ? 'on' : null) },

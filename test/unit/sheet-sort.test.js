@@ -79,3 +79,21 @@ describe('the sheet draws a press on every head that sorts', () => {
     expect(html).toContain('<th scope="col" class="label-data">PRESS</th>');
   });
 });
+
+describe('every sheet can be taken away as a spreadsheet', () => {
+  it('writes every row and column as plain words: text, figures, an element\'s own text; never a control or a ticking column', async () => {
+    const { sheetCsv, cellText, sheetFileName } = await import('../../frontend/app/RelinkShell/sheet/sheet-view.js');
+    const el = (type, children, props = {}) => ({ type, props: { ...props, children } });
+    expect([cellText('a'), cellText(7), cellText(null), cellText(false), cellText(el('span', ['x', el('b', 'y'), 3])), cellText(el('button', 'PRESS')), cellText(el('input', null))]).toEqual(['a', '7', '', '', 'x y 3', '', '']);
+    const columns = [
+      { head: '', check: true, cell: () => el('input', null) },
+      { head: 'BUYER', cell: (r) => r.buyer },
+      { head: 'VALUE', cell: (r) => `${r.amount} USD` },
+      { head: 'LINK', cell: (r) => el('a', r.link, { href: r.link }) },
+      { head: 'NOTE', cell: () => el('button', 'OPEN'), text: (r) => r.note },
+    ];
+    const rows = [{ buyer: 'Looe "harbour", office', amount: 200, link: 'https://looe.example', note: 'two\nlines' }, { buyer: '=SUM(A1)', amount: 5, link: '', note: null }];
+    expect(sheetCsv(columns, rows)).toBe('"BUYER","VALUE","LINK","NOTE"\r\n"Looe ""harbour"", office","200 USD","https://looe.example","two lines"\r\n"\'=SUM(A1)","5 USD","",""');
+    expect([sheetFileName('open deals'), sheetFileName('validated leads waiting for an email'), sheetFileName('')]).toEqual(['open-deals.csv', 'validated-leads-waiting-for-an-email.csv', 'sheet.csv']);
+  });
+});

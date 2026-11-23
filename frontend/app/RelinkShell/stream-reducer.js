@@ -167,6 +167,7 @@ export const reducer = (state, action) => {
 
     // THE HELD WORD STAYS THE OPERATOR'S (ruling, 2026-08-16) — held-word.js.
     case 'QUEUE_MARK':
+    case 'QUEUE_HEARD':
     case 'QUEUE_CLEAR':
     case 'QUEUE_EDIT':
     case 'QUEUE_PULLED':

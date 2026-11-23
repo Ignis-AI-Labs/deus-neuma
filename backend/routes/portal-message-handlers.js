@@ -9,6 +9,7 @@ import {
   HOLD_ID_PATTERN, handleHeldQueueOp, queueThought,
 } from '../services/held-thoughts.js';
 import { neumaWorkspace, normalizeSpace } from '../../core/index.js';
+import { canRide } from '../services/queued-action-handoff.js';
 import { resolveToolApproval } from '../services/tool-approval.js';
 import { cancelIntentSweeps } from '../services/intents/intent-context.js';
 import { resolveOperatorAsk } from '../services/operator-ask.js';
@@ -88,10 +89,23 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         break;
       }
       if (connection.turnPromise) {
+        if (message.urgency === 'now' && canRide(message)) {
+          // SENT NOW IS HEARD NOW, AND NOTHING IS LOST (Design note, 2026-11-21: […]): plain words join the turn in flight at once — the round is cut
+          // wherever it is, what it had said is kept, and it runs on with the words (heard-mid-thought.js). The turn
+          // itself is never cut. Between rounds (an action running) they join at that action's end.
+          queueThought(connection, message, { now: true });
+          ws.send(JSON.stringify({
+            type: 'consciousness:queued',
+            held: connection.pendingThoughts.length,
+            ...(message.holdId ? { holdId: message.holdId } : {}),
+            message: 'Sent — it joins what they are doing now.',
+          }));
+          break;
+        }
         if (message.urgency === 'now') {
-          // Cut the in-flight turn and wait for it to actually settle, so the
-          // interjection never races the reply it replaced (settleActiveTurn
-          // is the same helper navigation uses — one settling law).
+          // Words with something attached (an image, a file) cannot ride as a note: they take the floor. The
+          // in-flight turn is cut and settles first, so the interjection never races the reply it replaced
+          // (settleActiveTurn is the same helper navigation uses — one settling law).
           await settleActiveTurn(connection);
         } else {
           queueThought(connection, message);
@@ -172,6 +186,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
     case 'consciousness:queue_pull':
       await handleHeldQueueOp(connection, ws, message, {
         rateLimited: () => checkWsRateLimit(connection),
+        canRide,
         settle: () => settleActiveTurn(connection),
         run: (taken) => runTurnAndDrain(connection, taken),
       });

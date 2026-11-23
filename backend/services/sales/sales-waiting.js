@@ -10,7 +10,6 @@
 // impure (store reads); the rows are pure.
 
 import { readSalesFacts, readSegments, readProspects, readCampaigns } from './sales-store.js';
-import { listable } from './prospect-shape.js';
 import { readModels } from '../positions/business-model.js';
 import { listCompanies } from '../marketing/companies.js';
 import { readOutbox } from './email-outbox.js';
@@ -41,10 +40,7 @@ export const salesWaitingRows = ({ facts, segments, prospects, models, companies
     id: `sales-audience:${s.id}:${s.filedAt ?? s.at ?? ''}`, kind: 'sales-audience', who: who(s.by, names), at: s.filedAt ?? s.at ?? null,
     title: `Audience "${s.name}" waits for your approval`, where: at('cro', 'discover', { segmentId: s.id }),
   })),
-  ...segments.filter((s) => s.state === 'approved').map((s) => ({ s, n: listable(prospects, s.id).length })).filter(({ n }) => n > 0).map(({ s, n }) => ({
-    id: `sales-list:${s.id}:${n}`, kind: 'sales-list', who: who(s.by, names), at: prospects.filter((p) => p.segmentId === s.id).map((p) => p.foundAt).filter(Boolean).sort().at(-1) ?? null,
-    title: `${n} compan${n === 1 ? 'y' : 'ies'} found for "${s.name}" wait${n === 1 ? 's' : ''} for your list approval`, where: at('cro', 'validate', { segmentId: s.id }),
-  })),
+  // (No list for the operator to approve any more: a lead run validates every fit from its own page — lead-run.js.)
   // a campaign's email plan, filed and not yet locked in (email-formula.js): no first email of it is written until then
   ...campaigns.filter((c) => c.state === 'open' && c.emailPlan?.proposed && c.emailPlan.review?.verdict !== 'returned').map((c) => ({
     id: `email-plan:${c.id}:${c.emailPlan.proposedAt}`, kind: 'email-plan', who: who(c.emailPlan.proposedBy, names), at: c.emailPlan.proposedAt,

@@ -1,2 +1,0 @@
-Fixed
-- An image or video render now starts between rounds instead of waiting for every running turn to end. The GPU still never runs two heavy jobs at once: a render waits for answers the model is already writing, then runs alone. While it renders, any chat or clone that asks the model for something pauses there and keeps its place, then carries on when the render is done. Before, a render waited until every running turn had finished completely, so one long clone task (re-staging 183 emails, for example) could hold an image back for an hour.

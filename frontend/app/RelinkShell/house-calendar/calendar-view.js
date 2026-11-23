@@ -85,7 +85,7 @@ export const countsBy = (items) => items.reduce((m, i) => m.set(i.lane, (m.get(i
 
 const KINDS = Object.freeze({
   task: 'TASK', 'run-due': 'RUN DUE', run: 'TEAM RUN', charge: 'CHARGE', post: 'POST', wake: 'HOUSE WAKE',
-  quiet: 'QUIET HOURS', security: 'SECURITY', legal: 'LEGAL', meditation: 'MEDITATION', vessel: 'VESSEL', bench: 'BENCHMARK',
+  meeting: 'MEETING', quiet: 'QUIET HOURS', security: 'SECURITY', legal: 'LEGAL', meditation: 'MEDITATION', vessel: 'VESSEL', bench: 'BENCHMARK',
 });
 /** What kind of scheduled thing an item is, as it reads. */
 export const kindOf = (item) => KINDS[item.source] || String(item.source || '').toUpperCase();

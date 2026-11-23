@@ -35,6 +35,9 @@ const readWidth = async () => {
   return width;
 };
 
+/** How many requests the server answers at once, as the line last read it. */
+export const lineWidth = () => width;
+
 /** Start keeping the line at the measured width; returns the stop. impure. */
 export const startLineWidthWatch = () => {
   const tick = () => readWidth().catch(() => {});

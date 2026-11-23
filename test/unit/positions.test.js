@@ -128,7 +128,7 @@ describe('setting up a position', () => {
     // The sales hub is its pipeline (Design note, 2026-11-18: SETUP is its first stage, where it opens until the seat is ready.
     expect(hubTabs(position(bare))[0]).toEqual({ id: 'setup', label: 'SETUP' });
     expect(pickTab(position(bare), undefined)).toBe('setup');
-    expect(hubTabs(position(ready)).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'emails', 'sent', 'replies', 'deals', 'campaigns', 'leads', 'model', 'mailbox', '_switches', '_eyes']);
+    expect(hubTabs(position(ready)).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'ready', 'emails', 'sent', 'replies', 'calls', 'deals', 'campaigns', 'leads', 'costs', 'model', 'mailbox', '_switches', '_eyes']);
     expect(pickTab(position(ready), undefined)).toBe('discover');
     // Every other hub keeps its tabs: SETUP leads while a needed step is open, then steps back to last.
     const other = (done) => ({ office: 'cmo', functions: [{ id: 'campaigns', label: 'CAMPAIGNS' }], connections: [], setup: { done, total: 5 } });
@@ -311,7 +311,7 @@ describe('the positions board and window', () => {
     expect(pickPosition(positions, 'nope').office).toBe('cos');
     expect(pickPosition([], 'cro')).toBe(null);
     const sales = positions.find((p) => p.office === 'cro');
-    expect(hubTabs(sales).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'emails', 'sent', 'replies', 'deals', 'campaigns', 'leads', 'model', 'mailbox', '_switches', '_eyes']);
+    expect(hubTabs(sales).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'ready', 'emails', 'sent', 'replies', 'calls', 'deals', 'campaigns', 'leads', 'costs', 'model', 'mailbox', '_switches', '_eyes']);
     expect(hubTabs(sales).find((t) => t.id === '_switches').label).toBe('SETTINGS');
     expect(hubTabs(positions.find((p) => p.office === 'clo')).map((t) => t.id)).toEqual(['legal', '_eyes']);
     expect(pickTab(sales, 'mailbox')).toBe('mailbox');

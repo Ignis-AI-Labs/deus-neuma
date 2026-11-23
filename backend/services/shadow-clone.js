@@ -252,6 +252,8 @@ const inFlight = new Map();
 // Every split at work in this process, by id: its lane, the chat it came from, its clones' titles, and each clone's
 // STOP (Design note, 2026-11-19: […]).
 const liveSplits = new Map();
+/** The splits working now for one house: whose, since when, and each clone's task (active-work.js). */
+export const liveShadowSplits = (wallet) => [...liveSplits.values()].filter((l) => l.wallet === String(wallet ?? '').toLowerCase()).map((l) => ({ splitId: l.splitId, laneId: l.laneId, name: l.name, since: l.since, titles: [...l.titles] }));
 
 /**
  * impure — STOP: the named clones of a split at work (all of them when none are named) stop now. Each one's sitting
@@ -322,7 +324,7 @@ export const resumeShadowClones = async (connection, { splitId, clones = null })
 const runSplit = async ({ connection, tasks, shared, kind, tell, budget, signal, splitId, resume = null, carried = [] }) => {
   const { companion } = connection;
   const laneId = companion.neumaId;
-  const live = { splitId, laneId, sessionId: connection.sessionId ?? null, titles: tasks.map((t) => t.title), stops: new Map() };
+  const live = { splitId, laneId, wallet: String(connection.walletAddress ?? '').toLowerCase(), name: companion.name || laneId, since: new Date().toISOString(), sessionId: connection.sessionId ?? null, titles: tasks.map((t) => t.title), stops: new Map() };
   liveSplits.set(splitId, live);
   const name = companion.name || laneId;
   const reach = {

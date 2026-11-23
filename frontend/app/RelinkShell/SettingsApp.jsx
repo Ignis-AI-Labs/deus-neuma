@@ -25,6 +25,7 @@ import { LanguageSection } from './LanguageSection.jsx';
 import { DeskSection } from './DeskSection.jsx';
 import { LookSection } from './LookSection.jsx';
 import { PinsSection } from './PinsSection.jsx';
+import { ImportSection } from './ImportSection.jsx';
 import { RealmSection } from './RealmSection.jsx';
 import { SoundSection } from './SoundSection.jsx';
 import { InferenceSection } from './InferenceSection.jsx';
@@ -84,8 +85,14 @@ const SecurityTab = ({ focus }) => (
 // The witness's cosmetic control — its own tab, never buried in GENERAL.
 const LookTab = () => <LookSection />;
 
-// The memory window: what each being holds close (read-only by design).
-const MemoryTab = () => <PinsSection />;
+// The memory window: what each being holds close (read-only by design), and what another
+// assistant knew, brought over as material (docs/work/assistant-import.md).
+const MemoryTab = () => (
+  <>
+    <PinsSection />
+    <ImportSection />
+  </>
+);
 
 const TABS = [
   { id: 'general', Body: GeneralTab },

@@ -3,7 +3,7 @@
  * rows that stand at each. Pure, over the shapes the lead engine route really returns.
  */
 import { describe, expect, it } from 'vitest';
-import { STAGES, MORE, ALL, LOOSE, pipelineOf, campaignChoices, discoverRows, filterRows, validateRows, listApprovals, sentRows, replyRows, messagesOf, channelOf, emailedBefore } from '../../frontend/app/RelinkShell/company-line/sales-pipeline-view.js';
+import { STAGES, MORE, ALL, LOOSE, pipelineOf, campaignChoices, discoverRows, filterRows, validateRows, listApprovals, sentRows, replyRows, callRows, calledOffRows, callAway, readyRows, messagesOf, channelOf, emailedBefore } from '../../frontend/app/RelinkShell/company-line/sales-pipeline-view.js';
 import { leadThread } from '../../backend/services/sales/lead-thread.js';
 import { hubTabs, pickTab } from '../../frontend/app/RelinkShell/positions/positions-view.js';
 import { recordNames } from '../../backend/services/sales/record-names.js';
@@ -33,10 +33,11 @@ const setup = { done: 12, total: 12, steps: [] };
 const deals = [{ id: 'd1', stage: 'proposed' }, { id: 'd2', stage: 'won' }];
 const by = (stages) => Object.fromEntries(stages.map((s) => [s.id, s]));
 
-describe('the line: eight stages in order, each counted, the operator\'s marked', () => {
-  it('reads SETUP → DISCOVER → FILTER → VALIDATE → EMAILS → SENT → REPLIES → DEALS, and keeps what is not a stage under MORE', () => {
-    expect(STAGES.map((s) => s.label)).toEqual(['SETUP', 'DISCOVER', 'FILTER', 'VALIDATE', 'EMAILS', 'SENT', 'REPLIES', 'DEALS']);
-    expect(MORE.map((m) => m.label)).toEqual(['CAMPAIGNS', 'ALL PEOPLE', 'COMPANY FACTS', 'MAILBOX', 'SETTINGS', 'THEIR EYES']);
+describe('the line: ten stages in order, each counted, the operator\'s marked', () => {
+  it('reads SETUP → DISCOVER → FILTER → VALIDATE → EMAILS → SENT → REPLIES → CALLS → DEALS, and keeps what is not a stage under MORE', () => {
+    expect(STAGES.map((s) => s.label)).toEqual(['SETUP', 'DISCOVER', 'FILTER', 'VALIDATE', 'VALIDATED', 'EMAILS', 'SENT', 'REPLIES', 'CALLS', 'DEALS']);
+    expect(STAGES.map((s) => s.n)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(MORE.map((m) => m.label)).toEqual(['CAMPAIGNS', 'ALL PEOPLE', 'COSTS', 'COMPANY FACTS', 'MAILBOX', 'SETTINGS', 'THEIR EYES']);
   });
 
   it('over every campaign: what each stage holds, and where it waits on the operator', () => {
@@ -44,10 +45,11 @@ describe('the line: eight stages in order, each counted, the operator\'s marked'
     expect(s.setup).toMatchObject({ head: 'DONE', you: false });
     expect(s.discover).toMatchObject({ head: '7', unit: 'FOUND', lines: ['2 SEARCHES', '3 AUDIENCES'], you: true, yours: '1 TO APPROVE' });
     expect(s.filter).toMatchObject({ head: '3', unit: 'SHORTLISTED', lines: ['2 TO FILTER', '1 PASSED'], you: false });
-    expect(s.validate).toMatchObject({ unit: 'LEADS', you: true, yours: '1 TO APPROVE' });
+    // Nothing in VALIDATE waits on the operator: a fit not yet confirmed is a lead run's to validate (Design note, 2026-11-21.
+    expect(s.validate).toMatchObject({ unit: 'LEADS', you: false });
     expect(s.emails).toMatchObject({ head: '1', unit: 'TO REVIEW', you: true, lines: expect.arrayContaining(['1 RETURNED']) });
     expect(s.sent).toMatchObject({ head: '3', unit: 'WRITTEN', lines: ['1 TO FOLLOW UP'] });
-    expect(s.validate.lines).toEqual(['1 TO READ', '1 TO SCORE', '1 TO FILE']);
+    expect(s.validate.lines).toEqual(['1 TO READ', '1 TO SCORE', '1 TO VALIDATE', '1 TO FILE']);
     expect(s.replies).toMatchObject({ head: '1', unit: 'REPLIED', lines: ['1 TO ANSWER'] });
     expect(s.deals).toMatchObject({ head: '1', unit: 'OPEN', lines: ['1 WON'] });
   });
@@ -72,13 +74,17 @@ describe('what stands at each stage, one sheet a stage', () => {
     expect(filterRows(engine, 'k-ua').map((c) => c.domain)).toEqual(['raw.xyz']);
     expect(filterRows(engine, 'k-ua', 'kept').map((c) => c.domain)).toEqual(['kept.xyz', 'read.xyz', 'dead.xyz']);
     expect(filterRows(engine, 'k-ua', 'passed').map((c) => c.domain)).toEqual(['passed.xyz']);
+    // Every company carries the campaign its audience serves, so the sheet names it before the audience (Design note, 2026-11-21.
+    expect(new Set(filterRows(engine, ALL).map((c) => `${c.campaign} › ${c.audience}`))).toEqual(new Set(filterRows(engine, ALL).map((c) => `${(engine.campaigns.find((k) => k.id === engine.segments.find((sg) => sg.name === c.audience).campaign) ?? { name: 'NO CAMPAIGN' }).name} › ${c.audience}`)));
+    expect(filterRows(engine, 'k-ua')[0].campaign).toBe(engine.campaigns.find((k) => k.id === 'k-ua').name);
+    expect(validateRows(engine, 'k-ua').every((r) => r.campaign === engine.campaigns.find((k) => k.id === 'k-ua').name)).toBe(true);
   });
 
   it('VALIDATE: each company past the filter, its site, its fit, its person, and what is next for it', () => {
     expect(validateRows(engine, 'k-ua').map((r) => [r.domain, r.site, r.fit, r.person?.name ?? null, r.standing])).toEqual([
-      // What waits on the operator — a fit not yet on the approved list — stands first, and says so.
-      ['fit.xyz', 'ALIVE', 'STRONG MATCH', 'Ari', 'WAITS FOR YOUR APPROVAL'],
-      ['lead.xyz', 'ALIVE', 'WEAK MATCH', 'Bo', 'ON THE LIST'],
+      // A fit no screening has confirmed yet stands first, and says what it waits for: a lead run, not the operator.
+      ['fit.xyz', 'ALIVE', 'STRONG MATCH', 'Ari', 'TO VALIDATE'],
+      ['lead.xyz', 'ALIVE', 'WEAK MATCH', 'Bo', 'A LEAD'],
       ['kept.xyz', 'TO READ', '—', null, 'READ ITS SITE'],
       ['read.xyz', 'ALIVE', 'TO SCORE', null, 'SCORE IT'],
       ['dead.xyz', 'DEAD', '—', null, 'DEAD END'],
@@ -149,10 +155,63 @@ describe('never the same first email twice, on screen (Design note, 2026-11-18',
   });
 });
 
+describe('VALIDATED stands between the validating and the emails: every lead confirmed and filed, waiting for its email', () => {
+  it('a cold lead with nothing staged for it; one already staged, written to or bounced is not here', () => {
+    // L1 is cold with an email waiting (m-1); a fresh cold lead with a confirmed address stands here, with what confirmed it.
+    const fresh = { ...engine, leads: [...engine.leads, lead('R1', 'cold', 'k-ua', { name: 'Kaan Akin, Managing Partner at Tenity', updatedAt: '2026-11-21T06:00:00Z' }), lead('R2', 'cold', 'k-fund', { name: 'IVP team, general address at IVP', updatedAt: '2026-11-21T05:00:00Z' }), lead('R3', 'cold', 'k-ua', { bounced: { at: '2026-11-21', address: 'R3@x.io' } })], checks: { 'r1@x.io': { status: 'valid', checker: 'Apollo' } } };
+    expect(readyRows(fresh, ALL).map((l) => [l.id, l.general, l.check?.status ?? null])).toEqual([['R1', false, 'valid'], ['R2', true, null]]);
+    expect(readyRows(fresh, 'k-fund').map((l) => l.id)).toEqual(['R2']);
+    expect(by(pipelineOf({ engine: fresh, view: ALL, setup, deals })).ready).toMatchObject({ n: 5, label: 'VALIDATED', head: '2', unit: 'READY', lines: ['1 NAMED PEOPLE', '1 GENERAL MAILBOXES'], you: false });
+    expect(readyRows(engine, ALL)).toEqual([]);
+  });
+});
+
+describe('CALLS stands just before DEALS: every call booked with a lead, the next one first', () => {
+  const now = Date.parse('2026-11-20T12:00:00Z');
+  const at = (hours) => new Date(now + hours * 3_600_000).toISOString();
+  const booked = { ...engine, leads: [
+    lead('C1', 'qualified', 'k-ua', { call: { at: at(50), title: 'Intro with C1' } }),
+    lead('C2', 'qualified', 'k-fund', { call: { at: at(3), title: 'Deck walk-through' } }),
+    lead('C3', 'qualified', 'k-ua', { call: { at: at(-30), title: 'First call' } }),
+    lead('C4', 'qualified', 'k-ua', { call: { at: at(-80), title: 'Older call' } }),
+    lead('C5', 'replied', 'k-ua'),
+  ] };
+
+  it('the calls coming stand soonest first, then the calls held, latest first; a lead with no call is not listed', () => {
+    expect(callRows(booked, ALL, now).map((l) => l.id)).toEqual(['C2', 'C1', 'C3', 'C4']);
+    expect(callRows(booked, 'k-fund', now).map((l) => l.id)).toEqual(['C2']);
+    expect(callRows(engine, ALL, now)).toEqual([]);
+  });
+
+  it('says how far off each call is, and keeps a call that began within the hour as NOW', () => {
+    const away = (hours) => callAway({ call: { at: at(hours) } }, now);
+    expect([away(0.5), away(3), away(47), away(50), away(-0.5), away(-2)]).toEqual(['IN 30 MIN', 'IN 3 H', 'IN 47 H', 'IN 2 D', 'NOW', 'HELD']);
+  });
+
+  it('the stage counts the calls coming, names the next one, and waits on the operator while one is coming', () => {
+    const far = { ...engine, leads: [lead('F1', 'qualified', 'k-ua', { call: { at: new Date(Date.now() + 5 * 3_600_000).toISOString(), title: 'x' } }), lead('F2', 'qualified', 'k-ua', { call: { at: '2026-01-05T10:00:00Z', title: 'y' } })] };
+    const s = by(pipelineOf({ engine: far, view: ALL, setup, deals }));
+    expect(s.calls).toMatchObject({ n: 9, head: '1', unit: 'BOOKED', lines: ['1 HELD'], you: true, yours: expect.stringMatching(/^NEXT · /) });
+    expect(s.deals.n).toBe(10);
+    expect(by(pipelineOf({ engine, view: ALL, setup, deals })).calls).toMatchObject({ head: '0', lines: ['0 HELD'], you: false, yours: null });
+  });
+
+  it('a call that was called off leaves the list, is counted on the stage, and stands in its own list, the latest first', () => {
+    const off = { ...engine, leads: [
+      lead('O1', 'qualified', 'k-ua', { callOff: { at: at(20), title: 'Intro', offAt: '2026-11-19T10:00:00Z', by: 'merc' } }),
+      lead('O2', 'qualified', 'k-ua', { callOff: { at: at(30), title: 'Intro', offAt: '2026-11-20T10:00:00Z', by: 'calendar' } }),
+      lead('O3', 'qualified', 'k-ua', { call: { at: at(-30), title: 'Held', movedFrom: at(-40) } }),
+    ] };
+    expect(callRows(off, ALL, now).map((l) => l.id)).toEqual(['O3']);
+    expect(calledOffRows(off, ALL).map((l) => l.id)).toEqual(['O2', 'O1']);
+    expect(by(pipelineOf({ engine: off, view: ALL, setup, deals })).calls.lines).toEqual(['1 HELD', '2 CALLED OFF']);
+  });
+});
+
 describe('the hub stands on its stages', () => {
   const cro = (done) => ({ office: 'cro', functions: [], connections: [], setup: { done, total: 12 } });
   it('the sales hub\'s tabs are its stages then MORE; it opens on SETUP until set up, then on DISCOVER; older doors still land', () => {
-    expect(hubTabs(cro(12)).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'emails', 'sent', 'replies', 'deals', 'campaigns', 'leads', 'model', 'mailbox', '_switches', '_eyes']);
+    expect(hubTabs(cro(12)).map((t) => t.id)).toEqual(['setup', 'discover', 'filter', 'validate', 'ready', 'emails', 'sent', 'replies', 'calls', 'deals', 'campaigns', 'leads', 'costs', 'model', 'mailbox', '_switches', '_eyes']);
     expect(pickTab(cro(3), null)).toBe('setup');
     expect(pickTab(cro(12), null)).toBe('discover');
     expect(pickTab(cro(12), '_setup')).toBe('setup');

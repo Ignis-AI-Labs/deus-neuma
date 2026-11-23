@@ -16,7 +16,7 @@ import { isRefinementTool, handleRefinementTool } from './refinement-being-tools
 import { isVoiceTool, handleVoiceTool } from './voice-being-tools.js';
 import { isAccessRequestTool, handleAccessRequestTool } from './access-request-being-tools.js';
 import { isSubstrateFactsTool, handleSubstrateFactsTool } from './substrate-facts-being-tool.js';
-import { isWebTool, handleWebTool } from './web-being-tools.js';
+import { isWebTool, handleWebTool } from './web-being-tools.js'; import { isBrowserTool, handleBrowserTool } from './browser/browser-being-tools.js';
 import { isChainTool, handleChainTool } from './chain/chain-being-tools.js';
 import { isMediaTool, handleMediaTool } from './media-being-tools.js';
 import { isImageTool, handleImageTool } from './image-forge/image-being-tools.js';
@@ -24,6 +24,7 @@ import { isMapTool, handleMapTool } from './map-being-tools.js';
 import { isPlatformFeedTool, handlePlatformFeedTool } from './platform-feed/platform-feed-tools.js';
 import { handleFlightCheckTool, isFlightCheckTool, seatOf } from './flight-check.js';
 import { handleKspTool, isKspTool } from './ksp/ksp-being-tools.js';
+import { handleUnrealTool, isUnrealTool } from './unreal/unreal-being-tools.js';
 import { isEmailTool, handleEmailTool } from './email/email-being-tools.js';
 import { isPressTool, handlePressTool } from './doc-press/press-being-tools.js';
 import { discloseTurnTools, handleBeingCodingTool, isBeingCodingTool, isToolSearchTool } from './being-tool-surface.js';
@@ -114,7 +115,7 @@ import {
 const _isSovereignOnlyTool = (match) =>
   _isSealRequestTool(match)
   || isRefinementTool(match) || isVoiceTool(match)
-  || isKspTool(match);
+  || isKspTool(match) || isUnrealTool(match);
 
 /**
  * Dispatch one PLATFORM-CAPABILITY call — a tool this app implements itself
@@ -395,12 +396,9 @@ export const dispatchPlatformTool = async (match, ctx) => {
       break dispatch;
     }
 
-    if (isWebTool(match)) {
-      results.push(await handleWebTool(ws, connection, neumaPolicy, toolMode, match, args, {
-        sendToolEvent: _sendToolEvent,
-      }));
-      break dispatch;
-    }
+    if (isWebTool(match)) { results.push(await handleWebTool(ws, connection, neumaPolicy, toolMode, match, args, { sendToolEvent: _sendToolEvent })); break dispatch; }
+    if (isBrowserTool(match)) { results.push(await handleBrowserTool(ws, connection, neumaPolicy, toolMode, match, args, { sendToolEvent: _sendToolEvent })); break dispatch; }
+    if (isUnrealTool(match)) { results.push(await handleUnrealTool(ws, connection, neumaPolicy, toolMode, match, args, { sendToolEvent: _sendToolEvent })); break dispatch; }
 
     if (isChainTool(match)) { results.push(await handleChainTool(ws, connection, neumaPolicy, toolMode, match, args, { sendToolEvent: _sendToolEvent })); break dispatch; }
 

@@ -23,6 +23,7 @@ import {
 import {
   validateSendRequest,
   buildMimeMessage,
+  threadHeaders,
   dotStuff,
   smtpReplyComplete,
   buildSmtpDialogue,
@@ -163,6 +164,14 @@ describe('smtp sender — pure core', () => {
     }).ok).toBe(false);
   });
 
+  it('names the conversation a message continues: the newest earlier id is answered, all are referenced, nothing malformed is written', () => {
+    expect(threadHeaders()).toEqual([]);
+    expect(threadHeaders(['nope', '', null, '<two words@x.y>'])).toEqual([]);
+    expect(threadHeaders(['<a@x.y>', '<b@x.y>', '<a@x.y>'])).toEqual(['In-Reply-To: <b@x.y>', 'References: <a@x.y> <b@x.y>']);
+    const many = Array.from({ length: 20 }, (_, i) => `<m${i}@x.y>`);
+    expect(threadHeaders(many)).toEqual(['In-Reply-To: <m19@x.y>', `References: ${many.slice(-12).join(' ')}`]);
+  });
+
   it('builds an RFC 5322 message whose body decodes back to the text', () => {
     const message = buildMimeMessage({
       from: 'keir@house.example',
@@ -233,6 +242,12 @@ describe('smtp sender — runner against a real socket', () => {
       const sent = await sendEmail({ ...CREDS, smtpHost: 'localhost', smtpPort: String(server.port) }, { to: 'lead@example.com', subject: 'Hello', text: 'A real message' });
       expect(sent).toMatchObject({ ok: true, to: ['lead@example.com'], from: CREDS.address });
       expect(server.received).toHaveLength(1);
+      expect(server.received[0].data).not.toMatch(/^In-Reply-To:|^References:/m);
+      // A follow-up names the earlier messages of the conversation, so it lands in the same thread at their end.
+      const next = await sendEmail({ ...CREDS, smtpHost: 'localhost', smtpPort: String(server.port) }, { to: 'lead@example.com', subject: 'Hello', text: 'Following up', references: [sent.messageId, '<their-reply@example.com>', 'not an id', '<a@b>\r\nBcc: x@y.z'] });
+      expect(next.ok).toBe(true);
+      expect(server.received[1].data).toContain(`In-Reply-To: <their-reply@example.com>\r\nReferences: ${sent.messageId} <their-reply@example.com>\r\n`);
+      expect(server.received[1].data).not.toMatch(/Bcc:/);
       const refused = await sendEmail({ ...CREDS, smtpPort: '1' }, { to: 'lead@example.com', subject: 'No', text: 'Not accepted' });
       expect(refused.ok).toBe(false);
       expect(refused.uncertain).toBeUndefined();

@@ -97,3 +97,38 @@ describe('QUEUE_PULLED — the word comes home to the composer', () => {
     expect(after.pulledDraft).toBeNull();
   });
 });
+
+describe('QUEUE_HEARD — words taken into the reply in flight stand where they were picked up', () => {
+  test('the bubble leaves the bottom of the chat and is set inside the reply; what is said next follows it', async () => {
+    const { heldAckAction } = await import('../../frontend/app/RelinkShell/stream-held-actions.js');
+    // The portal says the word was HEARD (taken into the running turn), with its words and the moment.
+    expect(heldAckAction('consciousness:queue_taken', { holdId: 'q1', held: 0, heard: true, thought: 'use our sound pipeline', at: '2026-11-21T19:00:00.000Z' }))
+      .toEqual({ count: 0, action: { type: 'QUEUE_HEARD', holdId: 'q1', text: 'use our sound pipeline', at: '2026-11-21T19:00:00.000Z' } });
+    expect(heldAckAction('consciousness:queue_taken', { holdId: 'q1', held: 0 }).action).toEqual({ type: 'QUEUE_CLEAR', holdId: 'q1' });
+    const mid = run([
+      { type: 'USER_SENT', text: 'explain the pipeline' },
+      { type: 'SPEECH', text: 'You upload by hand until the posting path is' },
+      sent('use our sound pipeline', 'q1'),
+      { type: 'QUEUE_MARK', holdId: 'q1' },
+    ]);
+    expect(mid.messages.map((m) => m.role)).toEqual(['user', 'neuma', 'user']); // sent mid-reply: it sits below the reply
+    const heard = reducer(mid, { type: 'QUEUE_HEARD', holdId: 'q1', text: 'use our sound pipeline', at: '2026-11-21T19:00:00.000Z' });
+    expect(heard.messages.map((m) => m.role)).toEqual(['user', 'neuma']);
+    expect(heard.messages[1].segments).toEqual([
+      { kind: 'speech', text: 'You upload by hand until the posting path is' },
+      { kind: 'heard', text: 'use our sound pipeline', at: '2026-11-21T19:00:00.000Z' },
+    ]);
+    // The reply carries on BELOW the words, in a paragraph of its own; finishing keeps them where they stand.
+    const on = run([{ type: 'SPEECH', text: ' automated. The sound comes from our own pipeline.' }, { type: 'COMPLETE' }], heard);
+    expect(on.messages[1].segments.map((x) => x.kind)).toEqual(['speech', 'heard', 'speech']);
+    expect(on.messages[1].segments[2].text).toBe(' automated. The sound comes from our own pipeline.');
+    expect(on.messages[1].streaming).toBe(false);
+  });
+
+  test('with no reply in flight the bubble stays where it is, marked heard; a stranger handle changes nothing', () => {
+    const state = run([sent('one', 'q1'), { type: 'QUEUE_MARK', holdId: 'q1' }, { type: 'COMPLETE' }]);
+    const heard = reducer(state, { type: 'QUEUE_HEARD', holdId: 'q1', text: 'one', at: null });
+    expect(userMsg(heard, 'q1')).toMatchObject({ queued: false, heard: true });
+    expect(reducer(heard, { type: 'QUEUE_HEARD', holdId: 'q9', text: 'x', at: null }).messages).toEqual(heard.messages);
+  });
+});

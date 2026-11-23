@@ -21,6 +21,21 @@ export const clearMercator = () => revenueCall('DELETE', '/seat', { errorPrefix:
 export const setDeliveryDestination = (folder, linkBase) => revenueCall('PUT', '/delivery-destination', { body: { folder, linkBase }, errorPrefix: 'Could not set where deliveries go' });
 
 /** The lead engine of the operator's house: segments, the prospect pool, the do-not-contact list, what is due. impure. */
+/** Open a deal with the operator's own hand: {company, buyer, leadId?, value: {amount, currency}, spin: {problem, needPayoff}, nextStep}. */
+export const openDeal = (deal) => revenueCall('POST', '/deals', { body: deal, errorPrefix: 'Could not open the deal' });
+/** The house's invoices and the ways it can be paid: {invoices, ways: {crypto, card: {ready, on}}}. */
+export const getInvoices = () => revenueCall('GET', '/invoices', { errorPrefix: 'Could not read the invoices' });
+/** Bill a won deal: {lines: [{what, amount}], due, note?, card?, crypto?}. */
+export const issueDealInvoice = (dealId, invoice) => revenueCall('POST', `/deals/${encodeURIComponent(dealId)}/invoice`, { body: invoice, errorPrefix: 'Could not issue the invoice' });
+/** Email an invoice to its buyer from the house mailbox. */
+export const sendDealInvoice = (id, to, greeting = '') => revenueCall('POST', `/invoices/${encodeURIComponent(id)}/send`, { body: { to, greeting }, errorPrefix: 'Could not send the invoice' });
+export const voidDealInvoice = (id, reason) => revenueCall('POST', `/invoices/${encodeURIComponent(id)}/void`, { body: { reason }, errorPrefix: 'Could not void the invoice' });
+/** Ask Stripe now whether the open card invoices were paid. */
+export const checkInvoices = () => revenueCall('POST', '/invoices/check', { errorPrefix: 'Could not ask Stripe' });
+/** Move one deal with the operator's own hand: {stage, note, reason?, value?, nextStep?}. */
+export const moveDeal = (id, move) => revenueCall('POST', `/deals/${encodeURIComponent(id)}/move`, { body: move, errorPrefix: 'Could not move the deal' });
+/** What an audience REQUIRES of a company: [{sign, evidence: [words], otherwise?}], or [] for nothing. */
+export const setAudienceRequired = (id, required) => revenueCall('PUT', `/lead-engine/segments/${encodeURIComponent(id)}/required`, { body: { required }, errorPrefix: 'Could not set what the audience requires' });
 export const getLeadEngine = () => revenueCall('GET', '/lead-engine', { errorPrefix: 'Could not read the lead engine' });
 /** The names of the lead engine's records by id — what a door in a member's words says instead of the id. */
 export const getRecordNames = () => revenueCall('GET', '/lead-engine/names', { errorPrefix: 'Could not read the record names' });
@@ -90,6 +105,39 @@ export const setLeadSpend = (mode, cap) => revenueCall('POST', '/lead-engine/spe
 export const changeSalesFact = (sheetId, change) => revenueCall('POST', `/lead-engine/facts/${encodeURIComponent(sheetId)}/fact`, { body: change, errorPrefix: 'Could not change the fact' });
 
 /** Say what a lead's reply says (wants, open, auto, gone, no): a no or a person who left closes it, kept as a contact. impure. */
+/** Book a call onto a lead by hand: at is an ISO time with its zone. */
+export const bookLeadCall = (leadId, { at, title, link }) => revenueCall('POST', `/lead-engine/leads/${encodeURIComponent(leadId)}/call`, { body: { at, title, ...(link ? { link } : {}) }, errorPrefix: 'Could not book the call' });
+/** Call a lead's call off. */
+export const cancelLeadCall = (leadId) => revenueCall('DELETE', `/lead-engine/leads/${encodeURIComponent(leadId)}/call`, { errorPrefix: 'Could not call the call off' });
+/** File (or replace) what a lead-data partner costs a month; end one. */
+export const setLeadPlan = (plan) => revenueCall('PUT', '/lead-engine/plans', { body: plan, errorPrefix: 'Could not file the plan' });
+export const endLeadPlan = (partner) => revenueCall('DELETE', `/lead-engine/plans/${encodeURIComponent(partner)}`, { errorPrefix: 'Could not end the plan' });
+/** Pass over every unworked company a too-wide search brought in. */
+export const passWideFinds = () => revenueCall('POST', '/lead-engine/searches/pass-wide', { errorPrefix: 'Could not pass them over' });
+/** The lead run: where it stands, start one for an audience, stop it. */
+export const getLeadRun = () => revenueCall('GET', '/lead-engine/run', { errorPrefix: 'Could not read the lead run' });
+export const startLeadRun = (segment, leads, credits) => revenueCall('POST', '/lead-engine/run', { body: { segment, leads, ...(credits ? { credits } : {}) }, errorPrefix: 'Could not start the run' });
+/** Gather for an audience from a free public list (base-protocols, base-tokens), as many as it gives. */
+export const gatherFromList = (segment, source) => revenueCall('POST', '/lead-engine/gather-list', { body: { segment, source }, errorPrefix: 'Could not gather' });
+/** Where each approved audience stands for a run, with its next step in words. */
+export const getRunStanding = () => revenueCall('GET', '/lead-engine/run/standing', { errorPrefix: 'Could not read where the audiences stand' });
+/** The pipeline review: every audience on a line; or one audience whole (its newest `size` leads, every failed check with its companies). */
+export const getPipelineReview = (segment = null, size = null) => revenueCall('GET', `/lead-engine/review${segment ? `?segment=${encodeURIComponent(segment)}${size ? `&size=${size}` : ''}` : ''}`, { errorPrefix: 'Could not read the pipeline review' });
+/** The daily lead run of each audience: read them; set one (on or off, leads a day, the day's credit limit, the hour it may start from). */
+export const getRunSchedule = () => revenueCall('GET', '/lead-engine/run/schedule', { errorPrefix: 'Could not read the daily lead runs' });
+export const setRunSchedule = (setting) => revenueCall('PUT', '/lead-engine/run/schedule', { body: setting, errorPrefix: 'Could not set the daily lead run' });
+/** Test an audience against companies that ARE it (their sites, commas or lines between them): they are screened now. */
+export const testAudience = (segmentId, companies) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(segmentId)}/test`, { body: { companies }, errorPrefix: 'Could not test the audience' });
+/** The never-list: the places the house never writes to (kept by its legal office). Read it, set it, or answer what was proposed. */
+export const getNeverList = () => revenueCall('GET', '/lead-engine/never-list', { errorPrefix: 'Could not read the never-list' });
+export const setNeverList = (list) => revenueCall('PUT', '/lead-engine/never-list', { body: list, errorPrefix: 'Could not set the never-list' });
+export const reviewNeverList = (verdict, note = '') => revenueCall('POST', '/lead-engine/never-list/review', { body: { verdict, note }, errorPrefix: 'Could not answer the proposed list' });
+/** Clear one finished run off the desk (by its id), or every finished one. Its record is kept. */
+export const clearLeadRun = (id = null) => revenueCall('POST', '/lead-engine/run/clear', { body: id ? { id } : {}, errorPrefix: 'Could not clear the run' });
+/** Every run on record, newest first; and every line one of them said. */
+export const getRunHistory = () => revenueCall('GET', '/lead-engine/runs', { errorPrefix: 'Could not read the past runs' });
+export const getRunLines = (id) => revenueCall('GET', `/lead-engine/runs/${encodeURIComponent(id)}/lines`, { errorPrefix: 'Could not read what that run did' });
+export const stopLeadRun = (id = null) => revenueCall('POST', '/lead-engine/run/stop', { body: id ? { id } : {}, errorPrefix: 'Could not stop the run' });
 export const setLeadSaid = (leadId, says, want) => revenueCall('POST', `/lead-engine/leads/${encodeURIComponent(leadId)}/said`, { body: { says, ...(want ? { want } : {}) }, errorPrefix: 'Could not change what the reply says' });
 
 /** Re-file one lead under what it is to the house (buyer, applicant, partner, investor, press, vendor, other). impure. */

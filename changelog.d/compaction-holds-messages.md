@@ -1,2 +1,0 @@
-Fixed
-- Anything you send while a conversation is being compacted now waits for the compaction to finish, then goes in order. Before, a message sent during COMPACTING started right away, against the conversation while it was being rewritten. This covers both your /compact and the automatic one that runs when the context is nearly full. The message shows as held with "it goes as soon as the compaction finishes". Even a message marked "now" waits, because a compaction can't be cut short.

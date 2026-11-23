@@ -98,6 +98,7 @@ import { useWaiting, WaitingContext } from './waiting/use-waiting.js';
 import { WaitingJumps } from './waiting/WaitingJumps.jsx';
 import { PlatformVersion } from './PlatformVersion.jsx';
 import { UpdateBar } from './UpdateBar.jsx';
+import { DevRefreshBar } from './DevRefreshBar.jsx';
 import { deskRegistryFor, isHarness } from '../harness-mode.js';
 
 // Voice and the 3D body are held back from the early release (coming-later.js).
@@ -375,6 +376,7 @@ export const RelinkShell = ({ wsService }) => {
 
       {/* A ready update, from the desk app: one press to install, and what changed. */}
       <UpdateBar />
+      <DevRefreshBar />
     </div>
   );
 };

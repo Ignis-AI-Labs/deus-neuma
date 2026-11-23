@@ -64,6 +64,8 @@ const AUTO_HARD_GATES = Object.freeze(new Set([
   'intents/web.download', 'intents/media.save', 'intents/forge.install', 'intents/forge.workflow',
   // a click or a keystroke in a neuma's own browser can send, buy or delete (docs/work/being-browser.md)
   'browser/browser_click', 'browser/browser_type',
+  // code in the operator's Unreal editor runs with no sandbox; a write tool or a Fab install changes their project
+  'unreal/unreal_python', 'unreal/unreal_tool', 'unreal/unreal_fab_install',
   'intents/tasks.operator-drop',
   'intents/security.assess',
   'intents/security.escalate',

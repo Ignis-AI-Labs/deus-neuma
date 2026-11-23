@@ -19,13 +19,22 @@ import { useTempRealm } from '../helpers/temp-realm.js';
 import { fullAuth } from '../helpers/audit-auth.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import revenueRouter from '../../backend/routes/revenue-routes.js';
-import { noteSites, readSearches, readCandidates } from '../../backend/services/sales/sales-store.js';
+import { noteSites, readSearches, readCandidates, addCandidates, noteSearch } from '../../backend/services/sales/sales-store.js';
 import { peopleOfTomba, checkOfTomba, accountOfTomba } from '../../backend/services/sales/tomba-api.js';
 import { judgeApollo, accountOfApollo } from '../../backend/services/sales/apollo-api.js';
 import { tombaQuery, apolloSearchQuery, bareDomain, pagesFor } from '../../backend/services/sales/company-search.js';
 import { refusalWords } from '../../backend/services/sales/provider-call.js';
 import { checkBeforeFirstEmail } from '../../backend/services/sales/address-check.js';
 import { __test } from '../../backend/services/portal-test-surface.js';
+import http from 'node:http';
+import { startLeadRun, leadRunOf } from '../../backend/services/sales/lead-run.js';
+import { activeWork } from '../../backend/services/active-work.js';
+import { salesIntents } from '../../backend/services/intents/sales-acts.js';
+import { getConfig, setConfig } from '../../backend/services/llm-provider.js';
+import { setCredential } from '../../backend/services/provider-credentials.js';
+import { setRoute } from '../../backend/services/neuma-routes-store.js';
+import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
+import { readProspects } from '../../backend/services/sales/sales-store.js';
 
 const { processToolCalls } = __test;
 const KEYS = ['DNA_ENCRYPTION_KEY', 'NEUMA_CONNECTIONS_PATH', 'NEUMA_LEAD_SOURCE_TOMBA', 'NEUMA_LEAD_SOURCE_APOLLO', 'HUNTER_API_KEY', 'TOMBA_API_KEY', 'TOMBA_API_SECRET', 'APOLLO_API_KEY'];
@@ -130,6 +139,8 @@ describe('Tomba and Apollo through the real stack, with no Hunter attached', () 
     const tombaSays = (email) => (email.startsWith('gone') ? 'invalid' : email.startsWith('risky') ? 'accept_all' : 'valid');
     list.get('/tomba/email-verifier', (req, res) => (req.query.email.startsWith('busy') ? res.status(429).json({}) : res.json({ data: { email: { status: tombaSays(req.query.email), score: 98, webmail: false, mx_check: true, smtp_check: true } } })));
     list.get('/tomba/me', (req, res) => res.json({ data: { pricing: { name: 'Free' }, requests: { domains: { available: 25, used: 5 }, verifications: { available: 10, used: 1 } }, secret_token: 'ts_NEVER_SHOWN' } }));
+    // A search asked with a loose word: Apollo answers with a slice of everything it holds, the biggest first.
+    list.post('/apollo/mixed_companies/search', (req, res, next) => (decodeURIComponent(req.url).includes('liquidity') ? res.json({ organizations: Array.from({ length: 100 }, (_, i) => ({ name: `Big Co ${i}`, primary_domain: `bigco${i}.example` })), pagination: { page: 1, per_page: 100, total_entries: 59388, total_pages: 594 } }) : next()));
     list.post('/apollo/mixed_companies/search', (req, res) => res.json({ organizations: [{ name: 'Galaxy', primary_domain: 'galaxy.com', linkedin_url: 'http://www.linkedin.com/company/galaxy', founded_year: 2018 }], pagination: { page: 1, per_page: 100, total_entries: 1, total_pages: 1 } }));
     list.post('/apollo/mixed_people/api_search', (req, res) => res.json([req.query.q_organization_domains_list].flat()[0] === 'galaxy.com' && req.query.person_seniorities ? APOLLO_PEOPLE : { people: [] }));
     list.post('/apollo/people/match', (req, res) => res.json(req.query.id ? MATCH[req.query.id] ?? {} : req.query.name === 'Mike Novogratz' && req.query.domain === 'galaxy.com' ? MATCH.a1 : {}));
@@ -365,4 +376,122 @@ describe('Tomba and Apollo through the real stack, with no Hunter attached', () 
     expect(html).toContain('Nobody asks again. Send it as it is, or write to someone else at the company.');
     expect(Number(/FIND CONFIRMED ADDRESSES \((\d+)\)/.exec(html)?.[1] ?? 0)).toBe(Number(/FIND CONFIRMED ADDRESSES \((\d+)\)/.exec(shown)?.[1]) - 3);
   }, 90000);
+  test('a caller that needs ONE person pays for one: Apollo stops revealing at the first address that stands (the first live lead run paid for five a company)', async () => {
+    const reveals = () => hits.filter((h) => h.includes('/apollo/people/match')).length;
+    const before = reveals();
+    const one = await act('merc', { type: 'sales/contacts', domain: 'galaxy.com', source: 'apollo', people: 1 });
+    expect(one.status, one.error).toBe('ok');
+    expect(reveals() - before).toBe(1);
+    expect(one.content).toMatch(/People at galaxy\.com \(apollo, 1 credit\(s\) spent\), top first:/);
+    expect((await act('merc', { type: 'sales/contacts', domain: 'galaxy.com', source: 'apollo' })).content).toMatch(/3 credit\(s\) spent/); // asked with no number, the seat still sees everyone
+    expect(reveals() - before).toBe(1 + 3);
+  }, 60000);
+
+  test('A SEARCH TOO WIDE KEEPS NOTHING and stops after its first page; what such searches already brought is passed over in one press (Design note, 2026-11-21', async () => {
+    const segment = await segmentId();
+    const before = (await readCandidates(me.address)).length;
+    const pagesBefore = hits.filter((h) => h.includes('/mixed_companies/search')).length;
+    const wide = await act('merc', { type: 'sales/gather', segment, source: 'apollo-discover', keywords: ['liquidity'], count: 500 });
+    expect(wide.status).toBe('error');
+    expect(wide.error).toMatch(/That search matched 59,388 companies at apollo-discover — more than 10,000 is not this audience/);
+    expect(wide.error).toContain('NOTHING WAS KEPT (1 credit(s) spent on the look).');
+    expect((await readCandidates(me.address)).length).toBe(before); // not one of the hundred it returned
+    expect(hits.filter((h) => h.includes('/mixed_companies/search')).length - pagesBefore).toBe(1); // five pages were asked for; one was paid for
+    expect((await readSearches(me.address)).at(-1)).toMatchObject({ source: 'apollo-discover', matched: 59388, gathered: 0, spent: 1 });
+
+    // Before the rule, such a search kept its first page. Two of its companies, one already read by the seat.
+    await addCandidates(me.address, segment, [{ source: 'apollo-discover', domain: 'dentsu.example', name: 'Dentsu' }, { source: 'apollo-discover', domain: 'freddie.example', name: 'Freddie' }], 'merc');
+    await noteSites(me.address, [{ domain: 'freddie.example', site: { alive: true, description: 'A lender.' } }], 'merc');
+    await noteSearch(me.address, { segmentId: segment, source: 'apollo-discover', asked: 'venture capital', matched: 136449, gathered: 2, spent: 5, by: 'merc' });
+    expect((await engine()).wide).toEqual({ searches: 1, companies: 2, left: 1, limit: 10000 });
+    expect((await request(app).post('/api/v1/revenue/lead-engine/searches/pass-wide')).status).toBe(401);
+    const pressed = await request(app).post('/api/v1/revenue/lead-engine/searches/pass-wide').use(as);
+    expect(pressed.body).toMatchObject({ ok: true, passed: 1, wide: { searches: 1, companies: 2, left: 0 } });
+    const after = await readCandidates(me.address);
+    expect(after.find((c) => c.domain === 'dentsu.example')).toMatchObject({ shortlist: 'passed', shortlistWhy: 'from a search too wide to be this audience\'s: it matched 136,449 at Apollo ("venture capital")' });
+    expect(after.find((c) => c.domain === 'freddie.example').shortlist).toBeUndefined(); // the seat had already read it: left for the seat
+    expect((await request(app).post('/api/v1/revenue/lead-engine/searches/pass-wide').use(as)).body.passed).toBe(0);
+  }, 60000);
+  test('THE LEAD RUN: gathered companies are read, screened from their own page, filed through the seat\'s own acts, and each fit ends as a lead with a confirmed address — several at once, nothing by hand (Design note, 2026-11-21', async () => {
+    const segment = await segmentId();
+    const seg = (await engine()).segments.find((x) => x.id === segment);
+    const asked = [];
+    const llm = http.createServer((req, res) => {
+      if (req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ data: [{ id: 'screen-model', type: 'llm', max_context_length: 32768, loaded_context_length: 32768 }] })); return; }
+      let raw = '';
+      req.on('data', (c) => { raw += c; });
+      req.on('end', () => {
+        const prompt = JSON.parse(raw).messages.at(-1).content;
+        asked.push(prompt);
+        const fund = /invest in early crypto networks/.test(prompt);
+        const scores = Object.fromEntries([...seg.positiveCriteria.map((_, n) => [`F${n + 1}`, { score: fund ? 5 : 0, why: fund ? 'its page says it invests in early crypto networks' : 'its page sells running shoes and shows no such thing' }]), ...(seg.negativeCriteria ?? []).map((_, n) => [`D${n + 1}`, { score: 0, why: 'nothing on the page shows this at all' }])]);
+        const answer = JSON.stringify({ name: fund ? 'Fund Alpha' : 'Shop Co', what: fund ? 'A venture fund for early crypto networks.' : 'An online shoe shop.', country: 'US', scores });
+        res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+        res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: `Here it is: ${answer}` } }] })}\n\n`);
+        res.write(`data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] })}\n\n`);
+        res.end('data: [DONE]\n\n');
+      });
+    });
+    await new Promise((resolve) => llm.listen(0, '127.0.0.1', resolve));
+    const priorConfig = getConfig();
+    setConfig({ provider: 'lm-studio', endpoint: `http://127.0.0.1:${llm.address().port}`, apiKey: '', model: 'screen-model' });
+    await setCredential('lm-studio', { apiKey: 'fixture-only', endpoint: getConfig().endpoint });
+    await setRoute('merc', { provider: 'lm-studio', model: 'screen-model' });
+    const pages = {
+      'https://fundalpha.example/': '<html><head><title>Fund Alpha</title></head><body><p>We invest in early crypto networks and the teams building them.</p><p>Write to the partners: partners@fundalpha.example</p></body></html>',
+      'https://fundbeta.example/': '<html><head><title>Fund Beta</title></head><body><p>We invest in early crypto networks across Asia and the Americas.</p><p>Reach the team: team@fundbeta.example</p></body></html>',
+      'https://shopco.example/': '<html><head><title>Shop Co</title></head><body><p>Running shoes for every distance, shipped across the country.</p><p>Questions? hello@shopco.example</p></body></html>',
+    };
+    const fetchPage = async (url) => (pages[url] ? { ok: true, url, html: pages[url] } : { ok: false, why: 'the address does not exist' });
+    await addCandidates(me.address, segment, [{ source: 'apollo-discover', domain: 'fundalpha.example', name: 'Fund Alpha' }, { source: 'apollo-discover', domain: 'shopco.example', name: 'Shop Co' }, { source: 'apollo-discover', domain: 'deadco.example', name: 'Dead Co' }, { source: 'apollo-discover', domain: 'fundbeta.example', name: 'Fund Beta' }], 'merc');
+    const leadsBefore = (await (await leadLedgerFor(me.address)).load()).length;
+    // WAITING FOR VALIDATION: two companies the seat scored a fit by hand earlier. A run validates them first, from their own pages.
+    const byHand = (domain, name) => ({ domain, name, country: 'US', source: `https://${domain}/`, scores: seg.positiveCriteria.map((criterion) => ({ criterion, score: 5, reasoning: 'scored by hand, from memory' })) });
+    pages['https://handgood.example/'] = '<html><body><p>We invest in early crypto networks from our first fund, and we stay with founders for a decade.</p></body></html>';
+    pages['https://handbad.example/'] = '<html><body><p>Hand-made leather bags, stitched to order in our workshop and shipped anywhere in the country.</p></body></html>';
+    if (seg.state !== 'approved') {
+      expect((await startLeadRun(me.address, { segmentId: segment }, { intents: salesIntents, fetchPage })).reason).toMatch(/is draft, not approved — the operator approves an audience before a run works it/);
+      expect((await request(app).post(`/api/v1/revenue/lead-engine/segments/${segment}/state`).use(as).send({ state: 'approved' })).status).toBe(200);
+    }
+
+    expect((await act('merc', { type: 'sales/prospect', segment, companies: [byHand('handgood.example', 'Hand Good'), byHand('handbad.example', 'Hand Bad')] })).status).toBe('ok');
+    const started = await startLeadRun(me.address, { segmentId: segment, want: 50, credits: 1 }, { intents: salesIntents, fetchPage, width: 1 });
+    expect(started.ok, started.reason).toBe(true);
+    expect((await startLeadRun(me.address, { segmentId: segment }, { intents: salesIntents, fetchPage })).reason).toMatch(/already working/);
+    // While it works it stands in the house's ACTIVE list (the tray's ACTIVE tab reads it); ended, it has left.
+    expect(activeWork(me.address)).toEqual([expect.objectContaining({ kind: 'LEAD RUN', title: expect.stringMatching(/^\d+ of 50 leads — /), open: { appId: 'positions', office: 'cro', tab: 'discover' } })]);
+    const ended = await started.done;
+    expect(activeWork(me.address)).toEqual([]);
+    await new Promise((resolve) => llm.close(resolve));
+    setConfig(priorConfig);
+
+    // Fund Beta is a fit too, screened last: by then the run's own credit was spent confirming Fund Alpha's address, so nobody is looked up for it.
+    expect(ended.counts).toMatchObject({ screened: 3, fit: 2, nofit: 1, unclear: 0, leads: 1, spentStop: 'this run\'s own limit of 1 credits was reached' });
+    expect(ended.spent).toBeGreaterThanOrEqual(1);
+    expect(ended.counts.noAddress).toBeGreaterThanOrEqual(1); // Fund Beta, and any fit the earlier tests left without a person
+    expect(ended.counts.dead).toBe(ended.counts.looked - 3);
+    expect(ended.counts.dead).toBeGreaterThanOrEqual(1);
+    expect(ended.active).toBe(false);
+    expect(asked).toHaveLength(5);
+    // Validated first: the one its page shows to be a fund HOLDS (on the approved list by itself); the one that sells bags is OUT, with why.
+    expect(ended.counts).toMatchObject({ held: 1, out: 1, left: ended.counts.checked - 2 }); // what earlier tests left has no page here: left as it stood
+    expect((await readProspects(me.address)).find((p) => p.domain === 'handgood.example')).toMatchObject({ stage: 'found', listApproved: true, fit: expect.arrayContaining([expect.objectContaining({ reasoning: 'its page says it invests in early crypto networks' })]) }); // the record carries the page's scores, not the hand's
+    expect((await readProspects(me.address)).find((p) => p.domain === 'handbad.example')).toMatchObject({ stage: 'dropped' });
+    expect(asked.find((a) => a.includes('fundalpha.example'))).toContain('We invest in early crypto networks and the teams building them.');
+    const pool = await readProspects(me.address);
+    expect(pool.find((p) => p.domain === 'fundalpha.example')).toMatchObject({ name: 'Fund Alpha', match: 3, stage: 'promoted', country: 'US', source: 'https://fundalpha.example/', foundBy: 'merc' });
+    expect(pool.find((p) => p.domain === 'shopco.example')).toMatchObject({ match: 1, stage: 'found' });
+    expect(pool.find((p) => p.domain === 'fundalpha.example').listApproved).toBe(true);
+    expect(pool.find((p) => p.domain === 'shopco.example').listApproved).toBeFalsy();
+    const asks = hits.filter((h) => h.includes('fundalpha.example') && /api_search|domain-search/.test(h)).map((h) => (h.includes('/apollo/') ? 'apollo' : 'tomba'));
+    expect([...new Set(asks)]).toEqual(['apollo', 'tomba']);
+    const leads = await (await leadLedgerFor(me.address)).load();
+    expect(leads).toHaveLength(leadsBefore + 1);
+    expect(leads.at(-1)).toMatchObject({ contact: 'partners@fundalpha.example', status: 'cold', kind: 'buyer', ownerNeumaId: 'merc', source: expect.stringContaining('address: https://fundalpha.example/') });
+    expect((await engine()).checks['partners@fundalpha.example']).toMatchObject({ status: 'valid' });
+    expect((await readCandidates(me.address)).find((c) => c.domain === 'deadco.example')).toMatchObject({ shortlist: 'passed', shortlistWhy: 'its site is dead or cannot be reached' });
+    expect((await request(app).get('/api/v1/revenue/lead-engine/run').use(as)).body.run).toMatchObject({ segment: seg.name, active: false, credits: 1, ended: 'the spending rule stopped the lookups: this run\'s own limit of 1 credits was reached' });
+    expect((await readProspects(me.address)).find((p) => p.domain === 'fundbeta.example')).toMatchObject({ match: 3, stage: 'found' }); // scored, waiting for the next run
+    expect(leadRunOf(me.address).words).toMatch(/^\d+ waiting validated \(1 hold, 1 out, \d+ left as they stood\) · \d+ looked at · \d+ dead or unreadable · 3 screened \(2 a fit, 0 a fit only on the side signs, 1 no fit\) · 0 could not be screened · 1 lead\(s\) with a confirmed address · \d+ a fit with no confirmed address yet/);
+  }, 120000);
 });

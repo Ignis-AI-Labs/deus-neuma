@@ -26,6 +26,9 @@ import { readModels } from '../../backend/services/positions/business-model.js';
 import { readSpend } from '../../backend/services/sales/lead-spend.js';
 import { houseSeatingIntent } from '../../backend/services/intents/house-seating.js';
 import { readSeating } from '../../backend/services/positions/position-seating.js';
+import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
+import { callOf, callOffOf } from '../../backend/services/sales/booked-calls.js';
+import { readPlans } from '../../backend/services/sales/lead-plans.js';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
 const SHOTS = path.join(os.tmpdir(), 'neuma-positions-shots');
@@ -89,7 +92,8 @@ const open = async (width) => {
   const context = await browser.newContext({ viewport: { width, height: 1000 } });
   const page = await context.newPage();
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
+  // The dev server's own reload socket is closed in a test run (hmr off): its notice is not the page's error.
+  page.on('pageerror', (e) => { if (e.message !== 'WebSocket closed without opened.') errors.push(e.message); });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.locator('[data-position]').waitFor({ timeout: 120000 });
   return { page, errors };
@@ -113,8 +117,8 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     // eight stages in one line, in order, and what is not a stage in one quiet row; no tabs.
     const line = hub.locator('[data-sales-pipeline]');
     await line.waitFor();
-    expect(await line.locator('.spl-stage-n').allTextContents()).toEqual(['1 SETUP', '2 DISCOVER', '3 FILTER', '4 VALIDATE', '5 EMAILS', '6 SENT', '7 REPLIES', '8 DEALS']);
-    expect(await line.locator('[data-more]').allTextContents()).toEqual(['CAMPAIGNS', 'ALL PEOPLE', 'COMPANY FACTS', 'MAILBOX', 'SETTINGS', 'THEIR EYES']);
+    expect(await line.locator('.spl-stage-n').allTextContents()).toEqual(['1 SETUP', '2 DISCOVER', '3 FILTER', '4 VALIDATE', '5 VALIDATED', '6 EMAILS', '7 SENT', '8 REPLIES', '9 CALLS', '10 DEALS']);
+    expect(await line.locator('[data-more]').allTextContents()).toEqual(['CAMPAIGNS', 'ALL PEOPLE', 'COSTS', 'COMPANY FACTS', 'MAILBOX', 'SETTINGS', 'THEIR EYES']);
     expect(await hub.getByRole('tab').count()).toBe(0);
     // It opens on SETUP while the seat is not ready: each step says who does it, and an open one says exactly how.
     expect(await line.locator('[data-stage="setup"]').getAttribute('aria-current')).toBe('step');
@@ -199,6 +203,70 @@ describe('THE POSITIONS WINDOW — every position in one place, each with everyt
     expect(await hub.locator('[data-outbox] .fold-stat').allTextContents()).toEqual(['NOTHING WAITS', '0 SENT']);
     expect(await hub.locator('[data-emails-to-write]').textContent()).toBe('0 TO WRITE — YOUR SALES MEMBER WRITES THEM AND STAGES EACH HERE');
 
+    // CALLS stands just before DEALS: with no call on the calendar it says where one would come from.
+    await line.locator('[data-stage="calls"]').click();
+    expect(await hub.locator('[data-stage-body="calls"] .spl-body-h').textContent()).toBe('9 CALLS — EVERY CALL BOOKED WITH A LEAD, THE NEXT ONE FIRST');
+    expect(await hub.locator('[data-stage-body="calls"] .spl-empty').textContent()).toContain('NO CALL BOOKED YET');
+    expect(await hub.locator('[data-call-add] button').isDisabled()).toBe(true); // nothing to book until a lead and a time are given
+    // A call is booked by hand, moved, then called off — each on the real ledger (Design note, 2026-11-20: […]).
+    const ledger = await leadLedgerFor(auth.address);
+    const keith = await ledger.add({ name: 'Keith Driver', contact: 'keith@driverprojects.example', channelId: 'email', kind: 'investor', status: 'replied', addedBy: 'merc' });
+    const local = (ms) => { const d = new Date(ms); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+    const first = Math.floor((Date.now() + 5 * 3600_000) / 60_000) * 60_000;
+    const calls = hub.locator('[data-stage-body="calls"]');
+    // The house changed by another door (a member filed a lead): the same signal the backend's pulse sends the desk.
+    await page.evaluate(() => globalThis.dispatchEvent(new globalThis.Event('neuma:waiting-changed')));
+    await line.locator('[data-campaign-view="all"]').click(); // he came to us under no campaign: ALL shows him
+    const add = calls.locator('[data-call-add]');
+    await expect.poll(() => add.locator('datalist option').count(), { timeout: 30000 }).toBe(1);
+    await add.getByLabel('Who the call is with: a lead\'s name or address').fill('keith@driverprojects.example');
+    await add.getByLabel('When the call starts, in this computer\'s time').fill(local(first));
+    await add.getByLabel('What the call is').fill('Intro with Keith');
+    await add.getByRole('button', { name: 'BOOK THE CALL' }).click();
+    const callRow = calls.locator('[data-call="coming"]');
+    await callRow.waitFor({ timeout: 30000 });
+    expect(await callRow.locator('td, th').allTextContents()).toEqual(expect.arrayContaining(['IN 5 H', 'Intro with Keith']));
+    expect(await line.locator('[data-stage="calls"] .spl-stage-head').textContent()).toBe('1BOOKED');
+    expect(callOf((await ledger.load()).find((l) => l.id === keith.id))).toMatchObject({ at: new Date(first).toISOString(), title: 'Intro with Keith' });
+    // Moved a day on: the row says it moved, and from when.
+    await callRow.locator('.sheet-open').click();
+    const hand = calls.locator('[data-call-hand]');
+    await hand.locator('input[type="datetime-local"]').fill(local(first + 24 * 3600_000));
+    await hand.getByRole('button', { name: 'MOVE THE CALL' }).click();
+    await calls.locator('[data-call-moved]').waitFor({ timeout: 30000 });
+    expect(await calls.locator('[data-call-moved]').textContent()).toMatch(/^MOVED · WAS /);
+    expect(callOf((await ledger.load()).find((l) => l.id === keith.id))).toMatchObject({ at: new Date(first + 24 * 3600_000).toISOString(), movedFrom: new Date(first).toISOString() });
+    await page.screenshot({ path: path.join(SHOTS, 'sales-calls-1280.png') });
+    // Called off in two presses: it leaves the sheet and stands under CALLED OFF; the lead stays open.
+    await hand.getByRole('button', { name: 'CALL IT OFF' }).click();
+    await hand.getByRole('button', { name: 'PRESS AGAIN TO CALL IT OFF' }).click();
+    await calls.locator('[data-call="coming"]').waitFor({ state: 'detached', timeout: 30000 });
+    expect(await calls.locator('.fold-stat').allTextContents()).toEqual(['1', 'THE LEADS STAY OPEN']);
+    const rested = (await ledger.load()).find((l) => l.id === keith.id);
+    expect(callOf(rested)).toBeNull();
+    expect(callOffOf(rested)).toMatchObject({ at: new Date(first + 24 * 3600_000).toISOString(), by: 'operator' });
+    expect(rested.status).toBe('qualified');
+    // COSTS: the operator files what a partner costs a month, and the sheet says what a lead has cost (Design note, 2026-11-20:
+    // […]).
+    await hub.locator('[data-more="costs"]').click();
+    const costs = hub.locator('[data-stage-body="costs"]');
+    expect(await costs.locator('[data-cost-headline]').getAttribute('data-cost-headline')).toBe('none');
+    expect(await costs.locator('[data-cost-partner]').evaluateAll((rows) => rows.map((r) => `${r.dataset.costPartner}:${r.dataset.plan}`))).toEqual(['Apollo:none', 'Hunter:none', 'Tomba:none']);
+    await costs.locator('[data-cost-partner="Apollo"] .sheet-open').click();
+    const plan = costs.locator('[data-plan-hand="Apollo"]');
+    await plan.getByLabel('What Apollo costs a month').fill('100');
+    await plan.getByLabel('The credits a month the Apollo plan includes (optional)').fill('4020');
+    await plan.getByRole('button', { name: 'SAVE THE PLAN' }).click();
+    await costs.locator('[data-cost-partner="Apollo"][data-plan="filed"]').waitFor({ timeout: 30000 });
+    expect(await readPlans(auth.address)).toEqual([{ partner: 'Apollo', monthly: 100, currency: 'USD', credits: 4020, since: new Date().toISOString().slice(0, 10) }]);
+    // One charge so far, one lead on the ledger that came through no paid partner: $100 a lead over the whole house.
+    expect(await costs.locator('[data-cost-headline] dd').allTextContents()).toEqual(['$100', '$100', '$100', '$100', '—', '—', '1 · 100%']); // he replied; his call was called off, and nothing is won yet
+    expect(await costs.locator('[data-cost-partner="Apollo"] td, [data-cost-partner="Apollo"] th').allTextContents()).toEqual(expect.arrayContaining(['$100 / MO', '0 OF 4,020']));
+    expect(await costs.locator('[data-conversion="REPLIED"] td, [data-conversion="REPLIED"] th').allTextContents()).toEqual(expect.arrayContaining(['REPLIED', '1']));
+    await page.screenshot({ path: path.join(SHOTS, 'sales-costs-1280.png') });
+    await plan.getByRole('button', { name: 'THE PLAN ENDED' }).click();
+    await costs.locator('[data-cost-partner="Apollo"][data-plan="none"]').waitFor({ timeout: 30000 });
+    expect(await readPlans(auth.address)).toEqual([]);
     await line.locator('[data-stage="deals"]').click();
     await hub.locator('[data-sales]').waitFor();
     expect(await hub.locator('[data-sales]').getByRole('button', { name: 'SEAT' }).count()).toBe(0);

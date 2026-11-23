@@ -11,6 +11,7 @@
 //
 // The component keeps its name (Dock) and props so the desk shell is unchanged.
 
+import { setNoticeSlot } from './notice-slot.js';
 import './Dock.css';
 import './Taskbar.css';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
@@ -362,6 +363,8 @@ const DockView = ({ panelState = null, onPanelToggle = null }) => {
           <div className="taskbar-tray" aria-label={t('tray')}>
             {TRAY_APPS.filter((id) => byId.has(id)).map((id) => appButton(id, false))}
             <time className="taskbar-clock label-data" dateTime={now.toISOString()}>{clockOf(now)}</time>
+            {/* The notification marks sit here, right of the clock (notice-slot.js): the tray draws into it. */}
+            <span className="taskbar-notices" ref={setNoticeSlot} data-notice-slot="" />
           </div>
         </div>
       </div>

@@ -16,4 +16,4 @@ export const chipsOf = (text) => String(text ?? '').split(/\s*[,;]\s*(?:or\s+|an
 export const poolWords = (pool, counts) => `${pool.length} COMPAN${pool.length === 1 ? 'Y' : 'IES'} TO JUDGE · ${counts.strong} STRONG · ${counts.weak} WEAK · ${counts.none} NO MATCH · ${counts.onLedger} ON THE LEAD LIST`;
 
 /** Does this audience wait on the operator? A draft waits for approval; an approved one with companies waits for its list. */
-export const audienceWaits = (row) => row.segment.state === 'draft' || row.listable > 0;
+export const audienceWaits = (row) => row.segment.state === 'draft';

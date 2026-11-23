@@ -3,7 +3,8 @@
 // a fit — all through the seat's real acts (RULE 0). `actAs(type, payload)` files one intent and sweeps it.
 
 import { expect } from 'vitest';
-import { fileSegment, openCampaign, setSegmentCampaign, reviewEmailPlan } from '../../backend/services/sales/sales-store.js';
+import { fileSegment, openCampaign, setSegmentCampaign, reviewEmailPlan, setSegmentState, addProspects, settleProspect, readSegments, readProspects } from '../../backend/services/sales/sales-store.js';
+import { makeProspect } from '../../backend/services/sales/prospect-shape.js';
 import { makeSegment } from '../../backend/services/sales/segment-shape.js';
 import { makeCampaign } from '../../backend/services/sales/campaign-shape.js';
 
@@ -38,4 +39,31 @@ export const leadIn = (segment, lane, name, contact) => ({ name, contact, channe
 export const research = async (actAs, email, name, company, now) => {
   const r = await actAs('sales/research', { email, name, role: 'Founder', company, what: `${company} builds software for working crews.`, now, where: 'United States', need: 'Their crews need hands-on help adopting what they build.', sources: [`https://${email.split('@')[1]}/news`], fit: { verdict: 'yes', why: 'they build a product and need hands-on help' } });
   expect(r.status, r.error).toBe('ok');
+};
+
+/**
+ * THE SCREEN a first email asks for (backend/services/sales/lead-screen.js): the lead's company scored a fit for an
+ * APPROVED audience, on the ledger as that company's lead. Done through the real stores, as the pipeline leaves them.
+ * With no audience named, one for "ignis" is filed and approved once a house.
+ * @param {string} house @param {string} lane @param {object} lead - as ledger.add returned it
+ * @param {?object} [segment] - the audience the lead belongs to
+ * @returns {Promise<object>} the lead
+ */
+export const screened = async (house, lane, lead, segment = null) => {
+  const now = new Date().toISOString();
+  let audience = segment ? (await readSegments(house)).find((s) => s.id === segment.id) : (await readSegments(house)).find((s) => s.name === 'Screened for the test');
+  if (!audience) {
+    audience = makeSegment({ name: 'Screened for the test', offer: 'One-to-one sessions to build with AI tools', company: 'ignis', customerProblem: 'They cannot build what they know',
+      targetRole: 'Founder', targetGeography: 'United States', countries: ['US'], positiveCriteria: ['Building a software product'], why: 'Raw AI tools leave them stuck', by: lane, now });
+    await fileSegment(house, audience);
+  }
+  if (audience.state !== 'approved') await setSegmentState(house, audience.id, 'approved', 'operator');
+  const domain = String(lead.contact).split('@')[1];
+  const held = (await readProspects(house)).find((p) => p.domain === domain && p.segmentId === audience.id && p.stage !== 'dropped');
+  const prospect = held ?? (await addProspects(house, [makeProspect({
+    segment: audience, domain, name: domain, country: 'US', source: `https://${domain}/`,
+    scores: audience.positiveCriteria.map((criterion) => ({ criterion, score: 5, reasoning: 'its own site says so' })), by: lane, now,
+  })])).added[0];
+  if (prospect.stage !== 'promoted') await settleProspect(house, prospect.id, { type: 'promoted', leadId: lead.id, by: lane });
+  return lead;
 };

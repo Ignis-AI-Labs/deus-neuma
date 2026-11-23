@@ -28,11 +28,14 @@ import { houseGroundsOf } from '../services/explorer-ground.js';
 import { realOf } from '../services/explorer-walls.js';
 import { isWithin } from '../services/ground-roots.js';
 import { createLogger } from '../services/logger.js';
+import tripwireRoutes from './tripwire-routes.js';
 
 const log = createLogger('Security');
 
 const router = express.Router();
 router.use(requireAuth);
+// The decoy watch and the clipboard swap report (tripwire-routes.js).
+router.use('/tripwire', tripwireRoutes);
 
 const publicSurface = ({ graph, ...surface }) => surface;
 const repoOnWatch = async (wallet, repoId = null) => selectWatchedRepo(await (await watchStoreFor(wallet)).load(), repoId);

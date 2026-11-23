@@ -33,7 +33,7 @@ export const GpuPanel = ({ g, tel, level, fanService, temps, span }) => {
         {/* Filling the card is the serving's design (GPU SHARE governs it): a share, never an alarm. */}
         <Dial label={tel?.unified ? 'MEMORY' : 'VRAM'} ratio={ratioOf(tel?.usedMB, tel?.totalMB)} value={gb(tel?.usedMB)} unit="G" sub={`of ${gb(tel?.totalMB)}`} tone="live" />
         <Dial label="POWER" ratio={ratioOf(g?.powerW ?? tel?.powerW, powerScale)} value={n0(g?.powerW ?? tel?.powerW)} unit="W" sub={`limit ${n0(g?.powerLimitW)}`} marks={capped ? [ratioOf(g.powerLimitW, powerScale)] : []} />
-        <Dial label="FAN" ratio={ratioOf(g?.fanPct, 100)} value={n0(g?.fanPct)} unit="%" tone="live" sub={fanService?.active ? (fanService.benchRunning ? 'bench hold' : 'auto') : 'no service'} />
+        <Dial label="FAN" ratio={ratioOf(g?.fanPct, 100)} value={n0(g?.fanPct)} unit="%" tone="live" sub={fanService?.active ? (fanService.benchRunning ? 'bench hold' : fanService.follows === 'load' ? 'follows load' : 'auto') : 'no service'} />
       </div>
       <div className="hud-cols">
         <div className="hud-stack-col">

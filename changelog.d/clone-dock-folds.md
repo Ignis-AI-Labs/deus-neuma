@@ -1,2 +1,0 @@
-Changed
-- The shadow clone dock now folds to one line. Each clone shows on that line with where it stands and what it is doing at that moment, beside STOP ALL and OPEN. OPEN shows the clones' tabs and work. EXPAND makes the dock take most of the chat's height, and COLLAPSE folds it back. The desk remembers the size you last chose. STOP ALL now sits on the head line instead of its own row, and STOP THIS CLONE is a small button instead of a bar across the panel.

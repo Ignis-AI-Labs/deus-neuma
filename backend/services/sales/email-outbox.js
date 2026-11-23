@@ -35,7 +35,7 @@ import { resolveEmailCredential } from '../email/email-credentials.js';
 import { sendEmail } from '../email/smtp-sender.js';
 import { fromFor } from '../email/send-as.js';
 import { normalizeEmail } from './suppress-shape.js';
-import { suppressedRecipients, recordSent, leadEmailRefusal, addressRefusal, companyOfRecipients } from './email-ledger.js';
+import { suppressedRecipients, recordSent, leadEmailRefusal, addressRefusal, companyOfRecipients, threadFor } from './email-ledger.js';
 import { readSalesFacts } from './sales-store.js';
 import { leadLedgerFor, kindOf, UNSORTED, personTouches } from '../leads/lead-ledger.js';
 import { isOut, theyWroteLast } from './lead-upkeep.js';
@@ -225,9 +225,11 @@ export const sendDraft = (wallet, id, { signal, acceptRisk = false } = {}) => se
   const facts = await readSalesFacts(wallet).catch(() => null);
   // Every send checks its address again — staging's check may be hours old, and a first email goes only to an address
   // a database confirmed live (2026-11-19, a stored "verified" that hard-bounced). Its words are checked again only
-  // when they or the facts changed.
+  // when they or the facts changed, and by RULE alone (numbers against the approved facts, the shape, the screen):
+  // the operator read this email and pressed SEND, so no model reads it again (measured 2026-11-23: after a facts
+  // sheet was approved overnight, every send waited about 11 s on the model, 14 s an email where 3.5 s is the send).
   const refusal = draft.edited || (facts?.approved?.id ?? null) !== draft.factsSheetId
-    ? await leadEmailRefusal(wallet, { to: draft.to, subject: draft.subject, text: draft.text, promise: draft.promise, laneId: draft.by, acceptRisk })
+    ? await leadEmailRefusal(wallet, { to: draft.to, subject: draft.subject, text: draft.text, promise: draft.promise, laneId: draft.by, acceptRisk, claims: false })
     : await addressRefusal(wallet, { to: draft.to, laneId: draft.by, acceptRisk });
   if (refusal) return no(refusal);
   const credentials = await resolveEmailCredential(wallet).catch(() => null);
@@ -235,7 +237,7 @@ export const sendDraft = (wallet, id, { signal, acceptRisk = false } = {}) => se
   // From the member who wrote it, when it has its own address on the mailbox (send-as.js), else its company's.
   const sender = fromFor(credentials, { company: await companyOfRecipients(wallet, draft.to).catch(() => null), member: draft.by });
   if (!sender.ok) return no(sender.detail);
-  const outcome = await sendEmail(credentials, { to: draft.to, subject: draft.subject, text: draft.text, from: sender.from }, { signal });
+  const outcome = await sendEmail(credentials, { to: draft.to, subject: draft.subject, text: draft.text, from: sender.from, references: await threadFor(wallet, draft.to) }, { signal });
   if (outcome.uncertain) {
     await recordSent(wallet, { to: outcome.to, subject: draft.subject, promise: draft.promise, by: draft.by, from: outcome.from, messageId: outcome.messageId, uncertain: true });
     await append(wallet, { type: 'uncertain', id, from: outcome.from, messageId: outcome.messageId ?? null });

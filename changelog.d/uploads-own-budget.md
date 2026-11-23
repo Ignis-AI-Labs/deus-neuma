@@ -1,2 +1,0 @@
-Fixed
-- Pictures you attach in the chat no longer fail with "Too many requests" when the desk is busy. Uploads used to count against the same 200-a-minute budget as every other change any part of the desk makes, so a desk busy with several chats, clones and images could use it all up and refuse your attachment. Uploads now have their own budget of 60 a minute, as the status lights and voice transcription already do. You still have to be signed in, and a flood of uploads is still refused.

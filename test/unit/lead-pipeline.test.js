@@ -36,7 +36,7 @@ const state = { segment, candidates, prospects, leads, drafts, searches: [{ segm
 
 describe('an audience on the road, step by step: gather, filter, verify, score …', () => {
   it('every company counted where it stands', () => {
-    expect(STEPS.map((s) => s.label)).toEqual(['GATHER', 'FILTER', 'VERIFY', 'SCORE', 'CONTACTS', 'LEADS', 'APPROVE', 'OUTREACH']);
+    expect(STEPS.map((s) => s.label)).toEqual(['GATHER', 'FILTER', 'VERIFY', 'SCORE', 'VALIDATE', 'CONTACTS', 'LEADS', 'OUTREACH']);
     expect(audiencePipeline(state).steps).toEqual({
       discover: { searches: 1, gathered: 8, due: 0 },
       filter: { kept: 3, passed: 1, unsorted: 1, due: 1 },
@@ -44,7 +44,8 @@ describe('an audience on the road, step by step: gather, filter, verify, score �
       score: { toScore: 1, strong: 2, weak: 1, none: 0, due: 1 },
       contacts: { fits: 3, withPeople: 2, due: 1 },
       leads: { toFile: 0, leads: 2, due: 0 },
-      approve: { waiting: 3, approved: 0, due: 0 },
+      // one fit waits to be validated and is not yet a lead: that is a lead run's work, not the operator's (Design note, 2026-11-21
+      approve: { waiting: 3, approved: 0, due: 1 },
       // the email staged for the operator is written: it waits on them, not on the seat
       outreach: { unwritten: 1, staged: 1, written: 0, replied: 0, due: 1 },
     });
@@ -76,12 +77,20 @@ describe('an audience on the road, step by step: gather, filter, verify, score �
 
 describe('the same road on the seat\'s briefing and the operator\'s desk', () => {
   it('the briefing states the rule (filter before a site is read, score what was read, sales/pipeline to see by id) and each audience on one line', () => {
-    expect(PIPELINE_RULE).toMatch(/^THE PIPELINE — every audience walks the same road, step by step, never skipping one: 1 GATHER/);
+    // The script stands first (Design note, 2026-11-21: gather narrow, start a lead run, then the research and the email.
+    expect(PIPELINE_RULE).toMatch(/^THE SCRIPT, IN ORDER — follow it exactly, for every audience: \(1\) GATHER companies with a NARROW search/);
+    // No source is first by habit (Design note, 2026-11-21: […]): the best record for the audience goes first.
+    expect(PIPELINE_RULE).toContain('FROM THE SOURCE THAT HAS GIVEN THIS AUDIENCE THE MOST FITS');
+    expect(PIPELINE_RULE).toContain('No source is the first by habit');
+    expect(STEPS[0].act).toBe('sales/gather from the source with the best record for this audience (sales/discover looks at Hunter for free first)');
+    expect(PIPELINE_RULE).toContain('(2) START A LEAD RUN: sales/run {segment, leads}');
+    expect(PIPELINE_RULE).toContain('NEVER do those steps by hand one company at a time while a run can do them');
+    expect(PIPELINE_RULE).toMatch(/The road each company walks, whoever walks it: 1 GATHER/);
     expect(PIPELINE_RULE).toContain('Narrow the wide net before reading a single site');
     expect(PIPELINE_RULE).toContain('every company read alive is SCORED right after');
     expect(PIPELINE_RULE).toContain('sales/pipeline lists exactly what stands at any step');
     const text = leadEngineText({ segments: [segment], prospects, leads, suppressions: [], candidates, outbox: { review: true, drafts }, now: Date.parse('2026-11-17T00:00:00Z') });
-    expect(text).toContain('- [s-1] Umbrae token teams · 1 GATHER 8 found (0 searches) · 2 FILTER 3 shortlisted, 1 passed over, 1 not filtered · 3 VERIFY 4 alive, 1 dead, 1 shortlisted unread · 4 SCORE 2 strong, 1 weak, 0 no fit, 1 to score · 5 CONTACTS people at 2 of 3 fits · 6 LEADS 2 on the list · 7 APPROVE 3 wait for the operator · 8 OUTREACH 0 sent, 0 replied, 1 staged for the operator\'s review, 1 to write — NEXT: OUTREACH:');
+    expect(text).toContain('- [s-1] Umbrae token teams · 1 GATHER 8 found (0 searches) · 2 FILTER 3 shortlisted, 1 passed over, 1 not filtered · 3 VERIFY 4 alive, 1 dead, 1 shortlisted unread · 4 SCORE 2 strong, 1 weak, 0 no fit, 1 to score · 5 VALIDATE 0 validated, 3 wait for a lead run · 6 CONTACTS people at 2 of 3 fits · 7 LEADS 2 on the list · 8 OUTREACH 0 sent, 0 replied, 1 staged for the operator\'s review, 1 to write — NEXT: OUTREACH:');
   });
 
   it('the briefing never hides staged emails: past eight, it says how many more and where the whole list is', () => {
@@ -118,15 +127,15 @@ describe('the same road on the seat\'s briefing and the operator\'s desk', () =>
     expect(outboxStats(box.drafts)).toContainEqual({ text: '1 MAYBE SENT', tone: 'alert' });
   });
 
-  it('the desk draws the eight steps, the next one lit, the operator\'s own marked (the list to approve, the emails to review)', () => {
+  it('the desk draws the eight steps, the next one lit, the operator\'s own marked (the emails to review — no list to approve)', () => {
     const [row] = segmentRows({ segments: [segment], prospects, candidates, leads, searches: [], pulled: ['fit.xyz'], outbox: { drafts } });
-    expect(pipelineLine(row.road)).toContain('5 CONTACTS people at 3 of 3 fits');
+    expect(pipelineLine(row.road)).toContain('6 CONTACTS people at 3 of 3 fits');
     expect(row.listableIds).toEqual(['p-fit.xyz', 'p-lead.xyz', 'p-staged.xyz']);
     expect(row.listable).toBe(row.listableIds.length);
     const drawn = roadSteps(row.road);
     expect(drawn.map((s) => [s.label, s.next, Boolean(s.you)])).toEqual([
-      ['GATHER', false, false], ['FILTER', false, false], ['VERIFY', false, false], ['SCORE', false, false], ['CONTACTS', false, false],
-      ['LEADS', false, false], ['APPROVE', false, true], ['OUTREACH', true, true],
+      ['GATHER', false, false], ['FILTER', false, false], ['VERIFY', false, false], ['SCORE', false, false], ['VALIDATE', false, false],
+      ['CONTACTS', false, false], ['LEADS', false, false], ['OUTREACH', true, true],
     ]);
     expect(drawn[1].words).toBe('3 SHORTLISTED · 1 PASSED · 1 TO FILTER');
     expect(drawn[7].words).toBe('0 SENT · 0 REPLIED · 1 FOR YOUR REVIEW · 1 TO WRITE');

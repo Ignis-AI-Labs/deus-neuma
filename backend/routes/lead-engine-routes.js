@@ -16,6 +16,10 @@ import { readSegments, noteShortlist, handProspect, readProspects, readSuppressi
 import { makeSuppression, suppressionMatcher, normalizeEmail } from '../services/sales/suppress-shape.js';
 import { upkeepDue, bouncedLead } from '../services/sales/lead-upkeep.js';
 import { readStandingReplies } from '../services/sales/mail-upkeep.js';
+import { callOf, callOffOf } from '../services/sales/booked-calls.js';
+import leadOwnRouter from './lead-own-routes.js';
+import { wideSummary } from '../services/sales/wide-search.js';
+import { readLeadCosts } from '../services/sales/lead-cost-read.js';
 import { SAYS, cleanSaid, closes, saidOf, saidWords } from '../services/sales/reply-said.js';
 import { checkBeforeSending, checkWithEvery, attachedCheckers } from '../services/sales/address-check.js';
 import { confirmAddress } from '../services/sales/address-confirm.js';
@@ -53,13 +57,14 @@ router.get('/', async (req, res) => {
     const lookups = await readContactPeople(wallet);
     // Which partner found each lead's company and gave its address, and what each partner's lookups spent.
     const provenance = leadProvenance({ leads, prospects, candidates, lookups });
-    const spentBy = spentByPartner(await readContactLookups(wallet));
+    const spends = await readContactLookups(wallet);
+    const spentBy = spentByPartner(spends);
     const upkeep = upkeepDue({ leads, now: Date.now(), suppressed: suppressionMatcher(suppressions).email, held: peopleByCompany(lookups) });
     const spend = { ...(await spendState(wallet)), modes: SPEND_MODES };
     // The lead list itself, each lead under what it is to the house (a buyer, an applicant, a partner, …).
     // …and tied to the campaign and the audience that found it, so the sheet says who is being written to for what.
     const origins = leadOrigins({ campaigns, segments, prospects, leads });
-    const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, said: saidOf(l), source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null, origin: origins.get(l.id) ?? null, thread: leadThread(l), foundBy: provenance.get(l.id) ?? null, bounced: bouncedLead(l) }));
+    const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, said: saidOf(l), call: callOf(l), callOff: callOffOf(l), source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null, origin: origins.get(l.id) ?? null, thread: leadThread(l), foundBy: provenance.get(l.id) ?? null, bounced: bouncedLead(l) }));
     // The contact book: every person the house knows, one record each, read from the records above.
     const contacts = foldContacts({ leads, prospects, lookups, suppressions, segments, candidates, checks: await readAddressChecks(wallet) });
     const outbox = await readOutbox(wallet);
@@ -75,7 +80,7 @@ router.get('/', async (req, res) => {
     const checkers = (await attachedCheckers()).map((h) => h.name);
     // A required sign that sends a failing company elsewhere names that audience in words, for the card.
     const named = segments.map((s) => (s.required?.length ? { ...s, required: s.required.map((r) => ({ ...r, otherwiseName: segments.find((o) => o.id === r.otherwise)?.name ?? null })) } : s));
-    res.json({ segments: named, prospects, suppressions, upkeep, facts, candidates, spend, spentBy, searches, pulled, checks, checkers, outbox: { review: outbox.review, drafts: outbox.drafts }, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
+    res.json({ segments: named, prospects, suppressions, upkeep, facts, candidates, spend, spentBy, costs: await readLeadCosts(wallet, { leads, provenance, lookups: spends }), wide: wideSummary(searches, candidates), searches, pulled, checks, checkers, outbox: { review: outbox.review, drafts: outbox.drafts }, leads: list, leadKinds: LEAD_KINDS, contacts, contactStats: contactStats(contacts), ...campaignBoard({ campaigns, segments, candidates, prospects, leads }), companies: companies.map((c) => ({ id: c.id, name: c.name })) });
   } catch (error) {
     log.error('Lead engine read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the lead engine' });
@@ -424,6 +429,8 @@ router.post('/leads/:id/kind', async (req, res) => {
     return res.status(500).json({ error: 'Could not re-file the lead' });
   }
 });
+
+router.use(leadOwnRouter); // a call on a lead, the lead-data plans, what too-wide searches brought (lead-own-routes.js)
 
 // The operator says what a reply says, when the rules read it wrong or could not tell: {says, want?}. A no, or a
 // person who has left, closes the lead (the contact stays on the ledger); anything else opens it again as replied.

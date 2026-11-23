@@ -8,6 +8,7 @@
 // only from the portal's acks, never from desk optimism.
 
 import { HELD_ACK_CHANNELS, heldAckAction } from './stream-held-actions.js';
+import { streamingIndex } from './stream-reducer-segments.js';
 
 /** Impure acknowledgement handlers: apply count before the translated action. */
 export const heldWordAcks = ({ dispatch, setHeldCount }) => Object.fromEntries(
@@ -46,6 +47,25 @@ export const reduceHeldWord = (state, action, withDisplayedAsk) => {
         messages: state.messages.map((m) =>
           (m.holdId === action.holdId && m.queued !== queued ? { ...m, queued } : m)),
       };
+    }
+    // HEARD WHERE IT WAS PICKED UP (Design note, 2026-11-21: […]). The words leave the bottom of the
+    // chat and stand INSIDE the reply at the point the being took them in: what it had said before them above, what
+    // it says after them below. With no reply in flight they stay where they are, marked heard.
+    case 'QUEUE_HEARD': {
+      const at = state.messages.findIndex((m) => m.holdId === action.holdId);
+      const live = streamingIndex(state.messages);
+      const own = at >= 0 ? state.messages[at].segments.filter((s) => s.kind === 'speech').map((s) => s.text || '').join('') : '';
+      const text = action.text || own;
+      if (live < 0 || !text) {
+        return { ...state, messages: state.messages.map((m) => (m.holdId === action.holdId ? { ...m, queued: false, heard: true } : m)) };
+      }
+      const heard = { kind: 'heard', text, at: action.at ?? null };
+      const messages = state.messages.map((m, i) => {
+        if (i !== live) return m;
+        const segments = [...m.segments, heard];
+        return m.takes ? { ...m, segments, takes: m.takes.map((t, n) => (n === m.takeIndex - 1 ? { ...t, segments } : t)) } : { ...m, segments };
+      }).filter((m, i) => i !== at);
+      return { ...state, messages };
     }
     case 'QUEUE_EDIT':
       return {

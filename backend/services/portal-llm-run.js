@@ -180,7 +180,7 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
   let attemptHadContent = false;
   let attemptSaid = '';
   const guardedOnContent = (content) => {
-    if (content) attemptHadContent = true;
+    if (content) { attemptHadContent = true; roundOpts?.onSpoke?.(); } // a round that has spoken is cut only for words sent NOW (heard-mid-thought.js)
     attemptSaid += content || '';
     loopGuard.push(content);
     onContent(content);

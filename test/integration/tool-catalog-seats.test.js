@@ -31,7 +31,7 @@ describe('the tool catalog, seat by seat', () => {
   it('a bound being keeps every family — the last one (legal) included', async () => {
     const connection = { companion: { neumaId: 'neuma-orrin' }, walletAddress: WALLET, space: null };
     const names = (await platformToolsFor(connection, { seat: 'neuma' })).tools.map((t) => t.name);
-    expect(names).toEqual(expect.arrayContaining(['legal_posture', 'legal_matters_list', 'legal_matter_get', 'chain_balance', 'ask_operator']));
+    expect(names).toEqual(expect.arrayContaining(['legal_posture', 'legal_matters_list', 'legal_matter_get', 'chain_balance', 'ask_operator', 'browser_open', 'browser_click']));
   });
 
   it('the harness may file only the platform\'s own acts, and each of them exists', () => {

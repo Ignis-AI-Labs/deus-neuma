@@ -1,2 +1,0 @@
-Fixed
-- The character pipelines' prompting rules now tell a being plainly not to write age words in its negative prompt. The pipeline already keeps an adult floor in its own negative, and the content law refuses those words anywhere, even in a negative. A being had added them to protect its render, the render was refused, and the being then wrongly concluded that its design's sexual tags were the problem.

@@ -20,7 +20,7 @@ const screenList = compileScreenList({
   classes: { csam: ['zzcsamterm'], age_minor: ['zzminorterm'], sexual_explicit: ['zzexplicitterm'], sexual_suggestive: ['zzsuggestiveterm'], incest: [], bestiality: [], nonconsent: [] },
   wordClasses: { deaging: ['zzolderterm'] },
 });
-const IDS = ['still.wai.txt2img', 'still.deliberate.txt2img', 'still.nova.txt2img', 'still.neuma.txt2img'];
+const IDS = ['still.wai.txt2img', 'still.deliberate.txt2img', 'still.nova.txt2img', 'still.neuma.txt2img', 'still.neuma.sheet.txt2img'];
 const SOFI = '1girl, solo, mature female, cowboy shot, artificial humanoid, android, smooth pale porcelain skin with a faint iridescent sheen, glowing green bioluminescent veins tracing beneath the skin, white hair, glowing green eyes';
 const build = (id, args = {}) => {
   const { pipeline } = resolvePipeline(id);
@@ -33,7 +33,7 @@ const one = (graph, cls) => { const found = nodesOf(graph, cls); expect(found, c
 describe('the three character pipelines', () => {
   test('in the catalog with the author\'s ranges: subject, negative, size, seed, steps, cfg — never the sampler', () => {
     const cat = catalogForCaller();
-    const want = { 'still.wai.txt2img': [5, 7, 6, 20, 40, 28], 'still.deliberate.txt2img': [5, 8, 5, 20, 50, 30], 'still.nova.txt2img': [4, 6, 5, 20, 30, 28], 'still.neuma.txt2img': [4, 6, 5, 20, 30, 28] };
+    const want = { 'still.wai.txt2img': [5, 7, 6, 20, 40, 28], 'still.deliberate.txt2img': [5, 8, 5, 20, 50, 30], 'still.nova.txt2img': [4, 6, 5, 20, 30, 28], 'still.neuma.txt2img': [4, 6, 5, 20, 30, 28], 'still.neuma.sheet.txt2img': [4, 6, 5, 20, 30, 28] };
     for (const id of IDS) {
       const entry = cat.find((p) => p.id === id);
       expect(entry.parameters.map((p) => p.name)).toEqual(['positive', 'negative', 'width', 'height', 'seed', 'steps', 'cfg']);
@@ -106,7 +106,18 @@ describe('the three character pipelines', () => {
   });
 
   test('only perfectDeliberate and WAI read the whole CLIP; Hale skips its last layer, as its author asks, and so does ours', () => {
-    expect(IDS.map((id) => resolvePipeline(id).pipeline.recipe.clipSkip)).toEqual([1, 1, 2, 2]);
+    expect(IDS.map((id) => resolvePipeline(id).pipeline.recipe.clipSkip)).toEqual([1, 1, 2, 2, 2]);
+  });
+
+  test('the design sheet is our model with no lighting suffix, a plain background allowed, and the reference drift negated', () => {
+    const sheet = resolvePipeline('still.neuma.sheet.txt2img').pipeline;
+    const ours = resolvePipeline('still.neuma.txt2img').pipeline;
+    expect(sheet.modelId).toBe(ours.modelId);
+    expect(sheet.recipe).toMatchObject({ sampler: ours.recipe.sampler, clipSkip: 2, prefix: ours.recipe.prefix, suffix: '' });
+    expect(sheet.recipe.negative).not.toMatch(/simple background/);
+    expect(sheet.recipe.negative).toMatch(/scenery, landscape, ground, floor, light rays, lens flare, sparkle, magic circle, halo, weapon, sword$/);
+    const { r } = build('still.neuma.sheet.txt2img', { positive: '1girl, solo, mature female, simple background, black background' });
+    expect(nodesOf(r.graph, 'CLIPTextEncode').map(([, n]) => n.inputs.text)).toContain(`${sheet.recipe.prefix}1girl, solo, mature female, simple background, black background`);
   });
 
   test('our own model is registered by its file and SHA-256, and reads prompts on Hale\'s recipe whole (its text encoders are Hale\'s)', () => {

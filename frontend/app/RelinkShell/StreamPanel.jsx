@@ -46,6 +46,13 @@ const Segment = ({ segment, role, live, onApprove, onAsk, onPlan, onSeal, onReve
     case 'seal': return <SealChip segment={segment} onRespond={onSeal} />;
     case 'teamrun': return <TeamRunChip segment={segment} />;
     case 'image': return <HistoryImage segment={segment} />;
+    // The operator's own words, taken in by the being while it was replying: set where they were picked up.
+    case 'heard': return (
+      <blockquote className="relink-heard" data-heard="" aria-label="your message, heard here while the reply was under way">
+        <span className="relink-heard-k label-data">YOU, WHILE IT WORKED{segment.at ? ` · ${new Date(segment.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''} · HEARD HERE</span>
+        <span className="relink-md relink-md--verbatim">{segment.text}</span>
+      </blockquote>
+    );
     case 'doc': return (
       <span className="relink-msg-doc label-data" title={`shared file: ${segment.name}`}>{segment.name}</span>
     );

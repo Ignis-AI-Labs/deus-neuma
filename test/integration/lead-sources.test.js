@@ -142,7 +142,7 @@ describe('the lead sources, read as they answer (pure)', () => {
   });
 
   test('free sources come first and need no key; the people source names the operator\'s own key', () => {
-    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['company-index', 'companies', null], ['hunter-discover', 'companies', 'hunter'], ['tomba-discover', 'companies', 'tomba'], ['apollo-discover', 'companies', 'apollo'], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
+    expect(Object.entries(LEAD_SOURCES).map(([id, s]) => [id, s.kind, s.key])).toEqual([['base-protocols', 'companies', null], ['base-tokens', 'companies', null], ['from-fits', 'companies', null], ['company-index', 'companies', null], ['hunter-discover', 'companies', 'hunter'], ['tomba-discover', 'companies', 'tomba'], ['apollo-discover', 'companies', 'apollo'], ['hunter', 'people', 'hunter'], ['tomba', 'people', 'tomba'], ['apollo', 'people', 'apollo']]);
     for (const id of ['hunter', 'tomba', 'tomba-secret', 'apollo']) expect(getService(id), id).toMatchObject({ kind: 'service', group: 'Lead data', requiresKey: true });
     // Tomba's two values are two rows (Design note, 2026-11-18: […]).
     expect([getService('tomba').keyEnv, getService('tomba-secret').keyEnv]).toEqual(['TOMBA_API_KEY', 'TOMBA_API_SECRET']);

@@ -389,7 +389,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                     onClick={() => submit(true)}
                     disabled={!connected || uploading}
                     aria-label={urgentTitle || 'Interject now'}
-                    title={urgentTitle || 'Interject now (Ctrl+Enter) — cut the reply and take the floor'}
+                    title={urgentTitle || 'Send now (Ctrl+Enter) — they read it at once and carry on with what they are doing'}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                       <path d="M13 2 L5 13 H11 L9.5 22 L19 9 H12.5 Z" />

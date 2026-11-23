@@ -53,6 +53,7 @@ export const CREDENTIAL_LINKS = Object.freeze({
     hunter: link('https://hunter.io/api-keys', 'Hunter API key', '50 free credits a month'),
     tomba: link('https://app.tomba.io/', 'Tomba (Your API key and Your Secret, on your account page)', 'both go in this row; the free plan gives 50 credits a month'),
     'tomba-secret': link('https://app.tomba.io/', 'Tomba (Your Secret, under the API key)', 'goes with the Tomba API key; both are needed'),
+    stripe: link('https://dashboard.stripe.com/apikeys', 'Stripe (Developers, API keys, Create restricted key)', 'give it WRITE on Payment Links and READ on Checkout Sessions, nothing else; use a test-mode key first'),
     apollo: link('https://app.apollo.io/', 'Apollo (Settings, Integrations, API keys)', 'the API needs a paid Apollo plan'),
     exa: link('https://dashboard.exa.ai/api-keys', 'Exa API keys', 'the preferred index for web search'),
     brave: link('https://api-dashboard.search.brave.com/app/keys', 'Brave Search API keys', 'also the image-search backend'),

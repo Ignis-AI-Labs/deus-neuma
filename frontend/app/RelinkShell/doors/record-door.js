@@ -19,7 +19,7 @@ const OFFICES = Object.freeze({
 const SEAT_OF = Object.freeze({ cos: 'CHIEF OF STAFF', cro: 'CHIEF REVENUE OFFICER', cmo: 'CHIEF MARKETING OFFICER', clo: 'CHIEF LEGAL OFFICER', cso: 'CHIEF SECURITY OFFICER', cfo: 'CHIEF FINANCIAL OFFICER', cao: 'CHIEF ACCOUNTING OFFICER' });
 // The sales hub's stages are places too (company-line/sales-pipeline-view.js): […].
 const TABS = Object.freeze({ COMPANY: 'model', 'BUSINESS MODEL': 'model', 'COMPANY FACTS': 'model', CAMPAIGNS: 'campaigns', LEADS: 'leads', 'ALL PEOPLE': 'leads', DEALS: 'deals', MAILBOX: 'mailbox', SETTINGS: '_switches', SWITCHES: '_switches', SETUP: '_setup', 'THEIR EYES': '_eyes',
-  DISCOVER: 'discover', FILTER: 'filter', VALIDATE: 'validate', EMAILS: 'emails', OUTBOX: 'emails', SENT: 'sent', REPLIES: 'replies' });
+  DISCOVER: 'discover', FILTER: 'filter', VALIDATE: 'validate', EMAILS: 'emails', OUTBOX: 'emails', SENT: 'sent', REPLIES: 'replies', CALLS: 'calls', VALIDATED: 'ready' });
 const STEP = '\\s*(?:→|->|>|,|/)\\s*';
 const PLACE = new RegExp(`POSITIONS${STEP}(${Object.keys(OFFICES).join('|')})(?:${STEP}(${Object.keys(TABS).join('|')}))?`, 'i');
 // The lead engine's own ids: an audience, a scored company, a facts sheet, a sales campaign. Each opens on the stage of

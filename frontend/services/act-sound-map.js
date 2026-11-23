@@ -57,7 +57,7 @@ export const ACT_FAMILIES = Object.freeze({
     'security.scan', // a scan IS a hunt for what is not yet known to be there
     'legal.scan',    // …and the legal watch hunts the same way
     'tool_search',       // hunting the catalog for a capability, same shape
-    'sales.gather', 'sales.discover', 'sales.read-sites', 'sales.contacts', 'sales.find-address', 'sales.confirm-address', 'sales.research', 'sales.email-plan', 'sales.entity', 'sales.prove', 'sales.draft-email', 'registry.lookup', 'sales.mail-scan', // companies gathered from public lists, the people found at one, the mailbox searched for people on no list — hunts
+    'sales.gather', 'sales.discover', 'sales.read-sites', 'sales.contacts', 'sales.find-address', 'sales.confirm-address', 'sales.research', 'sales.email-plan', 'sales.entity', 'sales.country', 'sales.prove', 'sales.run', 'sales.draft-email', 'registry.lookup', 'sales.mail-scan', // companies gathered from public lists, the people found at one, the mailbox searched for people on no list — hunts
   ]),
   // Changing something that already existed.
   actEdit: Object.freeze([
@@ -121,7 +121,8 @@ export const ACT_FAMILIES = Object.freeze({
     'ksp.command', 'security.circuit-breaker', 'team.run', 'team.workspace-run',
     'ground_sync', 'sandbox_recover', // a checkout fast-forwarded, a shell rebuilt
     'bench_run', // a benchmark launched — the GPU put to work
-    'shadow_clone']), // the being split into copies of itself — every slot of the rig put to work
+    'shadow_clone', // the being split into copies of itself — every slot of the rig put to work
+    'unreal_python', 'unreal_tool']), // code run, or the project changed, in the operator's Unreal editor
   // Reaching OUTSIDE the house to read. Egress — audibly different from a
   // local read, because the difference matters.
   // The platform's own numbers are reached for, not remembered: the read
@@ -131,7 +132,8 @@ export const ACT_FAMILIES = Object.freeze({
   // the operator's own keyed RPC — egress, journaled, never a local recall.
   actReach: Object.freeze(['web_fetch', 'legal_cite_check', 'read_x', 'read_tiktok', 'read_youtube', 'read_facebook', 'read_bluesky', 'read_mastodon', 'request_file_access', 'platform_data',
     'chain_balance', 'chain_token', 'chain_call', 'chain_logs', 'chain_holders',
-    'web.download', 'forge.install']), // bytes fetched from outside the house (a model into the image engine, too)
+    'web.download', 'forge.install', // bytes fetched from outside the house (a model into the image engine, too)
+    'unreal_fab_library', 'unreal_fab_install']), // the Fab library read, and a listing downloaded, through the editor's own sign-in
   // Something LEFT the house in the operator's name. The intents (Stage 2/3)
   // arrive by their policy names: a post is speech, a spend is a send, mail
   // is mail, word to a housemate is word leaving the lane.
@@ -158,7 +160,7 @@ export const ACT_FAMILIES = Object.freeze({
     'company.hand-on', 'company.inspect', 'revenue.move', 'accounts.deadline-met',
     'raise.clear', 'raise.update', 'raise.terms-check', 'treasury.invoice-paid', 'programme.close',
     'meditate', // a standing request marked for the cycle — nothing acts yet
-    'label_email', 'sales.suppress', 'sales.kind', 'sales.place', 'marketing.account-handle', // a label; a do-not-contact mark; a lead re-filed under what it is; a recorded handle
+    'label_email', 'sales.suppress', 'sales.kind', 'sales.place', 'sales.call', 'marketing.account-handle', // a label; a do-not-contact mark; a lead re-filed under what it is; a recorded handle
   ]),
   // The being sensing its own state — capacity, adapters, its own birth sky.
   actSense: Object.freeze(['flight_check', 'refinement_sense', 'skies_read', 'genome_read', 'mind_read', 'self_read', 'journal_read', 'chats_list', 'chat_read', 'charter_read', 'mandate_read', 'post_check',
@@ -173,7 +175,9 @@ export const ACT_FAMILIES = Object.freeze({
     // machine can reach (local registry state), the same shape as flight_check.
     'chain_chains',
     'voice_sense', 'substrate_facts',
-    'machine_map', 'forge_status']), // what holds the machine, and the image engine read whole — the rig sensing itself
+    'machine_map', 'forge_status', // what holds the machine, and the image engine read whole — the rig sensing itself
+    // The Unreal editor on this computer, looked at: its state, its viewport, its tool list, a read-only tool.
+    'unreal_status', 'unreal_look', 'unreal_toolsets', 'unreal_more', 'unreal_tool_read']),
 });
 
 /** The cue a settled act speaks when it did NOT happen. */

@@ -144,18 +144,19 @@ export const campaignBoard = ({ campaigns, segments, candidates, prospects, lead
  * is tied through the audience its own source names ([…]). A lead nobody's audience found
  * (it wrote in, or was added by hand) has no entry. pure.
  * @param {{campaigns: object[], segments: object[], prospects: object[], leads: object[]}} read
- * @returns {Map<string, {audienceId: string, audience: string, company: ?string, campaignId: ?string, campaign: ?string}>}
+ * @returns {Map<string, {audienceId: string, audience: string, company: ?string, campaignId: ?string, campaign: ?string, country: ?string, countryOpen: boolean}>}
  */
 export const leadOrigins = ({ campaigns = [], segments = [], prospects = [], leads = [] }) => {
   const segmentById = new Map(segments.map((s) => [s.id, s]));
   const campaignById = new Map(campaigns.map((c) => [c.id, c]));
   const viaProspect = new Map(prospects.filter((p) => p.leadId).map((p) => [p.leadId, p.segmentId]));
+  const scoredFor = new Map(prospects.filter((p) => p.leadId && !p.placed).map((p) => [p.leadId, p]));
   const origins = new Map();
   for (const lead of leads) {
     const segment = segmentById.get(viaProspect.get(lead.id) ?? /^lead engine \[([^\]]+)\]/.exec(String(lead.source ?? ''))?.[1]);
     if (!segment) continue;
     const campaign = campaignById.get(segment.campaign) ?? null;
-    origins.set(lead.id, { audienceId: segment.id, audience: segment.name, company: segment.company ?? null, campaignId: campaign?.id ?? null, campaign: campaign?.name ?? null });
+    origins.set(lead.id, { audienceId: segment.id, audience: segment.name, company: segment.company ?? null, campaignId: campaign?.id ?? null, campaign: campaign?.name ?? null, country: scoredFor.get(lead.id)?.country ?? null, countryOpen: Boolean(scoredFor.has(lead.id) && !scoredFor.get(lead.id).country && segment.countries?.length) });
   }
   return origins;
 };

@@ -125,7 +125,7 @@ export default Object.freeze({
     retryIgnite: '重试点燃',
     igniteTitle: '启动本地基底模型',
     witnessTag: '见证者',
-    urgentTitle: '立即插话 (Ctrl+Enter) — 打断回复并接过发言权',
+    urgentTitle: '立即发送 (Ctrl+Enter) — 对方马上读到，并继续手头的工作',
     micBlocked: '麦克风被阻止 — 无输入，请查看控制台',
     micOff: '麦克风 — 关',
     micOpening: '麦克风打开中…',

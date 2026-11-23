@@ -146,7 +146,7 @@ const salesPipelineIntent = Object.freeze({
       filter: (c) => `- ${poolLine(c, held)}`, verify: (c) => `- ${poolLine(c, held)}`, score: (c) => `- ${poolLine(c, held)}`,
       contacts: (p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]} — no person with an address yet (sales/contacts)`,
       leads: (p) => `- [${p.id}] ${p.name} (${p.domain}) — ${MATCH_WORDS[p.match]} — top person: ${p.top.name}, ${p.top.role} — ${p.top.email}${p.top.sourceUrl ? ` (found on ${p.top.sourceUrl})` : ''} — file: sales/lead {id: "${p.id}", person: {name, role}, email, emailSource}`,
-      approve: (p) => `- [${p.id}] ${p.name} (${p.domain}) — ${p.stage === 'promoted' ? 'on the lead list' : 'scored a fit'} — waits for the operator's APPROVE THE LIST`,
+      approve: (p) => `- [${p.id}] ${p.name} (${p.domain}) — ${p.stage === 'promoted' ? 'on the lead list' : 'scored a fit'} — waits to be validated: a lead run does it (sales/run)`,
       outreach: (l) => `- lead [${l.id}] ${l.name || l.contact} <${l.contact}> (${l.domain})${l.draft ? ` — email [${l.draft}] STAGED for your operator (sales/pipeline {step: "outbox", id: "${l.draft}"} reads it; staging again to them replaces it)` : ' — to write: sales/draft-email'}`,
     }[step];
     const marked = segment ? line : (item) => line(item).replace(/^- /, `- (${item.audience.id} ${item.audience.name}) `);

@@ -37,7 +37,7 @@ export const SUPPRESS_REASONS = Object.freeze([
 ]);
 
 /** What an approved list lets happen, in one line for the operator. */
-export const LIST_WORDS = 'Approving the list lets the Mercator email these companies\' people without asking you each time: the first email and at most two follow-ups, three days apart, 20 a day. Replies still come to you.';
+export const LIST_WORDS = 'You approve no list: a lead run validates every company from its own page. A validated company\'s people may be written to within what you allowed: the first email and at most two follow-ups, three days apart, 20 a day; the emails wait for you in EMAILS while review is on.';
 
 const meanFit = (p) => p.fit.reduce((n, s) => n + s.score, 0) / (p.fit.length || 1);
 
@@ -82,9 +82,9 @@ export const roadSteps = ({ steps, next }) => {
     { id: 'filter', label: 'FILTER', words: `${n(steps.filter.kept)} SHORTLISTED · ${n(steps.filter.passed)} PASSED · ${n(steps.filter.unsorted)} TO FILTER` },
     { id: 'verify', label: 'VERIFY', words: `${n(steps.verify.alive)} ALIVE · ${n(steps.verify.dead)} DEAD · ${n(steps.verify.unread)} TO READ` },
     { id: 'score', label: 'SCORE', words: `${steps.score.strong} STRONG · ${steps.score.weak} WEAK · ${steps.score.none} NO FIT · ${n(steps.score.toScore)} TO SCORE` },
+    { id: 'approve', label: 'VALIDATE', words: `${steps.approve.approved} VALIDATED${steps.approve.waiting ? ` · ${steps.approve.waiting} WAIT FOR A LEAD RUN` : ''}` },
     { id: 'contacts', label: 'CONTACTS', words: `PEOPLE AT ${steps.contacts.withPeople} OF ${steps.contacts.fits} FITS` },
     { id: 'leads', label: 'LEADS', words: `${steps.leads.leads} ON THE LIST${steps.leads.toFile ? ` · ${steps.leads.toFile} TO FILE` : ''}` },
-    { id: 'approve', label: 'APPROVE', words: steps.approve.waiting ? `${steps.approve.waiting} WAIT FOR YOU` : 'NOTHING WAITING', you: steps.approve.waiting > 0 },
     { id: 'outreach', label: 'OUTREACH', words: `${steps.outreach.written} SENT · ${steps.outreach.replied} REPLIED${steps.outreach.staged ? ` · ${steps.outreach.staged} FOR YOUR REVIEW` : ''}${steps.outreach.unwritten ? ` · ${steps.outreach.unwritten} TO WRITE` : ''}`, you: steps.outreach.staged > 0 },
   ].map((s) => ({ ...s, next: next?.id === s.id }));
 };

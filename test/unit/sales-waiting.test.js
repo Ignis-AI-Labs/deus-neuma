@@ -25,16 +25,15 @@ const companies = [{ id: 'ignis', name: 'Ignis AI Labs' }, { id: 'umbrae', name:
 describe('the sales office\'s decisions wait where every decision waits', () => {
   const rows = salesWaitingRows({ facts: foldSalesFacts([{ type: 'facts', sheet }]), segments: [draft, live], prospects: [found('p-1'), found('p-2'), found('p-3', { listApproved: true }), found('p-4', { match: 1 })], models, companies }, names);
 
-  test('a facts sheet, a draft audience, a list to approve and a filed business model each make one row, opening its own tab', () => {
+  test('a facts sheet, a draft audience and a filed business model each make one row, opening its own tab; found companies never wait on the operator', () => {
     expect(rows.map((r) => [r.kind, r.title, r.where.tab])).toEqual([
       ['sales-facts', '3 facts a buyer may be told wait for your approval', 'model'],
       ['sales-audience', 'Audience "Crypto teams needing an audit" waits for your approval', 'discover'],
-      ['sales-list', '2 companies found for "Base token teams" wait for your list approval', 'validate'],
       ['business-model', 'The business model of Ignis AI Labs waits for your approval', 'model'],
     ]);
     expect(rows.every((r) => r.where.app === 'positions' && r.where.office === 'cro' && r.who?.name === 'Firepos' && r.at === NOW)).toBe(true);
-    expect(new Set(rows.map((r) => r.id)).size).toBe(4);
-    expect(foldWaiting(rows).count).toBe(4);
+    expect(new Set(rows.map((r) => r.id)).size).toBe(3);
+    expect(foldWaiting(rows).count).toBe(3);
   });
 
   test('once decided, nothing waits: a reviewed sheet, an approved list, an approved model', () => {
@@ -49,12 +48,11 @@ describe('the sales office\'s decisions wait where every decision waits', () => 
 
   test('each row stands under SALES, is named on the desk, and lands on its own record in the POSITIONS window', () => {
     const holders = { cos: null, cro: 'merc', cmo: null, clo: null, cso: null, cfo: null, cao: null };
-    expect(rows.map((r) => officeOfWaiting(r, holders))).toEqual(['cro', 'cro', 'cro', 'cro']);
-    expect(rows.map((r) => KIND_LABEL[r.kind])).toEqual(['FACTS', 'AUDIENCE', 'LEAD LIST', 'BUSINESS MODEL']);
+    expect(rows.map((r) => officeOfWaiting(r, holders))).toEqual(['cro', 'cro', 'cro']);
+    expect(rows.map((r) => KIND_LABEL[r.kind])).toEqual(['FACTS', 'AUDIENCE', 'BUSINESS MODEL']);
     expect(rows.map(cardSelector)).toEqual([
       '[data-window-id="positions"] [data-facts-sheet]',
       '[data-window-id="positions"] [data-segment-id="s-aaaaaaaa"]',
-      '[data-window-id="positions"] [data-segment-id="s-bbbbbbbb"]',
       '[data-window-id="positions"] [data-model-company="ignis"]',
     ]);
     expect(jumpActions(rows[0], [])).toEqual([{ type: 'OPEN', id: 'positions' }]);

@@ -1,0 +1,13 @@
+[Unit]
+Description=NEUMA: the fans follow the load (and stand at full while a benchmark runs)
+After=nvidia-persistenced.service
+
+[Service]
+ExecStart=/usr/local/sbin/load-fans
+# However it stops, every fan goes back to its own automatic curve.
+ExecStopPost=/usr/local/sbin/load-fans --release
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

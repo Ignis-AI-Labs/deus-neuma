@@ -129,6 +129,57 @@ describe('THE MERCATOR OFFICE through the real stack (gnosis)', () => {
     expect(await act('merc', fowey)).toMatchObject({ status: 'error', error: expect.stringMatching(/a clear no ends the thread \(MAKOTO\)/) });
   });
 
+  test('the operator moves a deal with their own hand: the same rule, a reason the house can count, the lead moved with it; a quiet deal is marked', async () => {
+    const lead = await (await leadLedgerFor(me.address)).add({ name: 'Looe harbour office', contact: 'office@looe.example', channelId: 'email', kind: 'buyer', status: 'replied', addedBy: 'merc' });
+    expect((await act('merc', { type: 'revenue/deal', company: company.id, buyer: 'Looe harbour', leadId: lead.id, value: { amount: 200, currency: 'USD' }, spin, nextStep: 'Send the sample sheet' })).status).toBe('ok');
+    const board = (await request(app).get('/api/v1/revenue/board').use(as)).body;
+    const deal = board.deals.find((d) => d.buyer === 'Looe harbour');
+    expect(deal).toMatchObject({ stage: 'qualified', idleDays: 0, stale: false });
+    expect(board).toMatchObject({ staleDays: 14, reasons: { won: expect.arrayContaining(['the offer fit']), lost: expect.arrayContaining(['the price', 'they stopped answering']) } });
+    expect(board.deals.find((d) => d.stage === 'won')).toMatchObject({ idleDays: null, stale: false });
+    const move = (id, body) => request(app).post(`/api/v1/revenue/deals/${id}/move`).use(as).send(body);
+    expect((await request(app).post(`/api/v1/revenue/deals/${deal.id}/move`).send({ stage: 'won', note: 'They signed this morning' })).status).toBe(401);
+    expect((await move('d-00000000', { stage: 'won', note: 'They signed this morning' })).status).toBe(404);
+    expect((await move(deal.id, { stage: 'lost', note: 'no' })).body.error).toMatch(/why we lost/);
+    expect((await move(deal.id, { stage: 'proposed', note: 'Twelve dollars a month', reason: 'the price' })).body.error).toBe('a reason is given only when a deal is won or lost');
+    expect((await move(deal.id, { stage: 'lost', note: 'They chose the paper almanac', reason: 'bad luck' })).body.error).toMatch(/^reason: one of the price, the timing, no need now, went with someone else/);
+    const proposed = await move(deal.id, { stage: 'proposed', note: 'Twelve dollars a month, billed yearly', nextStep: 'Call on Friday' });
+    expect(proposed.body).toMatchObject({ ok: true, deal: { stage: 'proposed', nextStep: 'Call on Friday' } });
+    const lost = await move(deal.id, { stage: 'lost', note: 'They chose the paper almanac again this year', reason: 'Went with someone else' });
+    expect(lost.body.deal).toMatchObject({ stage: 'lost', reason: 'went with someone else', notes: [{ stage: 'proposed', by: 'operator' }, { stage: 'lost', by: 'operator', reason: 'went with someone else' }] });
+    expect((await (await leadLedgerFor(me.address)).load()).find((l) => l.id === lead.id)).toMatchObject({ status: 'lost', touches: expect.arrayContaining([expect.objectContaining({ by: 'operator', note: `deal [${deal.id}] lost: They chose the paper almanac again this year` })]) });
+    expect((await move(deal.id, { stage: 'won', note: 'They changed their mind' })).body.error).toBe('this deal is lost — a closed deal does not move');
+    // The seat's own act takes the reason too.
+    expect((await act('merc', { type: 'revenue/deal', company: company.id, buyer: 'Mevagissey harbour', value: { amount: 80, currency: 'USD' }, spin, nextStep: 'Send the sample sheet' })).status).toBe('ok');
+    const meva = (await request(app).get('/api/v1/revenue/board').use(as)).body.deals.find((d) => d.buyer === 'Mevagissey harbour');
+    expect((await act('merc', { type: 'revenue/move', id: meva.id, stage: 'won', note: 'The harbour master asked for it by name', reason: 'someone referred them' })).status).toBe('ok');
+    expect((await request(app).get('/api/v1/revenue/board').use(as)).body.deals.find((d) => d.id === meva.id)).toMatchObject({ stage: 'won', reason: 'someone referred them' });
+    // Quiet for fourteen days and still open: marked. (pure — the board's own reading, at a later clock.)
+    const { idleDays, STALE_DAYS } = await import('../../backend/services/revenue/deal-shape.js');
+    const open = { stage: 'proposed', movedAt: '2026-11-01T00:00:00.000Z' };
+    expect([idleDays(open, Date.parse('2026-11-14T23:00:00Z')), idleDays(open, Date.parse('2026-11-15T00:00:00Z')), idleDays({ ...open, stage: 'won' }, Date.now()), STALE_DAYS]).toEqual([13, 14, null, 14]);
+  });
+
+  test('a deal is for ANY company of the house: one it sells for (no founding line) takes a deal from the operator\'s hand and from the seat', async () => {
+    // "ignis" is a company the house sells for (a brand kit — what the lead engine's audiences name), with no founding line.
+    const board = (await request(app).get('/api/v1/revenue/board').use(as)).body;
+    expect(board.companies).toEqual(expect.arrayContaining([expect.objectContaining({ id: 'ignis' }), { id: company.id, name: company.name }]));
+    const lead = await (await leadLedgerFor(me.address)).add({ name: 'Polperro harbour office', contact: 'office@polperro.example', channelId: 'email', kind: 'buyer', status: 'replied', addedBy: 'merc' });
+    const open = (body) => request(app).post('/api/v1/revenue/deals').use(as).send(body);
+    const deal = { company: 'ignis', buyer: 'Polperro harbour', leadContact: 'Office@Polperro.example', value: { amount: 300, currency: 'USD' }, spin, nextStep: 'Send the sample sheet' };
+    expect((await request(app).post('/api/v1/revenue/deals').send(deal)).status).toBe(401);
+    expect((await open({ ...deal, company: 'nowhere' })).body.error).toBe('choose the company the deal is for');
+    expect((await open({ ...deal, leadContact: 'nobody@nowhere.example' })).body.error).toMatch(/^nobody on the lead list has the address nobody@nowhere\.example/);
+    expect((await open({ ...deal, spin: { problem: 'short' } })).body.error).toMatch(/^qualify first: spin\.problem/);
+    const opened = await open(deal);
+    expect(opened.body).toMatchObject({ ok: true, deal: { companyId: 'ignis', buyer: 'Polperro harbour', leadId: lead.id, openedBy: 'operator', value: { amount: 300, currency: 'USD' } } });
+    expect((await (await leadLedgerFor(me.address)).load()).find((l) => l.id === lead.id)).toMatchObject({ status: 'qualified', touches: expect.arrayContaining([expect.objectContaining({ note: `deal [${opened.body.deal.id}] opened by the operator`, by: 'operator' })]) });
+    expect((await open(deal)).body.error).toBe('a deal with Polperro harbour is already open — move that one');
+    // The seat's own act takes such a company too, and names the house's companies when it is given a wrong one.
+    expect((await act('merc', { type: 'revenue/deal', company: 'ignis', buyer: 'Charlestown harbour', value: { amount: 60, currency: 'USD' }, spin, nextStep: 'Send the sample sheet' })).status).toBe('ok');
+    expect(await act('merc', { type: 'revenue/deal', company: 'nowhere', buyer: 'Par harbour', value: { amount: 60, currency: 'USD' }, spin, nextStep: 'Send the sample sheet' })).toMatchObject({ status: 'error', error: expect.stringMatching(/"nowhere" is not a company of this house — its companies are: .*ignis/) });
+  });
+
   test('MAKOTO joins the CMO\'s playbook too', async () => {
     await scaffoldCmoWorkspace('scout');
     expect(await fs.readFile(path.join(wsRoot, 'scout', 'marketing', 'playbook.md'), 'utf8')).toContain('MAKOTO 誠 (makoto, "sincerity")');

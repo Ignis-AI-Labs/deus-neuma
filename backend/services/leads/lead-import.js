@@ -13,6 +13,7 @@
 //     messages?: [{ at, way: 'out'|'in', from?, signedAs?, subject?, text }] }] }
 
 import { normalizeEmail } from '../sales/suppress-shape.js';
+import { typoOf } from '../sales/address-typo.js';
 import { LEAD_KINDS } from './lead-ledger.js';
 
 const clean = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -120,6 +121,9 @@ export const planImport = (people, { source, onLedger, suppressed, by }) => {
     const email = hidden ? null : normalizeEmail(raw);
     const who = clean(p?.name, 120) || raw;
     if (!email) { skip.push({ n, who, why: hidden ? 'the tool hid the address (it shows it only once someone replies)' : 'no email address' }); continue; }
+    // A mistyped address is a bounce waiting to happen: it is left out, with what it was most likely meant to be (address-typo.js).
+    const typo = typoOf(email);
+    if (typo) { skip.push({ n, who, email, why: `the address looks mistyped — did you mean ${typo.meant}? (${typo.why}) Correct it in the file and bring it in again` }); continue; }
     const outcome = String(p?.outcome ?? 'none');
     const history = (Array.isArray(p?.messages) ? p.messages : []).map((m) => touchOf(m, source)).filter(Boolean);
     const flags = (Array.isArray(p?.flags) ? p.flags : []).filter((f) => FLAG_WORDS[f]);

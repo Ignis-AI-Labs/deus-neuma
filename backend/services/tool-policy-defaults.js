@@ -5,6 +5,7 @@
  * Every entry is a doctrine decision — the comment above each server block
  * is the law's reasoning, kept verbatim with its data.
  */
+import { LOCAL_APP_DEFAULTS } from './tool-policy-local-apps.js';
 // Deliberate policy decision (not just a bug fix): a neuma has sovereign write
 // access to its OWN workspace — authoring its record and memory is core to its
 // being, not something to gate behind per-write operator approval (that is the
@@ -227,14 +228,8 @@ export const GLOBAL_DEFAULTS = Object.freeze({
     denied: [],
     requireApproval: [],
   },
-  // KSP sensing is observation; every physical act is the ksp/command INTENT
-  // (Stage 3) — it asks until the operator selects AUTO or grants this neuma
-  // a standing allowance, exactly as the tool did.
-  ksp: {
-    allowed: ['get_telemetry', 'get_view'],
-    denied: [],
-    requireApproval: [],
-  },
+  // Programs on the operator's own computer that a neuma senses and drives: KSP, the Unreal editor.
+  ...LOCAL_APP_DEFAULTS,
   // The culture library (Design note, 2026-07-28: reading it is observation — the
   // same law as queue_list — but every DOWNLOAD is the media/save INTENT
   // (Stage 3), entering through the operator's card: what joins the house's
@@ -409,7 +404,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // account-handle: a record the social check re-reads live (marketing-account-acts.js); its holder and company acts ask.
       'marketing.board-arrange', 'marketing.company-links', 'marketing.account-handle', 'marketing.card',
       // treasury.review/flag: the seated Quaestor's advice and alarm — neither moves money nor changes a policy. company.*, revenue.*, sales.*, accounts.*, raise.*, treasury.invoice*: the company line, deals, the lead engine (Design note, 2026-11-13; the email itself rides email.send), books, the raise room, invoices (Design note, 2026-10-29 — records on the house's realm, no egress, no spend; validate re-judges the seat. raise.reach is email: it asks below.
-      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'revenue.deal', 'revenue.move', 'sales.segment', 'sales.prospect', 'sales.drop', 'sales.lead', 'sales.suppress', 'sales.facts', 'sales.discover', 'sales.gather', 'sales.candidates', 'sales.shortlist', 'sales.pipeline', 'sales.read-sites', 'sales.find-address', 'sales.confirm-address', 'sales.research', 'sales.email-plan', 'sales.entity', 'sales.prove', 'sales.draft-email', 'sales.withdraw-email', 'registry.lookup', 'sales.contacts', 'sales.campaign', 'campaigns.link', 'company.model', 'sales.mail-scan', 'sales.inbound', 'sales.kind', 'sales.place', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
+      'treasury.review', 'treasury.flag', 'company.open', 'company.hand-on', 'company.inspect', 'revenue.deal', 'revenue.move', 'sales.segment', 'sales.prospect', 'sales.drop', 'sales.lead', 'sales.suppress', 'sales.facts', 'sales.discover', 'sales.gather', 'sales.candidates', 'sales.shortlist', 'sales.pipeline', 'sales.read-sites', 'sales.find-address', 'sales.confirm-address', 'sales.research', 'sales.email-plan', 'sales.entity', 'sales.prove', 'sales.call', 'sales.run', 'sales.country', 'sales.review', 'sales.draft-email', 'sales.withdraw-email', 'registry.lookup', 'sales.contacts', 'sales.campaign', 'campaigns.link', 'company.model', 'sales.mail-scan', 'sales.inbound', 'sales.kind', 'sales.place', 'accounts.book', 'accounts.void', 'accounts.deadline', 'accounts.deadline-met', 'raise.mandate', 'raise.facts', 'raise.investor', 'raise.clear', 'raise.update', 'raise.terms', 'raise.terms-check', 'treasury.invoice', 'treasury.invoice-paid', 'programme.open', 'programme.close',
     ],
     denied: [],
     requireApproval: [
@@ -418,7 +413,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       'security.scan', 'security.assess', 'security.escalate', 'security.circuit-breaker',
       // The CLO office's acts: the operator's one yes per filing (a reading
       // the house will act on, a run, a matter entered on the record).
-      'legal.scan', 'legal.assess', 'legal.file', 'legal.opinion',
+      'legal.scan', 'legal.assess', 'legal.file', 'legal.opinion', 'legal.never-list',
       'email.send', 'raise.reach', // raise.reach is email to an investor a being listed: the operator reads the address and every word (P6-39)
       'media.save', 'web.download', 'forge.install', 'forge.workflow', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
       // A video render (image/generate on a video pipeline) asks on its own row:

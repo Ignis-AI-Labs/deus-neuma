@@ -33,6 +33,7 @@ import { gatherHunterDiscover, DISCOVER_MAX } from './hunter-discover.js';
 import { gatherTombaReveal, gatherApolloCompanies, TOMBA_PAGE, APOLLO_PAGE, PAID_SEARCH_MAX } from './company-search.js';
 import { searchIndex, indexStats, industriesOf, candidateOfCompany, SIZES } from './company-index.js';
 import { sourceText } from './source-text.js';
+import { gatherFromFits, FROM_FITS_MAX } from './fits-discovery.js';
 import { testEndpoint } from '../test-endpoint-door.js';
 
 export { peopleOfHunter };
@@ -42,6 +43,12 @@ export const LLAMA_URL = 'https://api.llama.fi';
 // Each list's address, read per call: a test serves the same list from this machine.
 const urlOf = (name, real) => testEndpoint(process.env, `NEUMA_LEAD_SOURCE_${name}`, real);
 export const GATHER_MAX = 25;
+// A gather asked for by count may take more than the default from a free public list: every protocol on Base is ONE
+// read of one list, and stopping at 25 a gather left the house's best source for its on-chain audiences nearly empty
+// (2026-11-21: 17 of 28 and 7 of 31 screened from these lists were a fit, with 2 and 91 companies waiting, while
+// 358 Base protocol sites on the list had never been gathered). The tokens list is paced by its public limit.
+export const PROTOCOLS_GATHER_MAX = 500;
+export const TOKENS_GATHER_MAX = 100;
 const PACE_MS = 4000;
 const BUSY_WAIT_MS = 20000;
 // A team worth writing to has a real market and real holders; below these the token is noise.
@@ -162,7 +169,7 @@ const getJson = async (url, signal, busyWaitMs, onBusy = () => {}) => {
  * @returns {Promise<{candidates: object[], looked: number, stopped: ?string}>}
  */
 export const gatherBaseTokens = async ({ count = GATHER_MAX, known = { domains: new Set(), tokens: new Set() }, baseUrl = urlOf('GECKO', GECKO_URL), paceMs = PACE_MS, busyWaitMs = BUSY_WAIT_MS, signal, onProgress = () => {} } = {}) => {
-  const want = Math.min(Math.max(parseInt(count, 10) || GATHER_MAX, 1), GATHER_MAX);
+  const want = Math.min(Math.max(parseInt(count, 10) || GATHER_MAX, 1), TOKENS_GATHER_MAX);
   const candidates = [];
   // A paced gather runs for minutes: say where it stands after every token, and when the list makes it wait.
   const busy = (n) => onProgress(`the list is busy, waiting ${Math.round(busyWaitMs / 1000)} s (${n} of 3) — ${candidates.length} of ${want} found so far`);
@@ -196,7 +203,7 @@ export const gatherBaseTokens = async ({ count = GATHER_MAX, known = { domains: 
  * @returns {Promise<{candidates: object[], looked: number, stopped: ?string}>}
  */
 export const gatherBaseProtocols = async ({ count = GATHER_MAX, known = { domains: new Set() }, baseUrl = urlOf('LLAMA', LLAMA_URL), signal } = {}) => {
-  const want = Math.min(Math.max(parseInt(count, 10) || GATHER_MAX, 1), GATHER_MAX);
+  const want = Math.min(Math.max(parseInt(count, 10) || GATHER_MAX, 1), PROTOCOLS_GATHER_MAX);
   try {
     const all = protocolsOnBase(await getJson(`${baseUrl}/protocols`, signal, BUSY_WAIT_MS));
     const fresh = [];
@@ -242,8 +249,10 @@ export const gatherCompanyIndex = async ({ count = 100, known = { domains: new S
  * needs (null: free). A new source is one entry here.
  */
 export const LEAD_SOURCES = Object.freeze({
-  'base-protocols': Object.freeze({ kind: 'companies', key: null, label: 'DeFi protocols on Base (DefiLlama, free)', gather: gatherBaseProtocols }),
-  'base-tokens': Object.freeze({ kind: 'companies', key: null, label: 'tokens trading on Base (GeckoTerminal, free, about 50 an hour)', gather: gatherBaseTokens }),
+  'base-protocols': Object.freeze({ kind: 'companies', key: null, label: 'DeFi protocols on Base (DefiLlama, free)', list: true, max: PROTOCOLS_GATHER_MAX, gather: gatherBaseProtocols }),
+  'base-tokens': Object.freeze({ kind: 'companies', key: null, label: 'tokens trading on Base (GeckoTerminal, free, about 50 an hour)', list: true, max: TOKENS_GATHER_MAX, gather: gatherBaseTokens }),
+  // The companies the house's own CONFIRMED fits name on their portfolio, backers, partners and ecosystem pages (fits-discovery.js): free, and it never runs out.
+  'from-fits': Object.freeze({ kind: 'companies', key: null, fits: true, max: FROM_FITS_MAX, label: 'the companies your own confirmed fits name on their pages (portfolio, backers, partners, ecosystem) — free; from: another audience\'s id reads ITS fits instead (a funds audience\'s portfolios for a projects audience, a projects audience\'s backers for a funds audience)', gather: gatherFromFits }),
   'company-index': Object.freeze({ kind: 'companies', key: null, local: true, max: INDEX_GATHER_MAX, label: `the house's own company database: 22M+ companies with industry, size, country, founding year and traffic rank (free, on this machine, up to ${INDEX_GATHER_MAX} at a time)`, gather: gatherCompanyIndex }),
   'hunter-discover': Object.freeze({ kind: 'companies', key: 'hunter', free: true, max: DISCOVER_MAX, label: `Hunter's company search with your own key: describe the companies in plain words; each comes back with how many people Hunter holds there (FREE, it spends no credits; up to ${DISCOVER_MAX} at a time)`, gather: gatherHunterDiscover }),
   // The same step through Tomba and Apollo (company-search.js): these SPEND credits, one a page, under PAID LEAD DATA.

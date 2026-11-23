@@ -7,9 +7,10 @@
 // row on a press of its first cell. More than a hundred rows are paged, and the sheet says where it stands.
 // Keyboard and screen readers get a real table: column headers, a row header, an expand button that says
 // whether it is open.
+// Under every sheet, SPREADSHEET takes the whole of it away as a file: every row in the order shown, one column a fact.
 
 import { useMemo, useState } from 'react';
-import { sheetPage, rangeWords, SHEET_PAGE, sortRows, sortableColumn, nextSort } from './sheet-view.js';
+import { sheetPage, rangeWords, SHEET_PAGE, sortRows, sortableColumn, nextSort, sheetCsv, sheetFileName } from './sheet-view.js';
 import './Sheet.css';
 
 /**
@@ -46,6 +47,15 @@ export const Sheet = ({ label, columns: given, rows, rowKey, rowName = rowKey, r
       </th>
     );
   };
+  // The file is built on the press, from every row as ordered now — never on each draw.
+  const take = () => {
+    const url = URL.createObjectURL(new Blob([`\uFEFF${sheetCsv(columns, ordered)}`], { type: 'text/csv;charset=utf-8' }));
+    const link = Object.assign(document.createElement('a'), { href: url, download: sheetFileName(label) });
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   const [first, ...rest] = columns.slice(ticks.length);
   const cellProps = (c, r) => ({ className: [c.exact ? 'sheet-exact' : '', c.wrap ? 'sheet-wrapped' : '', c.tone?.(r) ? `is-${c.tone(r)}` : ''].filter(Boolean).join(' ') || undefined, title: c.title?.(r) ?? undefined, ...(c.attrs?.(r) ?? {}) });
   return (
@@ -78,6 +88,9 @@ export const Sheet = ({ label, columns: given, rows, rowKey, rowName = rowKey, r
             })}
           </tbody>
         </table>
+      </div>
+      <div className="sheet-foot">
+        <button type="button" className="sheet-take label-data" data-sheet-csv="" aria-label={`Save ${label} as a spreadsheet file, ${ordered.length} row${ordered.length === 1 ? '' : 's'}`} onClick={take}>SPREADSHEET · {ordered.length.toLocaleString('en-US')} ROW{ordered.length === 1 ? '' : 'S'}</button>
       </div>
     </div>
   );

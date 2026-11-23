@@ -1,2 +1,0 @@
-Changed
-- When shadow clones finish in the background, their report back in the chat is now a short card instead of one long block of raw text. The header line gives how many clones, how long they took, how many ran at once and how many reached their goal. Under it is one line per clone: what it was for, GOAL REACHED, GOAL NOT REACHED or DID NOT FINISH, and its first sentence. READ THEIR REPORTS opens every full report, properly formatted, and the file the reports are saved in is a clickable path. Your agent still receives the full reports.

@@ -47,6 +47,8 @@ import { houseKey } from '../staff/cos-designation.js';
 import { readServed } from '../house-served.js';
 import { installDeskHouse } from '../install-owner.js';
 import { createLogger } from '../logger.js';
+import { tripwire } from './tripwire/tripwire.js';
+import { fileToHouses } from './tripwire/tripwire-filing.js';
 
 // The alert's old home: callers and tests that read it from here keep working.
 export { alertOnNewCriticals };
@@ -405,5 +407,11 @@ export const startSecurityScheduler = ({ intervalMs = TICK_MS } = {}) => {
   }, intervalMs);
   timer.unref?.();
   log.info('security watch standing', { everyMs: intervalMs, runEveryMs: RUN_EVERY_MS });
-  return () => clearInterval(timer);
+  // The decoy watch stands with the scan watch — only when its operator turned it on.
+  tripwire.setFiler(fileToHouses({ houses: securityHouses }));
+  tripwire.start().catch((err) => log.error('the decoy watch did not start', { error: err.message }));
+  return () => {
+    clearInterval(timer);
+    tripwire.stop();
+  };
 };

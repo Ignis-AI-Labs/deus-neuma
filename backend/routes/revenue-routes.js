@@ -13,10 +13,13 @@ import { requireAuth } from '../services/auth.js';
 import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { croDesignation } from '../services/revenue/cro-designation.js';
 import { scaffoldRevenueWorkspace } from '../services/revenue/revenue-scaffold.js';
-import { readDeals } from '../services/revenue/deal-store.js';
-import { pipeline } from '../services/revenue/deal-shape.js';
+import { readDeals, moveDealAndLead, openDeal } from '../services/revenue/deal-store.js';
+import { pipeline, idleDays, STALE_DAYS, CLOSE_REASONS, makeDeal } from '../services/revenue/deal-shape.js';
+import { companiesOfHouse, companyOfHouse } from '../services/revenue/deal-company.js';
+import { leadLedgerFor } from '../services/leads/lead-ledger.js';
 import { readDeliveries, readDestination, setDestination } from '../services/delivery/delivery-store.js';
 import leadEngineRouter from './lead-engine-routes.js';
+import dealInvoiceRouter from './deal-invoice-routes.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Revenue');
@@ -24,6 +27,7 @@ const log = createLogger('Revenue');
 const router = express.Router();
 router.use(requireAuth);
 router.use('/lead-engine', leadEngineRouter);
+router.use(dealInvoiceRouter); // the operator's invoices for won deals (deal-invoice-routes.js)
 
 router.get('/seat', async (req, res) => {
   try {
@@ -70,13 +74,57 @@ router.delete('/seat', async (req, res) => {
 // The sales board: the seat, the pipeline at a glance, every deal, where deliveries go and what was delivered.
 router.get('/board', async (req, res) => {
   try {
-    const [mercator, { deals, torn }, destination, deliveries] = await Promise.all([
-      croDesignation.getOfficer(req.walletAddress), readDeals(req.walletAddress), readDestination(req.walletAddress), readDeliveries(req.walletAddress),
+    const [mercator, { deals, torn }, destination, deliveries, companies] = await Promise.all([
+      croDesignation.getOfficer(req.walletAddress), readDeals(req.walletAddress), readDestination(req.walletAddress), readDeliveries(req.walletAddress), companiesOfHouse(req.walletAddress),
     ]);
-    res.json({ mercator, pipeline: pipeline(deals), deals, torn, destination, deliveries });
+    // Each open deal says how long it has stood without a move; one quiet for STALE_DAYS is marked.
+    const now = Date.now();
+    const shown = deals.map((d) => { const idle = idleDays(d, now); return { ...d, idleDays: idle, stale: idle !== null && idle >= STALE_DAYS }; });
+    res.json({ mercator, pipeline: pipeline(deals), deals: shown, torn, destination, deliveries, staleDays: STALE_DAYS, reasons: CLOSE_REASONS, companies });
   } catch (error) {
     log.error('Revenue board read failed', { error: error.message });
     res.status(500).json({ error: 'Could not read the sales board' });
+  }
+});
+
+// THE OPERATOR OPENS A DEAL WITH THEIR OWN HAND — the same record the seat's act makes (deal-shape.js makeDeal), for
+// any company of the house; from a lead on the ledger, that lead is marked qualified.
+router.post('/deals', async (req, res) => {
+  try {
+    const wallet = req.walletAddress;
+    const company = await companyOfHouse(wallet, req.body?.company);
+    if (!company) return res.status(400).json({ error: 'choose the company the deal is for' });
+    const ledger = await leadLedgerFor(wallet);
+    // The lead it came from, by its id or by its address as the operator typed it.
+    const named = String(req.body?.leadId ?? req.body?.leadContact ?? '').trim().toLowerCase();
+    const lead = named ? (await ledger.load()).find((l) => l.id === named || String(l.contact ?? '').toLowerCase() === named) ?? null : null;
+    if (named && !lead) return res.status(400).json({ error: `nobody on the lead list has the address ${named} — leave it empty, or add the person under ALL PEOPLE first` });
+    let deal;
+    try {
+      deal = makeDeal({ companyId: company.id, buyer: req.body?.buyer, leadId: lead?.id, value: req.body?.value, spin: req.body?.spin, nextStep: req.body?.nextStep, openedBy: 'operator', now: new Date().toISOString() });
+    } catch (err) { return res.status(400).json({ error: err.message }); }
+    const opened = await openDeal(wallet, deal);
+    if (!opened.ok) return res.status(409).json({ error: opened.reason });
+    if (lead) await ledger.touch(lead.id, { status: 'qualified', note: `deal [${deal.id}] opened by the operator`, by: 'operator' }).catch(() => {});
+    log.info('A deal was opened by the operator', { id: deal.id, company: company.id });
+    return res.json({ ok: true, deal: opened.deal });
+  } catch (error) {
+    log.error('Deal open failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not open the deal' });
+  }
+});
+
+// THE OPERATOR MOVES A DEAL WITH THEIR OWN HAND (Design note, 2026-11-21: proposed, won or lost, with why — the same rule
+// the seat's act keeps (deal-shape.js judgeMove), and a won or lost deal moves its lead the same way.
+router.post('/deals/:id/move', async (req, res) => {
+  try {
+    const moved = await moveDealAndLead(req.walletAddress, String(req.params.id), { stage: req.body?.stage, note: req.body?.note, reason: req.body?.reason, value: req.body?.value, nextStep: req.body?.nextStep, by: 'operator', now: new Date().toISOString() });
+    if (!moved.ok) return res.status(/no such deal/.test(moved.reason) ? 404 : 400).json({ error: moved.reason });
+    log.info('A deal was moved by the operator', { id: req.params.id, stage: moved.event.stage });
+    return res.json({ ok: true, deal: moved.deal });
+  } catch (error) {
+    log.error('Deal move failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not move the deal' });
   }
 });
 

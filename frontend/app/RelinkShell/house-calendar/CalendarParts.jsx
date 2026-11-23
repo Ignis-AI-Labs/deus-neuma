@@ -65,9 +65,14 @@ export const ItemDetail = ({ item, person, now, onClose, onOpenList }) => {
         <dt>WHOSE</dt><dd><Dot color={person.color} />{person.name}</dd>
         <dt>WHEN</dt><dd>{longDay(item.day)}{item.times?.length > 1 ? ` · ${item.times.join(' · ')}` : span ? ` · ${span}` : ' · ALL DAY'}</dd>
         {item.channel ? <><dt>CHANNEL</dt><dd>{item.channel.toUpperCase()}</dd></> : null}
+        {item.with?.length ? <><dt>WITH</dt><dd>{item.with.join(' · ')}{item.leadName ? ' — ON YOUR LEAD LIST' : ''}</dd></> : null}
+        {item.place ? <><dt>WHERE</dt><dd>{item.place}</dd></> : null}
+        {item.link ? <><dt>JOIN</dt><dd><a className="hcal-link" href={item.link} target="_blank" rel="noreferrer">{item.link}</a></dd></> : null}
+        {item.calendar ? <><dt>FROM</dt><dd>{item.calendar}</dd></> : null}
         {item.status ? <><dt>STATUS</dt><dd>{(TONE_WORD[tone] || item.status).toUpperCase()}</dd></> : null}
       </dl>
       {note ? <p className="hcal-quiet label-data">{note}</p> : null}
+      {item.note ? <p className="hcal-quiet label-data">{item.note}</p> : null}
       {item.source === 'task' && LISTED.includes(person.kind) && onOpenList ? (
         <button type="button" className="hcal-btn" onClick={() => onOpenList(person.id)}>OPEN {person.name}'S LIST</button>
       ) : null}

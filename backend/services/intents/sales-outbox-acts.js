@@ -81,7 +81,9 @@ const salesDraftEmailIntent = Object.freeze({
     let promise = typeof payload?.promise === 'string' ? payload.promise : '';
     let subject = payload.subject; // a formula email's is the platform's: […]
     let formula = null;
-    if (needsFormula(lead, { followUp })) {
+    // A follow-up is one because an earlier email is on record: said of someone never written to, it is refused by name.
+    if (followUp && lead && needsFormula(lead)) return invalid(`followUp: nothing was ever sent to ${to[0]} — this is a FIRST email, written from its campaign's plan: {to, subject, hook, why, offer, askIndex, ask}`);
+    if (needsFormula(lead)) {
       const built = await formulaEmail(context.wallet, { lead, to: to[0], payload, by: context.laneId });
       if (built.refusal) return invalid(built.refusal);
       ({ subject, text, promise, formula } = built);

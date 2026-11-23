@@ -9,9 +9,11 @@
 // never costs the email: the mail stands either way.
 // impure (the house's do-not-contact list and lead ledger).
 
+import { firstEmailScreen } from './lead-screen.js';
 import { closes, saidWords } from './reply-said.js';
 import { readSuppressions, markSender, readSalesFacts, readProspects, readSegments } from './sales-store.js';
 import { checkSalesEmail, factsFor } from './sales-facts.js';
+import { readNeverList } from '../legal/never-list.js';
 import { claimsRead } from './claims-reader.js';
 import { checkFirstEmail, writtenBefore, cleanPromise } from './first-email.js';
 import { normalizeEmail, suppressionMatcher } from './suppress-shape.js';
@@ -61,7 +63,7 @@ export const addressRefusal = async (wallet, { to, laneId, acceptRisk = false, e
  * Why an email may not go (the facts check on a lead's email, and the address check on every recipient's), or null
  * when it may.
  */
-export const leadEmailRefusal = async (wallet, { to, subject, text, promise, laneId, acceptRisk = false }) => {
+export const leadEmailRefusal = async (wallet, { to, subject, text, promise, laneId, acceptRisk = false, claims: readClaims = true }) => {
   const wanted = new Set(to.map(normalizeEmail).filter(Boolean));
   const everyone = (await (await leadLedgerFor(wallet)).load()).filter((l) => wanted.has(normalizeEmail(l.contact)));
   // The sales checks are for people the house SELLS to, and for anyone not yet sorted (until someone says they are
@@ -82,13 +84,25 @@ export const leadEmailRefusal = async (wallet, { to, subject, text, promise, lan
     const firstTo = (l) => !writtenBefore({ touches: personTouches(l) });
     const shape = leads.some(firstTo) ? checkFirstEmail({ subject, text, promise }) : [];
     if (shape.length) return `this is the first email to a lead: ${shape.join('; ')}`;
+    // THE SCREEN (lead-screen.js): a first email goes only to a company scored a fit for an approved audience, with
+    // what that audience requires proved — on every road an email takes, not only the staged one. The operator alone
+    // may send one anyway.
+    if (!acceptRisk) {
+      const never = (await readNeverList(wallet)).codes;
+      for (const lead of leads.filter((l) => firstTo(l) && !personTouches(l).some((t) => t.direction === 'in'))) {
+        const prospect = prospects.find((p) => p.leadId === lead.id && p.stage !== 'dropped') ?? null;
+        const unscreened = firstEmailScreen({ lead, prospect, segment: prospect ? segments.find((sg) => sg.id === prospect.segmentId) ?? null : null, segments, never });
+        if (unscreened) return `this is the first email to a lead, and ${unscreened}`;
+      }
+    }
   }
   // EVERY ADDRESS, BEFORE IT LEAVES (Design note, 2026-11-19: […]): one that does not
   // exist, or cannot be checked, is never written to (address-check.js) — first email or not. Someone who wrote to the
   // house is known to be real and is not asked.
   const address = await addressRefusal(wallet, { to, laneId, acceptRisk, everyone, leads });
   if (address) return address;
-  if (!leads.length) return null;
+  // claims false: the OPERATOR's own send of an email they read (email-outbox.js). No model reads it again.
+  if (!leads.length || !readClaims) return null;
   // Words, not just numbers: the house's own model names the fact behind every claim (claims-reader.js).
   const claims = await claimsRead({ laneId, facts: approved.facts, subject, text });
   return claims.ok ? null : `this email goes to a lead, and ${claims.reason}`;
@@ -102,6 +116,22 @@ const touchByAddress = async (wallet, emails, changeFor) => {
   const hits = (await ledger.load()).filter((l) => wanted.has(normalizeEmail(l.contact)));
   for (const lead of hits) await ledger.touch(lead.id, changeFor(lead));
   return hits.map((l) => l.id);
+};
+
+/**
+ * The conversation an email to ONE lead continues: the message ids already exchanged with that person, oldest first
+ * (ours as sent, theirs as received). Sent with them, the email lands in the same thread in their mail program.
+ * Several recipients, or nobody on the ledger: none. Never throws. impure.
+ * @param {string} wallet @param {string[]} to
+ * @returns {Promise<string[]>}
+ */
+export const threadFor = async (wallet, to) => {
+  try {
+    if (!Array.isArray(to) || to.length !== 1) return [];
+    const address = normalizeEmail(to[0]);
+    const lead = (await (await leadLedgerFor(wallet)).load()).find((l) => normalizeEmail(l.contact) === address);
+    return lead ? personTouches(lead).filter((t) => t.messageId && t.delivery !== 'maybe-sent').map((t) => t.messageId) : [];
+  } catch { return []; }
 };
 
 /** Record a sent email on the leads it reached, and the sending address's first day writing to leads. Never throws. */
@@ -128,7 +158,8 @@ export const recordSent = async (wallet, { to, subject, promise, by, from, messa
 /** Record a message a lead sent the house, with its subject and their own words when it was read. Never throws. */
 // What it says (reply-reading.js) is kept with it and moves the lead: a no, or a person who has left, closes it — the
 // house stops writing and the contact stays on the ledger; a machine's reply moves nothing, so the follow-ups run on.
-export const recordReceived = (wallet, { from, ref, subject = null, text = null, said = null }) => touchByAddress(wallet, [from], (lead) => ({
+export const recordReceived = (wallet, { from, ref, subject = null, text = null, said = null, messageId = null }) => touchByAddress(wallet, [from], (lead) => ({
+  ...(messageId ? { messageId } : {}), // their message's own id: the next email to them names it and stays in their thread
   ...(closes(said) && lead.status !== 'won' ? { status: 'lost' } : said?.says === 'auto' ? {} : IN_MOVES.has(lead.status) ? { status: 'replied' } : {}),
   direction: 'in',
   ...(said ? { said } : {}),

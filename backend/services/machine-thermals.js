@@ -174,10 +174,15 @@ const readDrives = async () => {
   return drives.filter(Boolean);
 };
 
-/** impure — the bench-fans service: running, and whether it is holding the fans at full now. */
+/**
+ * impure — the fan service: which one runs, and whether it is holding the fans at full now. `follows` is 'load' when
+ * the fans follow the load (scripts/system/load-fans), 'bench' when they are only raised for a benchmark (the older
+ * bench-fans), null when neither runs and the fans are left to their own temperature curves.
+ */
 const readFanService = async () => {
-  const active = (await run('systemctl', ['is-active', 'bench-fans.service']))?.trim() ?? null;
-  return Object.freeze({ active: active === 'active', benchRunning: existsSync(BENCH_LOCK) });
+  const is = async (unit) => ((await run('systemctl', ['is-active', unit]))?.trim() ?? null) === 'active';
+  const [load, bench] = await Promise.all([is('load-fans.service'), is('bench-fans.service')]);
+  return Object.freeze({ active: load || bench, follows: load ? 'load' : bench ? 'bench' : null, benchRunning: existsSync(BENCH_LOCK) });
 };
 
 /** impure — the whole machine, read live. Fields a machine cannot answer read null. */

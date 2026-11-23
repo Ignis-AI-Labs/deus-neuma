@@ -18,13 +18,14 @@
 // Verify on a desktop: `npm install && npm run build && npm run electron:dev`.
 
 const { app, BrowserWindow, Notification, dialog, ipcMain, safeStorage, shell, session } = require('electron');
-const { getOrigin, killBackendTree, stopBackend, startBackend, waitForBackend, resolveStartupPort } = require('./backend-spawn.cjs');
+const { getOrigin, killBackendTree, stopBackend, startBackend, waitForBackend, resolveStartupPort, restartBackendInPlace } = require('./backend-spawn.cjs');
 const { createDeskWindows } = require('./desk-windows.cjs');
 const { registerIpcHandlers } = require('./ipc-handlers.cjs');
 const { fromDesk } = require('./desk-links.cjs');
 const tray = require('./tray.cjs');
 const autoUpdate = require('./auto-update.cjs');
 const { registerUpdateBar } = require('./update-bar.cjs');
+const { registerDevRefresh } = require('./dev-refresh.cjs');
 const { guardAppSessions } = require('./permission-guard.cjs');
 const { placeDictionaries, registerSpellcheck } = require('./spellcheck-main.cjs');
 const { openAtRestKeys, registerKeyLockIpc } = require('./key-lock/key-lock-main.cjs');
@@ -68,6 +69,11 @@ if (!app.requestSingleInstanceLock()) {
     registerIpcHandlers({ deskWindows, getOrigin });
     const isDesk = (event) => fromDesk(event, getOrigin());
     const updateBar = registerUpdateBar({ ipcMain, BrowserWindow, shell, app, autoUpdate, isDesk });
+    // A development run: source changes wait on the desk for REFRESH, which rebuilds and restarts in place (dev-refresh.cjs).
+    registerDevRefresh({
+      ipcMain, BrowserWindow, app, isDesk, root: require('node:path').join(__dirname, '..'),
+      restartServer: () => restartBackendInPlace({ onRestarted: deskWindows.reloadDesks }), reloadDesks: deskWindows.reloadDesks,
+    });
     // Electron grants every camera/mic/screen/location ask by default; the
     // floor is deny, before any page exists (permission-guard.cjs).
     guardAppSessions(session, getOrigin);

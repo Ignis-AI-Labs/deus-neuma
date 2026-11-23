@@ -10,7 +10,7 @@ import { getLeadMail } from '../../../services/revenue-client.js';
 import { Outbox } from './Outbox.jsx';
 import { rowStatus, sourceWords } from './people-view.js';
 import { UPKEEP_WORDS } from './lead-engine-view.js';
-import { draftsIn, sentRows, replyRows, closedRows, saidLabel, pipelineOf, messagesOf, channelOf, answerOf, isAutoReply, ALL } from './sales-pipeline-view.js';
+import { draftsIn, readyRows, sentRows, replyRows, closedRows, saidLabel, callWords, pipelineOf, messagesOf, channelOf, answerOf, isAutoReply, ALL } from './sales-pipeline-view.js';
 import { foundByWords } from './sales-sources-view.js';
 
 const day = (at) => (at ? String(at).slice(0, 10) : '—');
@@ -20,7 +20,7 @@ const when = (at) => (at ? String(at).slice(0, 16).replace('T', ' ') : '—');
 
 /** Every message with one person, opened under their row: which way it went, through what, when, and its words whole. */
 // `shown` is the place in the thread of a message already drawn above it (their latest reply, in REPLIES): it is not drawn twice.
-const Thread = ({ engine, lead, shown = -1 }) => {
+export const Thread = ({ engine, lead, shown = -1 }) => {
   const messages = messagesOf(engine, lead).filter((_, i) => i !== shown);
   if (!messages.length) return shown >= 0 ? null : <p className="spl-detail label-data">NO MESSAGE IS RECORDED ON THIS LEAD YET</p>;
   return (
@@ -170,7 +170,7 @@ export const RepliesStage = ({ engine, view, busy = false, onSaid = null }) => (
       detail={(l) => <Replied engine={engine} lead={l} busy={busy} onSaid={onSaid} />} detailLabel={(l) => `their reply, and the messages with ${l.name || l.contact}`}
       empty={<p className="spl-empty label-data">NO REPLY WAITS ON YOU</p>}
       columns={leadColumns(view, [
-        { head: 'THEY SAID', cell: (l) => saidLabel(l.said), sort: (l) => ['wants', 'open', 'auto'].indexOf(l.said?.says ?? 'open'), tone: (l) => (l.said?.says === 'wants' ? 'on' : l.said?.says === 'auto' ? 'dim' : null),
+        { head: 'THEY SAID', cell: (l) => callWords(l) ?? saidLabel(l.said), sort: (l) => ['wants', 'open', 'auto'].indexOf(l.said?.says ?? 'open'), tone: (l) => (l.call || l.said?.says === 'wants' ? 'on' : l.said?.says === 'auto' ? 'dim' : null),
           title: (l) => (l.said?.why ? `They wrote: "${l.said.why}"` : 'No rule could tell what this reply says: open it and read it') },
         { head: 'CHANNEL', cell: (l) => sourceWords(channelOf(engine, l)), attrs: (l) => ({ 'data-channel': channelOf(engine, l) ?? '' }) },
         { head: 'WAITING', cell: (l) => (l.due?.kind === 'answer' ? `${l.due.hours} H` : '—'), tone: (l) => (l.due?.kind === 'answer' ? 'alert' : null) },
@@ -184,5 +184,26 @@ export const RepliesStage = ({ engine, view, busy = false, onSaid = null }) => (
       note="THEY DECLINED. NOTHING MORE IS WRITTEN TO THEM. EACH STAYS ON YOUR LIST AS A CONTACT, AND IS NOT ON THE DO-NOT-CONTACT LIST." />
     <Closed engine={engine} view={view} says="gone" title="HAVE LEFT" busy={busy} onSaid={onSaid}
       note="THE PERSON IS NO LONGER THERE. NOTHING MORE IS WRITTEN TO THAT ADDRESS. WHERE THEIR OFFICE POINTED TO SOMEONE ELSE, THE ADDRESS IS SHOWN." />
+  </>
+);
+
+/** VALIDATED — every lead confirmed and filed to its campaign, waiting for its email: who, the address and what confirmed it, the campaign and audience it serves. */
+export const ReadyStage = ({ engine, view }) => (
+  <>
+    <Sheet label="validated leads waiting for an email" rows={readyRows(engine, view)} rowKey={(l) => l.id} rowName={(l) => l.name || l.contact} rowAttrs={(l) => ({ 'data-lead-id': l.id, 'data-ready': l.general ? 'general' : 'named', ...(l.origin?.countryOpen ? { 'data-country-open': '' } : {}) })}
+      detail={(l) => <Thread engine={engine} lead={l} />} detailLabel={(l) => `what is on record with ${l.name || l.contact}`}
+      empty={<p className="spl-empty label-data">NO VALIDATED LEAD WAITS FOR AN EMAIL — A LEAD RUN FILES THEM HERE</p>}
+      columns={[
+        { head: 'PERSON', cell: (l) => l.name || l.contact },
+        { head: 'ADDRESS', cell: (l) => l.contact, exact: true },
+        { head: 'KIND', cell: (l) => (l.general ? 'GENERAL MAILBOX' : 'NAMED PERSON'), tone: (l) => (l.general ? 'dim' : 'on') },
+        { head: 'CONFIRMED', cell: (l) => (l.check?.status === 'valid' ? `VALID · ${String(l.check.checker ?? '').toUpperCase()}` : l.check ? String(l.check.status).toUpperCase() : 'NOT CHECKED'), tone: (l) => (l.check?.status === 'valid' ? 'on' : 'alert') },
+        { head: 'COUNTRY', cell: (l) => (l.origin?.countryOpen ? 'TO FIND' : l.origin?.country ?? '—'), tone: (l) => (l.origin?.countryOpen ? 'alert' : undefined) },
+        ...campaignColumn(view),
+        { head: 'AUDIENCE', cell: (l) => l.origin?.audience ?? '—' },
+        { head: 'FOUND BY', cell: (l) => foundByWords(l) },
+        { head: 'FILED', cell: (l) => day(l.updatedAt), sort: (l) => String(l.updatedAt ?? '') },
+      ]} />
+    <p className="spl-note label-data">THESE ARE DONE BEING FOUND AND CHECKED. NEXT FOR EACH: YOUR SALES MEMBER WRITES ITS RESEARCH AND ITS FIRST EMAIL, WHICH THEN WAITS FOR YOU UNDER EMAILS. A LEAD MARKED COUNTRY TO FIND IS KEPT, AND NO EMAIL IS WRITTEN TO IT UNTIL ITS COUNTRY IS KNOWN.</p>
   </>
 );

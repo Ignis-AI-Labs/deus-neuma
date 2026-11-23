@@ -1,5 +1,5 @@
 // SalesPipeline — THE SALES POSITION'S HUB IS ITS PIPELINE (Design note, 2026-11-18: […]; chosen layout: […]). One row to choose the campaign in view
-// (ALL, or one), one rail of eight stages in order — each with its count, the stage that waits on the operator marked
+// (ALL, or one), one rail of ten stages in order — each with its count, the stage that waits on the operator marked
 // — and under it only the chosen stage, as one sheet. What is not a stage (editing campaigns, everyone the house
 // knows, the company's facts, the mailbox, the settings, what the seat reads) sits in one quiet MORE row.
 // impure — reads and moves through use-lead-engine.js, the deals through the revenue board.
@@ -9,7 +9,11 @@ import { useLeadEngine } from './use-lead-engine.js';
 import { getRevenueBoard } from '../../../services/revenue-client.js';
 import { STAGES, MORE, ALL, pipelineOf, campaignChoices } from './sales-pipeline-view.js';
 import { DiscoverStage, FilterStage, ValidateStage } from './SalesStages.jsx';
-import { EmailsStage, SentStage, RepliesStage } from './SalesStagesOut.jsx';
+import { EmailsStage, SentStage, RepliesStage, ReadyStage } from './SalesStagesOut.jsx';
+import { CallsStage } from './SalesCalls.jsx';
+import { CostsStage } from './SalesCosts.jsx';
+import { WideFinds } from './WideFinds.jsx';
+import { LeadRun } from './LeadRun.jsx';
 import './SalesPipeline.css';
 
 const VIEW_KEY = 'sales-pipeline:view';
@@ -40,7 +44,7 @@ const Stage = ({ s, on, onTab }) => (
  *   DEALS, and everything under MORE)
  */
 export const SalesPipeline = ({ position, tab, onTab, renderOther }) => {
-  const { engine, busy, error, notice, moveSegment, approveList, sendEmails, returnEmail, editEmail, deleteEmails, handCompany, passCompany, sending, stopSending, clearSending, checkEmails, confirmEmails, sendAnyway, readReplyAs } = useLeadEngine();
+  const { engine, busy, error, notice, moveSegment, approveList, sendEmails, returnEmail, editEmail, deleteEmails, handCompany, passCompany, sending, stopSending, clearSending, checkEmails, confirmEmails, sendAnyway, readReplyAs, bookCall, cancelCall, setPlan, endPlan, passWide } = useLeadEngine();
   const deals = useDeals();
   const [view, setView] = useState(readView);
   const choices = campaignChoices(engine);
@@ -48,7 +52,7 @@ export const SalesPipeline = ({ position, tab, onTab, renderOther }) => {
   const pick = (id) => { setView(id); try { localStorage.setItem(VIEW_KEY, id); } catch { /* private window: kept for this sitting only */ } };
   const stages = pipelineOf({ engine, view: shown, setup: position.setup, deals });
   const stage = STAGES.find((s) => s.id === tab) ?? null;
-  const own = engine && ['discover', 'filter', 'validate', 'emails', 'sent', 'replies'].includes(tab);
+  const own = engine && ['discover', 'filter', 'validate', 'emails', 'sent', 'replies', 'calls', 'costs', 'ready'].includes(tab);
   const props = { engine, view: shown, busy };
   return (
     <section className="spl" aria-label="the sales pipeline" data-sales-pipeline="">
@@ -77,12 +81,17 @@ export const SalesPipeline = ({ position, tab, onTab, renderOther }) => {
       {notice ? <p className="spl-notice label-data" role="status" data-engine-notice="">{notice}</p> : null}
       <div className="spl-body" data-stage-body={tab}>
         {stage ? <p className="spl-body-h label-data">{stage.n} {stage.label} — {stage.does}</p> : null}
+        {own && ['discover', 'filter', 'validate'].includes(tab) ? <LeadRun engine={engine} view={shown} /> : null}
+        {own && (tab === 'discover' || tab === 'filter') ? <WideFinds wide={engine.wide} busy={busy} onPass={passWide} /> : null}
         {own && tab === 'discover' ? <DiscoverStage {...props} onMove={moveSegment} /> : null}
         {own && tab === 'filter' ? <FilterStage {...props} /> : null}
         {own && tab === 'validate' ? <ValidateStage {...props} onList={approveList} onHand={handCompany} onPass={passCompany} /> : null}
+        {own && tab === 'ready' ? <ReadyStage {...props} /> : null}
         {own && tab === 'emails' ? <EmailsStage {...props} onSend={sendEmails} onReturn={returnEmail} onEdit={editEmail} onDelete={deleteEmails} sending={sending} onStop={stopSending} onClear={clearSending} onCheck={checkEmails} onConfirm={confirmEmails} onSendAnyway={sendAnyway} /> : null}
         {own && tab === 'sent' ? <SentStage {...props} /> : null}
         {own && tab === 'replies' ? <RepliesStage {...props} busy={busy} onSaid={readReplyAs} /> : null}
+        {own && tab === 'calls' ? <CallsStage {...props} onBook={bookCall} onCancel={cancelCall} /> : null}
+        {own && tab === 'costs' ? <CostsStage {...props} deals={deals} onPlan={setPlan} onEnd={endPlan} /> : null}
         {own ? null : renderOther(tab)}
       </div>
     </section>

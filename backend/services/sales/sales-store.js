@@ -9,6 +9,7 @@ import { officeFile } from '../house-office.js';
 import { createWriteChain } from '../write-chain.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
 import { foldSegments, judgeState, judgeRefile } from './segment-shape.js';
+import { requiredSigns } from './required-signs.js';
 import { foldProspects, poolRefusal, listable } from './prospect-shape.js';
 import { foldSuppressions, suppressionMatcher } from './suppress-shape.js';
 import { foldSalesFacts, judgeSheetReview, editSheetFact } from './sales-facts.js';
@@ -51,6 +52,24 @@ export const setSegmentState = (wallet, id, state, by) => serialize(async () => 
 });
 
 /**
+ * The operator says what an audience REQUIRES of a company (required-signs.js): [{sign, evidence: [words],
+ * otherwise?: another audience's id}], or [] for nothing. It stands at once — the operator's own word needs no
+ * approval — and every company already filed is proved against it by the next lead run.
+ * @returns {Promise<{ok: true, required: object[]} | {ok: false, reason: string}>}
+ */
+export const setSegmentRequired = (wallet, id, given, by) => serialize(async () => {
+  const segments = await readSegments(wallet);
+  const segment = segments.find((s) => s.id === id);
+  if (!segment) return { ok: false, reason: 'no such segment' };
+  const { problems, required } = requiredSigns(given ?? []);
+  if (problems.length) return { ok: false, reason: problems.join('; ') };
+  const lost = required.find((r) => r.otherwise && (r.otherwise === id || !segments.some((s) => s.id === r.otherwise)));
+  if (lost) return { ok: false, reason: `"${lost.otherwise}" is not another audience of this house — choose the audience a company that fails this belongs to, or none` };
+  await appendJsonLine(fileOf(wallet, SEGMENTS), { type: 'required', id, required, by, at: new Date().toISOString() });
+  return { ok: true, required };
+});
+
+/**
  * Add prospects to the pool, each judged against the pool and the
  * do-not-contact list as it stands (a batch never holds one company twice).
  * @returns {Promise<{added: object[], refused: Array<{domain: string, reason: string}>}>}
@@ -61,6 +80,14 @@ export const addProspects = (wallet, prospects) => serialize(async () => {
   const added = [];
   const refused = [];
   for (const prospect of prospects) {
+    // A lead put under this audience and never scored for it (sales/place) is scored by this very filing: its own
+    // record takes the scores, so no rule sends the seat to an act another rule refuses.
+    const placed = pool.find((p) => p.placed && !p.fit?.length && p.segmentId === prospect.segmentId && p.domain === prospect.domain && p.stage !== 'dropped');
+    if (placed && !blocked.domain(prospect.domain)) {
+      await appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'scored', id: placed.id, prospect, at: prospect.foundAt });
+      added.push({ ...prospect, id: placed.id });
+      continue;
+    }
     const reason = poolRefusal(prospect, [...pool, ...added.map((p) => ({ ...p, stage: 'found' }))], blocked.domain);
     if (reason) {
       refused.push({ domain: prospect.domain, reason });
@@ -144,6 +171,34 @@ export const approveList = (wallet, segmentId, by, expectedIds) => serialize(asy
   return { ok: true, count: ids.length };
 });
 
+/**
+ * Companies a LEAD RUN screened as what their audience is go onto its approved list by themselves (Design note, 2026-11-21:
+ * […]). Only under an approved audience, only companies that are listable; said as the run's.
+ * The emails to them still wait for the operator in EMAILS. @returns {Promise<number>} how many were listed
+ */
+export const listScreened = (wallet, segmentId, ids, by) => serialize(async () => {
+  const segment = (await readSegments(wallet)).find((s) => s.id === segmentId);
+  if (segment?.state !== 'approved') return 0;
+  const open = new Set(listable(await readProspects(wallet), segmentId).map((p) => p.id));
+  const mine = [...new Set(ids.map(String))].filter((id) => open.has(id));
+  if (mine.length) await appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'listed', segmentId, ids: mine, by, screened: true, at: new Date().toISOString() });
+  return mine.length;
+});
+
+/**
+ * A scored company read again and scored afresh by the house's screening (lead-run.js validation): its record takes
+ * the new scores, so what stands on it is what the page shows — and keeps its id, its audience, its people and its place.
+ */
+export const rescoreProspect = (wallet, id, prospect, by) => serialize(async () => {
+  if (!(await readProspects(wallet)).some((p) => p.id === id)) return { ok: false, reason: `prospect "${id}" is not in the pool` };
+  await appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'scored', id, prospect, by, validated: true, at: new Date().toISOString() });
+  return { ok: true };
+});
+
+/** A scored company's country, read from its own pages after it was scored: kept only where none stood. */
+export const noteProspectCountry = (wallet, id, country, by, source = null) => serialize(() =>
+  appendJsonLine(fileOf(wallet, PROSPECTS), { type: 'country', id, country: String(country).toUpperCase(), ...(source ? { source } : {}), by, at: new Date().toISOString() }));
+
 /** Put one entry on the do-not-contact list. */
 export const addSuppression = (wallet, entry) => serialize(async () => {
   const known = (await readSuppressions(wallet)).some((e) => e.kind === entry.kind && e.value === entry.value);
@@ -212,7 +267,10 @@ export const readCandidates = async (wallet) => {
   // THE FILTER (lead-pipeline.js): kept on the shortlist, or passed over, per audience — the latest word stands.
   const sorted = new Map();
   for (const e of all) if (e?.type === 'shortlist' && Array.isArray(e.domains)) for (const d of e.domains) sorted.set(`${e.segmentId}\u0000${d}`, { verdict: e.verdict, why: e.why ?? null });
+  // A company found for one audience that fits another is MOVED to it (lead-run.js): the latest move stands.
+  const movedTo = new Map(all.filter((e) => e?.type === 'moved' && e.domain && e.segmentId).map((e) => [e.domain, e.segmentId]));
   return all.filter((e) => e?.type === 'gathered' && e.candidate?.domain)
+    .map((e) => (movedTo.has(e.candidate.domain) ? { ...e, segmentId: movedTo.get(e.candidate.domain) } : e))
     .map((e) => {
       const site = sites.get(e.candidate.domain) ?? null;
       // Kept as `siteRead`: `site` is the company's own web address, which every list source already sets
@@ -246,17 +304,21 @@ export const addCandidates = (wallet, segmentId, rows, by) => serialize(async ()
   return added;
 });
 
+/** A gathered company belongs to another audience of the house: it is moved there, with why. */
+export const moveCandidate = (wallet, { domain, segmentId, why, by }) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'moved', domain, segmentId, why: String(why ?? '').slice(0, 300), by, at: new Date().toISOString() }));
+
 /** The pipeline's FILTER: these companies of an audience are kept on its shortlist, or passed over, with why. */
 export const noteShortlist = (wallet, { segmentId, domains, verdict, why, by }) => serialize(() =>
   appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'shortlist', segmentId, domains, verdict: verdict === 'passed' ? 'passed' : 'kept', why: String(why ?? '').slice(0, 300), by, at: new Date().toISOString() }));
 
 /** Keep one search run for an audience (the pipeline's DISCOVER step, lead-pipeline.js): where, how it was asked, what it found. */
-export const noteSearch = (wallet, { segmentId, source, asked, matched, gathered, spent = 0, by }) => serialize(() =>
-  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'searched', segmentId, source, asked: String(asked ?? '').slice(0, 400), matched: Number(matched) || 0, gathered: Number(gathered) || 0, ...(Number(spent) > 0 ? { spent: Number(spent) } : {}), by, at: new Date().toISOString() }));
+export const noteSearch = (wallet, { segmentId, source, asked, matched, gathered, spent = 0, pages = null, fromPage = null, by }) => serialize(() =>
+  appendJsonLine(fileOf(wallet, CANDIDATES), { type: 'searched', segmentId, source, asked: String(asked ?? '').slice(0, 400), matched: Number(matched) || 0, gathered: Number(gathered) || 0, ...(Number(spent) > 0 ? { spent: Number(spent) } : {}), ...(Number(pages) > 0 ? { pages: Number(pages), fromPage: Number(fromPage) || 1 } : {}), by, at: new Date().toISOString() }));
 
 /** Every search run, oldest first: { segmentId, source, asked, matched, gathered, at }. */
 export const readSearches = async (wallet) => (await events(wallet, CANDIDATES)).filter((e) => e?.type === 'searched')
-  .map((e) => ({ segmentId: e.segmentId, source: e.source, asked: e.asked, matched: e.matched, gathered: e.gathered, spent: e.spent ?? 0, at: e.at }));
+  .map((e) => ({ segmentId: e.segmentId, source: e.source, asked: e.asked, matched: e.matched, gathered: e.gathered, spent: e.spent ?? 0, pages: e.pages ?? null, fromPage: e.fromPage ?? null, at: e.at }));
 
 /** Keep what a contact-data provider returned for a company (the people, each with the page its address was found on). */
 export const noteContacts = (wallet, domain, source, people, by, spent = 1) => serialize(() =>

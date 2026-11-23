@@ -90,6 +90,15 @@ const NOVAANIME_RECIPE = Object.freeze({
   negative: 'modern, recent, old, oldest, cartoon, graphic, text, painting, crayon, graphite, abstract, glitch, deformed, mutated, ugly, disfigured, long body, lowres, bad anatomy, bad hands, missing fingers, extra digits, fewer digits, cropped, very displeasing, (worst quality, bad quality:1.2), sketch, jpeg artifacts, signature, watermark, username, simple background, conjoined, bad ai-generated',
 });
 
+// THE DESIGN SHEET (2026-11-21): the NovaAnimeXL author's recipe is built for finished illustrations: it adds […] and negates "simple background", so a character reference kept drifting into halos, star
+// flares, swords and summoning rings. The same model and sampler with no lighting suffix, a plain background allowed,
+// and that drift negated gave a clean reference on the first try, the base body's skeleton and joints holding.
+const SHEET_RECIPE = Object.freeze({
+  ...NOVAANIME_RECIPE,
+  suffix: '',
+  negative: `${NOVAANIME_RECIPE.negative.replace('simple background, ', '')}, scenery, landscape, ground, floor, light rays, lens flare, sparkle, magic circle, halo, weapon, sword`,
+});
+
 // SDXL buckets around one megapixel, portrait first (the authors render at or above 1024x1024 area).
 const DIMS = Object.freeze([832, 896, 1024, 1152, 1216]);
 
@@ -142,6 +151,12 @@ export const buildIllustriousPipelines = (PROMPT_SLOTS, SAMPLER_SLOTS) => {
       // It reads prompts with Hale's own text encoders, so it takes Hale's author's recipe whole.
       modelId: 'deusneuma-character-xl', ckptName: 'deusneuma_characterXL_v0.1.safetensors',
       recipe: NOVAANIME_RECIPE, cfg: { min: 4, max: 6, default: 5 }, steps: { min: 20, max: 30, default: 28 },
+    }),
+    'still.neuma.sheet.txt2img': pipeline({
+      id: 'still.neuma.sheet.txt2img', label: 'Deus Neuma Character XL — design sheet (plain background)',
+      description: `Our own model for character DESIGN: a plain background with no scenery, light rays, halos or weapons, so a body or an outfit reads clean as a reference. Write the background you want ("simple background, black background", or white, or grey). ${how}`,
+      modelId: 'deusneuma-character-xl', ckptName: 'deusneuma_characterXL_v0.1.safetensors',
+      recipe: SHEET_RECIPE, cfg: { min: 4, max: 6, default: 5 }, steps: { min: 20, max: 30, default: 28 },
     }),
   });
 };

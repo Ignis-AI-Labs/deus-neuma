@@ -16,6 +16,12 @@ const log = createLogger('HeldWords');
 const foldable = (held) => typeof held?.thought === 'string' && held.thought.trim() !== '' && !held.retry
   && !held.speaker && !(Array.isArray(held.attachments) && held.attachments.length);
 
+/** pure — whether this one message can ride into the running turn as a note: the operator's plain words, nothing attached. */
+export const canRide = (message) => foldable(message);
+
+/** pure — whether everything held can ride into the running turn as a note (plain words of the operator's). */
+export const wordsCanRide = (connection) => Boolean(connection?.pendingThoughts?.length) && connection.pendingThoughts.every(foldable);
+
 export const QUEUED_ACTION_REASON = 'queued-action-handoff';
 export const QUEUED_ACTION_MARK = '[response paused to receive the queued message]';
 const actionContext = new WeakMap();
@@ -80,7 +86,7 @@ export const heardWhileWorking = async (connection) => {
   for (const entry of taken) {
     const words = entry.thought.trim();
     const at = new Date().toISOString();
-    announceTakenThought(connection, entry);
+    announceTakenThought(connection, entry, at);
     noteOperatorWords(connection, words);
     const neumaId = connection.companion?.neumaId;
     if (neumaId && connection.sessionId) {

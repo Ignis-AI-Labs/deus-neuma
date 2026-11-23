@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
 import { announceWaitingChanged, onWaitingChanged } from '../waiting/waiting-changed.js';
 import { runSendBatch } from './outbox-send.js';
-import { checkOutboxAddresses, confirmOutboxAddresses, reviewCampaignEmailPlan, sendOutbox, returnOutboxEmail, editOutboxEmail, deleteOutboxEmails, handProspect, passCandidate, readSegmentSites, getLeadEngine, setSegmentState, suppressContact, liftSuppression, approveSegmentList, reviewSalesFacts, openSalesCampaign, moveSalesCampaign, setAudienceCampaign, changeSalesFact, setLeadKind, setLeadSaid } from '../../../services/revenue-client.js';
+import { checkOutboxAddresses, confirmOutboxAddresses, reviewCampaignEmailPlan, sendOutbox, returnOutboxEmail, editOutboxEmail, deleteOutboxEmails, handProspect, passCandidate, readSegmentSites, getLeadEngine, setSegmentState, suppressContact, liftSuppression, approveSegmentList, reviewSalesFacts, openSalesCampaign, moveSalesCampaign, setAudienceCampaign, changeSalesFact, setLeadKind, setLeadSaid, bookLeadCall, cancelLeadCall, setLeadPlan, endLeadPlan, passWideFinds } from '../../../services/revenue-client.js';
 
 export const useLeadEngine = () => {
   const [engine, setEngine] = useState(null);
@@ -99,6 +99,11 @@ export const useLeadEngine = () => {
     changeFact: (sheet, change, said) => press(() => changeSalesFact(sheet.id, change), said),
     // What a reply says, set by hand when the rules read it wrong: a no goes to SAID NO (kept as a contact), anything else comes back to REPLIES.
     readReplyAs: (lead, says) => press(() => setLeadSaid(lead.id, says), `${lead.name || lead.contact}: ${{ no: 'marked as a no. Nothing more is written to them; the contact is kept.', gone: 'marked as having left. Nothing more is written to that address.', wants: 'marked as asking for something. It is first in REPLIES.', open: 'back in REPLIES to be read.', auto: 'marked as an automatic reply.' }[says]}`),
+    bookCall: (lead, call) => press(() => bookLeadCall(lead.id, call), `The call with ${lead.name || lead.contact} is ${lead.call && Date.parse(lead.call.at) > Date.now() ? 'moved' : 'booked'}. It is on your house calendar and is announced an hour and ten minutes before. It shows here under its own campaign, and under ALL.`),
+    cancelCall: (lead) => press(() => cancelLeadCall(lead.id), `The call with ${lead.name || lead.contact} is called off. It has left CALLS and your house calendar; the lead stays open.`),
+    setPlan: (plan) => press(() => setLeadPlan(plan), `Your ${plan.partner} plan is filed: what its leads cost is counted from it.`),
+    endPlan: (row) => press(() => endLeadPlan(row.partner), `Your ${row.partner} plan is ended: it stops counting from today.`),
+    passWide: () => press(() => passWideFinds(), (r) => `${Number(r?.passed ?? 0).toLocaleString('en-US')} compan${r?.passed === 1 ? 'y' : 'ies'} from too-wide searches passed over. Each is under PASSED with why.`),
     refileLead: (lead, kind) => press(() => setLeadKind(lead.id, kind), `${lead.name || lead.contact} is now filed under ${kind}.`),
     putAudience: (segment, campaign) => press(() => setAudienceCampaign(segment.id, campaign.id), `"${segment.name}" now serves "${campaign.name}".`),
     suppress: (target, reason) => press(() => suppressContact(target.trim(), reason), `${target.trim()} is on the do-not-contact list.`),

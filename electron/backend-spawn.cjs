@@ -232,13 +232,27 @@ const startBackend = ({ onRestarted }) => {
   let served = false;
   backend.on('exit', (code, signal) => {
     backend = null;
-    const notice = served && !app.isQuitting ? backendExitNotice(code, signal) : null;
+    const notice = served && !app.isQuitting && !restartingInPlace ? backendExitNotice(code, signal) : null;
     if (notice) offerBackendRestart(notice, { onRestarted });
   });
   return waitForBackendPort(backend).then((port) => {
     served = true;
     setPort(port);
   });
+};
+
+// THE DEV REFRESH's restart (dev-refresh.cjs): stop the backend, start it again, wait until it answers. The exit it
+// causes is the operator's own act, so the "backend went down" offer is not shown for it.
+let restartingInPlace = false;
+const restartBackendInPlace = async ({ onRestarted }) => {
+  restartingInPlace = true;
+  try {
+    await stopBackend();
+    await startBackend({ onRestarted });
+    await waitForBackend();
+  } finally {
+    restartingInPlace = false;
+  }
 };
 
 // impure — resolve once the backend answers its health check
@@ -302,4 +316,4 @@ const resolveStartupPort = async () => {
   return true;
 };
 
-module.exports = { getOrigin, killBackendTree, stopBackend, startBackend, waitForBackend, resolveStartupPort };
+module.exports = { getOrigin, killBackendTree, stopBackend, startBackend, waitForBackend, resolveStartupPort, restartBackendInPlace };

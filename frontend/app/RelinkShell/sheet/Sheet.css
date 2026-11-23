@@ -27,3 +27,7 @@
 .sheet-pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .sheet-range { color: var(--color-text-secondary); font-size: 13px; }
 .sheet-step { padding: 2px var(--space-2); font-size: 13px; }
+.sheet-foot { display: flex; justify-content: flex-end; }
+.sheet-take { background: none; border: 0; padding: 2px 0; color: var(--color-text-secondary); font-size: 13px; cursor: pointer; }
+.sheet-take:hover { color: var(--signal); }
+.sheet-take:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }

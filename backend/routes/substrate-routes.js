@@ -25,6 +25,8 @@ import { writeCapacity, listCapacity, readUsableCapacity } from '../services/cap
 import { getSubstrateTelemetry } from '../services/substrate-telemetry.js';
 import { issuesForHouse, issuesForOwner } from '../services/house-issue-feed.js';
 import { createSharedSnapshot } from '../services/shared-snapshot.js';
+import { readNetwork } from '../services/network/network-watch.js';
+import { readNetworkHistory } from '../services/network/network-log.js';
 import { stopSupervised } from '../services/llama-server-supervisor.js';
 import { standbySettings } from '../services/standby-settings.js';
 import { lastServingFit, saveServingShare, servingFitStatus } from '../services/serving-fit.js';
@@ -319,6 +321,31 @@ router.get('/image-engine', async (req, res) => {
   } catch (error) {
     log.error('Image engine read', { error: error.message });
     res.status(500).json({ error: 'Failed to read the image engine' });
+  }
+});
+
+// THE NETWORK — every connection this machine holds now: what goes out, what came in, what listens, by which program
+// and to which address, and which of the platform's own self-running connections are on (network/network-watch.js).
+// One read shared by every open window: it asks the kernel's socket table.
+const readNetworkShared = createSharedSnapshot(readNetwork, 2500);
+router.get('/network', async (req, res) => {
+  try {
+    res.json(await readNetworkShared());
+  } catch (error) {
+    log.error('Network read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the network' });
+  }
+});
+
+// THE NETWORK'S HISTORY AND AUDIT — what this machine was connected to over the days kept, and what in it is worth the
+// operator's eye: what came in from outside, what began listening, what hid its program (network/network-log.js).
+const readHistoryShared = createSharedSnapshot(readNetworkHistory, 5000);
+router.get('/network/history', async (req, res) => {
+  try {
+    res.json(await readHistoryShared());
+  } catch (error) {
+    log.error('Network history read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the network history' });
   }
 });
 

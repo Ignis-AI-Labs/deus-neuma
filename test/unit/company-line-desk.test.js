@@ -220,7 +220,9 @@ describe('SALES on the desk', () => {
     expect(html).toContain('WON · 300 USD + 0.1 ETH');
     expect(html).toContain('data-deal-id="d-0a0b0c0d"');
     // A list of records is a sheet: one deal a line, one fact a cell.
-    expect(html).toMatch(/<th scope="row">Padstow harbour office<\/th><td>QUALIFIED<\/td><td>120 USD<\/td><td title="Send the sample sheet">Send the sample sheet<\/td>/);
+    // The row opens onto what was said on the deal and the row that moves it; a fresh board names no quiet deal.
+    expect(html).toMatch(/<th scope="row"><button type="button" class="sheet-open" aria-expanded="false" aria-label="Padstow harbour office — what was said on it, and move it"><span aria-hidden="true">▸<\/span> Padstow harbour office<\/button><\/th><td>QUALIFIED<\/td><td>120 USD<\/td><td title="Send the sample sheet">Send the sample sheet<\/td>/);
+    expect(html).not.toContain('data-deal-stale');
     expect(html).toContain('>UNSEAT<');
   });
 });

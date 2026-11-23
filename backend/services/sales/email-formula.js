@@ -11,6 +11,8 @@
 // concerns them, now) · OFFER (what we have for their need, in their terms, with a proof) · ASK (one concrete next
 // step from the campaign's asks) · the campaign's sign-off. The platform assembles it; the checks below hold it. PURE.
 
+import { saidTwice } from './said-twice.js';
+
 export const OBJECTIVES = Object.freeze({
   funding: 'raising money: investors whose thesis we fit',
   customers: 'users or customers for a product or a service',
@@ -103,7 +105,9 @@ export const makeResearch = (f) => {
 export const researchFresh = (card, now = Date.now()) => Boolean(card?.at) && now - Date.parse(card.at) <= RESEARCH_FRESH_DAYS * 86_400_000;
 
 /** pure — the first name an email greets. */
-const firstName = (card) => words(card?.name)[0] ?? '';
+// A mailbox nobody in particular reads is greeted as the team it is ([…]), never by the
+// company's first word as if it were a person ("Hi Mint,").
+const firstName = (card) => (/\bteam$/i.test(String(card?.name ?? '').trim()) ? String(card.name).trim() : words(card?.name)[0] ?? '');
 
 // THE SUBJECT (Design note, 2026-11-20: […]).
 // The platform writes it: the company's name as its record has it, then the reason the seat gives, in title case —
@@ -175,6 +179,7 @@ export const checkFormula = (fields, { card, plan, company = 'the company', othe
     ...([f.hook, f.why, f.offer].some((s) => s.includes('?')) ? ['the ask is the only question: the hook, the why and the offer say, they do not ask'] : []),
     ...(bodyWords > BODY_WORDS_MAX ? [`at most ${BODY_WORDS_MAX} words from hook to ask, and this is ${bodyWords} — cut to what they need to say yes`] : []),
     ...(banned.length ? [`never "${banned.join('", "')}" — say the real thing`] : []),
+    ...saidTwice([f.hook, f.why, f.offer, f.ask]),
     ...(twin ? [`another email of this campaign (to ${twin.to?.join(', ') ?? 'someone else'}) opens or offers the same way — write this one for this person`] : []),
   ];
 };

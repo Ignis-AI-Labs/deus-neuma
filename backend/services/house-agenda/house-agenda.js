@@ -20,9 +20,10 @@ import { taskSource } from './agenda-tasks.js';
 import { workSource } from './agenda-work.js';
 import { houseSource } from './agenda-house.js';
 import { machineSource } from './agenda-machine.js';
+import { calendarSource } from './agenda-calendar.js';
 
 const log = createLogger('HouseAgenda');
-const SOURCES = Object.freeze({ tasks: taskSource, work: workSource, house: houseSource, machine: machineSource });
+const SOURCES = Object.freeze({ tasks: taskSource, work: workSource, house: houseSource, machine: machineSource, calendars: calendarSource });
 
 // impure — the lanes the charter names as seats: the only ones a scheduled moment wakes. A paused
 // or unapproved charter still takes their moments, held in view (schedule-tick.js); none wakes no one.
@@ -58,7 +59,8 @@ export const houseAgenda = async (wallet, { from, to }, now = new Date()) => {
       return { name, ...(await read(ctx)) };
     } catch (error) {
       log.warn('agenda source unreadable', { source: name, error: error.message });
-      return { name, error: error.message };
+      // A source that read some of its own and failed on the rest hands over what it has: the gap is named, the rest still shows.
+      return { name, error: error.message, ...(Array.isArray(error.items) ? { items: error.items } : {}) };
     }
   }));
   return {

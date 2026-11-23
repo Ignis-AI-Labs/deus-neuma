@@ -6,6 +6,7 @@
 // Only the long […] folds. The operator's APPROVE / PAUSE / RETIRE and
 // APPROVE THE LIST stand in the head and under the tiles. Pure rendering.
 
+import { AudienceRequires } from './AudienceRequires.jsx';
 import { MATCH_WORDS, STATE_WORDS, LIST_WORDS, segmentMoves, roadSteps } from './lead-engine-view.js';
 import { AudienceCompanies } from './AudienceCompanies.jsx';
 import { poolTiles, chipsOf, poolWords, audienceWaits } from './lead-audience-view.js';
@@ -69,11 +70,10 @@ const Road = ({ road }) => (
   </div>
 );
 
-const ListApproval = ({ s, ids, busy, onList }) => (ids.length ? (
-  <div className="cline-open" data-list-approve="">
-    <p className="cline-move-t">{LIST_WORDS}</p>
-    <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`APPROVE THE LIST of ${ids.length} for ${s.name}`}
-      onClick={() => onList(s, ids)}>APPROVE THE LIST ({ids.length})</button>
+// No list to approve (Design note, 2026-11-21: what waits is validated by a lead run, from each company's own page.
+const ListApproval = ({ ids }) => (ids.length ? (
+  <div className="cline-open" data-list-waits={ids.length}>
+    <p className="cline-move-t">{ids.length} COMPAN{ids.length === 1 ? 'Y WAITS' : 'IES WAIT'} TO BE VALIDATED — A LEAD RUN DOES IT. {LIST_WORDS}</p>
   </div>
 ) : null);
 
@@ -103,6 +103,7 @@ export const Pitch = ({ s }) => (
         </ul>
       </div>
     ) : null}
+    <AudienceRequires segment={s} />
     <div className="cline-aud-two">
       <Signs title="FITS IF" items={s.positiveCriteria ?? []} mark="✓" tone="fit" />
       <Signs title="NOT A FIT IF" items={s.negativeCriteria ?? []} mark="✕" tone="misfit" />

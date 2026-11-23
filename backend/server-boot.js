@@ -56,7 +56,11 @@ import { startLegalScheduler } from './services/legal/legal-scheduler.js';
 import { startDraftReview } from './services/marketing/draft-review.js';
 import { startMoneyInScheduler } from './services/money-in/money-in-scheduler.js';
 import { startCostMeter } from './services/cost-meter/cost-meter-scheduler.js';
+import { startCardSettle } from './services/invoices/card-settle-scheduler.js';
+import { startLeadRunSchedule } from './services/sales/lead-run-scheduler.js';
+import { startNetworkRecorder } from './services/network/network-recorder.js';
 import { startMailWatch } from './services/mail-watch/mail-watch.js';
+import { startMeetingReminders } from './services/calendar/meeting-reminders.js';
 import { startChatBridge } from './services/channels/chat-supervisor.js';
 import { startBenchWatchdog, stopBenchWatchdog } from './services/bench/bench-watchdog.js';
 import { settleLostChains } from './services/bench/bench-matched.js';
@@ -309,12 +313,21 @@ export const bootServer = ({ server, wss, terminalWss, dictateWss, config, log }
     startGuarded('claims review', startDraftReview);
     // The money-in watch — what the house received, every 10 minutes, read-only.
     stopMoneyIn = startGuarded('money-in watch', startMoneyInScheduler);
+    // The card-invoice watch — whether an invoice was paid on Stripe, every 10 minutes, only while CARD PAYMENTS is on.
+    startGuarded('card-invoice watch', startCardSettle);
+    // The daily lead runs — each audience the operator turned on, started once a day from its hour (off until turned on).
+    startGuarded('daily lead runs', startLeadRunSchedule);
+    // The network's history — what this machine was connected to, kept from its own socket table every few seconds (nothing goes out).
+    startGuarded('network history', startNetworkRecorder);
     // The cost meter — the GPU's power draw once a minute, only for a house
     // whose operator set the electricity rate.
     stopCostMeter = startGuarded('cost meter', startCostMeter);
     // The house mailbox watch — a reply wakes the seat that holds the
     // conversation; off until the operator turns the connection on.
     stopMailWatch = startGuarded('mail watch', startMailWatch);
+    // Meetings on the calendars the operator added: announced before they start, and a call with a lead written
+    // onto the lead; off until the operator turns the connection on.
+    startGuarded('meeting reminders', startMeetingReminders);
     // The chat bridge — the house's Telegram and Discord bots hear the people
     // the operator approved; off until the operator turns the connection on.
     stopChatBridge = startGuarded('chat bridge', startChatBridge);

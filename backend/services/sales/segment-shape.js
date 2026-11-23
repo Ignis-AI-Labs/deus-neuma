@@ -108,6 +108,9 @@ export const foldSegments = (events) => {
         : { state: 'draft', stateAt: e.at, stateBy: e.segment.filedBy };
       // A refiling that names no campaign keeps the one the audience already serves.
       byId.set(e.segment.id, { ...e.segment, campaign: e.segment.campaign ?? prior?.campaign ?? null, ...standing });
+    } else if (e?.type === 'required' && prior && Array.isArray(e.required)) {
+      // What the audience REQUIRES, set by the operator on the desk: it stands at once and the audience stays approved.
+      byId.set(e.id, { ...prior, required: e.required });
     } else if (e?.type === 'campaign' && prior) {
       byId.set(e.id, { ...prior, campaign: e.campaign || null });
     } else if (e?.type === 'state' && prior && SEGMENT_STATES.includes(e.state)) {

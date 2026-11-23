@@ -70,10 +70,11 @@ const charged = (match) => Boolean(match?.person) && match.person.match_confiden
 
 /**
  * impure — the people at a company. The search is free: its decision makers are searched for first, everyone with a
- * verified address only when there are none; then at most APOLLO_REVEAL_MAX are revealed, a credit each.
+ * verified address only when there are none; then at most APOLLO_REVEAL_MAX are revealed, a credit each — fewer when
+ * the caller wants fewer (`want`): revealing stops at the first that many whose address stands.
  * @returns {Promise<{ok: true, people: object[], spent: number, dropped: string[], deciders: boolean} | {ok: false, detail: string, spent: number, dropped: string[]}>}
  */
-export const apolloContacts = async ({ domain, apiKey, baseUrl = urlOf(), signal }) => {
+export const apolloContacts = async ({ domain, apiKey, baseUrl = urlOf(), signal, want = APOLLO_REVEAL_MAX }) => {
   const headers = { 'x-api-key': apiKey };
   let spent = 0;
   const dropped = [];
@@ -82,7 +83,11 @@ export const apolloContacts = async ({ domain, apiKey, baseUrl = urlOf(), signal
     const top = apolloToReveal(await search(APOLLO_TOP.map((s) => `&person_seniorities[]=${s}`).join('')));
     const ids = top.length ? top : apolloToReveal(await search(''));
     const people = [];
+    // `want`: how many people the caller needs. A lead run needs ONE to write to, so it stops revealing (and paying)
+    // at the first address that stands — the first live run paid for five a company and used one (Design note, 2026-11-21.
+    const need = Math.min(Math.max(parseInt(want, 10) || APOLLO_REVEAL_MAX, 1), APOLLO_REVEAL_MAX);
     for (const id of ids) {
+      if (people.length >= need) break;
       const match = await askJson(`${baseUrl}/people/match?id=${enc(id)}`, { method: 'POST', headers, signal, name: NAME });
       if (charged(match)) spent += 1;
       const { person, why } = judgeApollo(match, domain);

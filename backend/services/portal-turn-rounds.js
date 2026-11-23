@@ -27,6 +27,7 @@ import { noteRoundRoom } from './read-room.js';
 import { noteToolResultSightings } from './security/injection-sightings.js';
 import { callerCloseTools, callerYielded, processRoundActs, yieldCloseCalls } from './caller-tools.js';
 import { yieldForQueuedThought, heardWhileWorking, QUEUED_ACTION_REASON } from './queued-action-handoff.js';
+import { listenWhileThinking } from './heard-mid-thought.js';
 import { createLogger } from './logger.js';
 import { safeSend as _safeSend } from './ws-send.js';
 import { sightForResults, withSight } from './image-forge/image-sight.js';
@@ -247,9 +248,8 @@ export const runToolRounds = async ({
     const contextRecovery = contextRecoveryOptions(wireHead, (recovery) => { messages = recovery.messages; foldedRounds += recovery.foldedRounds; });
     // One speechless recovery per turn — never a loop (THE SPEECHLESS ROUND).
     let speechlessRecovered = false;
-    // THE REFINEMENT LAYERS (ARC-HARNESS L1/L2, #531 — turn-supervisor.js /
-    // answer-verify.js): declared-only via the connection flags; with neither
-    // declared every block below is inert and the turn is byte-identical.
+    // THE REFINEMENT LAYERS (ARC-HARNESS L1/L2, #531 — turn-supervisor.js / answer-verify.js): declared-only via the
+    // connection flags; with neither declared every block below is inert and the turn is byte-identical.
     let roundStates = [];
     let redirects = 0;
     let blockedThisTurn = false;
@@ -274,21 +274,21 @@ export const runToolRounds = async ({
       await adoptClose(closeResponse, closeCalls);
     };
   try {
-    // Uncapped by default — see tool-rounds.js: the policy cascade, ACTS, the
-    // sandbox and the operator's interrupt hold the line, every round.
+    // Uncapped by default (tool-rounds.js): the policy cascade, ACTS, the sandbox and the operator's interrupt hold the line, every round.
     for (let round = 0; withinToolRounds(round); round++) {
       roundReasoning = '';
-      let { content: roundResponse, toolCalls } = await _runLLMStream(ws, messages, companionName, voiceDNA, preset, nativeToolsForRound(), interrupt.signal, (usage) => captureUsage(usage, round), route, turnLora, turnEffort, take,
+      const ear = listenWhileThinking(connection, interrupt.signal); // words sent while it still thinks are heard now (heard-mid-thought.js)
+      let { content: roundResponse, toolCalls } = await _runLLMStream(ws, messages, companionName, voiceDNA, preset, nativeToolsForRound(), ear.signal, (usage) => captureUsage(usage, round), route, turnLora, turnEffort, take,
         (affect) => { if (turnAffect === null) turnAffect = affect; }, recordThought, () => yieldForQueuedThought(connection),
         (telemetry) => captureTelemetry(telemetry, round),
         // The wire's own word for a budget cut (N1) — read per round below.
-        { ...contextRecovery, onFinishReason: (reason) => { lastFinishReason = reason; },
+        { ...contextRecovery, onSpoke: ear.onSpoke, onFinishReason: (reason) => { lastFinishReason = reason; },
           // The thought leash's re-ask is a second call behind this answer — counted (#567).
-          onReask: (second) => recordBenchmarkExtraCall(connection, 'thought-leash', second?.content, roundReasoning) });
+          onReask: (second) => recordBenchmarkExtraCall(connection, 'thought-leash', second?.content, roundReasoning) }).catch((err) => (ear.cut() ? { content: '', toolCalls: [] } : Promise.reject(err)));
+      if (await ear.take(messages, roundResponse)) { if (roundResponse) { fullResponse += (fullResponse ? '\n\n' : '') + roundResponse; markTurnText(ws, fullResponse.length); } round -= 1; continue; }
       latestResponse = roundResponse;
       fullResponse += (fullResponse ? '\n\n' : '') + roundResponse;
-      // This round's words now stand in the record; marking here lets a
-      // resumed chat put the act chips back between the paragraphs they interrupted.
+      // This round's words now stand in the record: a resumed chat puts the act chips back between the paragraphs they interrupted.
       markTurnText(ws, fullResponse.length);
 
       yieldForQueuedThought(connection);

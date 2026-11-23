@@ -26,7 +26,7 @@ import { emailBinding } from '../../backend/services/email/email-binding.js';
 import { setEmailCredential } from '../../backend/services/email/email-credentials.js';
 import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
 import { addSuppression, fileSegment, setSegmentState, addProspects, approveList, settleProspect, readSenders, fileSalesFacts, reviewSalesFacts } from '../../backend/services/sales/sales-store.js';
-import { formula, OTTO, PLAN_PROMISE, lockedCampaign, leadIn, research as researchVia } from '../helpers/sales-formula-kit.js';
+import { formula, OTTO, PLAN_PROMISE, lockedCampaign, leadIn, research as researchVia, screened } from '../helpers/sales-formula-kit.js';
 import { claimsAnswer, rigFor } from '../helpers/sales-mail-kit.js';
 import { makeSalesSheet } from '../../backend/services/sales/sales-facts.js';
 import { makeSegment } from '../../backend/services/sales/segment-shape.js';
@@ -121,7 +121,7 @@ describe('the mailbox and the lead engine', () => {
 
   test('an email to a lead passes the facts check first: an approved sheet, only its numbers, the disclosure line, no false urgency', async () => {
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    await ledger.add({ name: 'Fay, Founder at Facts', contact: 'fay@facts.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
+    await screened(POSITION_HOUSE, LANE, await ledger.add({ name: 'Fay, Founder at Facts', contact: 'fay@facts.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE }));
     const before = smtp.received.length;
     const noSheet = await send({ to: 'fay@facts.example', subject: 'Hello', text: signed('A short note.') });
     expect(noSheet.receipt.status).toBe('error');
@@ -167,7 +167,7 @@ describe('the mailbox and the lead engine', () => {
 
   test('a FIRST email to a lead is short, plainly titled, asks one thing and names its promise — or it stops before any card', async () => {
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    await ledger.add({ name: 'Zed, Founder at Zeta', contact: 'zed@zeta.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
+    await screened(POSITION_HOUSE, LANE, await ledger.add({ name: 'Zed, Founder at Zeta', contact: 'zed@zeta.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE }));
     const before = smtp.received.length;
     const refused = async (payload, why) => {
       const { receipt, cards } = await send({ to: 'zed@zeta.example', subject: 'Your field app', text: signed('A short note.'), ...payload });
@@ -185,7 +185,7 @@ describe('the mailbox and the lead engine', () => {
 
   test('an email to a lead leaves, and the lead records it itself — contacted, the house wrote last', async () => {
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    const lead = await ledger.add({ name: 'Ann, Founder at Acme', contact: 'ann@acme.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE });
+    const lead = await screened(POSITION_HOUSE, LANE, await ledger.add({ name: 'Ann, Founder at Acme', contact: 'ann@acme.example', channelId: 'email', kind: 'buyer', status: 'cold', addedBy: LANE }));
     const { receipt } = await send({ to: 'Ann@Acme.example', subject: 'Building your field app', text: signed('A short note from the Mercator.') }, 'allow');
     expect(receipt.status).toBe('ok');
     expect(smtp.received.at(-1).to).toEqual(['Ann@Acme.example']);
@@ -236,7 +236,7 @@ describe('the sales cover through the real sweep — the operator approved the l
     await fileSegment(POSITION_HOUSE, segment);
     await setSegmentState(POSITION_HOUSE, segment.id, 'approved', 'operator');
     const prospect = makeProspect({
-      segment, domain: 'quay.example', name: 'Quay', source: 'https://quay.example/', by: LANE, now,
+      segment, domain: 'quay.example', name: 'Quay', country: 'US', source: 'https://quay.example/', by: LANE, now,
       scores: [{ criterion: 'Building a software product', score: 5, reasoning: 'their site says a field app is in beta' }],
       people: [{ name: 'Rosa', role: 'Founder', sourceUrl: 'https://quay.example/team' }],
     });
@@ -261,7 +261,8 @@ describe('the sales cover through the real sweep — the operator approved the l
     expect(first.receipt.content ?? first.receipt.detail ?? JSON.stringify(first.receipt)).toContain('from hello@ignis.example');
     expect((await ledger.load()).find((l) => l.id === lead.id).touches.at(-1)).toMatchObject({ direction: 'out', status: 'contacted', from: 'hello@ignis.example' });
     // The sending address's first day writing to leads is noted: its ramp counts from here.
-    expect(Object.keys(await readSenders(POSITION_HOUSE)).sort()).toEqual(['hello@ignis.example', 'sales@tidewater.example']);
+    // (Every lead written to so far was screened under an ignis audience, so each email left from ignis's address.)
+    expect(Object.keys(await readSenders(POSITION_HOUSE)).sort()).toEqual(['hello@ignis.example']);
     // An address the mailbox does not hold is refused before any card, and nothing leaves.
     const stranger = await send({ to: 'friend@elsewhere.example', subject: 'Lunch', text: 'Thursday?', from: 'ceo@bigbank.example' });
     expect(stranger.receipt).toMatchObject({ status: 'error', error: expect.stringMatching(/ceo@bigbank\.example is not an address this mailbox sends as/) });
@@ -324,7 +325,7 @@ describe('REVIEW FIRST — the seat stages, the operator reads, and only then do
     await croDesignation.designate(POSITION_HOUSE, LANE);
     await setReview(POSITION_HOUSE, true);
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    await ledger.add(asLead('Otto, Owner at Outbox', 'otto@outbox.example'));
+    await screened(POSITION_HOUSE, LANE, await ledger.add(asLead('Otto, Owner at Outbox', 'otto@outbox.example')), segment);
     const before = smtp.received.length;
     // A direct send is refused before any card, and says where the email goes instead.
     const direct = await send({ to: 'otto@outbox.example', subject: 'Your build', text: GOOD });
@@ -408,7 +409,7 @@ describe('REVIEW FIRST — the seat stages, the operator reads, and only then do
     const act = actAs;
     const stateOf = async (id) => (await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === id);
     const ledger = await leadLedgerFor(POSITION_HOUSE);
-    const pia = await ledger.add(asLead('Pier info, team at Pier', 'info@pier.example'));
+    const pia = await screened(POSITION_HOUSE, LANE, await ledger.add(asLead('Pier info, team at Pier', 'info@pier.example')), segment);
     await research('info@pier.example', 'Pier Desk', 'Pier', 'Pier opened online bookings for its harbour tours.');
     const PIER = formula({ subject: 'Your pier', hook: 'Pier just opened online bookings for its harbour tours.', why: 'Running bookings yourself is where one to one help pays.', offer: 'One to one with the founder, a 60 minute session is 250 dollars.' });
     const first = await stage({ to: 'info@pier.example', ...PIER });
@@ -465,7 +466,7 @@ describe('REVIEW FIRST — the seat stages, the operator reads, and only then do
       address: 'sales@tidewater.example', username: 'sales@tidewater.example', password: 'test-app-password', sendAs: `ignis = hello@ignis.example, ${LANE} = merc@tidewater.example`,
       smtpHost: 'localhost', smtpPort: String(smtp.port), imapHost: 'localhost', imapPort: '1',
     });
-    await (await leadLedgerFor(POSITION_HOUSE)).add(asLead('Una, Owner at Unit', 'una@unit.example'));
+    await screened(POSITION_HOUSE, LANE, await (await leadLedgerFor(POSITION_HOUSE)).add(asLead('Una, Owner at Unit', 'una@unit.example')), segment);
     await research('una@unit.example', 'Una Vale', 'Unit', 'Unit moved its crew scheduling onto phones this quarter.');
     const staged = await stage({ to: 'una@unit.example', ...formula({ subject: 'Your unit', hook: 'Unit moved its crew scheduling onto phones this quarter.', why: 'A move like that sticks when someone walks the crew through it.', offer: 'Each one to one session runs 60 minutes, at 250 dollars.' }) });
     const [id] = /m-[0-9a-f]{8}/.exec(staged.receipt.content ?? staged.receipt.error);

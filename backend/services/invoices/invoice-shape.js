@@ -2,7 +2,9 @@
 // economy's Stage 3; house-company-line.md §5: the deal is the Mercator's,
 // the money the Quaestor's, the books the Logista's). Money in only, on
 // Ethereum, receive-only: an invoice in USD is paid in dollar stablecoins, one
-// in ETH in ether. Stripe waits (ruling 2026-10-16 §8.3).
+// in ETH in ether — and, since 2026-11-21, BY CARD through the operator's own Stripe account (stripe-pay.js), when
+// they attached one. An invoice is paid one way or the other, whichever the buyer chooses; each way the operator
+// accepts is printed on it.
 //
 // NO BEING WRITES PAYMENT DETAILS: where an invoice is paid is the operator's
 // own setting, snapshotted onto the invoice when it is issued; the Quaestor
@@ -20,10 +22,14 @@
 // — and one receipt pays one invoice. A wrong invoice is voided with why.
 // Events: { type: 'issued', invoice, at }  { type: 'paid', id, receipt, by, at }
 //         { type: 'voided', id, reason, by, at }
+//         { type: 'card-link', id, link: {id, url, live}, at }   the invoice's Stripe payment link, made by the platform
+//         { type: 'paid', id, card: {session, paymentIntent, amount, currency, email}, by, at }   paid by card
+//         { type: 'sent', id, to, messageId, by, at }   emailed to the buyer
 // PURE, but for the random ids.
 
 import crypto from 'crypto';
 import { paymentShapesIn, pointersIn } from '../security/payment-screen.js';
+import { CARD_CURRENCIES } from './stripe-pay.js';
 
 export const INVOICE_CURRENCIES = Object.freeze(['USD', 'ETH']);
 const DOLLARS = Object.freeze(['USDC', 'USDT', 'DAI']);
@@ -50,15 +56,30 @@ export const invoiceNumber = (issuedBefore) => `INV-${String(issuedBefore + 1).p
 /**
  * Issue an invoice for a won deal, or a thrown reason. Pure but for its id.
  * @param {{deal: ?object, company: ?object, lines: unknown, due: unknown, note?: unknown,
- *   payTo: ?{address: string, network: string}, number: string, billed: number, by: string, now: string}} fields
- *   billed: what the deal's live invoices already bill, in its currency
+ *   payTo: ?{address: string, network: string}, number: string, billed: number, by: string, now: string,
+ *   cardReady?: boolean, ways?: {crypto?: boolean, card?: boolean}}} fields
+ *   billed: what the deal's live invoices already bill, in its currency · cardReady: the operator's Stripe account is
+ *   attached and switched on · ways: which ways to pay this invoice offers (left out: every way the house can take)
  */
-export const makeInvoice = ({ deal, company, lines, due, note, payTo, number, billed, by, now }) => {
+export const makeInvoice = ({ deal, company, lines, due, note, payTo, number, billed, by, now, cardReady = false, ways = null }) => {
   if (!deal) throw new Error('no such deal in this house — the QUAESTOR OFFICE briefing names each won deal by its [id]');
   if (deal.stage !== 'won') throw new Error(`that deal is ${deal.stage} — an invoice bills a deal the Mercator won`);
-  if (!payTo) throw new Error('the operator has not set where invoices are paid — no being writes payment details; ask the operator to set it in TREASURY');
   const currency = deal.value.currency;
-  if (!INVOICE_CURRENCIES.includes(currency)) throw new Error(`the deal is in ${currency}; the house's wallet takes USD (in dollar stablecoins) or ETH today — card payments wait`);
+  // THE WAYS IT CAN BE PAID: in crypto at the operator's own address (USD in dollar stablecoins, or ETH), by card
+  // through the operator's own Stripe account, or both. No being writes either: both are the operator's settings.
+  const cryptoCan = Boolean(payTo) && INVOICE_CURRENCIES.includes(currency);
+  const cardCan = cardReady && CARD_CURRENCIES.includes(currency);
+  const inCrypto = ways ? Boolean(ways.crypto) : cryptoCan;
+  const card = ways ? Boolean(ways.card) : cardCan;
+  if (inCrypto && !payTo) throw new Error('the operator has not set where invoices are paid in crypto — set the address in TREASURY, or issue this one for card only');
+  if (inCrypto && !INVOICE_CURRENCIES.includes(currency)) throw new Error(`the deal is in ${currency}; in crypto the house takes USD (in dollar stablecoins) or ETH`);
+  if (card && !cardReady) throw new Error('card payments are not set up — attach your Stripe key in SETTINGS, API, Payments and turn CARD PAYMENTS on');
+  if (card && !CARD_CURRENCIES.includes(currency)) throw new Error(`the deal is in ${currency}; by card the house bills in ${CARD_CURRENCIES.join(', ')}`);
+  if (!inCrypto && !card) {
+    if (!payTo && !cardReady) throw new Error('the operator has not set how invoices are paid — no being writes payment details; ask the operator to set a crypto address in TREASURY, or attach Stripe in SETTINGS, API, Payments');
+    const byCardToo = CARD_CURRENCIES.includes(currency) && !cardReady ? ` — by card it could be billed in ${currency}: the operator attaches Stripe in SETTINGS, API, Payments` : '';
+    throw new Error(`the deal is in ${currency}; in crypto the house takes USD (in dollar stablecoins) or ETH${cardReady ? `, and by card ${CARD_CURRENCIES.join(', ')}` : ''}${byCardToo}`);
+  }
   const items = Array.isArray(lines) ? lines.slice(0, LINES_MAX + 1) : [];
   if (!items.length || items.length > LINES_MAX) throw new Error(`lines: 1 to ${LINES_MAX} of {what, amount}`);
   const billedLines = items.map((l, i) => {
@@ -78,7 +99,7 @@ export const makeInvoice = ({ deal, company, lines, due, note, payTo, number, bi
   return Object.freeze({
     id: `v-${crypto.randomBytes(4).toString('hex')}`, number, companyId: company.id, company: company.name, dealId: deal.id, buyer: deal.buyer,
     lines: Object.freeze(billedLines), total, currency, due: String(due), note: clean(note, 600) || null,
-    payTo: Object.freeze({ address: payTo.address, network: payTo.network }), by, issuedAt: now,
+    payTo: inCrypto ? Object.freeze({ address: payTo.address, network: payTo.network }) : null, byCard: card, by, issuedAt: now,
   });
 };
 
@@ -88,10 +109,14 @@ export const makeInvoice = ({ deal, company, lines, due, note, payTo, number, bi
  */
 export const foldInvoices = (events) => events.reduce((acc, e) => {
   if (e?.type === 'issued' && e.invoice?.id && !acc.invoices.some((v) => v.id === e.invoice.id)) {
-    return { ...acc, invoices: [...acc.invoices, { ...e.invoice, status: 'open', paid: null, voided: null }] };
+    return { ...acc, invoices: [...acc.invoices, { ...e.invoice, status: 'open', paid: null, voided: null, card: null, sent: [] }] };
   }
+  // The card link and each sending stand on the invoice whatever its standing.
+  const any = acc.invoices.find((x) => x.id === e?.id);
+  if (any && e.type === 'card-link' && /^https:\/\/\S+$/.test(String(e.link?.url))) return { ...acc, invoices: acc.invoices.map((x) => (x === any ? { ...x, card: { id: e.link.id, url: e.link.url, live: e.link.live === true } } : x)) };
+  if (any && e.type === 'sent') return { ...acc, invoices: acc.invoices.map((x) => (x === any ? { ...x, sent: [...x.sent, { to: e.to, at: e.at, by: e.by }] } : x)) };
   const v = acc.invoices.find((x) => x.id === e?.id && x.status === 'open');
-  if (v && e.type === 'paid') return { ...acc, invoices: acc.invoices.map((x) => (x === v ? { ...x, status: 'paid', paid: { receipt: e.receipt, by: e.by, at: e.at } } : x)) };
+  if (v && e.type === 'paid') return { ...acc, invoices: acc.invoices.map((x) => (x === v ? { ...x, status: 'paid', paid: { receipt: e.receipt ?? null, ...(e.card ? { card: e.card } : {}), by: e.by, at: e.at } } : x)) };
   if (v && e.type === 'voided') return { ...acc, invoices: acc.invoices.map((x) => (x === v ? { ...x, status: 'void', voided: { reason: e.reason, by: e.by, at: e.at } } : x)) };
   return { ...acc, skipped: acc.skipped + 1 };
 }, { invoices: [], skipped: 0 });
@@ -114,6 +139,7 @@ export const judgePaid = (invoices, { invoiceId, receipt, by, now }) => {
   const v = invoices.find((x) => x.id === invoiceId || x.number === invoiceId);
   if (!v) return { ok: false, reason: 'no such invoice in this house' };
   if (v.status !== 'open') return { ok: false, reason: `${v.number} is ${v.status === 'paid' ? 'already paid' : 'void'}` };
+  if (!v.payTo) return { ok: false, reason: `${v.number} is paid by card only — it is marked paid when Stripe says so` };
   if (!receipt) return { ok: false, reason: 'no such receipt in the house\'s money-in ledger — the money has not landed' };
   if (receipt.internal === true) return { ok: false, reason: 'house-internal transfers are not customer payments' };
   if (invoices.some((x) => x.paid?.receipt === receipt.key)) return { ok: false, reason: 'that receipt already paid another invoice — one receipt, one invoice' };
@@ -122,6 +148,18 @@ export const judgePaid = (invoices, { invoiceId, receipt, by, now }) => {
   }
   if (!sameMoney(v, receipt) || Number(receipt.amount) < v.total) return { ok: false, reason: `the receipt holds ${receipt.amount} ${receipt.asset}; ${v.number} is ${v.total} ${v.currency}` };
   return { ok: true, event: { type: 'paid', id: v.id, receipt: receipt.key, by, at: now } };
+};
+
+/**
+ * Was this invoice paid by card? `paid` is what Stripe said of its own link (stripe-pay.js paidOf). pure.
+ * @param {Array<object>} invoices - folded
+ * @param {{invoiceId: string, paid: ?object, now: string}} args
+ */
+export const judgePaidByCard = (invoices, { invoiceId, paid, now }) => {
+  const v = invoices.find((x) => x.id === invoiceId);
+  if (!v || v.status !== 'open' || !v.card || !paid) return { ok: false, reason: 'nothing to record' };
+  if (invoices.some((x) => x.paid?.card?.session === paid.session)) return { ok: false, reason: 'that card payment already paid another invoice' };
+  return { ok: true, event: { type: 'paid', id: v.id, card: paid, by: 'stripe', at: now } };
 };
 
 /** Void an open invoice with why. pure. */
@@ -135,7 +173,7 @@ export const judgeVoid = (invoices, { invoiceId, reason, by, now }) => {
 };
 
 /** Receipts at an open invoice's address that pay no invoice yet: the ones that may be its. pure. */
-export const unmatchedFor = (invoice, receipts, invoices) => receipts.filter((r) => String(r.to).toLowerCase() === invoice.payTo.address.toLowerCase()
+export const unmatchedFor = (invoice, receipts, invoices) => (invoice.payTo ? receipts : []).filter((r) => String(r.to).toLowerCase() === invoice.payTo.address.toLowerCase()
   && r.network === invoice.payTo.network && sameMoney(invoice, r) && !invoices.some((x) => x.paid?.receipt === r.key));
 
 /**
@@ -150,8 +188,16 @@ export const invoiceText = (v) => [
   ...v.lines.map((l) => `${l.what} — ${money(l.amount, v.currency)}`),
   `Total — ${money(v.total, v.currency)}`,
   ...(v.note ? [`Note: ${v.note}`] : []),
-  `Pay on ${v.payTo.network === 'ethereum' ? 'Ethereum mainnet' : v.payTo.network} to ${v.payTo.address}`,
+  ...payLines(v),
 ].join('\n');
+
+// How it is paid, as the invoice says it: each way the operator accepts, one a line.
+const networkName = (payTo) => (payTo.network === 'ethereum' ? 'Ethereum mainnet' : payTo.network);
+const cryptoWords = (v) => (v.currency === 'ETH' ? money(v.total, 'ETH') : `${money(v.total, 'USD')} in USDC, USDT or DAI`);
+const payLines = (v) => [
+  ...(v.card?.url ? [`Pay by card: ${v.card.url}`] : v.byCard ? ['Pay by card: the link is being prepared'] : []),
+  ...(v.payTo ? [v.card?.url || v.byCard ? `Or pay ${cryptoWords(v)} on ${networkName(v.payTo)} to ${v.payTo.address}` : `Pay on ${networkName(v.payTo)} to ${v.payTo.address}`] : []),
+];
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const money = (n, currency) => `${Number(n).toLocaleString('en-US', { maximumFractionDigits: 6, minimumFractionDigits: currency === 'USD' ? 2 : 0 })} ${currency}`;
@@ -162,7 +208,6 @@ const money = (n, currency) => `${Number(n).toLocaleString('en-US', { maximumFra
  * Every word a being wrote is escaped. pure.
  */
 export const invoiceHtml = (v) => {
-  const pay = v.currency === 'ETH' ? `${money(v.total, 'ETH')}` : `${money(v.total, 'USD')} in USDC, USDT or DAI`;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>${esc(v.company)} — invoice ${esc(v.number)}</title>
 <style>body{font-family:system-ui,sans-serif;max-width:44rem;margin:3rem auto;padding:0 1.5rem;color:#111;line-height:1.5}
@@ -175,9 +220,12 @@ td.n,th.n{text-align:right}.pay{background:#f5f5f5;padding:1rem;word-break:break
 ${v.lines.map((l) => `<tr><td>${esc(l.what)}</td><td class="n">${esc(money(l.amount, v.currency))}</td></tr>`).join('\n')}
 <tr><th>Total</th><th class="n">${esc(money(v.total, v.currency))}</th></tr></tbody></table>
 ${v.note ? `<p>${esc(v.note)}</p>` : ''}
-<div class="pay"><p><strong>Pay ${esc(pay)} on ${esc(v.payTo.network === 'ethereum' ? 'Ethereum mainnet' : v.payTo.network)} to</strong></p>
+${v.card?.url ? `<div class="pay"><p><strong>Pay ${esc(money(v.total, v.currency))} by card</strong></p>
+<p><a href="${esc(v.card.url)}">${esc(v.card.url)}</a></p>
+<p class="small">The page is hosted by Stripe. A receipt is sent to you by Stripe once it is paid.</p></div>` : ''}
+${v.payTo ? `<div class="pay"><p><strong>${v.card?.url ? 'Or pay' : 'Pay'} ${esc(cryptoWords(v))} on ${esc(networkName(v.payTo))} to</strong></p>
 <p><code>${esc(v.payTo.address)}</code></p>
-<p class="small">The payment is matched to this invoice by its amount and this address. Send from a wallet you control, and only on the network named here.</p></div>
+<p class="small">The payment is matched to this invoice by its amount and this address. Send from a wallet you control, and only on the network named here.</p></div>` : ''}
 <p class="small">This invoice was prepared by an AI agent team working for ${esc(v.company)}, under its operator's review. Questions go to the address it came from.</p>
 </body></html>
 `;

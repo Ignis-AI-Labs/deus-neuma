@@ -20,7 +20,7 @@ import { a11yCheck } from '../helpers/a11y-scan.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import { makeSegment } from '../../backend/services/sales/segment-shape.js';
 import { makeProspect } from '../../backend/services/sales/prospect-shape.js';
-import { fileSegment, addProspects, readSegments, readSuppressions, readProspects, fileSalesFacts, readSalesFacts } from '../../backend/services/sales/sales-store.js';
+import { fileSegment, addProspects, readSegments, readSuppressions, readProspects, fileSalesFacts, readSalesFacts, listScreened } from '../../backend/services/sales/sales-store.js';
 import { makeSalesSheet } from '../../backend/services/sales/sales-facts.js';
 import { leadLedgerFor } from '../../backend/services/leads/lead-ledger.js';
 
@@ -188,14 +188,14 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     expect((await readSegments(auth.address))[0]).toMatchObject({ state: 'approved', stateBy: 'operator' });
     expect(await row.getByRole('button', { name: `PAUSE ${segment.name}` }).count()).toBe(1);
 
-    // The list, approved once: both matches go on it, each marked, and the disk says so.
-    const listButton = row.locator('[data-list-approve]').getByRole('button');
-    expect(await listButton.textContent()).toBe('APPROVE THE LIST (2)');
-    expect(await row.locator('[data-list-approve]').textContent()).toContain('20 a day. Replies still come to you.');
-    await listButton.click();
-    await page.locator('[data-engine-notice]').filter({ hasText: `2 companies on "${segment.name}" approved for outreach.` }).waitFor();
+    // NO LIST TO APPROVE (Design note, 2026-11-21: […]): the card says how many wait to be
+    // validated and that a lead run does it — no press. Validated (as a lead run does), both are marked, and the note leaves.
     expect(await row.locator('[data-list-approve]').count()).toBe(0);
-    expect(await row.locator('[data-listed]').count()).toBe(2);
+    expect(await row.locator('[data-list-waits]').textContent()).toContain('2 COMPANIES WAIT TO BE VALIDATED — A LEAD RUN DOES IT.');
+    expect(await listScreened(auth.address, segment.id, (await readProspects(auth.address)).map((p) => p.id), 'lead-run:test')).toBe(2);
+    await page.evaluate(() => globalThis.dispatchEvent(new globalThis.Event('neuma:waiting-changed')));
+    await expect.poll(() => row.locator('[data-listed]').count(), { timeout: 30000 }).toBe(2);
+    expect(await row.locator('[data-list-waits]').count()).toBe(0);
     expect((await readProspects(auth.address)).every((p) => p.listApproved)).toBe(true);
 
     // The do-not-contact list: a malformed entry cannot be sent; a domain lands on disk and on screen.

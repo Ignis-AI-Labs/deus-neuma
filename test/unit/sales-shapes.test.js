@@ -63,6 +63,8 @@ describe('segments', () => {
     expect(countryOfAddress('jo@harbour.co.uk')).toBe('GB');
     expect(countryOfAddress('jo@firma.de')).toBe('DE');
     expect(countryOfAddress('jo@startup.io')).toBeNull();
+    // "finance" and "aggregator" as DeFi spells them: not Finland, not Antigua.
+    expect([countryOfAddress('team@moonwell.fi'), countryOfAddress('hi@jup.ag')]).toEqual([null, null]);
     expect(countryOfAddress('jo@acme.com')).toBeNull();
     expect(countryOfAddress('jo@studio.ai')).toBeNull();
   });
@@ -96,6 +98,11 @@ describe('prospects', () => {
     expect(matchLevel([s(4), s(5)], [s(2)])).toBe(3);
     expect(matchLevel([s(5), s(2)], [])).toBe(2);
     expect(matchLevel([s(2), s(2)], [])).toBe(1);
+    // The first sign decides what a company is: met, the side signs can only rank it.
+    expect(matchLevel([s(3), s(0), s(0), s(0)], [])).toBe(2);
+    expect(matchLevel([s(5), s(0), s(0), s(0)], [])).toBe(2);
+    expect(matchLevel([s(3), s(0)], [s(4)])).toBe(1);
+    expect(matchLevel([s(2), s(0), s(5), s(0)], [])).toBe(1);
   });
 
   test('the pool holds a company once, and never one on the do-not-contact list', () => {
@@ -335,17 +342,17 @@ describe('the sales facts — what a buyer may be told, and the check every emai
     const [row] = segmentRows({ segments: [segment], prospects: [found, lead] });
     expect(row.leads.map((p) => p.id)).toEqual(['p-2']);
     expect(poolWords(row.pool, row.counts)).toBe('1 COMPANY TO JUDGE · 1 STRONG · 0 WEAK · 0 NO MATCH · 1 ON THE LEAD LIST');
-    // It stands open while it waits on the operator: a draft, or an approved one whose list is not yet approved.
-    expect([audienceWaits(row), audienceWaits({ ...row, listable: 0 }), audienceWaits({ ...row, listable: 0, segment: { ...segment, state: 'draft' } })]).toEqual([true, false, true]);
+    // It stands open only while it waits on the operator: a draft. Companies to validate are a lead run's, never theirs (Design note, 2026-11-21.
+    expect([audienceWaits(row), audienceWaits({ ...row, listable: 0 }), audienceWaits({ ...row, listable: 0, segment: { ...segment, state: 'draft' } })]).toEqual([false, false, true]);
     const html = renderToStaticMarkup(createElement(LeadAudienceCard, { row, busy: false, onMove: () => {}, onList: () => {}, mode: 'nested' }));
-    expect(html).toMatch(/^<li class="cline-aud is-nested" data-segment-id="s-e4f50ba1" data-segment-state="approved"><details open=""><summary class="cline-aud-sum">/);
+    expect(html).toMatch(/^<li class="cline-aud is-nested" data-segment-id="s-e4f50ba1" data-segment-state="approved"><details><summary class="cline-aud-sum">/);
     expect(html).toContain('AUDIENCE · Base token teams');
-    // The press covers what WAITING ON YOU counts: the one to judge AND the one already on the lead list.
-    expect(html).toContain('APPROVE THE LIST (2)');
+    // No list to approve: the card says how many wait to be validated, and that a lead run does it.
+    expect(html).not.toContain('APPROVE THE LIST');
+    expect(html).toContain('2 COMPANIES WAIT TO BE VALIDATED — A LEAD RUN DOES IT.');
     expect(row.listable).toBe(listable([found, lead], segment.id).length);
-    const [waits] = salesWaitingRows({ facts: null, segments: [segment], prospects: [found, lead], models: new Map(), companies: [] }, new Map());
-    expect(waits.title).toBe('2 companies found for "Base token teams" wait for your list approval');
-    // Approved, the list leaves both: no row, no press.
+    expect(salesWaitingRows({ facts: null, segments: [segment], prospects: [found, lead], models: new Map(), companies: [] }, new Map())).toEqual([]); // nothing of it waits on the operator
+    // Validated, the count is gone too.
     const listed = [found, lead].map((p) => ({ ...p, listApproved: true }));
     expect(segmentRows({ segments: [segment], prospects: listed })[0].listable).toBe(0);
     expect(salesWaitingRows({ facts: null, segments: [segment], prospects: listed, models: new Map(), companies: [] }, new Map())).toEqual([]);

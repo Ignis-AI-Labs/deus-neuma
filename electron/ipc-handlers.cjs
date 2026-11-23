@@ -5,7 +5,7 @@
 // were. Window state is never owned here — it comes in through the
 // desk-windows factory surface.
 
-const { app, BrowserWindow, Menu, Notification, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const residency = require('./residency.cjs');
@@ -23,6 +23,7 @@ const { dataRootFor } = require('./connections.cjs');
 const { readOwnerClaim } = require('./owner-claim.cjs');
 const { openDevBrowser } = require('./dev-browser.cjs');
 const { isUncPath } = require('./local-paths.cjs');
+const { clipboardVerdict } = require('./clipboard-check.cjs');
 
 // impure — register every handler on ipcMain. `deskWindows` is the
 // createDeskWindows() surface (desk-windows.cjs).
@@ -179,6 +180,11 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
 
   // Reveal a path in the OS file manager. String + existence checked; the
   // path itself never leaves the shell as a URL, so no scheme can ride it.
+  // Did a copied address survive on the clipboard? (clipboard-check.cjs)
+  // The read is a promise on this Electron (44): handed in unawaited, the
+  // verdict saw no text and answered "same" every time (caught live, 2026-11-21).
+  handle('clipboard:check', async (_event, expected) => clipboardVerdict(expected, await clipboard.readText()));
+
   handle('app:showInFolder', (_event, rawPath) => {
     if (typeof rawPath !== 'string' || rawPath.length === 0 || isUncPath(rawPath)) return { ok: false };
     try { fs.statSync(rawPath); } catch { return { ok: false }; }

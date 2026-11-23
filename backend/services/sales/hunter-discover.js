@@ -38,6 +38,7 @@
 // read the sites, score the fit.
 // The shaping is PURE; the calls are impure (network), never throw.
 
+import { isWide } from './wide-search.js';
 import process from 'node:process';
 import { HUNTER_URL } from './lead-providers.js';
 import { SIZES } from './company-index.js';
@@ -172,6 +173,8 @@ export const gatherHunterDiscover = async ({ count = DISCOVER_MAX, known = { dom
     const search = await searchOf(query, { segment, apiKey, signal, onProgress });
     const { filters } = search;
     matched = search.matched;
+    // Too wide to be an audience's (wide-search.js): the free look already says so, and nothing is fetched.
+    if (isWide(matched)) return { candidates, looked, matched, asked: filtersWords(filters), wide: true, stopped: null };
     const countries = query.countries?.length ? query.countries : segment?.countries ?? [];
     const sizes = query.sizes?.length ? query.sizes : SIZES;
     const take = (answer, size) => {
@@ -194,6 +197,8 @@ export const gatherHunterDiscover = async ({ count = DISCOVER_MAX, known = { dom
       if (candidates.length >= want) break;
       if (i) await wait(paceMs, signal);
       const page = await discover({ ...discoverFilters({ filters, countries: search.countries, sizes: search.sizes }), limit: PER_CALL }, { apiKey, signal });
+      // The first search is the whole search as Hunter ranks it: its own count is the true one (the reading's can be far off).
+      if (!i) { matched = Math.max(matched, Number(page?.meta?.results) || 0); if (isWide(matched)) return { candidates: [], looked, matched, asked: filtersWords(filters), wide: true, stopped: null }; }
       take(page, search.sizes.length === 1 ? search.sizes[0] : null);
       onProgress(`${candidates.length} companies so far — ${i + 1} of ${searches.length} searches, ${search.words} (${(Number(page?.meta?.results) || 0).toLocaleString('en-US')} match there)`);
     }

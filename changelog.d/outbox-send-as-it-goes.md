@@ -1,2 +1,0 @@
-Changed
-- Sending many emails at once now shows the batch as it goes. SEND CHECKED and SEND ALL send one email at a time, and the outbox shows the batch while it runs. A line says where it stands, for example "SENDING 4 OF 15 · 3 SENT · 11 WAITING", and a bar fills as each one leaves. Each email in the batch shows SENT, SENDING…, WAITING, or NOT SENT with the reason. STOP lets the email in flight finish and keeps the rest in the outbox, unsent. When the batch ends, the line says how it went, and DONE puts it away.

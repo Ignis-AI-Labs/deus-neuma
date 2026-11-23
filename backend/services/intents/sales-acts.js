@@ -26,6 +26,8 @@ import { makeProspect, MATCH_WORDS, countryOfAddress } from '../sales/prospect-s
 import { makeSuppression, normalizeEmail, suppressionMatcher } from '../sales/suppress-shape.js';
 import { readSegments, fileSegment, readProspects, addProspects, settleProspect, readSuppressions, addSuppression, fileSalesFacts, readCampaigns, addProspectPerson, readCandidates } from '../sales/sales-store.js';
 import { readResearch, noteEntity } from '../sales/research-store.js';
+import { neverRefusal } from '../sales/never-countries.js';
+import { readNeverList } from '../legal/never-list.js';
 import { makeEntity, verifyQuote, isInvestor, isFundingCampaign, entityRefusal } from '../sales/company-entity.js';
 import { makeSalesSheet } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
@@ -44,6 +46,8 @@ import { companyModelIntent } from './company-model-act.js';
 import { salesInboundIntents } from './sales-inbound-acts.js';
 import { salesPlaceIntents } from './sales-place-acts.js';
 import { salesProveIntents } from './sales-prove-acts.js';
+import { salesCallIntents } from './sales-call-acts.js';
+import { salesRunIntents } from './sales-run-acts.js';
 import { requiredRefusal, requiredWords } from '../sales/required-signs.js';
 import { THREAD_REST_DAYS } from '../revenue/deal-shape.js';
 
@@ -244,7 +248,7 @@ const salesLeadIntent = Object.freeze({
   name: 'sales/lead',
   policyTool: 'sales.lead',
   fieldsForPrompt: '{id, person: number | {name, role}, email, emailSource, note?} — or {lead, person: {name, role}, email, emailSource, note?}',
-  descriptionForPrompt: 'THE LEAD ENGINE. Put a prospect onto the house\'s lead ledger as cold, yours to work: person is the number of one of its people (from 0), or {name, role} for a person or team you read together with the address after scoring; email their address as published, emailSource the https page where you read it — never a guessed address. Only from an APPROVED segment, only a weak or strong match in one of its countries, never anyone on the do-not-contact list or already on the ledger. WITH lead (its id, or the first 8 characters) instead of id: MOVE a lead already on the ledger to another person at the same company — its address found dead, or the top one silent and the next one up named by the upkeep. The lead keeps its history and is cold again for the new person; an email staged to the old address is withdrawn — stage the new one to the new address.',
+  descriptionForPrompt: 'THE LEAD ENGINE. Put a prospect onto the house\'s lead ledger as cold, yours to work: person is the number of one of its people (from 0), or {name, role} for a person or team you read together with the address after scoring; email their address as published, emailSource the https page where you read it — never a guessed address. Only from an APPROVED segment, only a weak or strong match, never in a country outside the audience\'s (one whose country is not known yet is filed and held from email until it is), never anyone on the do-not-contact list or already on the ledger. WITH lead (its id, or the first 8 characters) instead of id: MOVE a lead already on the ledger to another person at the same company — its address found dead, or the top one silent and the next one up named by the upkeep. The lead keeps its history and is cold again for the new person; an email staged to the old address is withdrawn — stage the new one to the new address.',
   availableFor,
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
@@ -263,8 +267,9 @@ const salesLeadIntent = Object.freeze({
       const notYet = entityRefusal((await readResearch(context.wallet)).entities.get(prospect.domain), prospect.domain);
       if (notYet) return invalid(notYet);
     }
-    if (!prospect.country) return invalid(`[${prospect.id}] has no country — file it again with the ISO code of where the company is, from its own pages`);
-    if (!segment.countries.includes(prospect.country)) return invalid(`[${prospect.id}] is in ${prospect.country}, and "${segment.name}" may only be sent to ${segment.countries.join(', ')}`);
+    // A FIT WITH NO COUNTRY IS STILL A LEAD (Design note, 2026-11-21: it is filed with its country open, and the screen before
+    // a first email (lead-screen.js) holds it until the country stands. A country that IS known must be one of the audience's.
+    if (prospect.country && !segment.countries.includes(prospect.country)) return invalid(`[${prospect.id}] is in ${prospect.country}, and "${segment.name}" may only be sent to ${segment.countries.join(', ')}`);
     const email = normalizeEmail(payload?.email);
     if (!email) return invalid('email: their address as published');
     if (!/^https:\/\/\S+$/.test(String(payload?.emailSource ?? ''))) return invalid('emailSource: the https page where the address is published — an address is never guessed');
@@ -274,11 +279,16 @@ const salesLeadIntent = Object.freeze({
     const person = fresh ?? prospect.people[Number(payload?.person)];
     if (!person) return invalid(prospect.people.length ? `person: the number of one of [${prospect.id}]'s people (0 to ${prospect.people.length - 1}), or {name, role} for one you read with the address` : `person: [${prospect.id}] has no person filed yet — give {name, role}: who the address belongs to, as the page you read it on says`);
     if (suppressionMatcher(await readSuppressions(context.wallet)).email(email)) return invalid(`${email} is on the do-not-contact list`);
+    // THE NEVER-LIST (legal/never-list.js): nobody is filed as a lead at a company, or at an address, in a place the house never writes to.
+    const never = neverRefusal({ prospect, email }, (await readNeverList(context.wallet)).codes);
+    if (never) return invalid(never);
     const addressCountry = countryOfAddress(email);
     if (addressCountry && !segment.countries.includes(addressCountry)) return invalid(`${email} is a ${addressCountry} address, and "${segment.name}" may only be sent to ${segment.countries.join(', ')}`);
     // The operator approves COMPANIES. A small business often publishes a mailbox elsewhere (a Gmail address), so such a
     // lead is filed — but no approved list ever covers it (sales-cover.js): every email to it asks the operator (audit P6-123).
     const elsewhere = !atCompany(email, prospect.domain);
+    // EVERY LEAD IS VALIDATED BY THE PIPELINE (Design note, 2026-11-21: a company becomes a lead only once the house's screening confirmed it from its own page.
+    if (!prospect.listApproved) return invalid(`[${prospect.id}] ${prospect.name} has not been VALIDATED yet — a company becomes a lead only once the house's screening has confirmed it from its own page. Start a lead run for this audience: sales/run {segment: "${prospect.segmentId}"} — it validates every fit waiting, finds the person, confirms the address and files the lead itself`);
     const ledger = await leadLedgerFor(context.wallet);
     const refusal = ledgerRefusal(await ledger.load(), email, prospect.domain, Date.now());
     if (refusal) return invalid(refusal);
@@ -298,11 +308,11 @@ const salesLeadIntent = Object.freeze({
       status: 'cold',
       ownerNeumaId: context.laneId,
       addedBy: context.laneId,
-      note: [`[${prospect.id}] ${MATCH_WORDS[prospect.match]} match`, elsewhere && `address is not at ${prospect.domain}: every email to it asks the operator`, note].filter(Boolean).join(' — '),
+      note: [`[${prospect.id}] ${MATCH_WORDS[prospect.match]} match`, !prospect.country && 'country not on its pages: nothing places it on the never-list', elsewhere && `address is not at ${prospect.domain}: every email to it asks the operator`, note].filter(Boolean).join(' — '),
     });
     const settled = await settleProspect(context.wallet, prospect.id, { type: 'promoted', leadId: lead.id, by: context.laneId });
     if (!settled.ok) return { ok: false, reason: settled.reason };
-    return { ok: true, detail: `Lead [${lead.id.slice(0, 8)}] ${lead.name} is on the ledger, cold, yours. Write with email/send — the mailbox records each email on the lead itself.${elsewhere ? ` ${email} is not at ${prospect.domain}, so no approved list covers it: every email to it waits for your operator's yes.` : ''}` };
+    return { ok: true, detail: `Lead [${lead.id.slice(0, 8)}] ${lead.name} is on the ledger, cold, yours. ${prospect.country ? 'Write with email/send — the mailbox records each email on the lead itself.' : `Its country is not on its pages, and nothing places it anywhere the house never writes to: write as for any lead. If you learn where ${prospect.name} is, file it (sales/country {id: "${prospect.id}", country, source}).`}${elsewhere ? ` ${email} is not at ${prospect.domain}, so no approved list covers it: every email to it waits for your operator's yes.` : ''}` };
   },
 });
 
@@ -356,4 +366,4 @@ const salesFactsIntent = Object.freeze({
   },
 });
 
-export const salesIntents = Object.freeze([...salesProveIntents, salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents, ...salesPoolIntents, ...salesHunterIntents, ...salesEmailIntents, ...salesOutboxIntents, ...campaignManageIntents, companyModelIntent, ...salesInboundIntents, ...salesPlaceIntents]);
+export const salesIntents = Object.freeze([...salesRunIntents, ...salesProveIntents, ...salesCallIntents, salesSegmentIntent, salesProspectIntent, salesDropIntent, salesLeadIntent, salesSuppressIntent, salesFactsIntent, ...salesGatherIntents, ...salesPoolIntents, ...salesHunterIntents, ...salesEmailIntents, ...salesOutboxIntents, ...campaignManageIntents, companyModelIntent, ...salesInboundIntents, ...salesPlaceIntents]);

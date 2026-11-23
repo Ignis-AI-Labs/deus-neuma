@@ -61,6 +61,7 @@ import treasuryRouter from './treasury-routes.js';
 import emailRouter from './email-routes.js';
 import docPressRouter from './doc-press-routes.js';
 import chatLineRouter from './chat-line-routes.js';
+import importRouter from './import-routes.js';
 import hookRouter from './hook-routes.js';
 import imageForgeRouter from './image-forge-routes.js';
 import galleryRouter from './gallery-routes.js';
@@ -257,6 +258,10 @@ export const mountApiRoutes = (app) => {
   // THE CHAT LINE — a sealed AI witness the operator let in speaks in their open chats from any terminal
   // (services/chat-line.js). requireAuth inside; the witness is proven by its sealed wallet.
   app.use('/api/v1/chat-line', chatLineRouter);
+
+  // BRING YOUR OLD ASSISTANT — OpenClaw, Hermes, a pasted ChatGPT/Claude answer, set down in the
+  // house ground as material (docs/work/assistant-import.md). Auth + install owner inside.
+  app.use('/api/v1/imports', importRouter);
 
   // THE IMAGE FORGE — supervised ComfyUI manage surface (status/launch/stop/
   // free). The backend is the engine's SOLE client (loopback, no auth on the

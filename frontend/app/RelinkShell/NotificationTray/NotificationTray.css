@@ -324,3 +324,21 @@ html[data-taskbar-edge='top'] .ntray {
     transition: none;
   }
 }
+
+/* The tray's two tabs, and ACTIVE: what is running now (TrayActive.jsx). Still marks only. */
+.ntray-tabs { display: flex; border-bottom: 1px solid var(--line-strong); }
+.ntray-tab { flex: 1 1 0; padding: var(--space-2) var(--space-3); background: none; border: 0; border-bottom: 2px solid transparent; color: var(--color-text-tertiary); font: inherit; font-size: 13px; letter-spacing: 0.12em; cursor: pointer; }
+.ntray-tab.is-on { color: var(--color-text-primary); border-bottom-color: var(--signal); }
+.ntray-tab:focus-visible { outline: 1px solid var(--signal); outline-offset: -2px; }
+.ntray-active { list-style: none; margin: 0; padding: 0; }
+.ntray-active-row { padding: var(--space-3); border-bottom: 1px solid var(--line); }
+.ntray-active-open { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 0; background: none; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ntray-active-open:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+.ntray-active-log { list-style: none; margin: var(--space-2) 0 0; padding: 0 0 0 var(--space-2); border-left: 1px solid var(--line-strong); color: var(--color-text-tertiary); font-size: 13px; line-height: 1.5; max-height: 132px; overflow-y: auto; overflow-wrap: anywhere; }
+.ntray-active-mark { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--surface-sunk); border: 1px solid var(--line-strong); color: var(--signal); font: inherit; font-size: 13px; letter-spacing: 0.12em; cursor: pointer; }
+.ntray-active-dot { width: 6px; height: 6px; background: var(--signal); }
+
+/* The marks in the taskbar, right of its clock (notice-slot.js): flat in the bar, no box of their own. */
+.ntray-bell-row.is-in-bar { display: inline-flex; align-items: center; gap: var(--space-1); height: 100%; }
+.ntray-bell-row.is-in-bar .ntray-bell,
+.ntray-bell-row.is-in-bar .ntray-active-mark { height: 30px; background: none; }

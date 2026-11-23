@@ -65,7 +65,8 @@ USAGE
   node cli.js say <chat-address|being> "<message>" [--re <thread>] [--wait <s>]
       Speak in one of those chats. Your words show there as a LINK line (never
       as the operator's), the being takes a turn on them, the operator reads
-      both, and the being's reply prints here.
+      both, and the being's reply prints here. --wait is at most 280 seconds;
+      a longer turn says it is still answering, and the rest is in the chat.
 
 CONFIG (env)
   NEUMA_BACKEND            backend URL (default http://localhost:3333)

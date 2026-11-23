@@ -13,7 +13,7 @@
  * own office; the one outward step is reading the company's own page (the guarded reader every sales read uses).
  */
 import { officeContext } from './revenue-acts.js';
-import { readSegments, readProspects, proveProspect, settleProspect } from '../sales/sales-store.js';
+import { readSegments, readProspects, proveProspect, settleProspect, handProspect } from '../sales/sales-store.js';
 import { proofsFor, requiredState } from '../sales/required-signs.js';
 import { verifyQuote } from '../sales/company-entity.js';
 import { readOutbox, withdrawDrafts } from '../sales/email-outbox.js';
@@ -30,7 +30,26 @@ const seated = async (connection) => (await officeContext(connection).catch(() =
  * why (kept as a contact), its waiting emails withdrawn. Shared by sales/prove and sales/prospect.
  * @returns {Promise<{dropped: boolean, closed: boolean, withdrawn: string[]}>}
  */
-export const leaveAudience = async (wallet, prospect, why, by) => {
+export const leaveAudience = async (wallet, prospect, why, by, { to = null } = {}) => {
+  // IT BELONGS TO ANOTHER AUDIENCE OF THE HOUSE: it is MOVED there, not thrown away (Design note, 2026-11-21: a fund that
+  // invests in nothing crypto was being written to for the crypto raise — […]). The company's
+  // record, and its lead when nobody was written to yet, stand under the audience it belongs to — whose own run
+  // screens it for that audience — and every email written for the audience it left is withdrawn.
+  if (to?.id && to.state === 'approved' && prospect.stage !== 'dropped') {
+    const ledger = prospect.leadId ? await leadLedgerFor(wallet) : null;
+    const lead = ledger ? (await ledger.load()).find((l) => l.id === prospect.leadId) ?? null : null;
+    if (!lead || lead.status === 'cold') {
+      const moved = await handProspect(wallet, prospect.id, { type: 'moved', segmentId: to.id, by });
+      if (moved.ok) {
+        const address = normalizeEmail(lead?.contact);
+        const at = (a) => normalizeEmail(a) === address;
+        const waiting = address ? (await readOutbox(wallet)).drafts.filter((d) => ['waiting', 'returned'].includes(d.state) && d.to.some(at)) : [];
+        const withdrawn = waiting.length ? (await withdrawDrafts(wallet, { to: at, why: `${why} — it now stands under "${to.name}"`, by })).ids ?? [] : [];
+        if (lead) await ledger.touch(lead.id, { note: `moved to "${to.name}": ${why}`.slice(0, 600), by }).catch(() => {});
+        return { dropped: false, closed: false, withdrawn, movedTo: to };
+      }
+    }
+  }
   const dropped = prospect.stage === 'found' ? (await settleProspect(wallet, prospect.id, { type: 'dropped', reason: why, by })).ok : false;
   let closed = false;
   let withdrawn = [];
@@ -91,8 +110,9 @@ const salesProveIntent = Object.freeze({
       const stand = requiredState(segment, { proofs });
       if (stand.state !== 'failed') { lines.push(`[${prospect.id}] ${prospect.name}: MEETS what "${segment.name}" requires.`); continue; }
       const why = `does not meet what "${segment.name}" requires (${stand.failed.map((r) => r.sign).join('; ')}): ${proofs.find((p) => !p.met)?.reasoning ?? ''}`.slice(0, 300);
-      const left = await leaveAudience(context.wallet, prospect, why, context.laneId);
       const to = stand.route ? segments.find((s) => s.id === stand.route) : null;
+      const left = await leaveAudience(context.wallet, prospect, why, context.laneId, { to });
+      if (left.movedTo) { lines.push(`[${prospect.id}] ${prospect.name}: DOES NOT — no fit for "${segment.name}"; MOVED to [${to.id}] "${to.name}", where its own run screens it${left.withdrawn.length ? `; ${left.withdrawn.length} email(s) written for "${segment.name}" withdrawn` : ''}.`); continue; }
       lines.push(`[${prospect.id}] ${prospect.name}: DOES NOT — no fit for "${segment.name}"${left.dropped ? '; dropped from its pool' : ''}${left.closed ? '; its lead is closed and kept as a contact' : ''}${left.withdrawn.length ? `; ${left.withdrawn.length} waiting email${left.withdrawn.length === 1 ? '' : 's'} withdrawn [${left.withdrawn.join(', ')}]` : ''}${to ? `. It belongs to [${to.id}] "${to.name}": score it there with sales/prospect` : ''}.`);
     }
     return { ok: true, detail: lines.join(' ') };

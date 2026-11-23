@@ -96,6 +96,7 @@ const CompanyLineAppBody = () => {
           onPick: (v) => { uiSound('open'); setPick(v); },
           onSeat: () => move('_sales', async () => { await seatMercator(pick); setPick(''); }),
           onClear: () => move('_sales', clearMercator),
+          onChanged: load,
           onDestination: () => move('_delivery', () => setDeliveryDestination(String(drafts._delivery?.folder ?? '').trim(), String(drafts._delivery?.linkBase ?? '').trim())),
         }}
         books={books}

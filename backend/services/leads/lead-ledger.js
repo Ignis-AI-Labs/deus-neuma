@@ -297,6 +297,9 @@ export const createLeadLedger = ({ path }) => {
           ...(change.direction === 'in' && trimmed(change.text) ? { text: trimmed(change.text).slice(0, TEXT_MAX) } : {}),
           // What their reply SAYS (sales/reply-reading.js): read by the mail watch, or said by the operator or a member.
           ...(cleanSaid(change.said, change.by) ? { said: cleanSaid(change.said, change.by) } : {}),
+          // A call booked with them (sales/booked-calls.js): when, and what it is called — or that it was called off.
+          ...(change.callOff === true ? { callOff: true } : {}),
+          ...(change.call && !Number.isNaN(Date.parse(change.call.at)) ? { callAt: new Date(change.call.at).toISOString(), callTitle: trimmed(change.call.title).slice(0, FIELD_MAX), ...(/^https:\/\/\S+$/.test(trimmed(change.call.link)) ? { callLink: trimmed(change.call.link).slice(0, FIELD_MAX) } : {}) } : {}),
         });
         await save(leads);
         return { ok: true, lead };

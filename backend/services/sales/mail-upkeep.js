@@ -73,7 +73,7 @@ export const settleMail = async (house, { credentials, message, sender, isLead, 
     const subject = message.subject || (read.ok ? read.message.subject : null);
     // What it says is read by fixed rules and kept with it: a no closes the lead (the contact stays), a request is marked to answer first.
     const said = read.ok ? cleanSaid(readReply({ subject, text: read.message.text, from: sender }), 'mail-watch') : null;
-    await recordReceived(house, { from: sender, ref, subject, text: read.ok ? theirWords(read.message.text) : null, said });
+    await recordReceived(house, { from: sender, ref, subject, text: read.ok ? theirWords(read.message.text) : null, said, messageId: message.messageId || (read.ok ? read.message.messageId : null) || null });
     if (read.ok && asksToStop(read.message.text)) {
       const [asker] = provenAddresses({ addresses: [sender], leads, ids: read.message.ids });
       if (asker) return { kind: 'stop', closed: await closeAddress(house, asker, 'asked', `asked to be left alone (${ref})`) };

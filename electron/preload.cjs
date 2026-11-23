@@ -4,6 +4,7 @@
 // client, so nothing privileged is exposed here. We surface only a tiny marker
 // the frontend can use to know it's running inside the native shell.
 
+/* global window */ // a preload runs in the page, where window is the page's own
 const { contextBridge, ipcRenderer } = require('electron');
 
 // Which desk this window IS — parsed from the argv main passed via
@@ -118,6 +119,9 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   // BROWSER). Main gates: contained absolute .html/.htm path that exists as a file.
   openInBrowser: (filePath, roots) => ipcRenderer.invoke('app:openInBrowser', filePath, roots),
   showInFolder: (filePath) => ipcRenderer.invoke('app:showInFolder', filePath),
+  // Did the address the desk just copied survive on the clipboard? Main answers
+  // "same" or the different ADDRESS found, never any other clipboard content.
+  clipboardCheck: (expected) => ipcRenderer.invoke('clipboard:check', expected),
   // THE DRAG-OUT: an Explorer row dragged toward the OS starts a REAL
   // OS-level drag of the file itself (Dolphin, the desktop, another app).
   // Main re-validates: absolute path, existing file, never a directory.
@@ -169,6 +173,17 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
       const handler = (_event, view) => cb(view);
       ipcRenderer.on('update:changed', handler);
       return () => ipcRenderer.removeListener('update:changed', handler);
+    },
+  },
+  // THE DEV REFRESH (electron/dev-refresh.cjs), a development run only: what source changes are waiting, told on
+  // every change; `act('refresh')` rebuilds and restarts in place, `act('later')` sets them aside.
+  devRefresh: {
+    state: () => ipcRenderer.invoke('devRefresh:state'),
+    act: (action) => ipcRenderer.invoke('devRefresh:act', action),
+    onChange: (cb) => {
+      const handler = (_event, view) => cb(view);
+      ipcRenderer.on('devRefresh:changed', handler);
+      return () => ipcRenderer.removeListener('devRefresh:changed', handler);
     },
   },
   // THE KEY LOCK (electron/key-lock/key-lock-main.cjs): whether the keychain holds

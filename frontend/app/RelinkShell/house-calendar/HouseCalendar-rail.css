@@ -105,3 +105,17 @@
 @container hcal (max-width: 760px) {
   .hcal-rail { max-height: 200px; }
 }
+
+/* YOUR CALENDARS — the ones kept elsewhere, read into this one. */
+.hcal-yours { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-sunk); border: 1px solid var(--line-strong); }
+.hcal-yours-sum { cursor: pointer; font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-secondary); }
+.hcal-yours-sum b { color: var(--color-text-primary); font-weight: 600; }
+.hcal-yours-list { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.hcal-yours-list li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.hcal-yours-name { font-size: 14px; color: var(--color-text-primary); }
+.hcal-yours-add { display: flex; flex-direction: column; gap: var(--space-1); margin-top: var(--space-2); }
+.hcal-yours-row { display: flex; gap: var(--space-2); }
+.hcal-yours-input { flex: 1; min-width: 0; padding: var(--space-1) var(--space-2); background: var(--surface-raised); border: 1px solid var(--line-strong); color: var(--color-text-primary); font: inherit; font-size: 13px; }
+.hcal-yours-input:focus-visible { outline: none; border-color: var(--signal); }
+.hcal-link { color: var(--signal); overflow-wrap: anywhere; }
+

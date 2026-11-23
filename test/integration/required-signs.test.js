@@ -15,7 +15,7 @@ import path from 'path';
 import process from 'node:process';
 import { requiredSigns, proofsFor, requiredState, requiredRefusal, requiredWords } from '../../backend/services/sales/required-signs.js';
 import { sweepIntents } from '../../backend/services/intents/intent-sweep.js';
-import { fileSegment, setSegmentState, addProspects, readProspects, readSegments } from '../../backend/services/sales/sales-store.js';
+import { fileSegment, setSegmentState, addProspects, readProspects, readSegments, listScreened } from '../../backend/services/sales/sales-store.js';
 import { makeSegment, reAims } from '../../backend/services/sales/segment-shape.js';
 import { makeProspect } from '../../backend/services/sales/prospect-shape.js';
 import { stageDraft, readOutbox } from '../../backend/services/sales/email-outbox.js';
@@ -147,7 +147,7 @@ describe('the gates, through the seat\'s acts', () => {
     expect((await actAs('sales/lead', { id: stellar.id, person: { name: 'Sam Star', role: 'BD' }, email: 'sam@stellar.example', emailSource: 'https://stellar.example/team' })).error).toMatch(/is no match/);
   }, 60000);
 
-  test('a company scored BEFORE the rule: nothing is done with it until it is proved; proved not met, it leaves by itself — lead closed and kept, waiting email withdrawn, its real audience named', async () => {
+  test('a company scored BEFORE the rule: nothing is done with it until it is proved; proved not met, it leaves by itself — moved with its lead to the audience it belongs to, the waiting email withdrawn', async () => {
     const now = new Date().toISOString();
     const old = makeSegment(audience({ id: ua.id })); // as it was scored then: nothing required
     const [bnb, stox] = (await addProspects(POSITION_HOUSE, [
@@ -173,12 +173,16 @@ describe('the gates, through the seat\'s acts', () => {
     ] });
     expect(proved.status, proved.error).toBe('ok');
     expect(proved.content).toContain(`[${stox.id}] Stox: MEETS what "Token Projects on Base & Robinhood" requires.`);
-    expect(proved.content).toMatch(new RegExp(`\\[${bnb.id}\\] BNB Chain: DOES NOT — no fit for "Token Projects on Base & Robinhood"; its lead is closed and kept as a contact; 1 waiting email withdrawn \\[${waiting.id}\\]\\. It belongs to \\[${chains.id}\\] "Chain Partnerships": score it there with sales/prospect\\.`));
+    // NOT MET, and the audience says where such a company belongs: it is MOVED there, never thrown away (Design note, 2026-11-21 —
+    // its lead, nobody written to yet, goes with it, and the email written for the audience it left is withdrawn.
+    expect(proved.content).toContain(`[${bnb.id}] BNB Chain: DOES NOT — no fit for "Token Projects on Base & Robinhood"; MOVED to [${chains.id}] "Chain Partnerships", where its own run screens it; 1 email(s) written for "Token Projects on Base & Robinhood" withdrawn.`);
     expect((await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === waiting.id)).toMatchObject({ state: 'withdrawn' });
-    const closed = (await ledger.load()).find((l) => l.id === lead.id);
-    expect(closed).toMatchObject({ status: 'lost', contact: 'bo@bnb.example' }); // still a contact
-    expect(closed.touches.at(-1).note).toMatch(/^does not meet what "Token Projects on Base & Robinhood" requires/);
-    // Proved met, the other moves on as before.
+    const kept = (await ledger.load()).find((l) => l.id === lead.id);
+    expect(kept).toMatchObject({ status: 'cold', contact: 'bo@bnb.example' }); // still a lead to write to, under the audience it belongs to
+    expect(kept.touches.at(-1).note).toMatch(/^moved to "Chain Partnerships": does not meet what "Token Projects on Base & Robinhood" requires/);
+    // Proved met, the other moves on — once the house's screening has validated it, as every lead is (a lead run does it).
+    expect((await actAs('sales/lead', { id: stox.id, person: 0, email: 'sy@stox.example', emailSource: 'https://stox.example/team' })).error).toMatch(/has not been VALIDATED yet .* Start a lead run for this audience: sales\/run/);
+    expect(await listScreened(POSITION_HOUSE, ua.id, [stox.id], 'lead-run:test')).toBe(1);
     const after = await actAs('sales/lead', { id: stox.id, person: 0, email: 'sy@stox.example', emailSource: 'https://stox.example/team' });
     expect(after.status, after.error).toBe('ok');
     // An audience that requires nothing has nothing to prove.

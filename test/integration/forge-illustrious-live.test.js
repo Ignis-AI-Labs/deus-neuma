@@ -26,7 +26,7 @@ describe.runIf(run)('the Illustrious character pipelines on a real engine', () =
   const cfg = run ? { host: engine.hostname, port: Number(engine.port) } : null;
   const screenList = loadScreenList(lawPath);
 
-  test.each(['still.wai.txt2img', 'still.deliberate.txt2img', 'still.nova.txt2img', 'still.neuma.txt2img'])('%s renders both passes and saves one clean 1248x1824 image', async (id) => {
+  test.each(['still.wai.txt2img', 'still.deliberate.txt2img', 'still.nova.txt2img', 'still.neuma.txt2img', 'still.neuma.sheet.txt2img'])('%s renders both passes and saves one clean 1248x1824 image', async (id) => {
     const { pipeline } = resolvePipeline(id);
     const { model } = resolveModel(pipeline);
     const jobId = `illustrious-proof-${id.split('.')[1]}-${Date.now()}`;

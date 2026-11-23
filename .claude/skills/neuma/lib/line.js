@@ -38,9 +38,13 @@ const call = async (backend, token, route, init = {}) => {
 /** impure — the open chats this witness may speak in. */
 export const listLineChats = ({ backend, token }) => call(backend, token, '/chats');
 
+// Node's fetch gives up on a reply that has not begun within 300 seconds (undici headersTimeout), and the line holds
+// its answer until the being's turn closes: ask for at most 280, and the rest of a longer turn stays in the chat.
+const MAX_WAIT_S = 280;
+
 /** impure — speak in one; resolves with the being's reply once its turn closes (or what it said by the wait). */
 export const sayOnLine = ({ backend, token, to, body, re, waitSeconds }) => call(backend, token, '/send', {
-  method: 'POST', body: JSON.stringify({ to, body, ...(re ? { re } : {}), ...(waitSeconds ? { waitSeconds } : {}) }),
+  method: 'POST', body: JSON.stringify({ to, body, ...(re ? { re } : {}), waitSeconds: Math.min(waitSeconds || MAX_WAIT_S, MAX_WAIT_S) }),
 });
 
 /**

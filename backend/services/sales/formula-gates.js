@@ -2,11 +2,12 @@
 // email is built from the formula (email-formula.js). Design note, 2026-11-19: […] The same for the main
 // seat and every clone: sales/draft-email asks here. impure (the house's records; an address check when none stands).
 
-import { requiredRefusal } from './required-signs.js';
+import { firstEmailScreen } from './lead-screen.js';
 import { readAddressChecks, readCampaigns, readSegments, readProspects } from './sales-store.js';
 import { checkBeforeSending } from './address-check.js';
 import { settledWords } from './address-confirm.js';
 import { readResearch } from './research-store.js';
+import { readNeverList } from '../legal/never-list.js';
 import { readOutbox } from './email-outbox.js';
 import { leadOrigins } from './campaign-shape.js';
 import { isFundingCampaign, entityRefusal } from './company-entity.js';
@@ -17,7 +18,9 @@ import { kindOf, UNSORTED, personTouches } from '../leads/lead-ledger.js';
 import { normalizeEmail } from './suppress-shape.js';
 
 /** pure — is this the house's first email to a lead it sells to: the formula's to write. */
-export const needsFormula = (lead, { followUp = false } = {}) => Boolean(lead) && !followUp && ['buyer', UNSORTED].includes(kindOf(lead))
+// `followUp` does not decide it: an email is a follow-up when an earlier one is on record, never because it was
+// called one (2026-11-20: a lead never written to, marked followUp, skipped every gate).
+export const needsFormula = (lead) => Boolean(lead) && ['buyer', UNSORTED].includes(kindOf(lead))
   && !writtenBefore({ touches: personTouches(lead) }) && !personTouches(lead).some((t) => t.direction === 'in');
 
 const FIELDS = '{to, subject, hook, why, offer, askIndex, ask}';
@@ -54,11 +57,8 @@ export const formulaEmail = async (wallet, { lead, to, payload, by }) => {
     return { refusal: campaign.emailPlan?.proposed ? `the email plan of "${campaign.name}" waits for your operator to lock it in — no first email is written until then`
       : `"${campaign.name}" has no email plan: file it with sales/email-plan {campaign: "${campaign.id}", objective, need, offer, asks, signature}, and your operator locks it in` };
   }
-  // What the audience REQUIRES is proved met (required-signs.js): a company scored before the rule proves it first.
   const prospect = prospects.find((p) => p.leadId === lead.id) ?? null;
   const segment = prospect ? segments.find((s) => s.id === prospect.segmentId) ?? null : null;
-  const unmet = segment ? requiredRefusal(segment, prospect, segments) : null;
-  if (unmet) return { refusal: unmet };
   const research = await readResearch(wallet);
   // A FUNDING campaign writes only to investors (company-entity.js): what the company IS, from its own site, on record.
   if (isFundingCampaign(campaign)) {
@@ -66,6 +66,9 @@ export const formulaEmail = async (wallet, { lead, to, payload, by }) => {
     const notAnInvestor = entityRefusal(research.entities.get(domain), domain);
     if (notAnInvestor) return { refusal: notAnInvestor };
   }
+  // THE SCREEN (lead-screen.js): scored a fit for an approved audience, every required sign met — whatever source the lead came from.
+  const unscreened = firstEmailScreen({ lead, prospect, segment, segments, never: (await readNeverList(wallet)).codes });
+  if (unscreened) return { refusal: unscreened };
   // GATE TWO — research on who they are, fresh.
   const card = research.cards.get(email) ?? null;
   if (!card || !researchFresh(card)) {

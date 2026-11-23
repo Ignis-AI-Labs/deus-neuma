@@ -45,6 +45,7 @@ data/capacity/
 data/benchmarks/
 # The house's company index (sales/company-index.js): a local database loaded from free bulk files.
 data/lead-index/
+data/network/
 # The RAM keeper's own lock (ram-keeper.js): a running-process marker, never a record.
 data/ram-keeper.lock
 # Chat watches (chat-watch.js) — which conversation waits on what; machine-local state.
