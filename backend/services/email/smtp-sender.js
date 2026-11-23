@@ -12,6 +12,7 @@ import crypto from 'crypto';
 import tls from 'tls';
 import { encodeHeaderWord, encodeBase64Body } from './mime.js';
 import { fromFor } from './send-as.js';
+import { withFooter } from './opt-out-footer.js';
 
 export const EMAIL_ADDRESS_PATTERN = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 export const SEND_MAX_RECIPIENTS = 10;
@@ -192,8 +193,9 @@ const _runSmtpSession = (credentials, steps, { signal, interrupted }) => {
  * Send one email. Never throws — every failure lands as {ok:false, detail}.
  * @param {{address: string, username: string, password: string,
  *   smtpHost: string, smtpPort: string}|null} credentials
- * @param {{to: string[]|string, subject: string, text: string, references?: string[]}} request - references: the
- *   message ids of the conversation this continues, oldest first (the lead ledger keeps them)
+ * @param {{to: string[]|string, subject: string, text: string, references?: string[], optOut?: ?{footer: string}}} request -
+ *   references: the message ids of the conversation this continues, oldest first (the lead ledger keeps them);
+ *   optOut: sales mail (sales/opt-out.js) — its footer goes under the text
  * @param {{signal?: AbortSignal}} [opts]
  * @returns {Promise<{ok: true, messageId: string, to: string[]}
  *   |{ok: false, uncertain?: boolean, messageId?: string, to?: string[], detail: string}>}
@@ -211,11 +213,12 @@ export const sendEmail = async (credentials, request, { signal } = {}) => {
   if (!sender.ok) return sender;
   const domain = sender.from.split('@')[1] || 'neuma.local';
   const messageId = `<${crypto.randomBytes(12).toString('hex')}@${domain}>`;
+  const optOut = request?.optOut?.footer ? request.optOut : null;
   const message = buildMimeMessage({
     from: sender.from,
     to: valid.to,
     subject: valid.subject,
-    text: valid.text,
+    text: optOut ? withFooter(valid.text, optOut.footer) : valid.text,
     date: new Date(),
     messageId,
     references: request?.references,

@@ -73,7 +73,8 @@ export const cellText = (value) => {
 
 // A value that a spreadsheet would run as a formula is written as text.
 const safe = (text) => (/^[=+\-@\t\r]/.test(text) ? `'${text}` : text);
-const quoted = (text) => `"${safe(String(text).replace(/\s+/g, ' ').trim()).replace(/"/g, '""')}"`;
+/** One spreadsheet cell: quoted, on one line, and never run as a formula (names and titles come from pages and imports). pure. */
+export const quoted = (text) => `"${safe(String(text ?? '').replace(/\s+/g, ' ').trim()).replace(/"/g, '""')}"`;
 
 /**
  * The sheet as a spreadsheet file's text. A column may give `text(row)` where its cell is not words. pure.

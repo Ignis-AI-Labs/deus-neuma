@@ -9,6 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { ethers } from 'ethers';
 import { startAnvil } from '../helpers/money-in-kit.js';
+import { spawnSync } from 'node:child_process';
 
 const require = createRequire(import.meta.url);
 const { buildSignConfirmView, isSignInMessage, MAX_SHOWN } = require('../../electron/wallet/confirm-view.cjs');
@@ -136,7 +137,10 @@ describe('messages', () => {
   });
 });
 
-describe('the wallet service signs the request it showed', () => {
+// A real local chain (anvil, from Foundry) signs and mines these. A machine without it, like the public
+// repository's checks, cannot run them, and says so as skipped rather than as a failure of the wallet.
+const HAS_ANVIL = spawnSync('anvil', ['--version']).status === 0;
+describe.skipIf(!HAS_ANVIL)('the wallet service signs the request it showed', () => {
   let anvil, provider, dir, service, shown, address;
   beforeAll(async () => {
     anvil = await startAnvil({ chainId: 8453 });
@@ -154,7 +158,7 @@ describe('the wallet service signs the request it showed', () => {
   afterAll(async () => {
     provider?.destroy();
     await anvil?.stop();
-    fs.rmSync(dir, { recursive: true, force: true });
+    if (dir) fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('the fee and nonce on the chain are the ones in the window', async () => {

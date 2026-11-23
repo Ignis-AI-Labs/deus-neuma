@@ -41,6 +41,8 @@ import marketingOfficeRouter from './marketing-office-routes.js';
 import companyRouter from './company-routes.js';
 import companyLinkRouter from './company-link-routes.js';
 import leadRouter from './lead-routes.js';
+import personDataRouter from './person-data-routes.js';
+import crmRouter from './crm-routes.js';
 import campaignRouter from './campaign-routes.js';
 import csoRouter from './cso-routes.js';
 import legalRouter from './legal-routes.js';
@@ -199,6 +201,10 @@ export const mountApiRoutes = (app) => {
   app.use('/api/v1/company-links', companyLinkRouter);
   app.use('/api/v1/social-channels', socialChannelRouter);
   app.use('/api/v1/leads', leadRouter);
+  // A person's data: read whole to hand them, erased when they ask (sales/person-data.js).
+  app.use('/api/v1/people', personDataRouter);
+  // The operator's own record of people: tags, the house's fields, a note, merge, one search (leads/lead-record.js).
+  app.use('/api/v1/crm', crmRouter);
   app.use('/api/v1/campaigns', campaignRouter);
 
   // The CSO office: the seat, the threat ledger, the watch list, and the

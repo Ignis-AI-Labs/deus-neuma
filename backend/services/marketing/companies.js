@@ -120,6 +120,38 @@ export const setCompanyParent = async (wallet, companyId, parentId) => {
 };
 
 /**
+ * The company that sends for `company` with a postal address on record: itself, else the nearest one above it in the
+ * tree that has one (a product of a company mails as that company; sales/opt-out.js). Itself when none has. Pure.
+ * @param {Array<{id: string, parentId: ?string, legalEntity: ?object}>} companies
+ * @param {?object} company
+ */
+export const sendingEntity = (companies, company) => {
+  const seen = new Set();
+  for (let c = company; c && !seen.has(c.id); c = companies.find((x) => x.id === c.parentId)) {
+    seen.add(c.id);
+    if (c.legalEntity?.postalAddress) return c;
+  }
+  return company ?? null;
+};
+
+/**
+ * Set where a company receives post (printed under every sales email, sales/opt-out.js), keeping the rest of its
+ * block. A company with no legal entity yet takes its own name as one. '' or null clears it. impure.
+ * @param {string} wallet
+ * @param {string} companyId
+ * @param {?string} postalAddress
+ */
+export const setCompanyPostal = async (wallet, companyId, postalAddress) => {
+  const kit = await readKit(companyId, wallet);
+  if (!kit.ok) return { ok: false, error: kit.error };
+  const block = kit.kit.company && typeof kit.kit.company === 'object' ? kit.kit.company : {};
+  const legal = block.legalEntity && typeof block.legalEntity === 'object' ? block.legalEntity : { name: kit.kit.name || companyId };
+  const address = typeof postalAddress === 'string' ? postalAddress.trim() : '';
+  const { postalAddress: _was, ...rest } = legal;
+  return setCompanyBlock(wallet, companyId, { ...block, legalEntity: address ? { ...rest, postalAddress: address } : rest });
+};
+
+/**
  * The company a house's pre-accounts social accounts belong to, and why
  * (account-migrate.js `defaultCompanyFor`). impure.
  * @param {string} wallet

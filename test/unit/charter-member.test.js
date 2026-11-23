@@ -4,7 +4,7 @@ import { memberCharterInput, normalizeCharter, MONEY_OUT } from '../../backend/s
 const PRIOR = Object.freeze({
   goal: 'Earn for the house.', linesOfWork: ['trade'], seats: [{ laneId: 'tenekom', dailyCap: 24 }, { laneId: 'rugevil', dailyCap: 6 }],
   quietHours: { start: '23:00', end: '07:00' }, cadence: { everyHours: 2 }, delegation: { teamPlans: false, maxMembers: 4, maxSteps: 8, maxProgrammeRuns: 3 },
-  allow: ['intents/lp.swap'], escalate: ['intents/social.post', ...MONEY_OUT], involvement: null,
+  allow: ['intents/social.queue'], escalate: ['intents/social.post', ...MONEY_OUT], involvement: null,
 });
 
 describe('a member\'s change to its own house\'s charter', () => {

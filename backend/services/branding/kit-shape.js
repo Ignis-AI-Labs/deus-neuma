@@ -191,13 +191,14 @@ export const ownerRefusals = (kit) => {
 const KIT_ID = /^[a-z][a-z0-9-]{0,39}$/;
 const httpUrl = (v) => typeof v === 'string' && /^https?:\/\/[^\s]+$/i.test(v) && v.length <= 300;
 const shortText = (v, max = 120) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
+const POSTAL_MAX = 200;
 
 /**
  * The company a kit is, normalized. Pure.
  * @param {object} kit
  * @param {string} brand - the kit's id (its directory name)
  * @returns {{id: string, name: string, parentId: ?string, site: {url: ?string, links: string[]},
- *   legalEntity: ?{name: string, jurisdiction: ?string}, repos: Array<{path: ?string, remote: ?string, role: string}>}}
+ *   legalEntity: ?{name: string, jurisdiction: ?string, postalAddress: ?string}, repos: Array<{path: ?string, remote: ?string, role: string}>}}
  */
 export const companyOf = (kit, brand) => {
   const block = kit?.company && typeof kit.company === 'object' ? kit.company : {};
@@ -211,7 +212,12 @@ export const companyOf = (kit, brand) => {
       links: Object.freeze(Array.isArray(block.site?.links) ? block.site.links.filter(httpUrl) : []),
     }),
     legalEntity: legal && shortText(legal.name)
-      ? Object.freeze({ name: legal.name.trim(), jurisdiction: shortText(legal.jurisdiction) ? legal.jurisdiction.trim() : null })
+      ? Object.freeze({
+        name: legal.name.trim(),
+        jurisdiction: shortText(legal.jurisdiction) ? legal.jurisdiction.trim() : null,
+        // Where the company receives post: printed under every sales email (CAN-SPAM asks for one; sales/opt-out.js).
+        postalAddress: shortText(legal.postalAddress, POSTAL_MAX) ? legal.postalAddress.trim() : null,
+      })
       : null,
     repos: reposOf(block),
   });
@@ -245,7 +251,10 @@ export const companyRefusals = (block, brand) => {
   if (block.legalEntity !== undefined && block.legalEntity !== null) {
     const legal = block.legalEntity;
     if (typeof legal !== 'object' || Array.isArray(legal) || !shortText(legal.name)) out.push('company.legalEntity needs a name');
-    else if (legal.jurisdiction !== undefined && legal.jurisdiction !== null && !shortText(legal.jurisdiction)) out.push('company.legalEntity.jurisdiction must be short text');
+    else {
+      if (legal.jurisdiction !== undefined && legal.jurisdiction !== null && !shortText(legal.jurisdiction)) out.push('company.legalEntity.jurisdiction must be short text');
+      if (legal.postalAddress !== undefined && legal.postalAddress !== null && (!shortText(legal.postalAddress, POSTAL_MAX) || /[\u0000-\u001f\u007f]/.test(legal.postalAddress))) out.push(`company.legalEntity.postalAddress must be one line of at most ${POSTAL_MAX} characters`);
+    }
   }
   out.push(...repoRefusals(block.repos));
   return out;

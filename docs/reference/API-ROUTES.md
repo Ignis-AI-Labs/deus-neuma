@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-794 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install; `requireLocalScope`: the local desk, never a paired remote).
+802 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install; `requireLocalScope`: the local desk, never a paired remote).
 > `?ticket=` marks only the headerless file lanes that accept a short-lived exact-resource ticket;
 > it is not an alternate authentication transport on any other route.
 
@@ -217,6 +217,16 @@
 | POST | `/api/v1/covenant/accept` | `requireAuth` |
 | GET | `/api/v1/covenant/status` | `requireAuth` |
 
+## /api/v1/crm
+
+| Method | Path | Guards |
+| --- | --- | --- |
+| GET | `/api/v1/crm/fields` | `requireAuth` |
+| PUT | `/api/v1/crm/fields` | `requireAuth` |
+| PUT | `/api/v1/crm/leads/:id` | `requireAuth` |
+| POST | `/api/v1/crm/leads/:id/merge` | `requireAuth` |
+| GET | `/api/v1/crm/search` | `requireAuth` |
+
 ## /api/v1/cso
 
 | Method | Path | Guards |
@@ -263,10 +273,10 @@
 | Method | Path | Guards |
 | --- | --- | --- |
 | GET | `/api/v1/email` | `requireAuth` |
-| DELETE | `/api/v1/email/binding` | `requireAuth` |
-| PUT | `/api/v1/email/binding` | `requireAuth` |
-| DELETE | `/api/v1/email/credentials` | `requireAuth` |
-| PUT | `/api/v1/email/credentials` | `requireAuth` |
+| DELETE | `/api/v1/email/binding` | `requireLocalScope`, `requireAuth` |
+| PUT | `/api/v1/email/binding` | `requireLocalScope`, `requireAuth` |
+| DELETE | `/api/v1/email/credentials` | `requireLocalScope`, `requireAuth` |
+| PUT | `/api/v1/email/credentials` | `requireLocalScope`, `requireAuth` |
 
 ## /api/v1/expression
 
@@ -630,6 +640,13 @@
 | GET | `/api/v1/neuma/registry` | `requireAuth` |
 | POST | `/api/v1/neuma/registry` | `requireAuth` |
 
+## /api/v1/people
+
+| Method | Path | Guards |
+| --- | --- | --- |
+| POST | `/api/v1/people/erase` | `requireLocalScope`, `requireAuth` |
+| GET | `/api/v1/people/record` | `requireAuth` |
+
 ## /api/v1/permissions
 
 | Method | Path | Guards |
@@ -657,6 +674,7 @@
 | PUT | `/api/v1/positions/companies/:id/model` | `requireAuth` |
 | POST | `/api/v1/positions/companies/:id/model/approve` | `requireAuth` |
 | POST | `/api/v1/positions/companies/:id/model/return` | `requireAuth` |
+| PUT | `/api/v1/positions/companies/:id/postal` | `requireAuth` |
 | DELETE | `/api/v1/positions/seating` | `requireAuth` |
 
 ## /api/v1/preflight
@@ -810,15 +828,15 @@
 | GET | `/api/v1/routing/credential-links` | `requireAuth` |
 | GET | `/api/v1/routing/providers` | `requireAuth` |
 | POST | `/api/v1/routing/providers/:providerId/connect` | `requireAuth`, `requireInstallOwner` |
-| DELETE | `/api/v1/routing/providers/:providerId/key` | `requireAuth`, `requireInstallOwner` |
-| PUT | `/api/v1/routing/providers/:providerId/key` | `requireAuth`, `requireInstallOwner` |
+| DELETE | `/api/v1/routing/providers/:providerId/key` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
+| PUT | `/api/v1/routing/providers/:providerId/key` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
 | GET | `/api/v1/routing/providers/:providerId/models` | `requireAuth` |
 | POST | `/api/v1/routing/providers/:providerId/oauth/poll` | `requireAuth`, `requireInstallOwner` |
 | POST | `/api/v1/routing/providers/:providerId/oauth/start` | `requireAuth`, `requireInstallOwner` |
 | POST | `/api/v1/routing/providers/:providerId/test` | `requireAuth` |
 | GET | `/api/v1/routing/services` | `requireAuth` |
-| DELETE | `/api/v1/routing/services/:serviceId/key` | `requireAuth`, `requireInstallOwner` |
-| PUT | `/api/v1/routing/services/:serviceId/key` | `requireAuth`, `requireInstallOwner` |
+| DELETE | `/api/v1/routing/services/:serviceId/key` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
+| PUT | `/api/v1/routing/services/:serviceId/key` | `requireLocalScope`, `requireAuth`, `requireInstallOwner` |
 
 ## /api/v1/security
 

@@ -29,11 +29,31 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ARCH_HEADER_BYTES, archsOf } from './macho-arch.mjs';
 import { appContentProblems, contentRows } from './artifact-content.mjs';
+import os from 'node:os';
+import { createRequire } from 'node:module';
 
 const SELF = fileURLToPath(import.meta.url);
 const REPO = path.resolve(path.dirname(SELF), '..');
 
 /** The chip an output directory claims, from electron-builder's own naming. */
+/**
+ * The app's own files inside a bundle, as a folder that can be read. Unpacked, that is Contents/Resources/app.
+ * Packed (asar: true), the files are inside app.asar with the native modules beside it: the archive is opened into a
+ * temporary folder, whole, and that folder is returned. impure (fs).
+ * @param {string} bundle - the .app
+ * @returns {string}
+ */
+export function appRootOf(bundle) {
+  const resources = path.join(bundle, 'Contents', 'Resources');
+  const plain = path.join(resources, 'app');
+  if (fs.existsSync(plain)) return plain;
+  const archive = path.join(resources, 'app.asar');
+  if (!fs.existsSync(archive)) throw new Error(`${bundle} holds neither Contents/Resources/app nor app.asar`);
+  const into = fs.mkdtempSync(path.join(os.tmpdir(), 'neuma-app-root-'));
+  createRequire(import.meta.url)('@electron/asar').extractAll(archive, into);
+  return into;
+}
+
 export function expectedChipFor(dirName) {
   if (dirName === 'mac-arm64') return 'arm64';
   if (dirName === 'mac-x64' || dirName === 'mac') return 'x86_64';
@@ -189,7 +209,7 @@ export function main(argv = process.argv.slice(2)) {
       console.log('[check-mac-artifacts] FAILED: content attestation needs exactly one app');
       failed += 1;
     } else {
-      const appRoot = path.join(targets[0].bundle, 'Contents', 'Resources', 'app');
+      const appRoot = appRootOf(targets[0].bundle);
       const publicBlobs = Object.fromEntries(execFileSync('git', ['-C', REPO, 'ls-tree', '-r', 'HEAD'], { encoding: 'utf8' }).split('\n').filter(Boolean).map((line) => {
         const [meta, name] = line.split('\t');
         return [name, meta.split(' ')[2]];

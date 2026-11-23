@@ -36,6 +36,7 @@ import { sendEmail } from '../email/smtp-sender.js';
 import { fromFor } from '../email/send-as.js';
 import { normalizeEmail } from './suppress-shape.js';
 import { suppressedRecipients, recordSent, leadEmailRefusal, addressRefusal, companyOfRecipients, threadFor } from './email-ledger.js';
+import { salesOptOut } from './opt-out.js';
 import { readSalesFacts } from './sales-store.js';
 import { leadLedgerFor, kindOf, UNSORTED, personTouches } from '../leads/lead-ledger.js';
 import { isOut, theyWroteLast } from './lead-upkeep.js';
@@ -237,7 +238,9 @@ export const sendDraft = (wallet, id, { signal, acceptRisk = false } = {}) => se
   // From the member who wrote it, when it has its own address on the mailbox (send-as.js), else its company's.
   const sender = fromFor(credentials, { company: await companyOfRecipients(wallet, draft.to).catch(() => null), member: draft.by });
   if (!sender.ok) return no(sender.detail);
-  const outcome = await sendEmail(credentials, { to: draft.to, subject: draft.subject, text: draft.text, from: sender.from, references: await threadFor(wallet, draft.to) }, { signal });
+  // Sales mail carries its way out: a line under it and the List-Unsubscribe header (opt-out.js).
+  const optOut = await salesOptOut(wallet, draft.to);
+  const outcome = await sendEmail(credentials, { to: draft.to, subject: draft.subject, text: draft.text, from: sender.from, references: await threadFor(wallet, draft.to), optOut }, { signal });
   if (outcome.uncertain) {
     await recordSent(wallet, { to: outcome.to, subject: draft.subject, promise: draft.promise, by: draft.by, from: outcome.from, messageId: outcome.messageId, uncertain: true });
     await append(wallet, { type: 'uncertain', id, from: outcome.from, messageId: outcome.messageId ?? null });

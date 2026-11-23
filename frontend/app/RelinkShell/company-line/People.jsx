@@ -4,11 +4,16 @@
 // came from, and anything due. The counts on the top line are the state; the row under it is the filters
 // (SHOW · WHAT · FROM), each a press; a search narrows by any word. The words and the joins are people-view.js.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Select } from '../Select.jsx';
 import { Sheet } from '../sheet/Sheet.jsx';
+import { PersonData } from './PersonData.jsx';
+import { PersonRecord } from './PersonRecord.jsx';
+import { CrmFields } from './CrmFields.jsx';
+import { CrmSearch } from './CrmSearch.jsx';
+import { getCrmFields } from '../../../services/crm-client.js';
 import { UPKEEP_WORDS, upkeepAge } from './lead-engine-view.js';
-import { STATE_WORDS, PROOF_SHORT, DUE_SHORT, kindWords, rowStatus, sourceWords, peopleRows, viewCounts, firstView, kindCounts, sourceCounts, narrow, peopleLine, contactsCsv, campaignWords, originWords, campaignCounts, SCAN_ASK, SORT_ASK } from './people-view.js';
+import { STATE_WORDS, PROOF_SHORT, DUE_SHORT, kindWords, rowStatus, sourceWords, peopleRows, viewCounts, firstView, kindCounts, sourceCounts, narrow, peopleLine, contactsCsv, campaignWords, originWords, campaignCounts, tagCounts, SCAN_ASK, SORT_ASK } from './people-view.js';
 
 const Picks = ({ name, picks, value, onPick, busy, what }) => (picks.length ? (
   <div className="cline-ppl-picks" role="group" aria-label={what}>
@@ -46,6 +51,7 @@ const columnsFor = ({ kinds, busy, onKind }) => [
   ) : 'NOT A LEAD') },
   { head: 'STANDS', sort: (r) => (r.lead ? STATUS_RANK[r.lead.status] ?? 0 : null), cell: (r) => (r.lead ? rowStatus(r.lead) : null), attrs: (r) => ({ 'data-lead-status': r.lead?.status }) },
   { head: 'FROM', cell: (r) => (r.lead ? sourceWords(r.lead.channel) : null), attrs: (r) => ({ 'data-lead-source': r.lead?.channel }) },
+  { head: 'TAGS', sort: (r) => (r.lead?.tags?.length ? r.lead.tags.join(', ').toLowerCase() : null), cell: (r) => (r.lead?.tags?.length ? r.lead.tags.join(', ') : null), attrs: () => ({ 'data-lead-tags': '' }) },
   { head: 'DUE', sort: (r) => r.due.length || null, tone: (r) => (r.due.length ? 'alert' : null), cell: (r) => (r.due.length
     ? r.due.map((d) => <span key={d.kind} data-upkeep={d.kind} title={[UPKEEP_WORDS[d.kind], d.next ? `NEXT: ${d.next.name}, ${d.next.role} (${d.next.email})` : null, promisedOf(r) ? `PROMISED: ${promisedOf(r)}` : null].filter(Boolean).join(' — ')}>{DUE_SHORT[d.kind] ?? UPKEEP_WORDS[d.kind]}{upkeepAge(d)} </span>)
     : null) },
@@ -59,7 +65,12 @@ const Note = ({ r }) => {
 export const People = ({ engine, busy, onKind, onRefresh, holder = null, onHand = null }) => {
   const rows = peopleRows(engine);
   const kinds = engine.leadKinds ?? [];
-  const [pick, setPick] = useState({ view: null, kind: '', source: '', campaign: '', query: '' });
+  const [pick, setPick] = useState({ view: null, kind: '', source: '', campaign: '', tag: '', query: '' });
+  // The house's own fields (CrmFields.jsx): read once, then as the operator changes them.
+  const [defs, setDefs] = useState([]);
+  useEffect(() => { getCrmFields().then((r) => setDefs(r.fields), () => setDefs([])); }, []);
+  const leadsById = new Map((engine.leads ?? []).map((l) => [l.id, l]));
+  const twinOf = (r) => { const d = r.due.find((x) => x.kind === 'duplicate' && x.with); const t = d ? leadsById.get(d.with) : null; return t ? { id: t.id, name: t.name || t.contact } : null; };
   const view = pick.view ?? firstView(rows);
   const shown = narrow(rows, { ...pick, view });
   const unsorted = rows.filter((r) => r.lead?.kind === 'unsorted').length;
@@ -71,11 +82,14 @@ export const People = ({ engine, busy, onKind, onRefresh, holder = null, onHand 
         {peopleLine(rows, engine.contactStats).map((s) => (typeof s === 'string' ? { text: s } : s)).map((s) => <span key={s.text} className={`fold-stat label-data${s.tone ? ` is-${s.tone}` : ''}`} data-people-stat="">{s.text}</span>)}
       </div>
       {rows.length ? <Picks name="SHOW" what="which people to show" picks={viewCounts(rows)} value={view} onPick={(id) => setPick((p) => ({ ...p, view: id, kind: '', source: '', campaign: '' }))} busy={busy} /> : null}
+      <CrmSearch onPerson={(name) => setPick((p) => ({ ...p, view: 'all', kind: '', source: '', campaign: '', tag: '', query: name }))} />
+      <CrmFields defs={defs} busy={busy} onChanged={setDefs} />
       <div className="cline-open cline-ppl-tools">
         <input className="cline-input" aria-label="Search by name, title, company or address" placeholder="search a name, a title, a company, an address" value={pick.query} onChange={(e) => setPick((p) => ({ ...p, query: e.target.value }))} />
         <Narrow all="ALL KINDS" picks={kindCounts(rows, view)} value={pick.kind} onPick={(id) => setPick((p) => ({ ...p, kind: id }))} busy={busy} />
         <Narrow all="ALL CAMPAIGNS" picks={campaignCounts(rows, view)} value={pick.campaign} onPick={(id) => setPick((p) => ({ ...p, campaign: id }))} busy={busy} />
         <Narrow all="ALL SOURCES" picks={sourceCounts(rows, view)} value={pick.source} onPick={(id) => setPick((p) => ({ ...p, source: id }))} busy={busy} />
+        <Narrow all="ALL TAGS" picks={tagCounts(rows, view)} value={pick.tag} onPick={(id) => setPick((p) => ({ ...p, tag: id }))} busy={busy} />
         {hand && unsorted ? <button type="button" className="sec-scan cline-mini label-data" disabled={busy} aria-label={`SORT ${unsorted} — HAND TO ${holder.name}`} title={`${holder.name}'s chat opens with the ask drafted; you send it`} onClick={() => onHand(holder, SORT_ASK)}>SORT {unsorted} — HAND TO {holder.name.toUpperCase()}</button> : null}
         {hand ? <button type="button" className="sec-scan cline-mini label-data" disabled={busy} aria-label={`SCAN MAILBOX — hand it to ${holder.name}`} title={`Finds people who wrote in and are on no list. It reads who wrote and the subject, never a body. ${holder.name}'s chat opens with the ask drafted; you send it`} onClick={() => onHand(holder, SCAN_ASK)}>SCAN MAILBOX</button> : null}
         {rows.length ? <a className="sec-scan cline-mini label-data pos-step-link" download="contacts.csv" href={`data:text/csv;charset=utf-8,${encodeURIComponent(contactsCsv(engine.contacts ?? [], engine.leads ?? []))}`}>SPREADSHEET</a> : null}
@@ -83,7 +97,13 @@ export const People = ({ engine, busy, onKind, onRefresh, holder = null, onHand 
       </div>
       <Sheet label="people" columns={columnsFor({ kinds, busy, onKind })} rows={shown} rowKey={(r) => r.key} rowName={(r) => r.name}
         rowAttrs={(r) => ({ 'data-person': r.key, 'data-lead-id': r.lead?.id, 'data-lead-kind': r.lead?.kind, 'data-contact-state': r.state })}
-        detail={(r) => (noteOf(r) ? <Note r={r} /> : null)} detailLabel={() => 'the note on this person'}
+        detail={(r) => (noteOf(r) || r.email || r.lead ? (
+          <>
+            {noteOf(r) ? <Note r={r} /> : null}
+            {r.lead ? <PersonRecord key={`${r.lead.id}:${r.lead.updatedAt}`} lead={r.lead} defs={defs} twin={twinOf(r)} busy={busy} onSaved={onRefresh} /> : null}
+            {r.email ? <PersonData address={r.email} busy={busy} onErased={onRefresh} /> : null}
+          </>
+        ) : null)} detailLabel={() => 'the note on this person, their record and their data'}
         empty={<p className="cline-move-t" data-people-empty="">{rows.length ? 'NOBODY MATCHES — CHANGE SHOW, THE KIND, THE SOURCE OR THE SEARCH' : 'NOBODY YET — LEADS ARRIVE FROM YOUR CAMPAIGNS, YOUR MAILBOX AND YOUR SALES MEMBER'}</p>} />
     </div>
   );

@@ -22,6 +22,10 @@ import process from 'node:process';
 import { testEndpoint } from '../test-endpoint-door.js';
 
 export const STRIPE_URL = 'https://api.stripe.com';
+// A RESTRICTED key (Payment Links write, Checkout Sessions read) is all the house ever needs. A secret key (sk_) can
+// move any money in the account: SETTINGS refuses one at the door (routing-routes.js), and one from .env is not used
+// (invoice-store.js cardKey).
+export const RESTRICTED_STRIPE_KEY = /^rk_(test|live)_[A-Za-z0-9_]+$/;
 export const STRIPE_VERSION = '2026-11-18.endive';
 // Currencies a card invoice is issued in today: each has two decimal places, so an amount is its hundredths.
 export const CARD_CURRENCIES = Object.freeze(['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'SGD', 'CHF']);

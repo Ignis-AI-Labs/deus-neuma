@@ -5,7 +5,7 @@
 // what is MISSING, with where the operator sets it, so no seat guesses.
 // The text is PURE; companyFiles reads.
 
-import { listCompanies } from '../marketing/companies.js';
+import { listCompanies, sendingEntity } from '../marketing/companies.js';
 import { campaignStoreFor } from '../marketing/campaign-store.js';
 import { readSegments, readSalesFacts } from '../sales/sales-store.js';
 import { readModels, modelLines } from './business-model.js';
@@ -14,10 +14,13 @@ const FACT_LINES = 12;
 
 /**
  * pure — one company's file from what was read.
- * @returns {{id, name, parent, site, links, repos, legal, model, modelProposal, facts, factsWaiting, audiences, campaigns, missing: string[]}}
+ * @returns {{id, name, parent, site, links, repos, legal, postal, postalFrom, model, modelProposal, facts, factsWaiting, audiences, campaigns, missing: string[]}}
  *   model: the business model that stands · modelProposal: one a member filed, waiting on the operator
  */
-export const companyFile = (company, { facts, segments, campaigns, models = new Map() }) => {
+export const companyFile = (company, { facts, segments, campaigns, models = new Map(), companies = [] }) => {
+  // The address its sales emails carry: its own, else the company above it that sends for it (companies.js).
+  const sender = sendingEntity(companies, company);
+  const postal = sender?.legalEntity?.postalAddress ?? null;
   const model = models.get(company.id) ?? null;
   const approved = (facts?.approved?.facts ?? []).filter((f) => f.company === company.id);
   const waiting = facts?.sheet && !facts.review ? facts.sheet.facts.filter((f) => f.company === company.id).length : 0;
@@ -25,7 +28,7 @@ export const companyFile = (company, { facts, segments, campaigns, models = new 
   const mine = campaigns.filter((c) => (c.company ?? c.companyId) === company.id);
   return {
     id: company.id, name: company.name, parent: company.parentId, site: company.site?.url ?? null,
-    links: company.site?.links ?? [], repos: (company.repos ?? []).length, legal: company.legalEntity?.name ?? null,
+    links: company.site?.links ?? [], repos: (company.repos ?? []).length, legal: company.legalEntity?.name ?? null, postal, postalFrom: postal && sender.id !== company.id ? sender.name : null,
     model: model?.approved ?? null, modelProposal: model?.proposal ? { id: model.proposalId, model: model.proposal, by: model.by, at: model.at } : null, modelReturned: model?.returned ?? null,
     facts: approved, factsWaiting: waiting,
     audiences: audiences.map((s) => ({ id: s.id, name: s.name, state: s.state })),
@@ -34,6 +37,7 @@ export const companyFile = (company, { facts, segments, campaigns, models = new 
       ...(model?.approved ? [] : [model?.proposal ? 'an approved business model (one waits for the operator in POSITIONS, COMPANY)' : 'its business model: what it sells, who pays, what it costs and what objectively changes for the buyer (the operator writes it in POSITIONS, COMPANY, or works it out with a seat holder who files company/model)']),
       ...(company.site?.url ? [] : ['its site address (the operator sets it in MARKETING, BRAND, SITE & CODE)']),
       ...(approved.length ? [] : [waiting ? `approved facts (${waiting} wait for the operator)` : 'facts a buyer may be told (the sales seat files them with sales/facts; the operator approves)']),
+      ...(postal ? [] : ['its postal address, printed under every sales email as the law asks (the operator sets it in POSITIONS, SALES, COMPANY)']),
     ],
   };
 };
@@ -62,5 +66,5 @@ export const companyFiles = async (wallet) => {
     campaignStoreFor(wallet).then((s) => s.load()).catch(() => []),
     readModels(wallet).catch(() => new Map()),
   ]);
-  return companies.map((c) => companyFile(c, { facts, segments, campaigns, models }));
+  return companies.map((c) => companyFile(c, { facts, segments, campaigns, models, companies }));
 };

@@ -8,7 +8,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
   charterStatus, pauseSwitch, reasonWords, heldWords, outcomeWords, runningRows, queueRows,
-  ledgerRow, draftFromCharter, charterFromDraft, charterLines, ONE_AT_A_TIME, MONEY_OUT, seatWake,
+  ledgerRow, draftFromCharter, charterFromDraft, charterLines, ONE_AT_A_TIME, MONEY_OUT, MONEY_OUT_ACTS, seatWake,
 } from '../../frontend/app/RelinkShell/house-clock/house-clock-view.js';
 import { askRow, openAskCount } from '../../frontend/app/RelinkShell/house-clock/asks-view.js';
 import { HouseClockBody } from '../../frontend/app/RelinkShell/house-clock/HouseClockBody.jsx';
@@ -23,7 +23,7 @@ const NAMES = { 'lane-quae': 'Quae', 'lane-optio': 'Corin' };
 const BASE = {
   v: 1, goal: 'Find a real gap and build for it.', linesOfWork: ['research digests'],
   seats: [{ laneId: 'lane-quae', dailyCap: 2 }], quietHours: { start: '22:00', end: '07:00' }, cadence: { everyHours: 24 },
-  delegation: { teamPlans: true, maxMembers: 3, maxSteps: 5, maxProgrammeRuns: 3 }, allow: ['intents/social.post'], escalate: [MONEY_OUT],
+  delegation: { teamPlans: true, maxMembers: 3, maxSteps: 5, maxProgrammeRuns: 3 }, allow: ['intents/social.post'], escalate: [...MONEY_OUT_ACTS],
   paused: false, pausedAt: null, version: 1, updatedAt: '2026-10-16T10:00:00.000Z',
   approvedAt: null, approvedBy: null, approvedVersion: null,
 };
@@ -176,7 +176,7 @@ describe('house-clock-view — the charter form, both ways', () => {
       // A blank charter stands at the dial's default until the operator chooses (company line, 2026-10-29).
       involvement: 'PARTNER',
     });
-    expect(normalizeCharter(fields, { ownedLanes: ['lane-quae'] }).escalate).toEqual([MONEY_OUT]);
+    expect(normalizeCharter(fields, { ownedLanes: ['lane-quae'] }).escalate).toEqual([...MONEY_OUT_ACTS]);
   });
 
   it('the charter reads back in plain sentences', () => {
@@ -184,7 +184,7 @@ describe('house-clock-view — the charter form, both ways', () => {
     expect(lines['MAY WAKE']).toBe('Quae — up to 2 a day');
     expect(lines['QUIET HOURS']).toBe('22:00 to 07:00, nothing wakes');
     expect(lines['THE OPTIO MAY APPROVE']).toBe('team plans of up to 3 members and 5 steps, and a programme\'s runs up to 3');
-    expect(lines['ALWAYS COMES TO YOU']).toBe(MONEY_OUT);
+    expect(lines['ALWAYS COMES TO YOU']).toBe(MONEY_OUT_ACTS.join(' · '));
   });
 });
 

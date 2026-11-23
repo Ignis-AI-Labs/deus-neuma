@@ -32,6 +32,7 @@ import { foldContacts, contactStats } from '../services/sales/contact-book.js';
 import { readAudienceSites } from '../services/sales/site-reads.js';
 import { isConnectionOn } from '../services/connections/connection-switches.js';
 import { readOutbox, setReview, sendDraft, returnDraft, editDraft, withdrawDrafts } from '../services/sales/email-outbox.js';
+import { withFooters } from '../services/sales/opt-out.js';
 import { createLogger } from '../services/logger.js';
 import { recordNames } from '../services/sales/record-names.js';
 import { parseLeadFile, planImport } from '../services/leads/lead-import.js';
@@ -64,10 +65,10 @@ router.get('/', async (req, res) => {
     // The lead list itself, each lead under what it is to the house (a buyer, an applicant, a partner, …).
     // …and tied to the campaign and the audience that found it, so the sheet says who is being written to for what.
     const origins = leadOrigins({ campaigns, segments, prospects, leads });
-    const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, said: saidOf(l), call: callOf(l), callOff: callOffOf(l), source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null, origin: origins.get(l.id) ?? null, thread: leadThread(l), foundBy: provenance.get(l.id) ?? null, bounced: bouncedLead(l) }));
+    const list = leads.map((l) => ({ id: l.id, name: l.name, contact: l.contact, kind: kindOf(l), channel: sourceOf(l), status: l.status, said: saidOf(l), call: callOf(l), callOff: callOffOf(l), source: l.source, updatedAt: l.updatedAt, owner: l.ownerNeumaId ?? null, last: l.touches?.at(-1)?.note ?? null, origin: origins.get(l.id) ?? null, thread: leadThread(l), foundBy: provenance.get(l.id) ?? null, bounced: bouncedLead(l), tags: l.tags ?? [], fields: l.fields ?? {}, about: l.about ?? '' }));
     // The contact book: every person the house knows, one record each, read from the records above.
     const contacts = foldContacts({ leads, prospects, lookups, suppressions, segments, candidates, checks: await readAddressChecks(wallet) });
-    const outbox = await readOutbox(wallet);
+    const outbox = await readOutbox(wallet).then(async (o) => ({ ...o, drafts: await withFooters(wallet, o.drafts) })); // each with the opt-out it carries
     // THE PIPELINE on the desk (lead-pipeline.js): each audience's searches, and the companies people were pulled at.
     const searches = await readSearches(wallet);
     const pulled = [...peopleByCompany(lookups).keys()];

@@ -247,14 +247,14 @@ describe('the business model of a company', () => {
 });
 
 describe('the company file', () => {
-  const umbrae = { id: 'umbrae', name: 'Umbrae', parentId: 'ignis', site: { url: 'https://umbrae.io', links: [] }, legalEntity: null, repos: [{}] };
+  const umbrae = { id: 'umbrae', name: 'Umbrae', parentId: 'ignis', site: { url: 'https://umbrae.io', links: [] }, legalEntity: { name: 'Umbrae Labs', jurisdiction: null, postalAddress: '1 Market St, San Francisco, CA 94105' }, repos: [{}] };
   const facts = { sheet: { id: 'fs-1', facts: [] }, review: { verdict: 'approved' }, approved: { id: 'fs-1', facts: [
     { n: 1, company: 'umbrae', claim: 'Liquidity providers keep 95% of every swap fee' }, { n: 2, company: 'ignis', claim: 'Sessions run 60 minutes' }] } };
   const segments = [{ id: 's-1', name: 'Base token teams', company: 'umbrae', state: 'approved' }, { id: 's-2', name: 'Founders', company: 'ignis', state: 'draft' }, { id: 's-3', name: 'Old', company: 'umbrae', state: 'retired' }];
 
   test('joins what stands for ONE company and leaves a sister company out', () => {
     const file = companyFile(umbrae, { facts, segments, models: foldModels([{ type: 'filed', company: 'umbrae', model: MODEL, by: 'operator', at: 't1' }]), campaigns: [{ id: 'c-1', name: 'Umbrae Market Depth', companyId: 'umbrae' }, { id: 'c-2', name: 'Neuma User Adoption', companyId: 'deus-neuma' }] });
-    expect(file).toMatchObject({ id: 'umbrae', site: 'https://umbrae.io', parent: 'ignis', repos: 1, missing: [] });
+    expect(file).toMatchObject({ id: 'umbrae', site: 'https://umbrae.io', parent: 'ignis', repos: 1, postal: '1 Market St, San Francisco, CA 94105', missing: [] });
     expect(file.facts.map((f) => f.n)).toEqual([1]);
     expect(file.audiences).toEqual([{ id: 's-1', name: 'Base token teams', state: 'approved' }]);
     expect(file.campaigns.map((c) => c.name)).toEqual(['Umbrae Market Depth']);
@@ -270,8 +270,11 @@ describe('the company file', () => {
 
   test('names what is missing and tells the seat to say nothing that rests on it', () => {
     const bare = companyFile({ id: 'deus-neuma', name: 'Deus Neuma', parentId: null, site: { url: null, links: [] }, repos: [] }, { facts: null, segments: [], campaigns: [] });
-    expect(bare.missing).toHaveLength(3);
+    expect(bare.missing).toHaveLength(4);
     expect(bare.missing[0]).toMatch(/^its business model: what it sells, who pays, what it costs and what objectively changes for the buyer/);
+    // The law asks every sales email for the sender's postal address (sales/opt-out.js): named until it is set.
+    expect(bare.missing[3]).toMatch(/^its postal address, printed under every sales email/);
+    expect(bare.postal).toBeNull();
     expect(companiesText([bare])).toMatch(/Deus Neuma \[deus-neuma\]: site NOT SET[\s\S]*MISSING: its business model[\s\S]*; its site address[\s\S]*Say nothing about Deus Neuma that rests on a missing item/);
     expect(companiesText([])).toBe('');
   });

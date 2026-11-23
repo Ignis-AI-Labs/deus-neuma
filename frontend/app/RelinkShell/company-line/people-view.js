@@ -2,6 +2,8 @@
 // A lead is a person with a status, so the lead list and the contact book are one list; the counts across the
 // top are the filters. Pure.
 
+import { quoted } from '../sheet/sheet-view.js';
+
 /** Each kind, in the order the house works them, with its plain name and what it means. */
 export const KIND_WORDS = Object.freeze({
   unsorted: ['NOT SORTED YET', 'nobody has said what these are to the house; sort each from its row, or hand them all to your sales member'],
@@ -110,12 +112,20 @@ export const campaignCounts = (rows, view) => tally(inView(rows, view).filter((r
   (id) => { const lead = rows.find((r) => r.lead && (r.lead.origin?.campaignId ?? (r.lead.origin ? `audience:${r.lead.origin.audienceId}` : NO_ORIGIN)) === id)?.lead; return id === NO_ORIGIN ? 'NO CAMPAIGN (WROTE IN OR ADDED BY HAND)' : lead.origin.campaign ?? `NO CAMPAIGN · ${lead.origin.audience}`; });
 const campaignKey = (lead) => lead.origin?.campaignId ?? (lead.origin ? `audience:${lead.origin.audienceId}` : NO_ORIGIN);
 
-const hit = (r, q) => [r.name, r.title, r.company, r.domain, r.email, r.reach, r.lead?.origin?.campaign, r.lead?.origin?.audience].some((v) => String(v ?? '').toLowerCase().includes(q));
+const hit = (r, q) => [r.name, r.title, r.company, r.domain, r.email, r.reach, r.lead?.origin?.campaign, r.lead?.origin?.audience, ...(r.lead?.tags ?? []), ...Object.values(r.lead?.fields ?? {}), r.lead?.about].some((v) => String(v ?? '').toLowerCase().includes(q));
 
 /** The rows that show: one view, narrowed by kind, by source and by the search words. */
-export const narrow = (rows, { view = 'all', kind = '', source = '', campaign = '', query = '' } = {}) => {
+export const narrow = (rows, { view = 'all', kind = '', source = '', campaign = '', tag = '', query = '' } = {}) => {
   const q = String(query).trim().toLowerCase();
-  return inView(rows, view).filter((r) => (!kind || r.lead?.kind === kind) && (!source || r.lead?.channel === source) && (!campaign || (r.lead && campaignKey(r.lead) === campaign)) && (!q || hit(r, q)));
+  return inView(rows, view).filter((r) => (!kind || r.lead?.kind === kind) && (!source || r.lead?.channel === source) && (!campaign || (r.lead && campaignKey(r.lead) === campaign))
+    && (!tag || (r.lead?.tags ?? []).some((t) => t.toLowerCase() === tag)) && (!q || hit(r, q)));
+};
+
+/** Within a view: the operator's tags on the leads, each with its count (a tag's spellings counted as one). */
+export const tagCounts = (rows, view) => {
+  const by = new Map();
+  for (const r of inView(rows, view)) for (const t of r.lead?.tags ?? []) { const k = t.toLowerCase(); by.set(k, { id: k, label: by.get(k)?.label ?? t, n: (by.get(k)?.n ?? 0) + 1 }); }
+  return [...by.values()].sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
 };
 
 /** The tab's own line: every count that matters, nothing else. */
@@ -139,13 +149,15 @@ export const SCAN_ASK = 'Scan the house mailbox for leads we missed, with sales/
 /** What the seat's holder is asked, to say what every unsorted lead is. */
 export const SORT_ASK = 'Sort every lead your briefing lists as NOT SORTED YET, in one sales/kind filing. Judge each from its own words (its note, its source, its message): a buyer may pay us, a vendor is selling to us, a partner wants to build or list with us, an applicant wants to work for us, an investor may fund us, press writes about us; anything else is other. Then tell me, one line each, what you filed each one as and why. Where you cannot tell, say so and ask me.';
 
-const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+// A name, title or company read from a page or an imported file may start like a formula: quoted() writes it as text.
+const cell = quoted;
 
 /** The whole book as a spreadsheet file's text (one person a row). */
 export const contactsCsv = (contacts = [], leads = []) => {
   const origin = new Map(leads.map((l) => [l.id, l.origin ?? null]));
+  const byId = new Map(leads.map((l) => [l.id, l]));
   return [
-  ['name', 'title', 'company', 'domain', 'email', 'address is', 'other way to reach', 'filed as', 'lead status', 'came from', 'campaign', 'audience', 'first seen', 'source'].map(cell).join(','),
-  ...contacts.map((c) => [c.name, c.title, c.company, c.domain, c.email, c.state, c.reach, c.lead?.kind, c.lead?.status, c.lead?.channel, origin.get(c.lead?.id)?.campaign, origin.get(c.lead?.id)?.audience, c.at, c.source].map(cell).join(',')),
+  ['name', 'title', 'company', 'domain', 'email', 'address is', 'other way to reach', 'filed as', 'lead status', 'came from', 'campaign', 'audience', 'first seen', 'source', 'tags', 'note'].map(cell).join(','),
+  ...contacts.map((c) => [c.name, c.title, c.company, c.domain, c.email, c.state, c.reach, c.lead?.kind, c.lead?.status, c.lead?.channel, origin.get(c.lead?.id)?.campaign, origin.get(c.lead?.id)?.audience, c.at, c.source, (byId.get(c.lead?.id)?.tags ?? []).join(', '), byId.get(c.lead?.id)?.about].map(cell).join(',')),
 ].join('\r\n');
 };

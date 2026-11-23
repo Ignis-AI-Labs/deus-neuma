@@ -126,6 +126,17 @@ describe('pruning an arm64 bundle', () => {
     expect(fs.existsSync(path.join(modules, 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'))).toBe(true);
   });
 
+  it('a packed app (an archive with its native modules beside it) is pruned the same way', () => {
+    const buildDir = bundle({ exe: ARM64, prebuilds });
+    const resources = path.join(appIn(buildDir), 'Contents', 'Resources');
+    fs.renameSync(path.join(resources, 'app'), path.join(resources, 'app.asar.unpacked'));
+    prune({ appOutDir: buildDir, productFilename: 'NEUMA' });
+    const modules = path.join(resources, 'app.asar.unpacked', 'node_modules');
+    expect(fs.existsSync(path.join(modules, 'node-pty', 'prebuilds', 'darwin-arm64', 'pty.node'))).toBe(true);
+    expect(fs.existsSync(path.join(modules, 'node-pty', 'prebuilds', 'darwin-x64'))).toBe(false);
+    expect(fs.existsSync(path.join(modules, 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'))).toBe(true);
+  });
+
   it('dryRun reports without deleting, so the list can be read first', () => {
     const buildDir = bundle({ exe: ARM64, prebuilds });
     const { removed } = prune({ appOutDir: buildDir, dryRun: true });

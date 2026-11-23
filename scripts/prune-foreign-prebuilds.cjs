@@ -171,11 +171,14 @@ function prune({ appOutDir, platform = 'darwin', dryRun = false, productFilename
   }
 
   const arch = PREBUILD_ARCH[chip] || chip;
-  const modules = path.join(bundleDir, 'Contents', 'Resources', 'app', 'node_modules');
+  // Packed as an archive (asar: true), the native modules stand beside it in app.asar.unpacked; unpacked, under app.
+  // Whichever this bundle holds is pruned (0.1.184: the hook read only app/, found nothing, and both chips shipped).
+  const resources = path.join(bundleDir, 'Contents', 'Resources');
+  const roots = ['app', 'app.asar.unpacked'].map((dir) => path.join(resources, dir, 'node_modules')).filter((dir) => fs.existsSync(dir));
 
   // prebuilds/<platform>-<arch>/
   const wantedPrebuild = `darwin-${arch}`;
-  for (const prebuilds of dirsNamed(modules, 'prebuilds')) {
+  for (const prebuilds of roots.flatMap((modules) => dirsNamed(modules, 'prebuilds'))) {
     for (const entry of fs.readdirSync(prebuilds, { withFileTypes: true })) {
       if (!entry.isDirectory() || !PREBUILD_DIR.test(entry.name)) continue;
       const full = path.join(prebuilds, entry.name);
@@ -191,7 +194,7 @@ function prune({ appOutDir, platform = 'darwin', dryRun = false, productFilename
 
   // bin/<platform>-<arch>-<abi>/
   const wantedStaging = new RegExp(`^darwin-${arch}-\\d+$`);
-  for (const binDir of dirsNamed(modules, 'bin')) {
+  for (const binDir of roots.flatMap((modules) => dirsNamed(modules, 'bin'))) {
     for (const entry of fs.readdirSync(binDir, { withFileTypes: true })) {
       if (!entry.isDirectory() || !STAGING_DIR.test(entry.name)) continue;
       const full = path.join(binDir, entry.name);
@@ -206,7 +209,7 @@ function prune({ appOutDir, platform = 'darwin', dryRun = false, productFilename
   }
 
   // <name>-darwin-<arch>/ and @scope/darwin-<arch>/ — the other chip's package goes whole
-  for (const pkg of packagesUnder(modules)) {
+  for (const pkg of roots.flatMap((modules) => packagesUnder(modules))) {
     const m = CHIP_PACKAGE.exec(pkg.name);
     if (!m) continue;
     if (m[1] === arch) { result.kept.push(pkg.name); continue; }

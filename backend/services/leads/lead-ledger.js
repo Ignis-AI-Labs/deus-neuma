@@ -27,6 +27,8 @@ import { createWriteChain } from '../write-chain.js';
 import { createHouseStore } from '../house-office.js';
 import { legacyCmoPath } from '../marketing/cmo-designation.js';
 import { cleanSaid } from '../sales/reply-said.js';
+import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
+import { recordChange, mergeLeads, recordWords } from './lead-record.js';
 
 const DEFAULT_LEGACY_PATH = join(getSettingsDir(), 'lead-ledger.json');
 
@@ -77,6 +79,7 @@ const KNOWN_LANES = Object.freeze(['email', 'other']);
 const FIELD_MAX = 500;
 const NOTE_MAX = 2000;
 const TEXT_MAX = 6000;
+const REMOVED_FILE = 'lead-removed.jsonl';
 
 /**
  * Validate the shape of a new or updated lead (pure). Returns an error string
@@ -134,6 +137,7 @@ export const formatLeadsForBeing = (leads, { max = 60 } = {}) => {
       l.channelId && l.channelId !== 'other' ? `via ${l.channelId}` : null,
       l.ownerNeumaId ? `held by ${l.ownerNeumaId}` : '· unheld',
       last ? `· last: ${last.note.slice(0, 80)}` : null,
+      recordWords(l) ? `· ${recordWords(l)}` : null,
     ].filter(Boolean).join(' ');
   });
   const dropped = leads.length - lines.length;
@@ -363,15 +367,66 @@ export const createLeadLedger = ({ path }) => {
       });
     },
 
-    /** Drop one lead from the ledger entirely. impure. */
-    remove(id) {
+    /**
+     * Drop one lead from the ledger entirely. It leaves a TOMBSTONE beside the ledger (lead-removed.jsonl): which
+     * lead, who removed it and when — never who the person was, so a removal the person asked for stays one. impure.
+     * @param {string} id
+     * @param {{by?: string, why?: string}} [who]
+     */
+    remove(id, { by = '', why = '' } = {}) {
       return serialize(async () => {
         const leads = await load();
         if (!leads.some((l) => l.id === id)) return false;
+        await appendJsonLine(join(dirname(target()), REMOVED_FILE), { type: 'removed', id, by: String(by).slice(0, FIELD_MAX), ...(trimmed(why) ? { why: trimmed(why).slice(0, FIELD_MAX) } : {}), at: new Date().toISOString() });
         await save(leads.filter((l) => l.id !== id));
         return true;
       });
     },
+
+    /**
+     * The operator's own record of a person: tags, the house's fields, the note on top (lead-record.js). One touch
+     * says what changed. impure.
+     * @param {string} id
+     * @param {{tags?: unknown, fields?: object, about?: unknown}} change
+     * @param {{defs: object[], by: string}} ctx - defs: the house's fields (crm-fields.js)
+     */
+    setRecord(id, change, { defs = [], by = '' } = {}) {
+      return serialize(async () => {
+        const leads = await load();
+        const lead = leads.find((l) => l.id === id);
+        if (!lead) return { ok: false, error: 'no such lead' };
+        const judged = recordChange(lead, change ?? {}, defs);
+        if (!judged.ok) return { ok: false, error: judged.why };
+        if (!Object.keys(judged.set).length) return { ok: true, lead, changed: false };
+        const now = new Date().toISOString();
+        Object.assign(lead, judged.set, { updatedAt: now });
+        lead.touches.push({ at: now, by: String(by), ...judged.touch });
+        await save(leads);
+        return { ok: true, lead, changed: true };
+      });
+    },
+
+    /**
+     * Two leads that are one person, as one (lead-record.js mergeLeads): `keepId` stays with both histories, `dropId`
+     * goes, leaving a tombstone that says where it went. impure.
+     */
+    merge(keepId, dropId, { by = '' } = {}) {
+      return serialize(async () => {
+        if (keepId === dropId) return { ok: false, error: 'a lead cannot be merged with itself' };
+        const leads = await load();
+        const keep = leads.find((l) => l.id === keepId);
+        const drop = leads.find((l) => l.id === dropId);
+        if (!keep || !drop) return { ok: false, error: 'no such lead' };
+        const at = new Date().toISOString();
+        const merged = mergeLeads(keep, drop, { by: String(by), at });
+        await appendJsonLine(join(dirname(target()), REMOVED_FILE), { type: 'removed', id: dropId, by: String(by).slice(0, FIELD_MAX), why: `merged into ${keepId}`, at });
+        await save(leads.filter((l) => l.id !== dropId).map((l) => (l.id === keepId ? merged : l)));
+        return { ok: true, lead: merged };
+      });
+    },
+
+    /** The tombstones: every lead removed, newest last. impure. */
+    removed: async () => (await readJsonLines(join(dirname(target()), REMOVED_FILE))).records,
   };
 };
 

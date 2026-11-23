@@ -15,6 +15,7 @@
  *   PUT /companies/:id/model          the operator writes a company's business model; it stands at once
  *   POST /companies/:id/model/approve the operator approves the model a member filed
  *   POST /companies/:id/model/return  {note} — or sends it back with what should change
+ *   PUT /companies/:id/postal         {postalAddress} — where the company receives post (under every sales email)
  *   GET /:office/eyes   {eyes} — what the seat's holder reads at the top of
  *                       its turn (null when nobody holds the seat)
  *   DELETE /seating     the seating the members filed (house/seating) leaves the
@@ -33,6 +34,7 @@ import { houseCampaigns, linkCampaigns, unlinkCampaigns } from '../services/posi
 import { clearSeating } from '../services/positions/position-seating.js';
 import { companyFiles } from '../services/positions/company-file.js';
 import { MODEL_FIELDS, fileModel, settleModel } from '../services/positions/business-model.js';
+import { setCompanyPostal } from '../services/marketing/companies.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('Positions');
@@ -91,6 +93,8 @@ const MODEL_MOVES = [
   ['put', '/companies/:id/model', (wallet, id, body) => fileModel(wallet, id, body, { by: 'operator' })],
   ['post', '/companies/:id/model/approve', (wallet, id, body) => settleModel(wallet, id, { approve: true, proposalId: body?.proposalId })],
   ['post', '/companies/:id/model/return', (wallet, id, body) => settleModel(wallet, id, { approve: false, note: body?.note, proposalId: body?.proposalId })],
+  // Where the company receives post, printed under every sales email (sales/opt-out.js).
+  ['put', '/companies/:id/postal', (wallet, id, body) => setCompanyPostal(wallet, id, body?.postalAddress).then((r) => (r.ok ? r : { ok: false, reason: r.error }))],
 ];
 for (const [method, path, act] of MODEL_MOVES) {
   router[method](path, async (req, res) => {
@@ -99,11 +103,11 @@ for (const [method, path, act] of MODEL_MOVES) {
       if (!companies.some((c) => c.id === req.params.id)) return res.status(404).json({ error: 'No such company in this house' });
       const moved = await act(req.walletAddress, req.params.id, req.body);
       if (!moved.ok) return res.status(409).json({ error: moved.reason });
-      log.info('a business model was moved by the operator', { company: req.params.id, path });
+      log.info('a company file was moved by the operator', { company: req.params.id, path });
       return res.json({ ok: true, ...(await companiesOf(req.walletAddress)) });
     } catch (error) {
-      log.error('a business model move failed', { error: error.message });
-      return res.status(500).json({ error: 'Failed to save the business model' });
+      log.error('a company file move failed', { error: error.message });
+      return res.status(500).json({ error: 'Failed to save the company file' });
     }
   });
 }

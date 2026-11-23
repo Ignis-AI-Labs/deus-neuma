@@ -90,7 +90,7 @@ export const Sheet = ({ label, columns: given, rows, rowKey, rowName = rowKey, r
         </table>
       </div>
       <div className="sheet-foot">
-        <button type="button" className="sheet-take label-data" data-sheet-csv="" aria-label={`Save ${label} as a spreadsheet file, ${ordered.length} row${ordered.length === 1 ? '' : 's'}`} onClick={take}>SPREADSHEET · {ordered.length.toLocaleString('en-US')} ROW{ordered.length === 1 ? '' : 'S'}</button>
+        <button type="button" className="sheet-take label-data" data-sheet-csv="" aria-label={`SPREADSHEET · ${ordered.length.toLocaleString('en-US')} ROW${ordered.length === 1 ? '' : 'S'} — save ${label} as a spreadsheet file`} onClick={take}>SPREADSHEET · {ordered.length.toLocaleString('en-US')} ROW{ordered.length === 1 ? '' : 'S'}</button>
       </div>
     </div>
   );

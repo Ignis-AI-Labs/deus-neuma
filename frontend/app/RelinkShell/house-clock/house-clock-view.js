@@ -11,6 +11,8 @@ import { DEFAULT_STOP, dialSays } from './involvement-words.js';
 
 /** Money out is the operator's alone; the server always keeps it in `escalate`. */
 export const MONEY_OUT = 'intents/wallet.send';
+/** Every act the server holds as money out (house-clock/charter-shape.js MONEY_OUT): the payment and the liquidity wallet's acts. */
+export const MONEY_OUT_ACTS = Object.freeze([MONEY_OUT, 'intents/lp.open', 'intents/lp.add', 'intents/lp.claim', 'intents/lp.withdraw', 'intents/lp.close', 'intents/lp.swap', 'intents/lp.send', 'intents/lp.create-pool']);
 
 /**
  * Where the charter stands, in plain words. Pure.
@@ -337,7 +339,7 @@ export const draftFromCharter = (charter, lanes) => ({
   maxProgrammeRuns: String(charter?.delegation?.maxProgrammeRuns ?? 3),
   allow: (charter?.allow ?? []).join('\n'),
   // Money out is fixed in escalate by the server; the form shows it as a rule, not a line to delete.
-  escalate: (charter?.escalate ?? []).filter((id) => id !== MONEY_OUT).join('\n'),
+  escalate: (charter?.escalate ?? []).filter((id) => !MONEY_OUT_ACTS.includes(id)).join('\n'),
   involvement: charter?.involvement ?? DEFAULT_STOP,
 });
 

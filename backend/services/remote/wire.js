@@ -61,6 +61,19 @@ export const LOCAL_ONLY_ROUTES = Object.freeze([
   ['delete', '/api/v1/social-channels/accounts/:accountId'],
   ['put', '/api/v1/social-channels/apps/:channelId'],
   ['post', '/api/v1/social-channels/:channel(youtube|tiktok)/connect'],
+  // 2026-11-23 (CRM security read, docs/work/crm-match-blob.md): the mailbox the house sends from, who holds it,
+  // and the keys of the services it pays or is paid through (Stripe, lead data) are set at the desk, as NEW-M1 set
+  // posting credentials — a paired phone that is lost must not be able to point the house's mail or money elsewhere
+  ['put', '/api/v1/email/credentials'],
+  ['delete', '/api/v1/email/credentials'],
+  ['put', '/api/v1/email/binding'],
+  ['delete', '/api/v1/email/binding'],
+  ['put', '/api/v1/routing/services/:serviceId/key'],
+  ['delete', '/api/v1/routing/services/:serviceId/key'],
+  ['put', '/api/v1/routing/providers/:providerId/key'],
+  ['delete', '/api/v1/routing/providers/:providerId/key'],
+  // erasing a person cannot be undone: done at the desk
+  ['post', '/api/v1/people/erase'],
 ]);
 
 const passThrough = (_req, _res, next) => next();

@@ -34,3 +34,6 @@ export const saveModel = (company, model) => positionsCall('PUT', `/companies/${
 
 /** The operator's answer to a model a member filed: approve it, or return it with a note. impure. */
 export const settleModel = (company, approve, note, proposalId) => positionsCall('POST', `/companies/${encodeURIComponent(company)}/model/${approve ? 'approve' : 'return'}`, { body: { note, proposalId }, errorPrefix: 'Could not answer the business model' });
+
+/** Where a company receives post, printed under every sales email ('' clears it). impure. */
+export const savePostal = (company, postalAddress) => positionsCall('PUT', `/companies/${encodeURIComponent(company)}/postal`, { body: { postalAddress }, errorPrefix: 'Could not save the postal address' });

@@ -60,3 +60,12 @@ export const revokeDevice = (id) =>
  * @returns {string}
  */
 export const qrSource = (code) => `${BASE}/qr.svg?code=${encodeURIComponent(code)}`;
+
+/**
+ * The access log: every reach of this desk from outside it, newest first, a page at a time (install owner, desk only).
+ * @param {{before?: ?string}} [page] - before: the `at` of the last line shown
+ * @returns {Promise<{entries: Array<object>, more: boolean}>}
+ */
+// impure
+export const getAccessLog = ({ before = null } = {}) =>
+  apiCall('GET', `${BASE}/access-log${before ? `?before=${encodeURIComponent(before)}` : ''}`, { errorPrefix: 'Could not read the access log' });

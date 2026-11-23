@@ -81,8 +81,10 @@ describe('the contact book', () => {
     expect(narrow(rows, { query: 'zeta.example' }).map((r) => r.company)).toEqual(['Zeta Labs']);
     expect(narrow(rows, { query: 'nobody at all' })).toEqual([]);
     const leadId = book.find((c) => c.lead)?.lead.id;
-    const csv = contactsCsv(book, [{ id: leadId, origin: { campaign: 'Base launch', audience: 'Base token teams' } }]).split('\r\n');
-    expect(csv[0]).toBe('"name","title","company","domain","email","address is","other way to reach","filed as","lead status","came from","campaign","audience","first seen","source"');
+    const csv = contactsCsv(book, [{ id: leadId, origin: { campaign: 'Base launch', audience: 'Base token teams' }, tags: ['vip', 'design'], about: 'Decides with her partner' }]).split('\r\n');
+    expect(csv[0]).toBe('"name","title","company","domain","email","address is","other way to reach","filed as","lead status","came from","campaign","audience","first seen","source","tags","note"');
+    // The operator's own record rides along (crm-match-blob slice 2): the tags and the note on top.
+    expect(csv.find((l) => l.startsWith('"Bo Chen"'))).toMatch(/,"vip, design","Decides with her partner"$/);
     expect(csv).toHaveLength(5);
     expect(csv.find((l) => l.startsWith('"Bo Chen"'))).toContain('"bo@acme.example","confirmed","","buyer","contacted","email","Base launch","Base token teams"');
     expect(Object.keys(STATE_WORDS)).toEqual(EMAIL_STATES);

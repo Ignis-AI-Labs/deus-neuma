@@ -38,7 +38,7 @@ export const invoiceBriefingLines = ({ deals, invoices, receipts, payTo, nowMs, 
 /** The lines for this house, or [] when there is nothing to bill or collect. impure. */
 export const invoiceBriefing = async (wallet, nowMs) => {
   const [{ deals }, { invoices }, receipts, payTo, key] = await Promise.all([
-    readDeals(wallet), readInvoices(wallet), readReceipts(wallet).catch(() => []), readPayTo(wallet), cardKey().catch(() => null),
+    readDeals(wallet), readInvoices(wallet), readReceipts(wallet).catch(() => []), readPayTo(wallet), cardKey(wallet).catch(() => null),
   ]);
   return invoiceBriefingLines({ deals, invoices, receipts, payTo, nowMs, cardReady: Boolean(key) });
 };

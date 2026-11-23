@@ -51,7 +51,7 @@ router.post('/deals/:id/invoice', guard('issue the invoice', async (req, res) =>
   const wallet = req.walletAddress;
   const deal = (await readDeals(wallet)).deals.find((d) => d.id === String(req.params.id)) ?? null;
   if (!deal) return res.status(404).json({ error: 'no such deal in this house' });
-  const [company, payTo, key] = await Promise.all([companyOfHouse(wallet, deal.companyId), readPayTo(wallet), cardKey()]);
+  const [company, payTo, key] = await Promise.all([companyOfHouse(wallet, deal.companyId), readPayTo(wallet), cardKey(wallet)]);
   if (!company) return res.status(400).json({ error: 'the company this deal is for is no longer a company of this house' });
   // Which ways this invoice offers: what the operator ticked, or every way the house can take when nothing was said.
   const said = req.body?.card !== undefined || req.body?.crypto !== undefined;

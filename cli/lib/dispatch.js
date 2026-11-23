@@ -30,6 +30,7 @@ import { registerAcpCommand } from '../commands/acp.js';
 import { registerHooksCommand } from '../commands/hooks.js';
 import { registerExtensionsCommand } from '../commands/extensions.js';
 import { registerWitnessCommand } from '../commands/witness.js';
+import { registerBackupCommand } from '../commands/backup.js';
 import { findProjectRoot } from './project-root.js';
 import { peekActiveBeing } from './active-being.js';
 import { getDaemonHealth } from './daemon-probe.js';
@@ -139,6 +140,7 @@ const buildCli = (argv, { stdout = process.stdout, stderr = process.stderr } = {
   cli = registerHooksCommand(cli, { stdout, stderr });
   cli = registerExtensionsCommand(cli, { stdout, stderr });
   cli = registerWitnessCommand(cli, { stdout, stderr });
+  cli = registerBackupCommand(cli, { stdout, stderr });
 
   return cli
     .command(

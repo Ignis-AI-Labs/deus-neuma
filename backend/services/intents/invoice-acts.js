@@ -37,7 +37,7 @@ export const invoiceIssueIntent = Object.freeze({
     const wallet = connection.walletAddress;
     const deal = (await readDeals(wallet)).deals.find((d) => d.id === String(payload?.deal ?? '').trim()) ?? null;
     if (!deal) return invalid(`"${payload?.deal ?? ''}" is not a deal of this house — your QUAESTOR OFFICE briefing names each won deal by its [id]`);
-    const [company, payTo, key] = await Promise.all([companyOfHouse(wallet, deal.companyId), readPayTo(wallet), cardKey()]);
+    const [company, payTo, key] = await Promise.all([companyOfHouse(wallet, deal.companyId), readPayTo(wallet), cardKey(wallet)]);
     // Only what a being may say is taken from its filing: the lines, the due date, the note. How it is paid is the operator's.
     const said = { lines: payload?.lines, due: payload?.due, note: payload?.note };
     try {

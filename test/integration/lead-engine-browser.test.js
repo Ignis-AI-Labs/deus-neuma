@@ -62,9 +62,11 @@ beforeAll(async () => {
   await ledger.touch(lead.id, { status: 'replied', direction: 'in', note: 'asked for the price', by: 'operator' });
 
   const { default: revenue } = await import('../../backend/routes/revenue-routes.js');
+  const { default: crm } = await import('../../backend/routes/crm-routes.js');
   const web = express();
   web.use(express.json());
   web.use('/api/v1/revenue', revenue);
+  web.use('/api/v1/crm', crm);
   vite = await createVite({
     configFile: false, root: REPO, cacheDir: path.join(tmp, 'vite-cache'), appType: 'custom', esbuild: { jsx: 'automatic' },
     optimizeDeps: { entries: ['test/helpers/lead-engine-page.jsx'], include: ['react', 'react-dom/client', 'react/jsx-runtime'] },
@@ -123,8 +125,20 @@ describe('THE LEAD ENGINE section — read the pitch, see the reasons, approve i
     expect(await grace.locator('[data-lead-status]').textContent()).toBe('THEY WROTE');
     expect(await grace.locator('[data-upkeep="answer"]').getAttribute('title')).toContain('PROMISED: two short written ideas on a field app');
     // One person, one line: a sheet row with a cell for each fact.
-    expect(await page.locator('[data-sheet="people"] thead th').allTextContents()).toEqual(['NAME', 'COMPANY', 'TITLE', 'CAMPAIGN', 'EMAIL OR REACH', 'PROOF', 'FILED AS', 'STANDS', 'FROM', 'DUE']);
+    expect(await page.locator('[data-sheet="people"] thead th').allTextContents()).toEqual(['NAME', 'COMPANY', 'TITLE', 'CAMPAIGN', 'EMAIL OR REACH', 'PROOF', 'FILED AS', 'STANDS', 'FROM', 'TAGS', 'DUE']);
     expect(await grace.locator('[data-person-reach]').textContent()).toBe('grace@navy.example');
+    // Her own record, opened under her row (crm-match-blob slice 2): tags saved, then the sheet narrows by one.
+    await grace.locator('th button').first().click();
+    const record = page.locator('[data-person-record]').first();
+    await record.getByLabel(/^Tags on Grace Hopper/).fill('navy, compilers');
+    await record.getByRole('button', { name: /^SAVE the record of Grace Hopper/ }).click();
+    await page.locator('[data-person-record-said]').waitFor();
+    expect(await page.locator('[data-person-record-said]').textContent()).toBe('SAVED');
+    await page.locator('[data-person]').filter({ hasText: 'Grace Hopper' }).locator('[data-lead-tags]').filter({ hasText: 'navy, compilers' }).waitFor();
+    // FIND ANYTHING finds her by a tag.
+    await page.getByLabel('Find a person, a deal, an invoice or a company by any word').fill('compilers');
+    await page.locator('[data-crm-search]').getByRole('button', { name: 'FIND' }).click();
+    await page.locator('[data-sheet="found"]').getByRole('button', { name: 'Show Grace Hopper in the sheet below' }).waitFor();
     expect(await page.locator('[data-people-stat]').first().textContent()).toMatch(/ACTIVE LEAD/);
     // The facts sheet waits for the operator: every fact with its source.
     expect(await page.locator('[data-facts-state]').textContent()).toBe('WAITS FOR YOUR APPROVAL');

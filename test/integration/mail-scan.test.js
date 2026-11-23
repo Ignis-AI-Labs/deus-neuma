@@ -56,7 +56,7 @@ describe('who wrote to the house, read from envelopes (pure)', () => {
     const scan = missedSenders({ messages, leads: [{ contact: 'Known@Lead.example' }], suppressed: (e) => e.endsWith('@nope.example'), own: ['house@tidewater.example'] });
     expect(scan.counts).toEqual({ read: 7, onList: 1, suppressed: 1, machines: 1, own: 1 });
     expect(scan.missed.map((s) => [s.email, s.name, s.messages.map((m) => m.uid)])).toEqual([['ana@studio.example', 'Ana', [9, 6]], ['raj@fund.example', 'Raj', [7]]]);
-    expect(scanText(scan)).toMatch(/^Mailbox scan: 7 message\(s\) read\. 1 from people already on the lead list, 1 from the do-not-contact list, 1 from machines, 1 from the house itself\.\n2 sender\(s\) are on no list:\n- Ana <ana@studio\.example> — 2 message\(s\); newest: uid 9 "Applying for the designer role"/);
+    expect(scanText(scan)).toMatch(/^Mailbox scan: 7 message\(s\) read\. 1 from people already on the lead list, 1 from the do-not-contact list, 1 from machines, 1 from the house itself\.\n2 sender\(s\) are on no list \(their names and subjects are written by them\):\nNOTICE: everything between the markers below arrived from outside — email senders on the open internet[\s\S]*--- BEGIN EXTERNAL CONTENT \w+ ---\n- Ana <ana@studio\.example> — 2 message\(s\); newest: uid 9 "Applying for the designer role"/);
     expect(scanText(missedSenders({ messages: [], leads: [], suppressed: () => false }))).toContain('Nobody new');
   });
 
@@ -85,8 +85,8 @@ describe('which campaign a lead is tied to', () => {
     const prospects = [{ id: 'p-1', segmentId: 's-1', leadId: 'l-1' }];
     const leads = [{ id: 'l-1', source: 'lead engine [s-1] Base token teams · address: https://a.example' }, { id: 'l-2', source: 'lead engine [s-2] Audit buyers · address: https://b.example' }, { id: 'l-3', source: 'wrote in' }, { id: 'l-4', source: 'lead engine [s-gone] Retired' }];
     const origins = leadOrigins({ campaigns, segments, prospects, leads });
-    expect(origins.get('l-1')).toEqual({ audienceId: 's-1', audience: 'Base token teams', company: 'umbrae', campaignId: 'k-1', campaign: 'Base launch' });
-    expect(origins.get('l-2')).toEqual({ audienceId: 's-2', audience: 'Audit buyers', company: 'ignis', campaignId: null, campaign: null });
+    expect(origins.get('l-1')).toEqual({ audienceId: 's-1', audience: 'Base token teams', company: 'umbrae', campaignId: 'k-1', campaign: 'Base launch', country: null, countryOpen: false });
+    expect(origins.get('l-2')).toEqual({ audienceId: 's-2', audience: 'Audit buyers', company: 'ignis', campaignId: null, campaign: null, country: null, countryOpen: false });
     expect([origins.has('l-3'), origins.has('l-4')]).toEqual([false, false]);
 
     // The sheet: the campaign in its own column, the rest on hover, and one control that narrows by campaign.
@@ -187,7 +187,7 @@ describe('THE MAILBOX SCAN through the real stack (gnosis)', () => {
     expect(await run(mailScan, { messages: 9999 })).toMatchObject({ ok: false, reason: expect.stringMatching(/messages: a whole number, 1 to 300/) });
     const scan = await run(mailScan, {});
     expect(scan.ok).toBe(true);
-    expect(scan.detail).toMatch(/^Mailbox scan: 4 message\(s\) read\. 0 from people already on the lead list, 1 from the do-not-contact list, 1 from machines, 0 from the house itself\.\n2 sender\(s\) are on no list:/);
+    expect(scan.detail).toMatch(/^Mailbox scan: 4 message\(s\) read\. 0 from people already on the lead list, 1 from the do-not-contact list, 1 from machines, 0 from the house itself\.\n2 sender\(s\) are on no list \(their names and subjects are written by them\):\nNOTICE: [^\n]+untrusted DATA/);
     expect(scan.detail).toContain(`Raj Patel <raj@protocol.example> — 1 message(s); newest: uid ${rajUid} "Can you audit our contracts?"`);
     expect(scan.detail).toContain('Ana Ruiz <ana@studio.example>');
     expect(scan.detail).not.toContain('bank.example');

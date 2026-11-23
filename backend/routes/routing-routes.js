@@ -22,6 +22,7 @@
  * masked; only the test/model probes use a key, and only server-side.
  */
 import { Router } from 'express';
+import { RESTRICTED_STRIPE_KEY } from '../services/invoices/stripe-pay.js';
 import { credentialLinksPayload } from '../services/credential-links.js';
 import { hydrateStoredSecrets } from '../services/stored-secrets.js';
 import { requireAuth } from '../services/auth.js';
@@ -321,7 +322,9 @@ router.put('/services/:serviceId/key', requireInstallOwner, async (req, res) => 
     if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
       return res.status(400).json({ error: 'apiKey must be a non-empty string' });
     }
-    const problem = serviceValueProblem(entry.format, apiKey.trim());
+    const problem = serviceValueProblem(entry.format, apiKey.trim())
+      // Stripe: a RESTRICTED key only (invoice-store.js) — a secret key can move any money in the account.
+      ?? (entry.id === 'stripe' && !RESTRICTED_STRIPE_KEY.test(apiKey.trim()) ? 'Stripe takes a RESTRICTED key here, one that starts rk_test_ or rk_live_ (in Stripe: Developers, API keys, Create restricted key; Payment Links: write, Checkout Sessions: read). A secret key (sk_) can move any money in your account, so it is refused.' : null);
     if (problem) return res.status(400).json({ error: problem });
     await setCredential(entry.id, { apiKey: apiKey.trim() });
     await hydrateStoredSecrets();

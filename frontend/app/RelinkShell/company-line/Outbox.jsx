@@ -35,6 +35,7 @@ const Email = ({ draft, busy, onSend, onReturn, onEdit, onDelete = null, unconfi
       <p className="cline-aud-k label-data">TO {draft.to.join(', ')} · SUBJECT</p>
       <p className="cline-out-subject">{draft.subject}</p>
       <pre className="cline-out-text" data-outbox-text="">{draft.text}</pre>
+      {draft.footer ? <pre className="cline-out-text cline-out-footer" data-outbox-footer="" title="Added under every sales email: the way to stop them, and where your company receives post. The mail program's own unsubscribe button works too.">{draft.footer}</pre> : null}
       {draft.promise ? <p className="cline-move-t">IT PROMISES: {draft.promise}</p> : null}
       <div className="cline-open">
         <button type="button" className="sec-scan label-data" disabled={busy} aria-label={`SEND THIS ONE — to ${draft.to.join(', ')}`} onClick={() => onSend([draft.id])}>SEND THIS ONE</button>

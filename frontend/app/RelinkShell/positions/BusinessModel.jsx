@@ -8,14 +8,30 @@
 import { useCallback, useEffect, useState } from 'react';
 import { EmptyState } from '../empty-state.jsx';
 import { uiSound } from '../../../services/ui-sound.js';
-import { getCompanies, saveModel, settleModel } from '../../../services/positions-client.js';
+import { getCompanies, saveModel, settleModel, savePostal } from '../../../services/positions-client.js';
 import { Fold } from '../fold/Fold.jsx';
 import { announceWaitingChanged } from '../waiting/waiting-changed.js';
 import { draftOf, readyToSave, changed, workItOutAsk, rowsFor, modelStats, modelsStats, modelsWait } from './business-model-view.js';
 
+// Where the company receives post: printed under every sales email, as the law asks (sales/opt-out.js). One line.
+const Postal = ({ company, busy, onSave }) => {
+  // An address from the company above it (postalFrom) shows as that, and stays until this one sets its own.
+  const own = company.postalFrom ? '' : company.postal ?? '';
+  const [text, setText] = useState(own);
+  const edited = text.trim() !== own;
+  return (
+    <div className="cline-open" data-postal={company.postal ? (company.postalFrom ? 'inherited' : 'set') : 'missing'}>
+      <span className="label-data">POSTAL ADDRESS{company.postal ? (company.postalFrom ? ` · ${company.postalFrom.toUpperCase()}'S: ${company.postal}` : '') : ' · MISSING'}</span>
+      <input className="cline-input" aria-label={`The postal address of ${company.name}, printed under every sales email`} placeholder="street or PO box, city, postcode, country — printed under every sales email"
+        maxLength={200} disabled={busy} value={text} onChange={(e) => setText(e.target.value)} />
+      <button type="button" className="sec-scan label-data" disabled={busy || !edited} aria-label={`SAVE the postal address of ${company.name}`} onClick={() => onSave(company, text.trim())}>SAVE</button>
+    </div>
+  );
+};
+
 // One company: a line first (its name, where its model stands, how much of it is answered). Open, the model
 // reads as text under its questions; the boxes appear only on EDIT, or when nothing is written yet.
-const Company = ({ company, fields, names, holder, busy, onSave, onSettle, onHand }) => {
+const Company = ({ company, fields, names, holder, busy, onSave, onSettle, onHand, onPostal }) => {
   const shown = company.modelProposal?.model ?? company.model ?? null;
   const [editing, setEditing] = useState(!shown);
   const [draft, setDraft] = useState(() => draftOf(company, fields));
@@ -52,6 +68,7 @@ const Company = ({ company, fields, names, holder, busy, onSave, onSettle, onHan
             </div>
           </>
         )}
+        <Postal key={company.postal ?? ''} company={company} busy={busy} onSave={onPostal} />
         {holder ? <div className="cline-open"><button type="button" className="sec-scan label-data" disabled={busy} aria-label={`WORK IT OUT WITH ${holder.name} — the business model of ${company.name}`} title={`${holder.name}'s chat opens with the ask drafted; you send it`} onClick={() => onHand(holder, workItOutAsk(company))}>WORK IT OUT WITH {holder.name.toUpperCase()}</button></div> : null}
         {waiting ? (
           <div className="cline-open">
@@ -101,7 +118,8 @@ export const BusinessModel = ({ names = {}, holder = null, onHand = () => {}, on
           // Keyed by what stands and waits: when either changes (a save, an approval, a member's filing) the form starts from it again.
           <Company key={`${c.id}:${JSON.stringify([c.model, c.modelProposal])}`} company={c} fields={read.fields} names={names} holder={holder} busy={busy} onHand={onHand}
             onSave={(company, draft) => move(() => saveModel(company.id, draft), `The business model of ${company.name} is saved and stands.`)}
-            onSettle={(company, approve, note) => move(() => settleModel(company.id, approve, note, company.modelProposal?.id), approve ? `The business model of ${company.name} is approved.` : `The business model of ${company.name} went back.`)} />
+            onSettle={(company, approve, note) => move(() => settleModel(company.id, approve, note, company.modelProposal?.id), approve ? `The business model of ${company.name} is approved.` : `The business model of ${company.name} went back.`)}
+            onPostal={(company, address) => move(() => savePostal(company.id, address), address ? `The postal address of ${company.name} is saved; it is printed under every sales email.` : `The postal address of ${company.name} is cleared.`)} />
         ))}
       </ul>
       </Fold>

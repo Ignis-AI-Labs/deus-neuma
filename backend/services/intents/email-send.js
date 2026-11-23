@@ -16,6 +16,7 @@ import { fromFor } from '../email/send-as.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { suppressedRecipients, recordSent, leadEmailRefusal, companyOfRecipients, threadFor } from '../sales/email-ledger.js';
 import { reviewRefusal } from '../sales/email-outbox.js';
+import { salesOptOut } from '../sales/opt-out.js';
 
 // impure — the mailbox position: this lane holds its own house's mailbox AND
 // that house's account resolves.
@@ -86,9 +87,27 @@ export const emailSendIntent = Object.freeze({
   // impure — the real SMTP session; the signal rides in so a barge-in
   // mid-flight aborts the protocol conversation too.
   execute: async (value, { connection, signal }) => {
+    const wallet = connection.walletAddress;
+    // The do-not-contact list again, as it stands NOW: a card can wait hours, and an "unsubscribe" may land in
+    // between. Fails closed, as at validate.
+    let blocked;
+    try {
+      blocked = wallet ? await suppressedRecipients(wallet, [].concat(value.to)) : [];
+    } catch (err) {
+      return { ok: false, reason: `The email was not sent: the house's do-not-contact list could not be read (${err.message}).` };
+    }
+    if (blocked.length) return { ok: false, reason: `The email was not sent: ${blocked.join(', ')} went on the do-not-contact list after the card was raised — never written to again.` };
     const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
+    // Sales mail carries its way out: a line under it and the List-Unsubscribe header (sales/opt-out.js). A sales
+    // email that cannot carry it does not go.
+    let optOut;
+    try {
+      optOut = wallet ? await salesOptOut(wallet, [].concat(value.to)) : null;
+    } catch (err) {
+      return { ok: false, reason: `The email was not sent: its unsubscribe line could not be made (${err.message}).` };
+    }
     // The promise is the house's own record of what it owes; it never rides the wire.
-    const outcome = await sendEmail(credentials, { to: value.to, subject: value.subject, text: value.text, from: value.from, references: connection.walletAddress ? await threadFor(connection.walletAddress, [].concat(value.to)) : [] }, { signal });
+    const outcome = await sendEmail(credentials, { to: value.to, subject: value.subject, text: value.text, from: value.from, references: wallet ? await threadFor(wallet, [].concat(value.to)) : [], optOut }, { signal });
     await journalEmailCall(
       connection, 'email/send',
       outcome.ok ? `to ${outcome.to.join(', ')} — "${String(value.subject).slice(0, 120)}"` : outcome.detail,

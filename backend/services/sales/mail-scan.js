@@ -14,6 +14,7 @@ import { readSuppressions } from './sales-store.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { resolveEmailCredential } from '../email/email-credentials.js';
 import { listInbox, SCAN_MAX_MESSAGES } from '../email/imap-reader.js';
+import { frameUntrustedContent } from '../untrusted-content.js';
 
 export const SCAN_DEFAULT = 100;
 const SHOWN_MAX = 40;
@@ -65,8 +66,8 @@ export const missedSenders = ({ messages, leads, suppressed, own = [] }) => {
 export const scanText = ({ missed, counts }) => [
   `Mailbox scan: ${counts.read} message(s) read. ${counts.onList} from people already on the lead list, ${counts.suppressed} from the do-not-contact list, ${counts.machines} from machines, ${counts.own} from the house itself.`,
   ...(missed.length ? [
-    `${missed.length} sender(s) are on no list:`,
-    ...missed.slice(0, SHOWN_MAX).map((s) => `- ${s.name ? `${s.name} ` : ''}<${s.email}> — ${s.messages.length} message(s); newest: uid ${s.messages[0].uid} "${s.messages[0].subject}" (${s.messages[0].date})`),
+    `${missed.length} sender(s) are on no list (their names and subjects are written by them):`,
+    frameUntrustedContent('email senders on the open internet', missed.slice(0, SHOWN_MAX).map((s) => `- ${s.name ? `${s.name} ` : ''}<${s.email}> — ${s.messages.length} message(s); newest: uid ${s.messages[0].uid} "${s.messages[0].subject}" (${s.messages[0].date})`).join('\n')),
     ...(missed.length > SHOWN_MAX ? [`…and ${missed.length - SHOWN_MAX} more; scan again after filing these.`] : []),
     'For each one: read the message with read_email (its uid). Decide what they are to the house, then file them with sales/inbound (kind: buyer, applicant, partner, investor, press, vendor or other). Someone who is nobody the house needs is left unfiled; someone who must never be written to goes on the do-not-contact list with sales/suppress.',
   ] : ['Nobody new: every sender is already on a list or is a machine.']),

@@ -14,6 +14,7 @@ import {
   enableHttps, disableHttps, revokeDevice, qrSource,
 } from '../../services/remote-client.js';
 import { AuthImage } from './AuthImage.jsx';
+import { RemoteAccessLog } from './RemoteAccessLog.jsx';
 import './RemoteSection.css';
 
 const POLL_MS = 4000;
@@ -189,6 +190,7 @@ export const RemoteSection = () => {
       ) : null}
 
       {actionError ? <p className="settings-err">{actionError}</p> : null}
+      <RemoteAccessLog />
     </section>
   );
 };

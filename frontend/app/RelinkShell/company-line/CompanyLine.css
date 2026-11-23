@@ -241,6 +241,7 @@
 .cline-out-subject { margin: 0; font-size: 15px; font-weight: 600; color: var(--color-text-primary); }
 .cline-out-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-voice, inherit); font-size: 14px; line-height: 1.55; color: var(--color-text-primary); background: var(--color-glass-light); border-left: 2px solid var(--line); padding: var(--space-3); }
 textarea.cline-out-text { border: 1px solid var(--line); width: 100%; }
+.cline-out-footer { color: var(--color-text-secondary); font-size: 13px; }
 .cline-deal { display: grid; gap: var(--space-2); padding: var(--space-2) 0; }
 .cline-deal-notes { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-size: var(--text-label); color: var(--color-text-secondary); }
 .cline-open .cline-deal-pick { flex: 0 0 11rem; }
@@ -248,3 +249,5 @@ textarea.cline-out-text { border: 1px solid var(--line); width: 100%; }
 .cline-inv { display: grid; gap: var(--space-1); padding: var(--space-2) 0; border-top: 1px solid var(--line); }
 .cline-inv:first-child { border-top: 0; }
 .cline-check { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--color-text-secondary); }
+.cline-ppl-record { display: grid; gap: var(--space-2); margin-block: var(--space-2); }
+.cline-ppl-find { flex-wrap: wrap; }

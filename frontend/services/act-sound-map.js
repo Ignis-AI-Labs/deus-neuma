@@ -49,7 +49,7 @@ export const ACT_FAMILIES = Object.freeze({
     'bench_list', 'bench_status', // the connected benchmarks, and what runs on the machine
     'open_chats', // the chats open right now — a spread of what exists
     'list_email_labels', // the mailbox's labels — a spread of what exists
-    'sales.candidates', 'sales.pipeline', // the companies gathered for an audience, and where each stands in the pipeline — a spread
+    'sales.candidates', 'sales.pipeline', 'sales.review', // the companies gathered for an audience, and where each stands in the pipeline — a spread
   ]),
   // Hunting for something not yet known to be there.
   actSearch: Object.freeze([
@@ -89,7 +89,7 @@ export const ACT_FAMILIES = Object.freeze({
     'speech.accept', 'speech.another',
     'social.queue', // a staged draft is a new entry on the queue, not yet speech
     'marketing.plan', 'board.add', // a plan authored, a task put on the board
-    'legal.file', 'legal.opinion', // research entered on the record — a new matter; a written answer delivered with its check
+    'legal.file', 'legal.opinion', 'legal.never-list', // research entered on the record — a new matter; a written answer delivered with its check
     'share_findings', // a list handed to the operator — a new artifact on the desk, nothing leaves
     'house.review-packet', // the Optio's packet for the operator — the same shape: a new artifact, nothing leaves
     'campaigns.ask', // a question put on the campaign's shared page — a new entry, nothing leaves the house

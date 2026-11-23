@@ -25,6 +25,7 @@
 import { classifyAccess, originMatchesHost } from './access-scope.js';
 import { getAllowedOrigins, isSameOriginLoopback } from '../../config.js';
 import { remoteStore } from './remote-store.js';
+import { accessLog } from './access-log.js';
 import { DEVICE_COOKIE, findDevice, findDeviceBySpki, readCookie } from './pairing.js';
 import { createLogger } from '../logger.js';
 
@@ -32,6 +33,7 @@ const log = createLogger('RemoteGate');
 
 export const ENROLL_PREFIX = '/r/';
 const SAFE_METHODS = Object.freeze(new Set(['GET', 'HEAD', 'OPTIONS']));
+const SESSION_DOOR = '/api/v1/remote/session';
 
 const refusal = (status, error, reason = error) =>
   Object.freeze({ allow: false, scope: null, status, error, reason, device: null });
@@ -130,19 +132,28 @@ const decide = (req, store) => {
  * real one; tests build theirs against a tmp file.
  * @param {{ store?: ReturnType<import('./remote-store.js').createRemoteStore> }} [opts]
  */
-export const createAccessGuard = ({ store = remoteStore } = {}) => ({
+export const createAccessGuard = ({ store = remoteStore, journal = accessLog } = {}) => ({
   /** Express middleware: refuse or stamp `req.accessScope` and `req.remoteDevice`. */
   middleware: (req, res, next) => {
     const decision = decide(req, store);
     if (!decision.allow) {
       // Never a silent drop: a tailnet ACL, a proxy hop, or a bad cookie each
-      // look the same from the phone. The reason is here, not on the wire.
-      log.debug('request refused', { reason: decision.reason, method: req.method, path: String(req.url ?? '').split('?')[0] });
+      // look the same from the phone. The reason is here, not on the wire —
+      // and in the access log, which outlives the console (remote/access-log.js).
+      const reqPath = String(req.url ?? '').split('?')[0];
+      log.debug('request refused', { reason: decision.reason, method: req.method, path: reqPath });
+      journal.refused({ peer: req.socket?.remoteAddress, reason: decision.reason ?? decision.error, method: req.method, path: reqPath });
       res.status(decision.status).json({ error: decision.error });
       return;
     }
     req.accessScope = decision.scope;
     req.remoteDevice = decision.device;
+    // Every change a paired phone makes is kept with the phone that made it (the records say "operator" either way).
+    // (The session door logs itself as a sign-in.)
+    const reqPath = String(req.url ?? '').split('?')[0];
+    if (decision.scope === 'remote' && decision.device && !SAFE_METHODS.has(String(req.method).toUpperCase()) && reqPath !== SESSION_DOOR) {
+      journal.note('acted', { device: decision.device.id, label: decision.device.label, address: decision.device.address, method: req.method, path: reqPath });
+    }
     next();
   },
   /** The same decision for a raw upgrade request. */
