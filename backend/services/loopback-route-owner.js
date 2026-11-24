@@ -33,13 +33,34 @@ export const loopbackPort = (endpoint) => {
 };
 
 // impure (network) — does anything accept a connection on this loopback port?
-const answers = (port) => new Promise((resolve) => {
-  const socket = net.connect({ host: '127.0.0.1', port });
+const answers = (host, port) => new Promise((resolve) => {
+  const socket = net.connect({ host, port });
   const done = (up) => { socket.destroy(); resolve(up); };
   socket.setTimeout(1000, () => done(false));
   socket.once('connect', () => done(true));
   socket.once('error', () => done(false));
 });
+
+/** Local model endpoints use IPv4 explicitly, never a resolver-dependent name. Pure. */
+export const canonicalLoopbackEndpoint = (endpoint) => {
+  try {
+    const url = new URL(endpoint);
+    if (!LOOPBACK.has(url.hostname)) return endpoint;
+    url.hostname = '127.0.0.1';
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return endpoint;
+  }
+};
+
+const loopbackHosts = (endpoint) => {
+  try {
+    const host = new URL(endpoint).hostname;
+    return host === 'localhost' ? ['127.0.0.1', '::1'] : host === '[::1]' || host === '::1' ? ['::1'] : ['127.0.0.1'];
+  } catch {
+    return [];
+  }
+};
 
 /**
  * Check the saved routes at start: each loopback endpoint that answers and is run by another
@@ -50,14 +71,17 @@ const answers = (port) => new Promise((resolve) => {
  */
 export const checkSavedRoutes = async (endpoints, { platform = process.platform } = {}) => {
   const found = [];
-  for (const endpoint of new Set(endpoints.filter((e) => typeof e === 'string' && e))) {
+  for (const endpoint of new Set(endpoints.filter((e) => typeof e === 'string' && e).map(canonicalLoopbackEndpoint))) {
     const port = loopbackPort(endpoint);
-    if (port === null || !(await answers(port))) continue;
+    if (port === null) continue;
+    const heard = [];
+    for (const host of loopbackHosts(endpoint)) if (await answers(host, port)) heard.push(host);
+    if (!heard.length) continue;
     const owner = answeredStanding(platform, listenerStanding(port, { serviceAccounts: SERVICE_ACCOUNTS, platform }));
     if (owner.standing !== 'foreign') continue;
     refused.set(endpoint, owner.uid);
     found.push({ endpoint, uid: owner.uid });
-    log.error('a saved model route is answered by a program another account runs; it is not used', { endpoint, owner: owner.uid ?? 'not readable' });
+    log.error('a saved model route is answered by a program another account runs; it is not used', { endpoint, owner: owner.uid ?? 'not readable', heard });
   }
   return found;
 };
@@ -68,8 +92,9 @@ export const checkSavedRoutes = async (endpoints, { platform = process.platform 
  * @param {?string} endpoint
  */
 export const assertRouteOwned = (endpoint) => {
-  if (!refused.has(endpoint)) return;
-  throw new Error(`The model server at ${endpoint} is run by another account on this computer, so it is not used. Stop that program or choose another model server, then start Deus Neuma again.`);
+  const canonical = canonicalLoopbackEndpoint(endpoint);
+  if (!refused.has(canonical)) return;
+  throw new Error(`The model server at ${canonical} is run by another account on this computer, so it is not used. Stop that program or choose another model server, then start Deus Neuma again.`);
 };
 
 /** Forget every refusal (a start begins clear; a suite ends clear). impure */

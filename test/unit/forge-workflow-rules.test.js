@@ -108,7 +108,7 @@ describe('a proposal read into a pipeline', () => {
   it('only SaveImage writes, and an image is read only through the one named door', () => {
     const noSave = graph(); delete noSave['9'];
     expect(errorsOf({ graph: noSave })).toContain('the graph must end in a SaveImage node: that is the picture the platform collects');
-    expect(errorsOf({ graph: withNode('50', { class_type: 'SaveLatent', inputs: { samples: ['3', 0], filename_prefix: 'x' } }) })[0]).toContain('only SaveImage may write: remove SaveLatent');
+    expect(errorsOf({ graph: withNode('50', { class_type: 'SaveLatent', inputs: { samples: ['3', 0], filename_prefix: 'x' } }) })[0]).toContain("node 50: 'SaveLatent' is not a drawing class the platform allows in a registered workflow");
     const reads = withNode('60', { class_type: 'LoadImage', inputs: { image: 'someone-elses.png' } });
     expect(errorsOf({ graph: reads })[0]).toContain('a workflow may read ONE image, through a LoadImage node named as source');
     const edit = checkWorkflowProposal(proposal({ graph: reads, source: { node: '60', input: 'image' } }));
@@ -133,12 +133,13 @@ describe('held against the engine\'s own node list', () => {
     g['4'].inputs.unet_name = 'not-installed.safetensors';
     g['40'].inputs.type = 'flux9';
     g['20'] = { class_type: 'SomeCustomNode', inputs: {} };
+    expect(errorsOf({ graph: g })).toContain("node 20: 'SomeCustomNode' is not a drawing class the platform allows in a registered workflow");
+    delete g['20'];
     delete g['8'].inputs.vae;
     const made = checkWorkflowProposal(proposal({ graph: g }));
     expect(checkWorkflowAgainstEngine(made.pipeline, OBJECT_INFO).errors).toEqual([
       'node 4: the engine does not have the model file \'not-installed.safetensors\' — install it first (forge/install-model), then register',
       'node 8 (VAEDecode) lacks its required input \'vae\'',
-      'node 20: this engine has no node \'SomeCustomNode\' (it runs with no custom nodes)',
       'node 40 input \'type\': \'flux9\' is not a choice this engine offers',
     ]);
   });
@@ -169,8 +170,17 @@ describe('held against the engine\'s own node list', () => {
     expect(none.errors[0]).toContain('declares no range of its own — give the knob min and max');
   });
 
+  it('PR20 M-18: WebcamCapture and wired, non-primitive knobs are refused', () => {
+    const webcam = withNode('60', { class_type: 'WebcamCapture', inputs: { image: 'input' } });
+    expect(errorsOf({ graph: webcam })).toContain("node 60: 'WebcamCapture' is not a drawing class the platform allows in a registered workflow");
+    const wired = withNode('50', { class_type: 'LoraLoader', inputs: { model: 'x.safetensors', strength_model: 1 } });
+    const made = checkWorkflowProposal(proposal({ graph: wired, slots: { positive: { into: { node: '6', input: 'text' } }, bad: { type: 'text', into: { node: '50', input: 'model' } } } }));
+    expect(checkWorkflowAgainstEngine(made.pipeline, OBJECT_INFO).errors).toContain("knob bad points at node 50 input 'model', which is wired: a knob may set only a primitive value");
+  });
+
   it('a node that sends work to an outside service is refused, whatever it is called', () => {
-    const made = checkWorkflowProposal(proposal({ graph: withNode('70', { class_type: 'FluxProUltraImageNode', inputs: { prompt: 'a cat on a wall' } }) }));
+    const made = checkWorkflowProposal(proposal({ graph: withNode('70', { class_type: 'KSampler', inputs: { seed: 1, steps: 1, cfg: 1, denoise: 1, sampler_name: 'euler', scheduler: 'simple', positive: ['6', 0], negative: ['7', 0], model: ['4', 0], latent_image: ['5', 0] } }) }));
+    made.pipeline.graph['70'].class_type = 'FluxProUltraImageNode';
     expect(checkWorkflowAgainstEngine(made.pipeline, OBJECT_INFO).errors).toEqual(['node 70: \'FluxProUltraImageNode\' sends work to an outside service — a registered workflow runs on this machine only']);
   });
 
@@ -283,7 +293,7 @@ describe('a registered workflow changed in place', () => {
     expect(applyWorkflowEdits(kept, []).errors[0]).toContain('edits must be a list of 1 to 100 changes');
     // Applied cleanly, refused by the same rules a new workflow meets.
     const second = edit({ op: 'add', node: '50', class_type: 'SaveLatent', inputs: { samples: ['3', 0], filename_prefix: 'x' } });
-    expect(checkWorkflowProposal(second.proposal).errors[0]).toContain('only SaveImage may write');
+    expect(checkWorkflowProposal(second.proposal).errors[0]).toContain("node 50: 'SaveLatent' is not a drawing class the platform allows in a registered workflow");
     const unknobbed = edit({ op: 'unknob', name: 'positive' });
     expect(checkWorkflowProposal(unknobbed.proposal).errors[0]).toContain('slots must include positive');
     const door = edit({ op: 'add', node: '60', class_type: 'LoadImage', inputs: { image: 'x.png' } }, { op: 'source', node: '60', input: 'image' });

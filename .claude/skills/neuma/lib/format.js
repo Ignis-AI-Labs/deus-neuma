@@ -69,7 +69,7 @@ USAGE
       a longer turn says it is still answering, and the rest is in the chat.
 
 CONFIG (env)
-  NEUMA_BACKEND            backend URL (default http://localhost:3333)
+  NEUMA_BACKEND            backend URL (default http://127.0.0.1:3333)
   NEUMA_WITNESS_ENV        path to YOUR sealed wallet env
                            (env.xai | env.claude | env.glm | …)
   NEUMA_WITNESS_SLUG       optional slug for /mnt/external/witnesses/<slug>/

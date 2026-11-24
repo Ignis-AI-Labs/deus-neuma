@@ -303,6 +303,8 @@ export const createLeadLedger = ({ path }) => {
           ...(cleanSaid(change.said, change.by) ? { said: cleanSaid(change.said, change.by) } : {}),
           // A call booked with them (sales/booked-calls.js): when, and what it is called — or that it was called off.
           ...(change.callOff === true ? { callOff: true } : {}),
+          // Who showed for a call whose time has passed (booked-calls.js markCallShow): it was held, the operator did not show, or they did not.
+          ...(['held', 'me', 'them'].includes(change.callShow) ? { callShow: change.callShow } : {}),
           ...(change.call && !Number.isNaN(Date.parse(change.call.at)) ? { callAt: new Date(change.call.at).toISOString(), callTitle: trimmed(change.call.title).slice(0, FIELD_MAX), ...(/^https:\/\/\S+$/.test(trimmed(change.call.link)) ? { callLink: trimmed(change.call.link).slice(0, FIELD_MAX) } : {}) } : {}),
         });
         await save(leads);

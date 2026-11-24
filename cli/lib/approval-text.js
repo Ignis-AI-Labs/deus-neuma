@@ -9,6 +9,8 @@
 //
 // Pure.
 
+import { ttyText } from './tty-text.js';
+
 /** Above this the act cannot be read in a terminal or an editor prompt: it is refused, to be approved at the desk. */
 export const APPROVAL_SHOW_MAX_CHARS = 100_000;
 
@@ -58,19 +60,19 @@ export const readApproval = (frame) => {
  * @param {ReturnType<typeof readApproval>} ask
  * @returns {string}
  */
-export const approvalTerminalText = (ask) => [
+export const approvalTerminalText = (ask) => ttyText([
   `approval requested: ${ask.name}`,
   ...(ask.scope ? [`  a yes grants: ${ask.scope}`] : []),
   ...ask.targets.map((line) => `  ${line}`),
   ...(ask.text ? ['the whole act:', ask.text] : []),
-].join('\n');
+].join('\n'));
 
 /**
  * The lines an editor shows above its raw view of the act.
  * @param {ReturnType<typeof readApproval>} ask
  * @returns {string}
  */
-export const approvalEditorText = (ask) => [
+export const approvalEditorText = (ask) => ttyText([
   ...(ask.scope ? [`A yes grants: ${ask.scope}`] : []),
   ...ask.targets,
-].join('\n');
+].join('\n'));

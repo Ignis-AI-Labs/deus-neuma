@@ -1,23 +1,12 @@
 import { ethers } from 'ethers';
 import { independentTokenPrice } from './lp-budget-independent.js';
+import { poolTokensOnChain } from './lp-quotes.js';
+import { PINNED_TOKENS } from './lp-tokens.js';
 
 const ACTIVE_ID = new ethers.Interface(['function getActiveId() view returns (uint24)']);
 const SAME_BIN = 8_388_608;
-const POOL_ID = new ethers.Interface([
-  'function getTokenX() view returns (address)',
-  'function getTokenY() view returns (address)',
-  'function getBinStep() view returns (uint16)',
-]);
-
-// impure — the pool's own identity, read directly at the archived-HEAD boundary.
-const poolIdentity = async (provider, pool) => {
-  const names = ['getTokenX', 'getTokenY', 'getBinStep'];
-  const answers = await Promise.all(names.map((name) => provider.call({ to: pool, data: POOL_ID.encodeFunctionData(name, []) })));
-  const [x, y, step] = answers.map((answer, index) => POOL_ID.decodeFunctionResult(names[index], answer)[0]);
-  return { tokenX: ethers.getAddress(x), tokenY: ethers.getAddress(y), binStep: Number(step) };
-};
-const WETH = ethers.getAddress('0x4200000000000000000000000000000000000006');
-const USDC = ethers.getAddress('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913');
+const WETH = ethers.getAddress(PINNED_TOKENS.WETH);
+const USDC = ethers.getAddress(PINNED_TOKENS.USDC);
 
 const agrees = (a, b) => {
   if (!Number.isFinite(a) || !Number.isFinite(b) || a <= 0 || b <= 0) return false;
@@ -46,7 +35,7 @@ const candidateFor = (payload, token, quote) => {
 // impure — verify the pool's own identity and active bin, never its HTTP price.
 const spotFor = async (provider, candidate, token, quoteUsd) => {
   const [identity, activeAnswer] = await Promise.all([
-    poolIdentity(provider, candidate.pool),
+    poolTokensOnChain(provider, candidate.pool),
     provider.call({ to: candidate.pool, data: ACTIVE_ID.encodeFunctionData('getActiveId', []) }),
   ]);
   if (identity.tokenX !== candidate.tokenX || identity.tokenY !== candidate.tokenY || identity.binStep !== candidate.binStep) {

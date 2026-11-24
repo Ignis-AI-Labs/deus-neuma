@@ -71,7 +71,7 @@ describe('the daily lead run', () => {
   test('a due run starts once a day from its hour, as the operator\'s own press would; the next day it starts again', async () => {
     expect((await pass(at(23, 8))).asked).toEqual([]);
     const first = await pass(at(23, 9));
-    expect(first.asked).toEqual([{ segmentId: approved.id, want: 200, credits: 30 }]);
+    expect(first.asked).toEqual([{ segmentId: approved.id, want: 200, credits: 30, refill: true }]);
     expect(first.started).toEqual([{ wallet: me.address, segmentId: approved.id, run: 'run-1' }]);
     expect((await readSchedule(me.address))[0]).toMatchObject({ startedDay: dayOf(at(23, 9)), lastRun: 'run-1' });
     expect((await pass(at(23, 15))).asked).toEqual([]);

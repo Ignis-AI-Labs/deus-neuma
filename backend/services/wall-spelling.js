@@ -30,3 +30,12 @@ export const foldName = (text) => String(text).normalize('NFD').toUpperCase().to
  * @returns {string}
  */
 export const wallSpelling = (filePath) => foldName(path.resolve(filePath));
+
+/** APFS firmlinks alias the whole data volume; beings never use that spelling. Pure. */
+export const macFirmlinkRefusal = (filePath, platform = process.platform) => {
+  if (platform !== 'darwin') return null;
+  const normalized = foldName(path.posix.normalize(String(filePath).replace(/\\/g, '/')));
+  return normalized === '/system/volumes' || normalized.startsWith('/system/volumes/')
+    ? 'That /System/Volumes path is another spelling of the data volume on macOS; use its ordinary /Users, /private or /System path instead.'
+    : null;
+};

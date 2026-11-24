@@ -11,6 +11,8 @@
 // ALLOWLIST, NOT DENYLIST. An element or construct this file does not name is refused by name,
 // so a vector nobody thought of is closed by default. Pure: text in, refusals out.
 
+import { DOMParser } from '@xmldom/xmldom';
+
 // Every element the shared templates draw, and the drawing elements beside them.
 const ELEMENTS = new Set([
   'svg', 'g', 'defs', 'symbol', 'use', 'title', 'desc', 'style',
@@ -29,10 +31,16 @@ const ELEMENTS = new Set([
 // data:image/svg+xml — an SVG inside an <image> is sealed, but one inside <use> is not.
 const SAFE_HREF = /^(#[\w-]+|\{\{\s*(mark|guest)\.[a-zA-Z][\w]*\s*\}\}|data:image\/(png|jpeg|webp|gif);base64,[a-z0-9+/=\s]+)$/i;
 
-// Numeric character references decoded, so "&#106;avascript:" is read as what it spells.
-const decoded = (text) => text
-  .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => String.fromCodePoint(Number.parseInt(hex, 16) || 32))
-  .replace(/&#(\d+);?/g, (_, dec) => String.fromCodePoint(Number(dec) || 32));
+const cssRefusals = (text, out) => {
+  if (/@import/i.test(text)) out.push('@import reaches outside the card');
+  for (const [, inner] of String(text).matchAll(/url\(([^)]*)\)/gi)) {
+    const target = inner.trim().replace(/^['"]|['"]$/g, '').trim();
+    if (!/^#[\w-]+$/.test(target) && !/^data:image\/(png|jpeg|webp|gif);base64,/i.test(target)) {
+      out.push(`url(${target.slice(0, 60)}) may point only inside the card (#id) or at an inline image`);
+    }
+  }
+  if (/expression\s*\(|-moz-binding|behavior\s*:/i.test(text)) out.push('CSS expressions and bindings have no place in a card');
+};
 
 /**
  * Why this design may not be drawn, or [] when it may. Pure.
@@ -45,33 +53,34 @@ export const designRefusals = (svg) => {
   // The brand lane rides a 100kb JSON limit (server.js), and a design travels in a preview with its kit.
   if (source.length > 80_000) return [`the design is ${source.length} characters — a card is at most 80,000 (inline images belong in marks)`];
   const out = [];
-  const text = decoded(source.replace(/<!--[\s\S]*?-->/g, ''));
-  if (!/^\s*<svg[\s>]/.test(text)) out.push('a design starts with <svg> (no XML prolog or doctype)');
-  if (/<!|<\?/.test(text)) out.push('a design carries no <!DOCTYPE>, <!ENTITY>, CDATA or processing instruction');
+  if (!/^\s*<svg[\s>]/.test(source)) out.push('a design starts with <svg> (no XML prolog or doctype)');
+  if (/<!(?:DOCTYPE|ENTITY|\[CDATA\[)|<\?/i.test(source)) out.push('a design carries no <!DOCTYPE>, <!ENTITY>, CDATA or processing instruction');
+  const comments = [...source.matchAll(/<!--[\s\S]*?-->/g)];
+  const withoutComments = source.replace(/<!--[\s\S]*?-->/g, '');
+  if (comments.some(([comment]) => {
+    const body = comment.slice(4, -3);
+    return /^(?:>|->)/.test(body) || body.includes('--');
+  }) || /<!--|-->/.test(withoutComments)) {
+    out.push('a design comment has an unsafe or malformed boundary');
+  }
+  if (out.length) return out;
 
-  const elements = new Set([...text.matchAll(/<\s*\/?\s*([A-Za-z][\w:.-]*)/g)].map((m) => m[1]));
-  for (const name of elements) {
+  const parseErrors = [];
+  const document = new DOMParser({ errorHandler: (level) => parseErrors.push(level) }).parseFromString(source, 'image/svg+xml');
+  if (parseErrors.length || document.documentElement?.tagName !== 'svg') return ['the design is not one well-formed SVG document'];
+  for (const element of Array.from(document.getElementsByTagName('*'))) {
+    const name = element.tagName;
     if (!ELEMENTS.has(name)) out.push(`<${name}> is not something a card draws — shapes, text, gradients, patterns, filters, clips, masks and images only`);
-  }
-  // Attributes are read inside tags only, so a headline that says "online = fast" is copy, not code.
-  for (const [tag] of text.matchAll(/<[A-Za-z][^>]*>/g)) {
-    for (const [, name] of tag.matchAll(/[\s"'/]([A-Za-z_:][\w:.-]*)\s*=/g)) {
-      if (/^on/i.test(name)) out.push(`${name}= runs script — a card does nothing when it is looked at`);
+    for (const attribute of Array.from(element.attributes ?? [])) {
+      const attr = attribute.name;
+      const value = String(attribute.value ?? '').trim();
+      if (/^on/i.test(attr)) out.push(`${attr}= runs script — a card does nothing when it is looked at`);
+      if (/(^|:)href$/i.test(attr) && !SAFE_HREF.test(value)) out.push(`href "${value.slice(0, 60)}" reaches outside the card — use #id, {{mark.*}}, {{guest.*}} or an inline PNG/JPEG`);
+      if (/javascript\s*:|vbscript\s*:|data\s*:\s*text\/html/i.test(value)) out.push('a script address (javascript:, vbscript:, data:text/html) has no place in a card');
+      cssRefusals(value, out);
     }
-    for (const m of tag.matchAll(/(?:xlink:)?href\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
-      const value = (m[1] ?? m[2] ?? '').trim();
-      if (!SAFE_HREF.test(value)) out.push(`href "${value.slice(0, 60)}" reaches outside the card — use #id, {{mark.*}}, {{guest.*}} or an inline PNG/JPEG`);
-    }
+    if (name === 'style') cssRefusals(element.textContent, out);
   }
-  if (/javascript\s*:|vbscript\s*:|data\s*:\s*text\/html/i.test(text)) out.push('a script address (javascript:, vbscript:, data:text/html) has no place in a card');
-  if (/@import/i.test(text)) out.push('@import reaches outside the card');
-  for (const [, inner] of text.matchAll(/url\(([^)]*)\)/gi)) {
-    const target = inner.trim().replace(/^['"]|['"]$/g, '').trim();
-    if (!/^#[\w-]+$/.test(target) && !/^data:image\/(png|jpeg|webp|gif);base64,/i.test(target)) {
-      out.push(`url(${target.slice(0, 60)}) may point only inside the card (#id) or at an inline image`);
-    }
-  }
-  if (/expression\s*\(|-moz-binding|behavior\s*:/i.test(text)) out.push('CSS expressions and bindings have no place in a card');
   return [...new Set(out)];
 };
 

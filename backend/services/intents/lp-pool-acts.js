@@ -7,7 +7,8 @@
  */
 import { seatOf } from '../flight-check.js';
 import { lpWalletAddress } from '../umbrae-lp/lp-wallet.js';
-import { runCreatePool, preflightCreatePool } from '../umbrae-lp/lp-pool.js';
+import { runCreatePool } from '../umbrae-lp/lp-pool.js';
+import { prepareCreatePoolApproval } from '../umbrae-lp/lp-swap-prepare.js';
 import { lpOffered, walletWords } from './lp-acts.js';
 
 const text = (v) => (typeof v === 'string' || typeof v === 'number' ? String(v).trim() : '');
@@ -34,12 +35,11 @@ export const lpCreatePoolIntent = Object.freeze({
       ...(typeof payload?.why === 'string' && payload.why.trim() ? { why: payload.why.trim().slice(0, 400) } : {}),
     };
     if (!value.baseToken || !value.quoteToken) return { ok: false, status: 'invalid', reason: 'lp/create-pool needs {baseToken, quoteToken}; with check: true and no tier it lists the fee tiers' };
-    // Judged here, not at run time: refused as invalid, a fix to the same file is read again.
-    const judged = await preflightCreatePool(value);
-    if (!judged.ok) return { ok: false, status: 'invalid', reason: `lp/create-pool: ${judged.reason}` };
     return { ok: true, value };
   },
   summarize: (p) => `${p?.check ? 'plan' : 'open'} a new pool ${p?.baseToken ?? '?'}-${p?.quoteToken ?? '?'} at ${p?.binStep ?? '?'}·${p?.baseFee ?? '?'}`,
+  prepare: prepareCreatePoolApproval,
+  cardArgs: (value) => ({ ...value.approvalPreview, check: value.check, startPrice: value.startPrice ?? 'market', seedBase: value.seedBase ?? 'default', seedQuote: value.seedQuote ?? 'default' }),
   // impure — the plan, or the whole opening: approve the seed, createPair, confirm.
   execute: async (value, { connection }) => {
     const out = await runCreatePool(connection.companion?.neumaId, value);

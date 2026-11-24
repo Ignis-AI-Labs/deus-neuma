@@ -22,7 +22,10 @@
  *                 asks on, when one type does two acts the operator grants
  *                 apart (image/generate → video.generate for a video
  *                 pipeline); every chip, card, grant and journal line uses it
- *   cardArgs(value) → object — optional: what the card shows when the
+ *   prepare(value, {connection}) → {ok:true, value} | {ok:false, reason} —
+                optional impure reads AFTER policy/observe and BEFORE the card;
+                validate stays local, and the prepared value reaches card+execute
+  cardArgs(value) → object — optional: what the card shows when the
  *                 filed fields alone would not show the act (a run's code)
  *   execute(value, {connection, signal}) → {ok:true, detail} | {ok:false,
  *                 reason}

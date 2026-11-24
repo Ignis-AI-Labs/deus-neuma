@@ -136,7 +136,7 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
   const key = generateKeyPairSync('ed25519');
   const publicKey = releasePublicKey(embeddedFormOf(key.publicKey));
   const currentDate = new Date().toISOString();
-  const yml = (version, releaseDate = currentDate) => Buffer.from(`version: ${version}\nfiles:\n  - url: Deus-Neuma-${version}-x86_64.AppImage\n    sha512: AAAA\n    size: 1\nreleaseDate: ${releaseDate}\n`);
+  const yml = (version, signedAt = currentDate) => Buffer.from(`version: ${version}\nfiles:\n  - url: Deus-Neuma-${version}-x86_64.AppImage\n    sha512: AAAA\n    size: 1\nreleaseDate: ${signedAt}\nsignedAt: ${signedAt}\nminimumVersion: ${version}\n`);
   const offered = (version, releaseDate) => require('js-yaml').load(yml(version, releaseDate).toString());
   const servers = [];
   afterEach(async () => { await Promise.all(servers.splice(0).map((s) => new Promise((r) => s.close(r)))); });
@@ -200,7 +200,7 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
     const stale = { [CHANNEL]: yml('0.1.32', date), [`${CHANNEL}.sig`]: signFeed(CHANNEL, yml('0.1.32', date), key.privateKey) };
     const { feedUrl, requests } = await cachedFeed({ origin: stale, cached: stale });
     const verdict = await siteVerdict({ fetchImpl: fetch, feedUrl, channelFile: CHANNEL, publicKey, offered: offered('0.1.32', date) });
-    expect(verdict).toEqual({ ok: false, reason: 'the signed feed is more than 30 days old' });
+    expect(verdict).toEqual({ ok: false, reason: 'the signed feed was signed more than 30 days ago' });
     expect(requests).toHaveLength(4);
   });
 });

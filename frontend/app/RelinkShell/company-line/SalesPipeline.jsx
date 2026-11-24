@@ -44,7 +44,7 @@ const Stage = ({ s, on, onTab }) => (
  *   DEALS, and everything under MORE)
  */
 export const SalesPipeline = ({ position, tab, onTab, renderOther }) => {
-  const { engine, busy, error, notice, moveSegment, approveList, sendEmails, returnEmail, editEmail, deleteEmails, handCompany, passCompany, sending, stopSending, clearSending, checkEmails, confirmEmails, sendAnyway, readReplyAs, bookCall, cancelCall, setPlan, endPlan, passWide } = useLeadEngine();
+  const { engine, busy, error, notice, moveSegment, approveList, sendEmails, returnEmail, editEmail, deleteEmails, handCompany, passCompany, sending, stopSending, clearSending, checkEmails, confirmEmails, sendAnyway, readReplyAs, bookCall, cancelCall, markShow, setPlan, endPlan, passWide } = useLeadEngine();
   const deals = useDeals();
   const [view, setView] = useState(readView);
   const choices = campaignChoices(engine);
@@ -90,7 +90,7 @@ export const SalesPipeline = ({ position, tab, onTab, renderOther }) => {
         {own && tab === 'emails' ? <EmailsStage {...props} onSend={sendEmails} onReturn={returnEmail} onEdit={editEmail} onDelete={deleteEmails} sending={sending} onStop={stopSending} onClear={clearSending} onCheck={checkEmails} onConfirm={confirmEmails} onSendAnyway={sendAnyway} /> : null}
         {own && tab === 'sent' ? <SentStage {...props} /> : null}
         {own && tab === 'replies' ? <RepliesStage {...props} busy={busy} onSaid={readReplyAs} /> : null}
-        {own && tab === 'calls' ? <CallsStage {...props} onBook={bookCall} onCancel={cancelCall} /> : null}
+        {own && tab === 'calls' ? <CallsStage {...props} onBook={bookCall} onCancel={cancelCall} onShow={markShow} /> : null}
         {own && tab === 'costs' ? <CostsStage {...props} deals={deals} onPlan={setPlan} onEnd={endPlan} /> : null}
         {own ? null : renderOther(tab)}
       </div>

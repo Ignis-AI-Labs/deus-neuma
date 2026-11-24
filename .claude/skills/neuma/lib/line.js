@@ -2,7 +2,7 @@
 // who let this witness in, and speak in one — the being's reply comes back here. Impure (network).
 
 const DESK = 'http://127.0.0.1:47317'; // the desk's own backend (electron/backend-spawn.cjs PREFERRED_PORT)
-const DAEMON = 'http://localhost:3333'; // the residency daemon
+const DAEMON = 'http://127.0.0.1:3333'; // the residency daemon
 
 // impure — is a NEUMA backend answering here? (the same health shape the desk checks, electron/port-resolve.cjs)
 const answers = async (base) => {

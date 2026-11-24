@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
 import { announceWaitingChanged, onWaitingChanged } from '../waiting/waiting-changed.js';
 import { runSendBatch } from './outbox-send.js';
-import { checkOutboxAddresses, confirmOutboxAddresses, reviewCampaignEmailPlan, sendOutbox, returnOutboxEmail, editOutboxEmail, deleteOutboxEmails, handProspect, passCandidate, readSegmentSites, getLeadEngine, setSegmentState, suppressContact, liftSuppression, approveSegmentList, reviewSalesFacts, openSalesCampaign, moveSalesCampaign, setAudienceCampaign, changeSalesFact, setLeadKind, setLeadSaid, bookLeadCall, cancelLeadCall, setLeadPlan, endLeadPlan, passWideFinds } from '../../../services/revenue-client.js';
+import { checkOutboxAddresses, confirmOutboxAddresses, reviewCampaignEmailPlan, sendOutbox, returnOutboxEmail, editOutboxEmail, deleteOutboxEmails, handProspect, passCandidate, readSegmentSites, getLeadEngine, setSegmentState, suppressContact, liftSuppression, approveSegmentList, reviewSalesFacts, openSalesCampaign, moveSalesCampaign, setAudienceCampaign, changeSalesFact, setLeadKind, setLeadSaid, bookLeadCall, markLeadCallShow, cancelLeadCall, setLeadPlan, endLeadPlan, passWideFinds } from '../../../services/revenue-client.js';
 
 export const useLeadEngine = () => {
   const [engine, setEngine] = useState(null);
@@ -57,7 +57,7 @@ export const useLeadEngine = () => {
     setNotice('');
     const rows = ids.map((id) => (engine?.outbox?.drafts ?? []).find((d) => d.id === id)).filter(Boolean);
     await runSendBatch({
-      ids: rows.map((d) => d.id), send: sendOutbox, stopped: () => stopRef.current,
+      ids: rows, send: sendOutbox, stopped: () => stopRef.current,
       onStep: (state) => {
         setSending({ ...state, rows });
         if (!state.current && !state.done && Object.keys(state.results).length) announceWaitingChanged();
@@ -74,7 +74,7 @@ export const useLeadEngine = () => {
     readSites: (segment) => press(() => readSegmentSites(segment.id), (r) => `${r.read} site${r.read === 1 ? '' : 's'} read for "${segment.name}": ${r.alive} alive, ${r.read - r.alive} with no site. ${r.left} still unread.`),
     sendEmails: (ids) => sendBatch(ids),
     // SEND ANYWAY: one email whose address no database confirmed live, sent by the operator knowing it may bounce.
-    sendAnyway: (draft) => press(() => sendOutbox([draft.id], { acceptRisk: true }), (r) => (r.sent.length ? `Sent to ${draft.to.join(', ')}, unconfirmed — if it bounces, it shows under SENT as BOUNCED.` : `Not sent: ${r.refused.map((x) => x.reason).join(' · ')}`)),
+    sendAnyway: (draft) => press(() => sendOutbox([draft], { acceptRisk: true }), (r) => (r.sent.length ? `Sent to ${draft.to.join(', ')}, unconfirmed — if it bounces, it shows under SENT as BOUNCED.` : `Not sent: ${r.refused.map((x) => x.reason).join(' · ')}`)),
     returnEmail: (draft, note) => press(() => returnOutboxEmail(draft.id, note), `The email to ${draft.to.join(', ')} went back to your sales member with your note.`),
     // The operator's hands on a company in VALIDATE: drop it, take it off the approved list, move it, or pass one not scored yet.
     handCompany: (company, change, said) => press(() => handProspect(company.id, change), said),
@@ -101,6 +101,8 @@ export const useLeadEngine = () => {
     readReplyAs: (lead, says) => press(() => setLeadSaid(lead.id, says), `${lead.name || lead.contact}: ${{ no: 'marked as a no. Nothing more is written to them; the contact is kept.', gone: 'marked as having left. Nothing more is written to that address.', wants: 'marked as asking for something. It is first in REPLIES.', open: 'back in REPLIES to be read.', auto: 'marked as an automatic reply.' }[says]}`),
     bookCall: (lead, call) => press(() => bookLeadCall(lead.id, call), `The call with ${lead.name || lead.contact} is ${lead.call && Date.parse(lead.call.at) > Date.now() ? 'moved' : 'booked'}. It is on your house calendar and is announced an hour and ten minutes before. It shows here under its own campaign, and under ALL.`),
     cancelCall: (lead) => press(() => cancelLeadCall(lead.id), `The call with ${lead.name || lead.contact} is called off. It has left CALLS and your house calendar; the lead stays open.`),
+    // Who showed for a call that has passed. Nothing is assumed about why, and the lead stays open.
+    markShow: (lead, show) => press(() => markLeadCallShow(lead.id, show), `${lead.name || lead.contact}: ${{ held: 'the call is marked as held.', me: 'marked that YOU did not show. The lead stays open, and your sales member reads this before it writes to them again.', them: 'marked that THEY did not show. The lead stays open, and nothing is assumed about why.' }[show]}`),
     setPlan: (plan) => press(() => setLeadPlan(plan), `Your ${plan.partner} plan is filed: what its leads cost is counted from it.`),
     endPlan: (row) => press(() => endLeadPlan(row.partner), `Your ${row.partner} plan is ended: it stops counting from today.`),
     passWide: () => press(() => passWideFinds(), (r) => `${Number(r?.passed ?? 0).toLocaleString('en-US')} compan${r?.passed === 1 ? 'y' : 'ies'} from too-wide searches passed over. Each is under PASSED with why.`),

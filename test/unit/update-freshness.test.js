@@ -13,7 +13,7 @@ const floorPath = () => {
   return path.join(root, 'state', 'update-floor.json');
 };
 const bytes = (text) => Buffer.from(text);
-const offer = (version, releasedMs) => ({ version, releaseDate: new Date(releasedMs).toISOString() });
+const offer = (version, signedMs) => ({ version, releaseDate: '2020-01-01T00:00:00.000Z', signedAt: new Date(signedMs).toISOString(), minimumVersion: version });
 
 afterEach(() => {
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
@@ -26,7 +26,7 @@ describe('signed update freshness and its real filesystem floor', () => {
     const ymlBytes = bytes('version: 1.2.3\n');
     expect(acceptFreshFeed({ floorFile: file, signed: offer('1.2.3', nowMs - 1000), ymlBytes, nowMs })).toEqual({ ok: true });
     expect(fs.statSync(file).mode & 0o777).toBe(0o600);
-    expect(readFloor(file)).toMatchObject({ releaseVersion: '1.2.3', releasedMs: nowMs - 1000 });
+    expect(readFloor(file)).toMatchObject({ releaseVersion: '1.2.3', signedMs: nowMs - 1000 });
     expect(acceptFreshFeed({ floorFile: file, signed: offer('1.2.3', nowMs - 1000), ymlBytes, nowMs })).toEqual({ ok: true });
   });
 
@@ -50,23 +50,36 @@ describe('signed update freshness and its real filesystem floor', () => {
     expect(acceptFreshFeed({ floorFile: file, signed, ymlBytes: bytes('first'), nowMs })).toEqual({ ok: true });
     expect(acceptFreshFeed({ floorFile: file, signed, ymlBytes: bytes('different'), nowMs })).toEqual({
       ok: false,
-      reason: 'a different signed feed replays the newest release timestamp',
+      reason: 'a different signed feed replays the newest signature timestamp',
     });
   });
 
-  it('refuses missing, invalid, future, and expired release dates without creating a floor', () => {
+  it('refuses missing, invalid, future, and expired signature dates without creating a floor', () => {
     const file = floorPath();
     const nowMs = Date.now();
     const cases = [
-      [{ version: '1.0.0' }, 'the signed feed has no valid releaseDate'],
-      [{ version: '1.0.0', releaseDate: 'not-a-date' }, 'the signed feed has no valid releaseDate'],
-      [offer('1.0.0', nowMs + 60 * 60 * 1000), 'the signed feed releaseDate is in the future'],
-      [offer('1.0.0', nowMs - MAX_FEED_AGE_MS - 1000), 'the signed feed is more than 30 days old'],
+      [{ version: '1.0.0' }, 'the signed feed has no valid signedAt'],
+      [{ version: '1.0.0', signedAt: 'not-a-date' }, 'the signed feed has no valid signedAt'],
+      [offer('1.0.0', nowMs + 60 * 60 * 1000), 'the signed feed signedAt is in the future'],
+      [offer('1.0.0', nowMs - MAX_FEED_AGE_MS - 1000), 'the signed feed was signed more than 30 days ago'],
     ];
     for (const [signed, reason] of cases) {
       expect(acceptFreshFeed({ floorFile: file, signed, ymlBytes: bytes('feed'), nowMs })).toEqual({ ok: false, reason });
     }
     expect(fs.existsSync(file)).toBe(false);
+  });
+
+  it('enforces the signed minimumVersion against the running app and accepts an old releaseDate signed now', () => {
+    const signed = offer('2.0.0', Date.now() - 1000);
+    expect(acceptFreshFeed({ signed, ymlBytes: bytes('feed'), currentVersion: '1.9.0' })).toEqual({
+      ok: false,
+      reason: 'this install runs 1.9.0, older than the signed minimumVersion 2.0.0',
+    });
+    expect(acceptFreshFeed({ signed, ymlBytes: bytes('feed'), currentVersion: '2.0.0' })).toEqual({ ok: true });
+    expect(acceptFreshFeed({ signed: { ...signed, minimumVersion: undefined }, ymlBytes: bytes('feed'), currentVersion: '2.0.0' })).toEqual({
+      ok: false,
+      reason: 'the signed feed has no valid minimumVersion',
+    });
   });
 
   it('fails closed on malformed or unsupported floor records and never replaces them', () => {

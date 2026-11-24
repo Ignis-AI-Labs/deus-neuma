@@ -42,6 +42,7 @@ import { readAddressChecks, readContactLookups } from './sales-store.js';
 import { confirmWithAny } from './address-check.js';
 import { attachedProviders } from './lead-spend.js';
 import { wideFinds } from './wide-search.js';
+import { refillPlan } from './lead-run-refill.js';
 import { makeWriter } from './lead-run-write.js';
 import { readLegalPages } from './where-pages.js';
 import { neverSign } from './never-countries.js';
@@ -113,7 +114,7 @@ const askModel = (lane, messages, signal, { temperature = 0, seed = 1 } = {}) =>
  *   seat's own acts (sales/prospect, sales/contacts, sales/lead), handed in by the caller so this file imports no act
  * @returns {Promise<{ok: true, run: object, done: Promise<object>} | {ok: false, reason: string}>}
  */
-export const startLeadRun = async (wallet, { segmentId, want = 100, screenOnly = false, credits = null, only = null }, { intents, fetchPage = guardedPage, ask = askModel, width = RUN_WIDTH } = {}) => {
+export const startLeadRun = async (wallet, { segmentId, want = 100, screenOnly = false, credits = null, only = null, refill = false }, { intents, fetchPage = guardedPage, ask = askModel, width = RUN_WIDTH } = {}) => {
   const house = String(wallet).toLowerCase();
   const officer = await croDesignation.getOfficer(wallet).catch(() => null);
   if (!officer?.laneId) return { ok: false, reason: 'no one is seated as the sales member: a run files as the seat, and the seat is empty' };
@@ -129,7 +130,7 @@ export const startLeadRun = async (wallet, { segmentId, want = 100, screenOnly =
   const act = (name) => intents.find((i) => i.name === name);
   if (!act('sales/prospect') || !act('sales/contacts') || !act('sales/lead')) return { ok: false, reason: 'the run was not handed the seat\'s acts' };
   // screenOnly: read and screen, and stop there — no lookup, no check, no lead: nothing that spends a credit.
-  const run = { id: `run-${Date.now().toString(36)}`, segmentId: segment.id, segment: segment.name, want: number, screenOnly: Boolean(screenOnly) || Boolean(only), only: Array.isArray(only) && only.length ? new Set(only) : null, credits: Number(credits) > 0 ? Math.floor(Number(credits)) : null, active: true, stopped: false, startedAt: new Date().toISOString(), counts: emptyCounts(), lines: [], domains: new Set(), abort: new AbortController() };
+  const run = { id: `run-${Date.now().toString(36)}`, segmentId: segment.id, segment: segment.name, want: number, screenOnly: Boolean(screenOnly) || Boolean(only), refill: refill === true, only: Array.isArray(only) && only.length ? new Set(only) : null, credits: Number(credits) > 0 ? Math.floor(Number(credits)) : null, active: true, stopped: false, startedAt: new Date().toISOString(), counts: emptyCounts(), lines: [], domains: new Set(), abort: new AbortController() };
   if (!runs.has(house)) runs.set(house, new Map());
   runs.get(house).set(segment.id, run);
   const connection = { walletAddress: wallet, companion: { neumaId: officer.laneId, name: officer.laneId } };
@@ -167,6 +168,14 @@ const work = async ({ wallet, run, segment, segments, connection, act, fetchPage
   const campaigns = await readCampaigns(wallet);
   const fundingOf = (seg) => isFundingCampaign(campaigns.find((c) => c.id === seg.campaign));
   const others = segments.filter((s) => s.id !== segment.id && s.state === 'approved').map((s) => ({ ...s, campaignName: campaigns.find((c) => c.id === s.campaign)?.name ?? '' }));
+  // THE REFILL (lead-run-refill.js): too few companies waiting, and the run gathers more itself from what has worked.
+  if (run.refill && !run.only) {
+    const [had, asked, held] = await Promise.all([readCandidates(wallet), readSearches(wallet), readProspects(wallet)]);
+    const wide = new Set(wideFinds(asked, had).flatMap((f) => f.companies.map((c) => c.domain)));
+    const plan = refillPlan({ segmentId: segment.id, want: run.want, waiting: had.filter((c) => screenable(c, segment.id, wide)).length, yields: sourceYield(had, held, segment.id), searches: asked });
+    say(plan.gather ? `REFILL: ${plan.why}` : `no refill: ${plan.why}`);
+    if (plan.gather) { const got = await file(act('sales/gather'), { segment: segment.id, ...plan.gather }, connection, signal); say(got.ok ? `REFILL: ${String(got.detail ?? got.content ?? 'gathered').split('\n')[0].slice(0, 220)}` : `REFILL refused: ${String(got.reason).slice(0, 220)}`); }
+  }
   const [candidates, searches] = await Promise.all([readCandidates(wallet), readSearches(wallet)]);
   const tooWide = new Set(wideFinds(searches, candidates).flatMap((f) => f.companies.map((c) => c.domain)));
   // What a run takes up: first the fits that only lack a lead, then the companies the seat kept or read, then the rest.

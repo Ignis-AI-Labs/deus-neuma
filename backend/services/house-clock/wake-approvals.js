@@ -208,7 +208,7 @@ export const houseHolds = (charter) => new Set([...MONEY_OUT, BENCH_LAUNCH, ...(
  * an invoice. Only the charter's `allow` runs one unasked. A wake and a team
  * member ask the same.
  */
-export const HOUSE_ASKS = Object.freeze(new Set([...OUTWARD, ...PUBLISHING, ...MONEY_ASKS]));
+export const HOUSE_ASKS = Object.freeze(new Set([...OUTWARD, ...PUBLISHING, ...MONEY_ASKS, 'intents/house.charter']));
 
 /** The holds of the house's charter as it is written now, approved or not. impure, never throws. */
 export const readHouseHolds = async (wallet) => houseHolds(await readCharter(wallet).catch(() => null));

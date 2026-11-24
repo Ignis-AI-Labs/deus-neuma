@@ -107,6 +107,8 @@ asarUnpack:
   - node_modules/**/*
 electronFuses:
   runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
   enableEmbeddedAsarIntegrityValidation: true
   onlyLoadAppFromAsar: true
 

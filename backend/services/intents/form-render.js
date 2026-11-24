@@ -23,6 +23,7 @@ import path from 'path';
 import { randomUUID } from 'crypto';
 import workspace from '../../../core/workspace/neuma-workspace.js';
 import { resolveComfyConfig, comfyInstallState, ensureComfyReady, noteComfyActivity } from '../image-forge/comfyui-supervisor.js';
+import { verifyPinnedModelFiles } from '../image-forge/model-integrity.js';
 import { resolvePipeline, resolveModel } from '../image-forge/pack-registry.js';
 import { parameterize } from '../image-forge/parameterizer.js';
 import { loadScreenList, screenSlots } from '../image-forge/prompt-screen.js';
@@ -184,6 +185,8 @@ export const formRenderIntent = Object.freeze({
         label: `Image Forge — ${pipeline.label}`, needGB: MIN_ENGINE_VRAM_GB, signal,
         onWait: ({ position }) => publishActivity({ jobId, phase: 'queued', detail: `waiting for the machine — place ${position}` }),
       }, async () => {
+        const pinned = await verifyPinnedModelFiles(model, cfg, pipeline);
+        if (!pinned.ok) return { ready: { state: 'refused' }, error: pinned.reason };
         const ready = await ensureComfyReady(cfg);
         if (ready.state !== 'ready' && !ready.serving) return { ready };
         noteComfyActivity();

@@ -8,15 +8,17 @@
  * @returns {Promise<{ids: string[], results: Object<string, {state: 'sent'|'refused', reason?: string}>, current: null, done: true, stopped: boolean}>}
  */
 export const runSendBatch = async ({ ids, send, onStep = () => {}, stopped = () => false }) => {
-  let state = { ids, results: {}, current: null, done: false, stopped: false };
+  const idOf = (selection) => typeof selection === 'string' ? selection : selection.id;
+  let state = { ids: ids.map(idOf), results: {}, current: null, done: false, stopped: false };
   onStep(state);
-  for (const id of ids) {
+  for (const selection of ids) {
+    const id = idOf(selection);
     if (stopped()) break;
     state = { ...state, current: id };
     onStep(state);
     let got;
     try {
-      const r = await send([id]);
+      const r = await send([selection]);
       got = r?.sent?.length ? { state: 'sent' } : { state: 'refused', reason: r?.refused?.[0]?.reason ?? 'it was not sent' };
     } catch (e) {
       got = { state: 'refused', reason: e.message };
@@ -24,7 +26,7 @@ export const runSendBatch = async ({ ids, send, onStep = () => {}, stopped = () 
     state = { ...state, current: null, results: { ...state.results, [id]: got } };
     onStep(state);
   }
-  state = { ...state, done: true, stopped: ids.some((id) => !state.results[id]) };
+  state = { ...state, done: true, stopped: state.ids.some((id) => !state.results[id]) };
   onStep(state);
   return state;
 };

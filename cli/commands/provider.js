@@ -17,7 +17,7 @@ import {
   formatProviders, formatModels,
 } from '../lib/routing.js';
 
-const DEFAULT_BACKEND = 'http://localhost:3333';
+const DEFAULT_BACKEND = 'http://127.0.0.1:3333';
 
 const run = async ({ stderr, argv }, fn) => {
   const backend = argv.backend || DEFAULT_BACKEND;
@@ -34,7 +34,7 @@ export const registerProviderCommand = (cli, { stdout = process.stdout, stderr =
     'provider',
     'manage LLM providers (keys, endpoints, reachability)',
     (y) => y
-      .option('backend', { describe: 'backend origin (default http://localhost:3333)', type: 'string' })
+      .option('backend', { describe: 'backend origin (default http://127.0.0.1:3333)', type: 'string' })
       .command('list', 'list providers and their configured state', () => {}, (argv) =>
         run({ stderr, argv }, async (backend, token) => {
           const { providers } = await listProviders(backend, token);

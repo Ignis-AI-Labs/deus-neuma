@@ -20,7 +20,6 @@ import { ethers } from 'ethers';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { UMBRAE_ROUTER } from '../../../core/wallet/trade-policy.js';
 import { lpBase } from './lp-base.js';
-import { callUmbrae } from './umbrae-lp-client.js';
 import { signLpTransaction } from './lp-signer.js';
 import { lpSigner } from './lp-wallet.js';
 import { houseRecipients, resolveRecipient } from './lp-house.js';
@@ -34,7 +33,9 @@ import { proveLpReceipt, independentReceiptProvider } from './lp-receipt-proof.j
 import { reserveCapitalAssets } from './lp-capital-controls.js';
 import { broadcastLpTransaction, prepareLpBroadcast } from './lp-broadcast.js';
 import { readAgentVault } from '../agent-vault/vault-store.js';
-import { PINNED_TOKENS, resolveToken, tokenLabel } from './lp-tokens.js';
+import { PINNED_TOKENS } from './lp-tokens.js';
+import { readPools, tokenBook, tokensNamed } from './lp-pool-tokens.js';
+import { independentSwapFloor } from './lp-swap-floor.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('LpTrade');
@@ -56,33 +57,6 @@ const AMOUNT = /^\d{1,30}(\.\d{1,18})?$/;
 
 const refuse = (reason, extra = {}) => Object.freeze({ ok: false, reason, ...extra });
 const call = async (provider, to, iface, fn, args = []) => iface.decodeFunctionResult(fn, await provider.call({ to, data: iface.encodeFunctionData(fn, args) }));
-
-// impure — Umbrae's pools as route material, or [] when the list did not answer.
-const readPools = async () => {
-  const out = await callUmbrae('pools');
-  if (!out.ok) return [];
-  return (out.payload?.groups ?? []).flatMap((g) => (g.pairs ?? []).map((p) => ({
-    address: p.address, binStep: p.bin_step,
-    tokens: [p.mint_x ?? g.mint_x, p.mint_y ?? g.mint_y], symbols: [g.tokenX, g.tokenY],
-  }))).filter((p) => ethers.isAddress(p.address) && p.tokens.every(ethers.isAddress) && Number.isInteger(p.binStep))
-    .map((p) => ({ ...p, address: ethers.getAddress(p.address), tokens: p.tokens.map((t) => ethers.getAddress(t)) }));
-};
-
-// pure — every token the pools trade, by address, under the name it is shown by (lp-tokens.js).
-const tokenBook = (pools) => {
-  const book = new Map();
-  for (const p of pools) p.tokens.forEach((t, i) => { if (!book.has(t)) book.set(t, tokenLabel(t, p.symbols[i])); });
-  return book;
-};
-
-// pure — the tokens named, each as the one address the pools trade for it; a
-// name two tokens share is refused with its own reason, any other miss with `unlisted`.
-const tokensNamed = (book, said, unlisted) => {
-  const found = said.map((name) => resolveToken(book, name));
-  const ambiguous = found.find((f) => !f.ok && f.ambiguous);
-  if (ambiguous) return refuse(ambiguous.reason);
-  return found.every((f) => f.ok) ? { ok: true, addresses: found.map((f) => f.address) } : refuse(unlisted);
-};
 
 // pure — every route of one pool or two between two tokens.
 const routesBetween = (pools, from, to) => {
@@ -242,7 +216,24 @@ const withContext = async (neumaId, options, run) => {
  * @returns {Promise<Readonly<{ok: true, txHashes: string[], amountIn: string, amountOut: string, route: string[]} | {ok: false, reason: string}>>}
  */
 const swapOnce = (neumaId, ask, options = {}) => withContext(neumaId, options, (ctx) => swapWith(ctx, neumaId, ask));
-const swapWith = async (ctx, neumaId, { tokenIn, tokenOut, amount, slippagePct = 1 } = {}) => {
+
+const aggregatorSimulation = async (ctx, tx, wallet, amountOutMin) => {
+  if (!ctx.second) return refuse('No second Base node is available to simulate this aggregator swap, so nothing was signed.');
+  try {
+    const answers = await Promise.all([ctx.provider, ctx.second].map((provider) => provider.call({ ...tx, from: wallet })));
+    if (answers.some((answer) => ethers.dataLength(answer) !== 32)) return refuse('Both Base nodes could not simulate this aggregator swap to an output amount, so nothing was signed.');
+    const [first, second] = answers.map((answer) => BigInt(answer));
+    const smaller = first < second ? first : second;
+    const larger = first > second ? first : second;
+    if (smaller <= 0n || (larger - smaller) * 10000n > larger * QUOTE_AGREEMENT_BPS) return refuse('Two Base nodes disagree about what this aggregator swap would pay, so nothing was signed.');
+    if (amountOutMin > smaller) return refuse('The minimum output exceeds the aggregator swap simulated on Base, so nothing was signed.');
+    return { ok: true, amountOut: smaller };
+  } catch {
+    return refuse('Both Base nodes could not simulate this aggregator swap, so nothing was signed.');
+  }
+};
+
+const swapWith = async (ctx, neumaId, { tokenIn, tokenOut, amount, slippagePct = 1, approvalFloor = null } = {}) => {
   const slip = Number(slippagePct);
   if (!ctx.pools.length) return refuse('Umbrae\'s pool list did not answer, so no route can be found.');
   const named = tokensNamed(ctx.book, [tokenIn, tokenOut], `Swaps are between tokens Umbrae's pools trade: ${[...ctx.book.values()].join(', ')}.`);
@@ -288,7 +279,12 @@ const swapWith = async (ctx, neumaId, { tokenIn, tokenOut, amount, slippagePct =
   }
   const viaAgg = Boolean(aggOk && (!best || aggOk.amountOut > best.amountOut));
   const quoted = viaAgg ? aggOk.amountOut : best.amountOut;
-  const floor = (quoted * BigInt(Math.round((100 - slip) * 100))) / 10000n;
+  const independent = await independentSwapFloor({ amountIn, decimalsIn, decimalsOut, tokenIn: from, tokenOut: to, slippagePct: slip });
+  if (!independent.ok) return independent;
+  if (quoted < independent.floor) return refuse('The best route quotes below the minimum set by independent market prices, so nothing was signed.');
+  const routeFloor = (quoted * BigInt(Math.round((100 - slip) * 100))) / 10000n;
+  const cardFloor = approvalFloor === null ? 0n : BigInt(approvalFloor);
+  const floor = [routeFloor, independent.floor, cardFloor].reduce((higher, value) => value > higher ? value : higher, 0n);
   const amountOutMin = roundTrip && floor <= amountIn ? amountIn + 1n : floor;
   const compared = {
     umbrae: best ? ethers.formatUnits(best.amountOut, decimalsOut) : null,
@@ -307,6 +303,8 @@ const swapWith = async (ctx, neumaId, { tokenIn, tokenOut, amount, slippagePct =
     const verdict = classifyLpTransaction({ ...road.tx, chainId: 8453 }, { wallet, tokens: ctx.tokens, recipients: ctx.recipients });
     const fits = verdict.ok ? checkLpIntent(verdict, { kind: 'swap', tokenIn: from, tokenOut: to, amountIn: amountIn.toString(), amountOutMin: amountOutMin.toString() }) : verdict;
     if (!fits.ok) return refuse(`KyberSwap's swap was refused before anything was signed: ${fits.reason}`);
+    const simulated = await aggregatorSimulation(ctx, road.tx, wallet, amountOutMin);
+    if (!simulated.ok) return simulated;
   } else {
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 600);
     road = {

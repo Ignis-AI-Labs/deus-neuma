@@ -18,7 +18,7 @@ import { isSecretFile } from './secret-path-classifier.js';
 import { secretLinkReason } from './secret-inodes.js';
 import { matchesDeniedPattern } from './sandbox-path-policy.js';
 import { getRealmRoot } from './user-realm.js';
-import { foldName } from './wall-spelling.js';
+import { foldName, macFirmlinkRefusal } from './wall-spelling.js';
 import { getWorkspacesRoot, getWitnessesRoot } from '../../core/workspace/neuma-workspace.js';
 
 // The secret-shaped walls of the being sandbox that mean a secret on the
@@ -121,6 +121,8 @@ const holdsAGround = (target) => [getRealmRoot(), getWorkspacesRoot(), getWitnes
  */
 export const explorerRefusal = (target, wallet, { write = false } = {}) => {
   if (typeof target !== 'string' || !path.isAbsolute(target)) return null;
+  const firmlink = macFirmlinkRefusal(target);
+  if (firmlink) return firmlink;
   const reader = String(wallet || '').toLowerCase();
   const asked = path.resolve(target);
   // A hard link gives a secret's bytes an innocent name no name law knows

@@ -172,7 +172,7 @@ describe('the portal: frames become ACP updates', () => {
     hangUp();
   });
 
-  test('"allow for this session" is the gate\'s ALWAYS; a reject, a cancel and a broken editor are all a no', async () => {
+  test('PR20 M-12: "allow for this session" is connection-local; reject, cancel and a broken editor are a no', async () => {
     const answers = [
       { outcome: { outcome: 'selected', optionId: 'allow-always' } },
       { outcome: { outcome: 'selected', optionId: 'reject-once' } },
@@ -186,7 +186,9 @@ describe('the portal: frames become ACP updates', () => {
       },
     });
     const ask = () => requestToolApproval(connection, { tool: 'fs/delete', args: { path: '/proof/b.js' } });
-    expect(await ask()).toBe('always');
+    expect(await ask()).toBe('allow');
+    expect(connection._sessionToolPolicy.fs.allowed).toContain('delete');
+    expect(await neumaWorkspace.readToolPolicy('acp-proof-lane')).toBeNull();
     expect(await ask()).toBe('deny');
     expect(await ask()).toBe('deny');
     expect(await ask()).toBe('deny');

@@ -194,7 +194,7 @@ export const occurrencesIn = (events, fromMs, toMs) => {
     const { freq, interval, count, untilMs, byday } = e.rule;
     const startDow = new Date(Date.UTC(e.start.local.y, e.start.local.mo - 1, e.start.local.d)).getUTCDay();
     // Weekly on several weekdays: each named weekday of the start's own week, repeated.
-    const offsets = freq === 'WEEKLY' && byday.length ? byday.map((d) => WEEKDAYS.indexOf(d) - startDow).sort((a, b) => a - b) : [0];
+    const offsets = freq === 'WEEKLY' && byday.length ? [...new Set(byday.map((d) => WEEKDAYS.indexOf(d) - startDow))].sort((a, b) => a - b) : [0];
     let made = 0;
     for (let n = 0; made < OCCURRENCES_MAX && n < 5000; n += 1) {
       const base = stepped(e.start.local, freq, n * interval);

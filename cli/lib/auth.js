@@ -13,6 +13,7 @@
 import process from 'node:process';
 import { ethers } from 'ethers';
 import { localAuthMaterial, verifyLocalAuthProof } from './local-auth-proof.js';
+import { validateSittingChallenge } from '../../scripts/lib/sitting-auth.mjs';
 
 /**
  * The install's owner claim, read only from a loopback backend's candidate
@@ -22,6 +23,20 @@ import { localAuthMaterial, verifyLocalAuthProof } from './local-auth-proof.js';
  */
 export const localOwnerClaim = (backend, env = process.env) => localAuthMaterial(backend, env)?.claim || null;
 
+/** Authenticate the backend and validate its exact SIWE challenge before any signature or token use. impure. */
+export const verifyBackendIdentity = async ({ backend, address }) => {
+  const challengeRes = await fetch(`${backend}/api/v1/auth/challenge?address=${address}`);
+  if (!challengeRes.ok) throw new Error(`auth/challenge failed: ${challengeRes.status}`);
+  const { challenge, localAuthProof: proof } = await challengeRes.json();
+  if (!challenge) throw new Error('auth/challenge returned no challenge');
+  const host = new URL(backend).hostname;
+  if (['localhost', '127.0.0.1', '[::1]', '::1'].includes(host) && !verifyLocalAuthProof({ backend, challenge, proof })) {
+    throw new Error('loopback backend identity proof failed; nothing was signed or sent');
+  }
+  if (!validateSittingChallenge(challenge, address)) throw new Error('auth/challenge is not a Neuma sign-in for this wallet; nothing was signed');
+  return challenge;
+};
+
 /**
  * Exchange a private key for a Neuma session token.
  * @param {{ backend: string, privateKey: string }} params
@@ -30,18 +45,9 @@ export const localOwnerClaim = (backend, env = process.env) => localAuthMaterial
 export const mintToken = async ({ backend, privateKey }) => {
   const wallet = new ethers.Wallet(privateKey);
   const address = wallet.address;
-
-  const challengeRes = await fetch(`${backend}/api/v1/auth/challenge?address=${address}`);
-  if (!challengeRes.ok) throw new Error(`auth/challenge failed: ${challengeRes.status}`);
-  const { challenge, localAuthProof: proof } = await challengeRes.json();
-  if (!challenge) throw new Error('auth/challenge returned no challenge');
-
-  const material = localAuthMaterial(backend);
-  if (material?.claim && !verifyLocalAuthProof({ backend, challenge, proof })) {
-    throw new Error('loopback backend identity proof failed; owner claim was not sent');
-  }
+  const challenge = await verifyBackendIdentity({ backend, address });
   const signature = await wallet.signMessage(challenge);
-  const claim = material?.claim || null;
+  const claim = localAuthMaterial(backend)?.claim || null;
 
   const verifyRes = await fetch(`${backend}/api/v1/auth/verify`, {
     method: 'POST',

@@ -1,0 +1,2 @@
+Changed
+- A daily lead run now refills itself. When too few companies wait to be screened for an audience, the run first gathers more from the source that has given that audience the most fits: a provider search is continued in its own words from the next page, a free list is read again. It never makes up a search: an audience nobody has gathered for yet, or whose searches were all too wide, is left as it is and the run says so. The gather spends under your monthly rule and the run's own credit limit.

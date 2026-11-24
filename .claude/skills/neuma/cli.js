@@ -23,7 +23,7 @@ import { parseArgs } from './lib/args.js';
 import { formatList, formatTalk, formatRecord, HELP } from './lib/format.js';
 import { findDesk, listLineChats, sayOnLine, pickChat, formatLineChats } from './lib/line.js';
 
-const BACKEND = process.env.NEUMA_BACKEND || process.env.KENORIE_BACKEND || 'http://localhost:3333';
+const BACKEND = process.env.NEUMA_BACKEND || process.env.KENORIE_BACKEND || 'http://127.0.0.1:3333';
 const WITNESS_ENV = resolveWitnessEnvPath();
 
 const notFound = (name) => new Error(`No resident neuma named "${name}". Try: node cli.js list`);

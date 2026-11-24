@@ -30,6 +30,7 @@ const log = createLogger('RamKeeper');
 export const KEEPER = Object.freeze({
   tickMs: 2 * 60 * 1000,
   janitorEveryMs: 24 * 60 * 60 * 1000,
+  janitorEnabled: false,
   noticeEveryMs: 60 * 60 * 1000,
   // Short when less than this share of RAM is available (and never less than floorMinBytes).
   floorFraction: 0.12,
@@ -125,10 +126,11 @@ export const keeperPass = async (state = {}, cfg = KEEPER, now = Date.now()) => 
 
   // 2. Stale leftovers: daily, or now when memory is short.
   const shortBefore = memoryShort(account.before, cfg);
-  if (shortBefore || now - (state.lastJanitorAt ?? 0) >= cfg.janitorEveryMs) {
+  if (cfg.janitorEnabled === true && (shortBefore || now - (state.lastJanitorAt ?? 0) >= cfg.janitorEveryMs)) {
+    const holdingBase = cfg.holdingBase ?? join(getDataRoot(), 'tmp-reclaimed');
     const stale = await staleEntries({ root: cfg.tmpRoot, now, staleAfterMs: cfg.staleAfterMs });
-    const moved = stale.length ? await reclaimEntries(stale, cfg.holdingBase, now) : { moved: [], failed: [], holding: null };
-    const purged = await purgeHolding(cfg.holdingBase, now, cfg.holdForMs);
+    const moved = stale.length ? await reclaimEntries(stale, holdingBase, now) : { moved: [], failed: [], holding: null };
+    const purged = await purgeHolding(holdingBase, now, cfg.holdForMs);
     account.tmp = { moved: moved.moved.length, failed: moved.failed.length, holding: moved.holding, purged: purged.length };
     if (moved.moved.length || purged.length) log.info('stale leftovers cleared', account.tmp);
     state = { ...state, lastJanitorAt: now };

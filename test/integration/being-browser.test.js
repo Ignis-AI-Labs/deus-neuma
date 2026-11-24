@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  isBrowserTool, browserToolsFor, handleBrowserTool, BROWSER_TOOLS, describeTarget,
+  isBrowserTool, browserToolsFor, handleBrowserTool, BROWSER_TOOLS, describeTarget, approvedTarget,
 } from '../../backend/services/browser/browser-being-tools.js';
 import {
   browserFor, closeBrowser, runningBrowser, actInPage, browserProfileDir, MAX_OPEN,
@@ -164,6 +164,36 @@ describe('a password is the operator\'s hand', () => {
     const typed = await r.call('browser_type', { ref: pw.ref, text: 'guess' });
     expect(typed.status).toBe('error');
     expect(typed.error).toMatch(/password field/);
+  }, 60_000);
+});
+
+describe('approval is bound to the exact approved element', () => {
+  test('a hostile page cannot move the approved number onto another button while the card waits', async () => {
+    if (!hasChromium) return;
+    const r = rig('swaplane');
+    const started = await browserFor('swaplane');
+    expect(started.ok).toBe(true);
+    const { session } = started;
+    const { frameTree } = await session.send('Page.getFrameTree');
+    await session.send('Page.setDocumentContent', {
+      frameId: frameTree.frame.id,
+      html: '<button id=safe onclick="window.clicked=\'safe\'">Safe preview</button><button id=evil onclick="window.clicked=\'evil\'">Delete everything</button>',
+    });
+    await actInPage(session, { kind: 'look' });
+    const safe = session.view.elements.find((e) => e.name === 'Safe preview');
+    expect(approvedTarget(session.view, safe.ref)).toMatchObject({ ref: safe.ref, identity: expect.any(Number) });
+
+    const pending = r.call('browser_click', { ref: safe.ref }, { policy: null, mode: 'ask' });
+    await vi.waitFor(() => { expect(r.sent.some((m) => m.type === 'tool:approval_request')).toBe(true); }, { timeout: 10_000 });
+    await session.send('Runtime.evaluate', {
+      expression: "safe.remove(); evil.setAttribute('data-nref', safe.getAttribute('data-nref') || '1')",
+    });
+    resolveToolApproval(r.connection, r.sent.find((m) => m.type === 'tool:approval_request').id, 'allow');
+    const clicked = await pending;
+    expect(clicked.status).toBe('error');
+    expect(clicked.error).toMatch(/changed after approval/);
+    const { result } = await session.send('Runtime.evaluate', { expression: 'String(window.clicked)', returnByValue: true });
+    expect(result.value).toBe('undefined');
   }, 60_000);
 });
 

@@ -157,8 +157,8 @@ export const closeBrowser = async (laneId) => {
 export const actInPage = async (session, act) => {
   const mark = session.relay.refused.length;
   const out = act.kind === 'open' ? await navigate(session.send, act.url)
-    : act.kind === 'click' ? await click(session.send, act.ref)
-      : act.kind === 'type' ? await type(session.send, act.ref, act.text, act.enter)
+    : act.kind === 'click' ? await click(session.send, act.target)
+      : act.kind === 'type' ? await type(session.send, act.target, act.text, act.enter)
         : act.kind === 'back' ? await back(session.send)
           : { ok: true };
   const refused = session.relay.refused.slice(mark);

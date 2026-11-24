@@ -63,7 +63,7 @@ export const addressRefusal = async (wallet, { to, laneId, acceptRisk = false, e
  * Why an email may not go (the facts check on a lead's email, and the address check on every recipient's), or null
  * when it may.
  */
-export const leadEmailRefusal = async (wallet, { to, subject, text, promise, laneId, acceptRisk = false, claims: readClaims = true }) => {
+export const leadEmailRefusal = async (wallet, { to, subject, text, promise, laneId, acceptRisk = false, claims: readClaims = true, external = true }) => {
   const wanted = new Set(to.map(normalizeEmail).filter(Boolean));
   const everyone = (await (await leadLedgerFor(wallet)).load()).filter((l) => wanted.has(normalizeEmail(l.contact)));
   // The sales checks are for people the house SELLS to, and for anyone not yet sorted (until someone says they are
@@ -96,9 +96,10 @@ export const leadEmailRefusal = async (wallet, { to, subject, text, promise, lan
       }
     }
   }
+  if (!external) return null;
   // EVERY ADDRESS, BEFORE IT LEAVES (Design note, 2026-11-19: […]): one that does not
   // exist, or cannot be checked, is never written to (address-check.js) — first email or not. Someone who wrote to the
-  // house is known to be real and is not asked.
+  // house is known to be real and is not asked. These provider/DNS/model calls run only at execution.
   const address = await addressRefusal(wallet, { to, laneId, acceptRisk, everyone, leads });
   if (address) return address;
   // claims false: the OPERATOR's own send of an email they read (email-outbox.js). No model reads it again.
@@ -158,9 +159,9 @@ export const recordSent = async (wallet, { to, subject, promise, by, from, messa
 /** Record a message a lead sent the house, with its subject and their own words when it was read. Never throws. */
 // What it says (reply-reading.js) is kept with it and moves the lead: a no, or a person who has left, closes it — the
 // house stops writing and the contact stays on the ledger; a machine's reply moves nothing, so the follow-ups run on.
-export const recordReceived = (wallet, { from, ref, subject = null, text = null, said = null, messageId = null }) => touchByAddress(wallet, [from], (lead) => ({
+export const recordReceived = (wallet, { from, ref, subject = null, text = null, said = null, messageId = null, closeProven = false }) => touchByAddress(wallet, [from], (lead) => ({
   ...(messageId ? { messageId } : {}), // their message's own id: the next email to them names it and stays in their thread
-  ...(closes(said) && lead.status !== 'won' ? { status: 'lost' } : said?.says === 'auto' ? {} : IN_MOVES.has(lead.status) ? { status: 'replied' } : {}),
+  ...(closes(said) && closeProven && lead.status !== 'won' ? { status: 'lost' } : said?.says === 'auto' ? {} : IN_MOVES.has(lead.status) ? { status: 'replied' } : {}),
   direction: 'in',
   ...(said ? { said } : {}),
   note: `wrote to the house (${ref})${said && said.says !== 'open' ? ` — ${saidWords(said)}` : ''}`,

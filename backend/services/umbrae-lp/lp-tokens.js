@@ -46,6 +46,9 @@ export const resolveToken = (listed, said) => {
   const tokens = [...listed];
   const word = String(said ?? '').trim();
   const none = Object.freeze({ ok: false, ambiguous: false, reason: `Umbrae's pools trade no token called "${word}".` });
+  if (!ethers.isAddress(word) && /[^\x20-\x7E]/.test(word)) {
+    return Object.freeze({ ok: false, ambiguous: false, reason: 'Token symbols use plain printable ASCII only; invisible, look-alike and right-to-left characters are refused. Name the token by its contract address.' });
+  }
   if (ethers.isAddress(word)) {
     const address = ethers.getAddress(word);
     return tokens.some(([listedAddress]) => listedAddress === address) ? Object.freeze({ ok: true, address }) : none;

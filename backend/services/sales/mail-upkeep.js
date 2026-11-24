@@ -73,9 +73,10 @@ export const settleMail = async (house, { credentials, message, sender, isLead, 
     const subject = message.subject || (read.ok ? read.message.subject : null);
     // What it says is read by fixed rules and kept with it: a no closes the lead (the contact stays), a request is marked to answer first.
     const said = read.ok ? cleanSaid(readReply({ subject, text: read.message.text, from: sender }), 'mail-watch') : null;
-    await recordReceived(house, { from: sender, ref, subject, text: read.ok ? theirWords(read.message.text) : null, said, messageId: message.messageId || (read.ok ? read.message.messageId : null) || null });
+    const [replyProven] = read.ok ? provenAddresses({ addresses: [sender], leads, ids: read.message.ids }) : [];
+    await recordReceived(house, { from: sender, ref, subject, text: read.ok ? theirWords(read.message.text) : null, said, messageId: message.messageId || (read.ok ? read.message.messageId : null) || null, closeProven: Boolean(replyProven) });
     if (read.ok && asksToStop(read.message.text)) {
-      const [asker] = provenAddresses({ addresses: [sender], leads, ids: read.message.ids });
+      const asker = replyProven;
       if (asker) return { kind: 'stop', closed: await closeAddress(house, asker, 'asked', `asked to be left alone (${ref})`) };
       unproven('A request to be left alone', message, 1);
     }
@@ -102,7 +103,8 @@ export const readStandingReplies = async (house) => {
       if (!last?.text || saidOf(lead)) continue;
       const said = cleanSaid(readReply({ subject: last.subject, text: last.text, from: lead.contact }), 'mail-watch');
       if (!said) continue;
-      const shut = closes(said) && !['won', 'lost'].includes(lead.status);
+      const shut = closes(said) && !['won', 'lost'].includes(lead.status)
+        && provenAddresses({ addresses: [lead.contact], leads: [lead], ids: [last.messageId] }).length > 0;
       await ledger.touch(lead.id, { said, ...(shut ? { status: 'lost' } : {}), note: `their reply was read: ${saidWords(said)}`, by: 'mail-watch' });
       read += 1;
     }

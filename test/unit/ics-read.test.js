@@ -67,6 +67,12 @@ describe('each time an event happens, inside a window', () => {
     ]);
   });
 
+  it('duplicate weekdays expand once each and still honour the occurrence count', () => {
+    expect(times(ev('UID:dup', 'DTSTART:20261102T100000Z', 'RRULE:FREQ=WEEKLY;BYDAY=MO,MO,MO;COUNT=2', 'SUMMARY:Once'))).toEqual([
+      '2026-11-02T10:00:00.000Z', '2026-11-09T10:00:00.000Z',
+    ]);
+  });
+
   it('every other day until a date, with one date left out and one moved', () => {
     const moved = ev('UID:d', 'RECURRENCE-ID:20261105T090000Z', 'DTSTART:20261105T140000Z', 'DTEND:20261105T143000Z', 'SUMMARY:Moved');
     const rule = ev('UID:d', 'DTSTART:20261101T090000Z', 'DTEND:20261101T093000Z', 'RRULE:FREQ=DAILY;INTERVAL=2;UNTIL=20261109T090000Z', 'EXDATE:20261107T090000Z', 'SUMMARY:Every other day');

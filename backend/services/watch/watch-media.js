@@ -6,7 +6,7 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { ensureFfmpeg, runTool, toolEnvironment } from './watch-tools.js';
+import { ensureFfmpeg, runTool, toolEnvironment, assertVerifiedTool } from './watch-tools.js';
 import { momentsIn } from './watch-plan.js';
 
 /** 16 kHz, mono, 16-bit: what speech recognition reads. */
@@ -35,20 +35,23 @@ export const probeMedia = async (file) => {
 };
 
 // impure — a tool's stdout as bytes, bounded
-const runBytes = (bin, args, maxBytes) => new Promise((resolve, reject) => {
-  const child = spawn(bin, args, { env: toolEnvironment(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const chunks = [];
-  let size = 0;
-  let err = '';
-  child.stdout.on('data', (c) => {
-    size += c.length;
-    if (size > maxBytes) { child.kill(); return; }
-    chunks.push(c);
+const runBytes = async (bin, args, maxBytes) => {
+  await assertVerifiedTool(bin);
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin, args, { env: toolEnvironment(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    const chunks = [];
+    let size = 0;
+    let err = '';
+    child.stdout.on('data', (c) => {
+      size += c.length;
+      if (size > maxBytes) { child.kill(); return; }
+      chunks.push(c);
+    });
+    child.stderr.on('data', (c) => { err = `${err}${c}`.slice(-2000); });
+    child.once('error', reject);
+    child.once('close', (code) => (code === 0 || size > maxBytes ? resolve(Buffer.concat(chunks)) : reject(new Error(err.trim().split('\n').pop() || `ffmpeg exit ${code}`))));
   });
-  child.stderr.on('data', (c) => { err = `${err}${c}`.slice(-2000); });
-  child.once('error', reject);
-  child.once('close', (code) => (code === 0 || size > maxBytes ? resolve(Buffer.concat(chunks)) : reject(new Error(err.trim().split('\n').pop() || `ffmpeg exit ${code}`))));
-});
+};
 
 /**
  * The sound of [start, end) as raw 16 kHz mono 16-bit samples. impure

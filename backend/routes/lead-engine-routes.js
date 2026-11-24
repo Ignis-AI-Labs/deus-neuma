@@ -27,7 +27,8 @@ import { peopleByCompany } from '../services/sales/top-first.js';
 import { makeCampaign, campaignBoard, leadOrigins } from '../services/sales/campaign-shape.js';
 import { listCompanies } from '../services/marketing/companies.js';
 import { leadLedgerFor, LEAD_KINDS, kindOf, sourceOf } from '../services/leads/lead-ledger.js';
-import { spendState, setSpend, SPEND_MODES } from '../services/sales/lead-spend.js';
+import { spendState, SPEND_MODES } from '../services/sales/lead-spend.js';
+import { postLeadSpend } from './lead-spend-route.js';
 import { foldContacts, contactStats } from '../services/sales/contact-book.js';
 import { readAudienceSites } from '../services/sales/site-reads.js';
 import { isConnectionOn } from '../services/connections/connection-switches.js';
@@ -212,15 +213,18 @@ router.post('/outbox/review', async (req, res) => {
 });
 
 router.post('/outbox/send', async (req, res) => {
-  const ids = (Array.isArray(req.body?.ids) ? req.body.ids : []).map(String).slice(0, 100);
-  if (!ids.length) return res.status(400).json({ error: 'name the emails to send: {ids: [...]}' });
+  const selections = (Array.isArray(req.body?.ids) ? req.body.ids : []).slice(0, 100);
+  if (!selections.length) return res.status(400).json({ error: 'name the emails to send: {ids: [{id, digest}, …]}' });
+  if (selections.some((s) => typeof s?.id !== 'string' || !/^[a-f0-9]{64}$/.test(s?.digest ?? ''))) {
+    return res.status(400).json({ error: 'every email needs the exact {id, digest} you reviewed' });
+  }
   try {
     // One after another: each is its own send from the house mailbox, and one that is refused stops only itself.
     const results = [];
     // acceptRisk: the operator's SEND ANYWAY on an email whose address no database confirmed live (one email at a time).
-    const acceptRisk = req.body?.acceptRisk === true && ids.length === 1;
-    for (const id of ids) results.push(await sendDraft(req.walletAddress, id, { acceptRisk }));
-    log.info('Outbox emails sent by the operator', { asked: ids.length, sent: results.filter((r) => r.ok).length });
+    const acceptRisk = req.body?.acceptRisk === true && selections.length === 1;
+    for (const selection of selections) results.push(await sendDraft(req.walletAddress, selection.id, { acceptRisk, expectedDigest: selection.digest }));
+    log.info('Outbox emails sent by the operator', { asked: selections.length, sent: results.filter((r) => r.ok).length });
     return res.json({ ok: true, sent: results.filter((r) => r.ok).map((r) => ({ id: r.id, to: r.to, from: r.from })), refused: results.filter((r) => !r.ok).map((r) => ({ id: r.id, reason: r.reason })) });
   } catch (error) {
     log.error('Outbox send failed', { error: error.message });
@@ -453,18 +457,8 @@ router.post('/leads/:id/said', async (req, res) => {
   }
 });
 
-// When paid lead data may be spent: the operator's one choice, and the month's cap (lead-spend.js).
-router.post('/spend', async (req, res) => {
-  try {
-    const set = await setSpend(req.walletAddress, { mode: req.body?.mode, cap: req.body?.cap });
-    if (!set.ok) return res.status(400).json({ error: set.reason });
-    log.info('The paid lead data rule was set by the operator', { mode: set.rule.mode, cap: set.rule.cap });
-    return res.json({ ok: true, rule: set.rule });
-  } catch (error) {
-    log.error('The paid lead data rule could not be set', { error: error.message });
-    return res.status(500).json({ error: 'Could not set the paid lead data rule' });
-  }
-});
+// When paid lead data may be spent: the install owner's one choice, and the month's cap.
+router.post('/spend', ...postLeadSpend);
 
 router.post('/suppress', async (req, res) => {
   let entry;

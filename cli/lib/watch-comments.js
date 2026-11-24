@@ -21,8 +21,9 @@
 //   - Ignored files are ignored: .git, node_modules, .neuma, anything git
 //     ignores, anything over the size cap, anything that is not text.
 //   - ONLY THE OPERATOR'S OWN UNSAVED-TO-GIT LINES COUNT. In a repository a
-//     comment fires only when its line is in the working tree's own change
-//     (unstaged, or a file git does not track yet). A line that arrived by
+//     comment fires only when its line is in a TRACKED file's own unstaged
+//     working-tree change. Untracked files, nested clones and submodules never
+//     fire. A line that arrived by
 //     `git pull`, a checkout or a merge is committed or staged content: it was
 //     written by whoever wrote that branch, and it is never read as an
 //     instruction. The turn is told the comments are file content, and the
@@ -33,6 +34,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
+import { UNTRUSTED_GIT_ARGS, repoConfigIsInert, untrustedGitEnv } from '../../backend/services/untrusted-git.js';
 
 /** A file larger than this is not scanned for comments. */
 export const WATCH_MAX_FILE_BYTES = 1024 * 1024;
@@ -114,9 +116,7 @@ export const instructionPrompt = ({ file, kind, comments }) => [
 ].join('\n');
 
 // impure — true when git says the file is ignored. No repository, no git: not ignored.
-const gitIgnores = (ground, relative) => new Promise((resolve) => {
-  execFile('git', ['check-ignore', '-q', '--', relative], { cwd: ground }, (error) => resolve(!error));
-});
+const gitIgnores = async (ground, relative) => (await gitOut(ground, ['check-ignore', '-q', '--', relative])) !== null;
 
 /**
  * The new-side line numbers a zero-context git diff adds or changes. Pure.
@@ -135,13 +135,13 @@ export const addedLines = (diff) => {
 };
 
 const gitOut = (ground, args) => new Promise((resolve) => {
-  execFile('git', args, { cwd: ground, maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => resolve(error ? null : String(stdout)));
+  execFile('git', [...UNTRUSTED_GIT_ARGS, ...args], { cwd: ground, env: untrustedGitEnv(), maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => resolve(error ? null : String(stdout)));
 });
 
 /**
- * The lines of a file that are the working tree's own change: not committed and
- * not staged, so no pull, checkout or merge wrote them. Null means every line
- * (no repository here, or a file git does not track yet); an empty set means none.
+ * The lines of a tracked file that are the working tree's own change: not committed
+ * and not staged, so no pull, checkout or merge wrote them. Null means every line
+ * only outside a repository. Untracked files, nested clones and submodules count none.
  * impure — operator's git, read-only.
  * @param {string} ground
  * @param {string} relative
@@ -149,7 +149,7 @@ const gitOut = (ground, args) => new Promise((resolve) => {
  */
 export const uncommittedLines = async (ground, relative) => {
   if (await gitOut(ground, ['rev-parse', '--is-inside-work-tree']) === null) return null;
-  if (await gitOut(ground, ['ls-files', '--error-unmatch', '--', relative]) === null) return null;
+  if (await gitOut(ground, ['ls-files', '--error-unmatch', '--', relative]) === null) return new Set();
   const diff = await gitOut(ground, ['diff', '--no-ext-diff', '--no-color', '-U0', '--', relative]);
   return diff === null ? new Set() : addedLines(diff);
 };
@@ -191,26 +191,23 @@ export const WATCH_MAX_DIRS = 4000;
 
 // impure — the folders git ignores in this ground, as relative paths ending in "/".
 // No repository: nothing is known to be ignored.
-const ignoredDirs = (ground) => new Promise((resolve) => {
-  execFile('git', ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory'],
-    { cwd: ground, maxBuffer: 64 * 1024 * 1024 }, (error, stdout) => {
-      resolve(error ? new Set() : new Set(String(stdout).split('\0').filter((p) => p.endsWith('/'))));
-    });
-});
+const ignoredDirs = async (ground) => {
+  if (await gitOut(ground, ['rev-parse', '--is-inside-work-tree']) === null) return new Set();
+  if (!(await repoConfigIsInert(ground))) throw new Error('this repository\'s own git config names programs git could run, so it is not watched');
+  const out = await gitOut(ground, ['ls-files', '-z', '--others', '--ignored', '--exclude-standard', '--directory']);
+  return new Set(String(out ?? '').split('\0').filter((p) => p.endsWith('/')));
+};
 
 // impure — mark every AI instruction already standing in the ground as handled,
 // so only a comment saved while watching ever fires. git finds them quickly
 // (tracked and untracked, ignored files skipped, binary files skipped); with
 // no repository nothing is primed and a standing comment fires on its file's
 // next save.
-const primeStanding = (ground, handled) => new Promise((resolve) => {
-  execFile('git', ['grep', '-z', '-l', '-I', '-i', '--untracked', '-E', 'ai[!?]', '--', '.', ':(exclude).neuma', ':(exclude)node_modules'],
-    { cwd: ground, maxBuffer: 64 * 1024 * 1024 }, async (error, stdout) => {
-      const files = error ? [] : String(stdout).split('\0').filter(Boolean);
-      for (const relative of files) await readInstruction(ground, relative, handled, { standing: true }).catch(() => null);
-      resolve();
-    });
-});
+const primeStanding = async (ground, handled) => {
+  const out = await gitOut(ground, ['grep', '-z', '-l', '-I', '-i', '--untracked', '-E', 'ai[!?]', '--', '.', ':(exclude).neuma', ':(exclude)node_modules']);
+  const files = String(out ?? '').split('\0').filter(Boolean);
+  for (const relative of files) await readInstruction(ground, relative, handled, { standing: true }).catch(() => null);
+};
 
 /**
  * Watch the ground and hand each new instruction to `onInstruction`.

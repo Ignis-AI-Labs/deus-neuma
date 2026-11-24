@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { Sheet } from '../sheet/Sheet.jsx';
 import { Fold } from '../fold/Fold.jsx';
+import { SendPace } from './SendPace.jsx';
 import { getLeadMail } from '../../../services/revenue-client.js';
 import { Outbox } from './Outbox.jsx';
 import { rowStatus, sourceWords } from './people-view.js';
@@ -44,6 +45,7 @@ export const EmailsStage = ({ engine, view, busy, onSend, onReturn, onEdit, onDe
   const toWrite = pipelineOf({ engine, view }).find((s) => s.id === 'emails').lines[0];
   return (
     <>
+      <SendPace engine={engine} />
       <p className="spl-note label-data" data-emails-to-write="">{toWrite} — YOUR SALES MEMBER WRITES THEM AND STAGES EACH HERE</p>
       <Outbox outbox={engine.outbox ? { ...engine.outbox, drafts: draftsIn(engine, view) } : null} leads={engine.leads ?? []} busy={busy} onSend={onSend} onReturn={onReturn} onEdit={onEdit} onDelete={onDelete} sending={sending} onStop={onStop} onClear={onClear} checks={engine.checks ?? {}} checkers={engine.checkers ?? []} onCheck={onCheck} onConfirm={onConfirm} onSendAnyway={onSendAnyway} />
     </>

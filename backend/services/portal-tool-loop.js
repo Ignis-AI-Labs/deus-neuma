@@ -5,13 +5,7 @@
  * attempted — plus the grant plumbing that lands an operator's yes at every
  * layer that can block it.
  *
- * Extracted VERBATIM from portal-stream.js (size-law breakdown 2026-08-26,
- * docs/work/size-law-breakdown.md Part 1 step 9 / #278). Loop module — it
- * imports the dispatch fan and shared leaves DIRECTLY, never portal-stream
- * (direction law: leaf ← family ← catalog ← dispatch ← loop ← orchestrator).
- * portal-stream re-exports `recordWorkAgainstFocus` (witness-tools.js runs
- * the same flow from its own lane) and keeps the old private names alive for
- * its orchestrator call sites and the `__test` barrel.
+ * Loop module: it imports shared leaves directly, never portal-stream.
  *
  * The per-call gate inside `processToolCalls` (policy → rogue-args → scope
  * gaps → sandbox pre-check → the ONE card → execution → work record → CCR
@@ -70,6 +64,8 @@ import { withBenchmarkGroundMirror } from './benchmark-exec-bridge.js';
 import { noteWorkingSetCall } from './sitting-disclosure.js';
 import { fitRead } from './read-room.js';
 import { tripMandateForLane } from './marketing/mandate/mandate-tripwire.js';
+import { refreshPortalScopeStanding } from './portal-install-standing.js';
+import { autoReadGrantAllowed } from './portal-auto-read-scope.js';
 
 const log = createLogger('Portal');
 
@@ -179,6 +175,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
 
   // Resolve tool policy for this neuma
   const neumaPolicy = await readExecutionToolPolicy(companion?.neumaId);
+  await refreshPortalScopeStanding(connection);
   // Read-scope grants the operator made in past sessions take effect here.
   await _hydratePathGrants(connection, neumaPolicy);
   // ...and the folder standing open in the Explorer is declared to the
@@ -344,11 +341,17 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         continue;
       }
 
-      // auto is the standing yes for READ scope — grant for the session, said
-      // on the desk. A write-scope grant CREATES new write reach into the
-      // operator's own files, so it ALWAYS prompts, even in auto: auto governs
-      // acting on reach already held, not the acquisition of new capability.
-      if (readScopeDirs.length > 0 && toolMode === 'auto') {
+      if ((readScopeDirs.length > 0 || writeScopeDirs.length > 0) && connection._scopeGrantsAllowed === false) {
+        const refusal = 'Filesystem scope is the install owner\'s or a co-owner\'s to grant; a guest house stays in its own ground.';
+        await logToolCall(neumaWorkspace, companion?.neumaId, serverName, toolName, args, 'denied', refusal);
+        results.push({ tool: toolLabel, status: 'denied', error: refusal });
+        _sendToolEvent(ws, companion, { tool: toolLabel, status: 'denied', summary: `${toolName} — ${refusal}` });
+        continue;
+      }
+
+      // AUTO grants READ scope only inside the lane or the operator's OPEN FOLDER.
+      // Every other new root asks explicitly (PR20 M-16); write scope always asks.
+      if (readScopeDirs.length > 0 && toolMode === 'auto' && autoReadGrantAllowed(connection, readScopeDirs)) {
         await _grantReadScope(connection, readScopeDirs, false, grantOrigin);
         _sendToolEvent(ws, companion, {
           tool: toolLabel, status: 'ok',

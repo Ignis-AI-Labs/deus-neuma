@@ -15,6 +15,7 @@ import { getActiveModel, getConfig, setConfig as setLlmConfig } from '../service
 import { reachSubstrate } from '../services/substrate-reach.js';
 import { loadProviderChoice, saveProviderChoice } from '../services/provider-choice.js';
 import { pickAutoAdopt, dedupeEndpoints } from '../services/provider-discovery.js';
+import { canonicalLoopbackEndpoint, checkSavedRoutes } from '../services/loopback-route-owner.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { probeProviders } from '../services/substrate-setup.js';
 import { probeLiveness } from '../services/substrate-liveness.js';
@@ -86,18 +87,23 @@ export const checkSubstrate = async (adoptedFrom = null, probe = {}) => {
     if (!adoptedFrom && probe.mayAdopt === true) {
       const target = pickAutoAdopt(found, await loadProviderChoice());
       if (target) {
-        const adopted = { provider: target.id, endpoint: target.endpoint, model: target.models[0] };
-        setLlmConfig(adopted);
-        const checked = await checkSubstrate({ name: target.name, endpoint: target.endpoint }, probe);
-        // Remembered only once the adopted server has answered: a choice that
-        // never reached a mind must not outlive this run as the house's mind.
-        if (checked.status === 'pass') {
-          await saveProviderChoice(adopted, { chosenBy: 'auto' });
-          log.info('Substrate auto-adopted — no operator choice existed', {
-            provider: target.id, endpoint: target.endpoint, wasConfigured: config.provider,
-          });
+        const adopted = { provider: target.id, endpoint: canonicalLoopbackEndpoint(target.endpoint), model: target.models[0] };
+        const foreign = await checkSavedRoutes([adopted.endpoint]);
+        if (foreign.length) {
+          log.error('First-run auto-adopt refused a model server owned by another account', { endpoint: adopted.endpoint });
+        } else {
+          setLlmConfig(adopted);
+          const checked = await checkSubstrate({ name: target.name, endpoint: adopted.endpoint }, probe);
+          // Remembered only once the adopted server has answered: a choice that
+          // never reached a mind must not outlive this run as the house's mind.
+          if (checked.status === 'pass') {
+            await saveProviderChoice(adopted, { chosenBy: 'auto' });
+            log.info('Substrate auto-adopted — no operator choice existed', {
+              provider: target.id, endpoint: adopted.endpoint, wasConfigured: config.provider,
+            });
+          }
+          return checked;
         }
-        return checked;
       }
     }
 

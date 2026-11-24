@@ -43,6 +43,11 @@
  * dispatch's hand-composed policy step (portal-stream.js).
  */
 
+import { PUBLISHING } from './house-clock/operator-acts.js';
+import { MONEY_OUT } from './house-clock/charter-shape.js';
+
+export const canAlwaysAllow = (server, tool) => !MONEY_OUT.includes(`${server}/${tool}`);
+
 // The hard-gated classes, keyed by their POLICY identity (server/tool).
 // `coding/execute` left this set (Design note, 2026-10-28: […]): it made AUTO STRICTER than ASK — allowed by
 // default, a card on every command in AUTO. On AUTO the shell now runs live in
@@ -53,6 +58,8 @@
 // the surface that shows the real card. social.post stays: post-now is the
 // irreversible act, and its card now carries the image.
 const AUTO_HARD_GATES = Object.freeze(new Set([
+  ...PUBLISHING,
+  'intents/house.charter',
   'filesystem/delete_file',
   'intents/team.workspace-run',
   'intents/social.post',
@@ -78,7 +85,9 @@ const AUTO_HARD_GATES = Object.freeze(new Set([
  * @param {string} tool - Policy tool name
  * @returns {boolean}
  */
-export const isAutoHardGated = (server, tool) => server === 'extension' || AUTO_HARD_GATES.has(`${server}/${tool}`);
+export const isAutoHardGated = (server, tool) => server === 'extension'
+  || (server === 'intents' && tool.startsWith('company.hands.'))
+  || AUTO_HARD_GATES.has(`${server}/${tool}`);
 
 /**
  * Apply the protocol guard on top of a mode-resolved access level. Pure.
@@ -98,7 +107,7 @@ export const applyProtocolGuard = (access, mode, server, tool, explicitlyAllowed
   // the approval stance (DEFAULT / PLAN / AUTO) decides, not where the command runs.
   if (mode !== 'auto') return access;
   if (access !== 'allowed') return access;
-  return isAutoHardGated(server, tool) && !explicitlyAllowed ? 'approval_required' : access;
+  return isAutoHardGated(server, tool) && (!explicitlyAllowed || !canAlwaysAllow(server, tool)) ? 'approval_required' : access;
 };
 
 /**

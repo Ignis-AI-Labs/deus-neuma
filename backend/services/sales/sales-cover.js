@@ -19,8 +19,9 @@
 // anything it cannot read asks.
 
 import { croDesignation } from '../revenue/cro-designation.js';
-import { leadLedgerFor } from '../leads/lead-ledger.js';
+import { leadLedgerFor, kindOf } from '../leads/lead-ledger.js';
 import { readSegments, readProspects, readSenders } from './sales-store.js';
+import { readOutbox } from './email-outbox.js';
 import { resolveEmailCredential } from '../email/email-credentials.js';
 import { normalizeEmail } from './suppress-shape.js';
 import { domainOfAddress } from './top-first.js';
@@ -68,6 +69,7 @@ export const judgeCover = ({ recipients, leads, prospects, segments, now, cap = 
   for (const address of recipients.map(normalizeEmail)) {
     const lead = leads.find((l) => normalizeEmail(l.contact) === address);
     if (!lead) return { covered: false, reason: `${address || 'a recipient'} is not a lead` };
+    if (kindOf(lead) !== 'buyer') return { covered: false, reason: `${address} is filed as ${kindOf(lead)}, not a buyer — an answer waits for the operator` };
     const prospect = prospects.find((p) => p.leadId === lead.id);
     if (!prospect?.listApproved || !approved.has(prospect.segmentId)) return { covered: false, reason: `${address} is not on an approved list` };
     if (!atCompany(address, prospect.domain)) return { covered: false, reason: `${address} is not at ${prospect.domain || 'the listed company\'s domain'} — the list the operator approved is companies` };
@@ -92,9 +94,10 @@ export const salesSendAccess = async (connection, access, policyTool, value) => 
     const laneId = connection.companion?.neumaId;
     if (!wallet || !laneId || (await croDesignation.getOfficer(wallet))?.laneId !== laneId) return access;
     const recipients = Array.isArray(value?.to) ? value.to : [value?.to];
-    const [leads, prospects, segments, senders, credentials] = await Promise.all([
-      leadLedgerFor(wallet).then((l) => l.load()), readProspects(wallet), readSegments(wallet), readSenders(wallet), resolveEmailCredential(wallet),
+    const [leads, prospects, segments, senders, credentials, outbox] = await Promise.all([
+      leadLedgerFor(wallet).then((l) => l.load()), readProspects(wallet), readSegments(wallet), readSenders(wallet), resolveEmailCredential(wallet), readOutbox(wallet),
     ]);
+    if (outbox.review) return access;
     const now = Date.now();
     const from = String(value?.from ?? credentials?.address ?? '').trim().toLowerCase();
     const cap = rampCap(senders[from] ?? null, now);

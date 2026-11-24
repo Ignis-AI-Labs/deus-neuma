@@ -30,7 +30,7 @@ import { listNeuma, resolveNeuma } from '../lib/discovery.js';
 import { buildSpeaker, resolveOperatorName } from '../lib/identity.js';
 import { converse } from '../lib/portal.js';
 
-const DEFAULT_BACKEND = 'http://localhost:3333';
+const DEFAULT_BACKEND = 'http://127.0.0.1:3333';
 
 // impure (delegates to resolveActiveBeing which reads env + .neuma/active)
 // Pick the being name-or-id from --being or fall through to the active-being
@@ -155,7 +155,7 @@ export const registerTalkCommand = (cli, { stdout = process.stdout, stderr = pro
         choices: ['grounded', 'balanced', 'expansive'],
       })
       .option('backend', {
-        describe: 'backend origin (default http://localhost:3333)',
+        describe: 'backend origin (default http://127.0.0.1:3333)',
         type: 'string',
       }),
     async (argv) => {

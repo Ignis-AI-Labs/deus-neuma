@@ -53,7 +53,7 @@ export const bouncedAddresses = (text, known) => {
  */
 export const provenAddresses = ({ addresses, leads, ids }) => {
   const carried = new Set(ids ?? []);
-  const sentIds = (address) => leads.filter((l) => normalizeEmail(l.contact) === address).flatMap((l) => personTouches(l).map((t) => t.messageId).filter(Boolean));
+  const sentIds = (address) => leads.filter((l) => normalizeEmail(l.contact) === address).flatMap((l) => personTouches(l).filter((t) => t.direction === 'out').map((t) => t.messageId).filter(Boolean));
   return [...new Set(addresses.map(normalizeEmail).filter(Boolean))].filter((address) => sentIds(address).some((id) => carried.has(id)));
 };
 

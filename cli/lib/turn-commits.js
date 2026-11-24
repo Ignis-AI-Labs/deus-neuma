@@ -14,11 +14,12 @@ import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
 import { join, relative, isAbsolute } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { UNDO_SUBDIR } from '../../backend/services/edit-undo.js';
+import { UNTRUSTED_GIT_ARGS, repoConfigIsInert, untrustedGitEnv } from '../../backend/services/untrusted-git.js';
 
 const SUBJECT_MAX = 64;
 
 // impure — git in the repository, output as text; a failure throws with git's own words.
-const git = (root, args) => execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+const git = (root, args) => execFileSync('git', [...UNTRUSTED_GIT_ARGS, ...args], { cwd: root, env: untrustedGitEnv(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 
 /** Is `root` the top of a git work tree? impure. */
 export const isRepository = (root) => existsSync(join(root, '.git'));
@@ -37,8 +38,9 @@ const insideRoot = (roots, abs) => {
  * untracked), optionally only among `paths`. impure.
  * @returns {string[]}
  */
-export const changedPaths = (root, paths = null) => {
+export const changedPaths = async (root, paths = null) => {
   if (paths && !paths.length) return [];
+  if (!(await repoConfigIsInert(root))) throw new Error('this repository\'s own git config names programs git could run, so its changes are not read or committed');
   const out = git(root, ['status', '--porcelain=v1', '-z', '--untracked-files=all', ...(paths ? ['--', ...paths] : [])]);
   const entries = out.split('\0').filter(Boolean);
   const changed = [];
@@ -97,8 +99,8 @@ export const commitMessage = ({ request, being, paths, heldBefore, kind = 'turn'
  * @param {{root: string, paths: string[], message: string}} c
  * @returns {{ok: true, sha: string, paths: string[]} | {ok: false, reason: string}}
  */
-export const commitPaths = ({ root, paths, message }) => {
-  const changed = changedPaths(root, paths);
+export const commitPaths = async ({ root, paths, message }) => {
+  const changed = await changedPaths(root, paths);
   if (!changed.length) return { ok: false, reason: 'nothing changed' };
   try {
     git(root, ['add', '-A', '--', ...changed]);
@@ -121,19 +123,19 @@ const commitLine = (done) => (done.ok ? `  committed ${done.sha} — ${done.path
  */
 export const committedTurn = async ({ root, request, being, run, say }) => {
   const since = Date.now();
-  const dirtyBefore = new Set(changedPaths(root));
+  const dirtyBefore = new Set(await changedPaths(root));
   const result = await run();
   const touched = touchedSince(root, since);
   if (touched.length) {
-    say(commitLine(commitPaths({ root, paths: touched, message: commitMessage({ request, being, paths: touched, heldBefore: touched.filter((p) => dirtyBefore.has(p)) }) })));
+    say(commitLine(await commitPaths({ root, paths: touched, message: commitMessage({ request, being, paths: touched, heldBefore: touched.filter((p) => dirtyBefore.has(p)) }) })));
   }
   return result;
 };
 
 /** Commit what an undo put back, as its own commit — history is added to, never rewritten. impure. */
-export const commitUndo = ({ root, absPath, being, said }) => {
+export const commitUndo = async ({ root, absPath, being, said }) => {
   const rel = insideRoot([...new Set([root, realpathSync(root)])], absPath);
   if (!rel) return '';
   const request = said.split(absPath).join(rel);
-  return commitLine(commitPaths({ root, paths: [rel], message: commitMessage({ request, being, paths: [rel], heldBefore: [], kind: 'undo' }) }));
+  return commitLine(await commitPaths({ root, paths: [rel], message: commitMessage({ request, being, paths: [rel], heldBefore: [], kind: 'undo' }) }));
 };

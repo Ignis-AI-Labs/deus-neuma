@@ -124,7 +124,10 @@ const move = async (from, to) => {
  */
 export const reclaimEntries = async (entries, holdingBase, now = Date.now()) => {
   const holding = holdingFor(holdingBase, now);
-  await fs.mkdir(holding, { recursive: true });
+  await fs.mkdir(holding, { recursive: true, mode: 0o700 });
+  await fs.chmod(holding, 0o700);
+  const standing = await fs.lstat(holding);
+  if (!standing.isDirectory() || standing.uid !== process.getuid()) throw new Error('tmp holding must be a real directory owned by this user');
   const moved = [];
   const failed = [];
   for (const path of entries) {
@@ -147,10 +150,14 @@ export const reclaimEntries = async (entries, holdingBase, now = Date.now()) => 
 export const purgeHolding = async (holdingBase, now = Date.now(), holdForMs = HOLD_FOR_MS) => {
   const removed = [];
   for (const name of await fs.readdir(holdingBase).catch(() => [])) {
-    const day = name.startsWith(HOLDING_PREFIX) ? Date.parse(name.slice(HOLDING_PREFIX.length)) : NaN;
+    if (!/^reclaimed-tmp-\d{4}-\d{2}-\d{2}$/.test(name)) continue;
+    const day = Date.parse(name.slice(HOLDING_PREFIX.length));
     if (!Number.isFinite(day) || now - day < holdForMs) continue;
-    await fs.rm(join(holdingBase, name), { recursive: true, force: true });
-    removed.push(join(holdingBase, name));
+    const candidate = join(holdingBase, name);
+    const standing = await fs.lstat(candidate).catch(() => null);
+    if (!standing?.isDirectory() || standing.uid !== process.getuid()) continue;
+    await fs.rm(candidate, { recursive: true, force: true });
+    removed.push(candidate);
   }
   return removed;
 };

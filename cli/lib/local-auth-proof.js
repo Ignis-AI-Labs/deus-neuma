@@ -13,7 +13,7 @@ import { URL, fileURLToPath } from 'node:url';
 import crypto from 'node:crypto';
 
 const HEX_32 = /^[a-f0-9]{64}$/;
-const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+const LOOPBACK = new Set(['127.0.0.1']);
 const REPO_DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data');
 
 const readKey = (root, name) => {

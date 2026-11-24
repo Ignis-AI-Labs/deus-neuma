@@ -29,6 +29,7 @@ import { readResearch, noteEntity } from '../sales/research-store.js';
 import { neverRefusal } from '../sales/never-countries.js';
 import { readNeverList } from '../legal/never-list.js';
 import { makeEntity, verifyQuote, isInvestor, isFundingCampaign, entityRefusal } from '../sales/company-entity.js';
+import { evidenceEgressRefusal } from '../sales/evidence-egress.js';
 import { makeSalesSheet } from '../sales/sales-facts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { withdrawDrafts } from '../sales/email-outbox.js';
@@ -110,6 +111,8 @@ const salesProspectIntent = Object.freeze({
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
     if (!context) return officerRefusal;
+    const egress = evidenceEgressRefusal(payload);
+    if (egress) return { ok: false, status: 'denied', reason: egress };
     const segment = (await readSegments(context.wallet)).find((s) => s.id === String(payload?.segment ?? '').trim());
     if (!segment) return invalid(`"${payload?.segment ?? ''}" is not a segment of this house — your LEAD ENGINE briefing names each by its [id]`);
     if (['paused', 'retired'].includes(segment.state)) return invalid(`segment [${segment.id}] is ${segment.state} — nothing is found for it`);
@@ -117,7 +120,7 @@ const salesProspectIntent = Object.freeze({
     if (!companies.length || companies.length > BATCH_MAX) return invalid(`companies: 1 to ${BATCH_MAX} per filing`);
     const now = new Date().toISOString();
     const problems = [];
-    let prospects = companies.flatMap((c, i) => {
+    const prospects = companies.flatMap((c, i) => {
       try {
         return [makeProspect({ ...c, segment, by: context.laneId, now })];
       } catch (err) {
@@ -126,23 +129,15 @@ const salesProspectIntent = Object.freeze({
       }
     });
     if (problems.length) return invalid(problems.join(' | '));
-    // What the audience REQUIRES (required-signs.js): each quote offered as proof must stand on the page it names.
-    for (const p of prospects) {
-      for (const proof of (p.proofs ?? []).filter((x) => x.met)) {
-        const checked = await verifyQuote(proof);
-        if (!checked.ok) problems.push(`${p.name}: REQUIRED "${proof.sign}": ${checked.why}`);
-      }
-    }
-    if (problems.length) return invalid(problems.join(' | '));
     // THE PIPELINE: a company gathered from a list is scored only once its own site was read and found alive
     // (lead-pipeline.js) — research reads a real, live company. One found by hand is scored on its own page.
     const gathered = new Map((await readCandidates(context.wallet)).filter((c) => c.segmentId === segment.id).map((c) => [c.domain, c]));
     const unverified = prospects.filter((p) => { const c = gathered.get(p.domain); return c && !c.siteRead?.alive; });
     if (unverified.length) return invalid(`THE PIPELINE: verify before you research — ${unverified.map((p) => { const c = gathered.get(p.domain); return `${p.domain} (${c.siteRead ? 'its site is dead: it is out of the pipeline' : 'its site was never read'})`; }).join(', ')}. Read the sites with sales/read-sites, then score the live ones.`);
-    // A FUNDING audience scores only what invests (company-entity.js): each company's record, filed with it or on record.
+    const funding = isFundingCampaign((await readCampaigns(context.wallet)).find((c) => c.id === segment.campaign));
     const entities = [];
-    if (isFundingCampaign((await readCampaigns(context.wallet)).find((c) => c.id === segment.campaign))) {
-      const known = (await readResearch(context.wallet)).entities;
+    const known = funding ? (await readResearch(context.wallet)).entities : new Map();
+    if (funding) {
       const owed = [];
       for (const [i, c] of companies.entries()) {
         const p = prospects[i];
@@ -151,21 +146,33 @@ const salesProspectIntent = Object.freeze({
           continue;
         }
         try {
-          const entity = makeEntity({ domain: p.domain, name: p.name, entityType: c.entityType, quote: c.entityEvidence?.quote, source: c.entityEvidence?.source });
-          const checked = await verifyQuote(entity);
-          if (checked.ok) entities.push({ ...entity, verified: checked.verified, why: checked.why }); else owed.push(`companies[${i}] (${p.name}): ${checked.why}`);
+          entities.push(makeEntity({ domain: p.domain, name: p.name, entityType: c.entityType, quote: c.entityEvidence?.quote, source: c.entityEvidence?.source }));
         } catch (err) { owed.push(`companies[${i}] (${p.name}): ${err.message}`); }
       }
       if (owed.length) return invalid(owed.join(' | '));
-      const entityOf = (d) => entities.find((e) => e.domain === d) ?? known.get(d);
-      prospects = prospects.map((p) => (isInvestor(entityOf(p.domain)) ? p : { ...p, match: 1, notInvestor: entityOf(p.domain).entityType }));
     }
-    return { ok: true, value: { context, segment, prospects, entities } };
+    return { ok: true, value: { context, segment, prospects, entities, known, funding } };
   },
   summarize: (payload) => `${Array.isArray(payload?.companies) ? payload.companies.length : 0} prospect(s) for ${payload?.segment ?? '?'}`,
-  execute: async ({ context, segment, prospects, entities = [] }) => {
-    for (const e of entities) await noteEntity(context.wallet, e, context.laneId);
-    const { added, refused } = await addProspects(context.wallet, prospects);
+  execute: async ({ context, segment, prospects, entities = [], known, funding }, { signal } = {}) => {
+    const problems = [];
+    for (const p of prospects) {
+      for (const proof of (p.proofs ?? []).filter((x) => x.met)) {
+        const checked = await verifyQuote(proof, { signal });
+        if (!checked.ok) problems.push(`${p.name}: REQUIRED "${proof.sign}": ${checked.why}`);
+      }
+    }
+    const verifiedEntities = [];
+    for (const entity of entities) {
+      const checked = await verifyQuote(entity, { signal });
+      if (checked.ok) verifiedEntities.push({ ...entity, verified: checked.verified, why: checked.why });
+      else problems.push(`${entity.domain}: ${checked.why}`);
+    }
+    if (problems.length) return { ok: false, reason: problems.join(' | ') };
+    const entityOf = (domain) => verifiedEntities.find((e) => e.domain === domain) ?? known.get(domain);
+    const judged = funding ? prospects.map((p) => (isInvestor(entityOf(p.domain)) ? p : { ...p, match: 1, notInvestor: entityOf(p.domain).entityType })) : prospects;
+    for (const e of verifiedEntities) await noteEntity(context.wallet, e, context.laneId);
+    const { added, refused } = await addProspects(context.wallet, judged);
     const lines = [
       `${added.length} added to "${segment.name}": ${added.map((p) => `[${p.id}] ${p.name} (${p.failedRequired ? `NO FIT — it does not meet what this audience requires: ${p.failedRequired.join('; ')}${p.belongsTo ? `; it belongs to [${p.belongsTo}]: score it there` : ''}` : p.notInvestor ? `NO FIT — not an investor: ${p.notInvestor}; its research stays for a customer campaign` : MATCH_WORDS[p.match]})`).join(', ') || 'none'}.`,
       ...refused.map((r) => `Refused ${r.domain}: ${r.reason}.`),

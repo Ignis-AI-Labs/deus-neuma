@@ -9,7 +9,8 @@
  * The Mercator's, like every lead-engine act; the same for the main seat and every clone.
  */
 import { officeContext } from './revenue-acts.js';
-import { readCampaigns, readSegments, readProspects, fileEmailPlan, settleProspect } from '../sales/sales-store.js';
+import { readCampaigns, readSegments, readProspects, readCandidates, fileEmailPlan, settleProspect } from '../sales/sales-store.js';
+import { evidenceEgressRefusal } from '../sales/evidence-egress.js';
 import { makeEntity, verifyQuote, isInvestor, isFundingCampaign, entityWords, ENTITY_TYPES } from '../sales/company-entity.js';
 import { readOutbox, withdrawDrafts } from '../sales/email-outbox.js';
 import { leadOrigins } from '../sales/campaign-shape.js';
@@ -117,12 +118,17 @@ const salesEntityIntent = Object.freeze({
     if (!context) return denied('the lead engine is the Mercator office\'s — only the seated Mercator files to it');
     let entity;
     try { entity = makeEntity(payload); } catch (err) { return invalid(err.message); }
-    const checked = await verifyQuote(entity);
-    if (!checked.ok) return invalid(checked.why);
-    return { ok: true, value: { context, entity: { ...entity, verified: checked.verified, why: checked.why } } };
+    const egress = evidenceEgressRefusal(entity);
+    if (egress) return denied(egress);
+    const [prospects, candidates] = await Promise.all([readProspects(context.wallet), readCandidates(context.wallet)]);
+    if (![...prospects, ...candidates].some((p) => p.domain === entity.domain)) return invalid(`${entity.domain} is not a prospect or candidate of this house — file it through the lead pipeline before classifying it`);
+    return { ok: true, value: { context, entity } };
   },
   summarize: (payload) => `${String(payload?.domain ?? '?').slice(0, 60)} is ${String(payload?.entityType ?? '?').slice(0, 30)}`,
-  execute: async ({ context, entity }) => {
+  execute: async ({ context, entity }, { signal } = {}) => {
+    const checked = await verifyQuote(entity, { signal });
+    if (!checked.ok) return { ok: false, reason: checked.why };
+    entity = { ...entity, verified: checked.verified, why: checked.why };
     await noteEntity(context.wallet, entity, context.laneId);
     if (isInvestor(entity)) return { ok: true, detail: `Kept: ${entityWords(entity)}. A funding campaign may write to it.` };
     // Not an investor: out of every funding audience, and its funding email taken back.

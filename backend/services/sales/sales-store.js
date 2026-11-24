@@ -177,6 +177,8 @@ export const approveList = (wallet, segmentId, by, expectedIds) => serialize(asy
  * The emails to them still wait for the operator in EMAILS. @returns {Promise<number>} how many were listed
  */
 export const listScreened = (wallet, segmentId, ids, by) => serialize(async () => {
+  const review = (await events(wallet, 'email-outbox.jsonl')).filter((e) => e?.type === 'review').at(-1)?.on !== false;
+  if (!review && by !== 'operator') return 0;
   const segment = (await readSegments(wallet)).find((s) => s.id === segmentId);
   if (segment?.state !== 'approved') return 0;
   const open = new Set(listable(await readProspects(wallet), segmentId).map((p) => p.id));

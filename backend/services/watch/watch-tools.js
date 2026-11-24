@@ -35,14 +35,32 @@ export const toolEnvironment = () => probeEnvironment();
  */
 export const jsRuntime = () => (process.versions.electron ? process.env.NEUMA_NODE_BINARY || 'node' : process.execPath);
 
+/** Re-read managed bytes immediately before any exec, including frame batches. impure. */
+export const assertVerifiedTool = async (bin) => {
+  const resolved = path.resolve(bin);
+  const yt = ytDlpFor(process.platform, process.arch);
+  if (yt && resolved === path.resolve(path.join(ytDir(), yt.bin))) {
+    if (!(await matchesSha256(resolved, yt.sha256))) throw new Error('yt-dlp bytes no longer match the pinned release; execution refused');
+  }
+  const ffmpeg = ffmpegFor(process.platform, process.arch);
+  for (const asset of ffmpeg ? [ffmpeg.ffmpeg, ffmpeg.ffprobe] : []) {
+    if (resolved !== path.resolve(path.join(toolsHome(), `ffmpeg-${FFMPEG_BUILD}`, asset.bin))) continue;
+    const gz = path.join(toolsHome(), asset.name);
+    if (!(await matchesSha256(gz, asset.sha256)) || !(await gzipMatchesFile(gz, resolved))) throw new Error(`${asset.bin} bytes no longer match the pinned build; execution refused`);
+  }
+};
+
 /**
  * Run a tool to the end. Never rejects. impure
  * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
  */
-export const runTool = (bin, args, { timeoutMs = 60_000, cwd } = {}) => new Promise((resolve) => {
-  execFile(bin, args, { env: toolEnvironment(), cwd, timeout: timeoutMs, windowsHide: true, maxBuffer: 32 * 1024 * 1024 },
-    (err, stdout, stderr) => resolve({ ok: !err, stdout: String(stdout || ''), stderr: `${stderr || ''}${err && !stderr ? err.message : ''}` }));
-});
+export const runTool = async (bin, args, { timeoutMs = 60_000, cwd } = {}) => {
+  try { await assertVerifiedTool(bin); } catch (err) { return { ok: false, stdout: '', stderr: err.message }; }
+  return new Promise((resolve) => {
+    execFile(bin, args, { env: toolEnvironment(), cwd, timeout: timeoutMs, windowsHide: true, maxBuffer: 32 * 1024 * 1024 },
+      (err, stdout, stderr) => resolve({ ok: !err, stdout: String(stdout || ''), stderr: `${stderr || ''}${err && !stderr ? err.message : ''}` }));
+  });
+};
 
 const readRecord = () => { try { return JSON.parse(fs.readFileSync(recordPath(), 'utf8')); } catch { return null; } };
 const writeRecord = (record) => fsp.writeFile(recordPath(), JSON.stringify(record, null, 2));

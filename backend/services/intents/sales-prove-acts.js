@@ -16,6 +16,7 @@ import { officeContext } from './revenue-acts.js';
 import { readSegments, readProspects, proveProspect, settleProspect, handProspect } from '../sales/sales-store.js';
 import { proofsFor, requiredState } from '../sales/required-signs.js';
 import { verifyQuote } from '../sales/company-entity.js';
+import { evidenceEgressRefusal } from '../sales/evidence-egress.js';
 import { readOutbox, withdrawDrafts } from '../sales/email-outbox.js';
 import { normalizeEmail } from '../sales/suppress-shape.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
@@ -76,6 +77,8 @@ const salesProveIntent = Object.freeze({
   validate: async (payload, { connection }) => {
     const context = await seated(connection);
     if (!context) return officerRefusal;
+    const egress = evidenceEgressRefusal(payload);
+    if (egress) return { ok: false, status: 'denied', reason: egress };
     const segments = await readSegments(context.wallet);
     const segment = segments.find((s) => s.id === String(payload?.segment ?? '').trim());
     if (!segment) return invalid(`"${payload?.segment ?? ''}" is not a segment of this house — your LEAD ENGINE briefing names each by its [id]`);
@@ -90,20 +93,21 @@ const salesProveIntent = Object.freeze({
       if (!prospect) { problems.push(`companies[${i}]: "${c?.id ?? ''}" is not a prospect of "${segment.name}"`); continue; }
       const made = proofsFor(segment, { domain: prospect.domain, name: prospect.name }, c?.proofs);
       if (made.problems.length) { problems.push(`companies[${i}] (${prospect.name}): ${made.problems.join('; ')}`); continue; }
-      // The quote must stand on the page: read again here, exactly as an investor's is.
-      const unread = [];
-      for (const proof of made.proofs.filter((p) => p.met)) {
-        const checked = await verifyQuote(proof);
-        if (!checked.ok) unread.push(`"${proof.sign}": ${checked.why}`);
-      }
-      if (unread.length) { problems.push(`companies[${i}] (${prospect.name}): ${unread.join('; ')}`); continue; }
       proved.push({ prospect, proofs: made.proofs });
     }
     if (problems.length) return invalid(problems.join(' | '));
     return { ok: true, value: { context, segment, segments, proved } };
   },
   summarize: (payload) => `prove ${Array.isArray(payload?.companies) ? payload.companies.length : 0} compan${Array.isArray(payload?.companies) && payload.companies.length === 1 ? 'y' : 'ies'} against what ${payload?.segment ?? '?'} requires`,
-  execute: async ({ context, segment, segments, proved }) => {
+  execute: async ({ context, segment, segments, proved }, { signal } = {}) => {
+    const unread = [];
+    for (const { prospect, proofs } of proved) {
+      for (const proof of proofs.filter((p) => p.met)) {
+        const checked = await verifyQuote(proof, { signal });
+        if (!checked.ok) unread.push(`${prospect.name}: "${proof.sign}": ${checked.why}`);
+      }
+    }
+    if (unread.length) return { ok: false, reason: unread.join(' | ') };
     const lines = [];
     for (const { prospect, proofs } of proved) {
       await proveProspect(context.wallet, prospect.id, proofs, context.laneId);

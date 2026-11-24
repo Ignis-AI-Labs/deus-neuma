@@ -173,6 +173,15 @@ test('concurrent processes cannot oversubscribe the daily cap and a restarted pr
   expect(afterRestart.reserved).toBeNull();
 });
 
+test('a higher accepted ticket still counts after a later over-cap ticket is refused', async () => {
+  const day = '2026-11-16';
+  const lane = 'notional-high-ticket';
+  expect((await reserveInChild({ lane, day, amount: 20_000_000, cap: 100_000_000 })).reserved).toBe(0);
+  expect((await reserveInChild({ lane, day, amount: 90_000_000, cap: 100_000_000 })).reserved).toBeNull();
+  expect((await reserveInChild({ lane, day, amount: 70_000_000, cap: 100_000_000 })).reserved).toBe(1);
+  expect((await reserveInChild({ lane, day, amount: 10_000_001, cap: 100_000_000 })).reserved).toBeNull();
+});
+
 test('pause blocks a new deposit and send but a claim still executes', async () => {
   await controls({ paused: true });
   expect((await send('1')).reason).toMatch(/paused by the operator/);

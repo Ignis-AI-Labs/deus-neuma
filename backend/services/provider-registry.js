@@ -58,9 +58,9 @@ import { GENERATED_PROVIDERS } from './provider-catalog-data.js';
 
 /** @type {ReadonlyArray<ProviderEntry>} */
 const CORE_PROVIDERS = Object.freeze([
-  Object.freeze({ id: 'llama-server', name: 'llama-server', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://localhost:8089', chatPath: '/v1/chat/completions', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
-  Object.freeze({ id: 'lm-studio', name: 'LM Studio', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://localhost:1234', chatPath: '/v1/chat/completions', keyEnv: 'LM_STUDIO_API_KEY', requiresKey: false, defaultModel: 'local-model' }),
-  Object.freeze({ id: 'ollama', name: 'Ollama', kind: 'local', sovereign: true, dialect: 'ollama', endpoint: 'http://localhost:11434', chatPath: '/api/chat', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
+  Object.freeze({ id: 'llama-server', name: 'llama-server', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://127.0.0.1:8089', chatPath: '/v1/chat/completions', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
+  Object.freeze({ id: 'lm-studio', name: 'LM Studio', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://127.0.0.1:1234', chatPath: '/v1/chat/completions', keyEnv: 'LM_STUDIO_API_KEY', requiresKey: false, defaultModel: 'local-model' }),
+  Object.freeze({ id: 'ollama', name: 'Ollama', kind: 'local', sovereign: true, dialect: 'ollama', endpoint: 'http://127.0.0.1:11434', chatPath: '/api/chat', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
   Object.freeze({ id: 'openai', name: 'OpenAI', kind: 'cloud', dialect: 'openai', endpoint: 'https://api.openai.com', chatPath: '/v1/chat/completions', keyEnv: 'OPENAI_API_KEY', requiresKey: true, defaultModel: 'gpt-4o-mini' }),
   Object.freeze({ id: 'anthropic', name: 'Anthropic', kind: 'cloud', dialect: 'anthropic', endpoint: 'https://api.anthropic.com', chatPath: '/v1/messages', keyEnv: 'ANTHROPIC_API_KEY', requiresKey: true, defaultModel: 'claude-haiku-4-5-20251001' }),
   Object.freeze({ id: 'xai', name: 'xAI (Grok)', kind: 'cloud', dialect: 'openai', endpoint: 'https://api.x.ai', chatPath: '/v1/chat/completions', keyEnv: 'XAI_API_KEY', requiresKey: true, defaultModel: 'grok-3-mini', oauth: Object.freeze(['browser', 'device']) }),

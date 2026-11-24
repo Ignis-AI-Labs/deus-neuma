@@ -75,6 +75,27 @@ export const inForm = (form, raw) => {
   return text;
 };
 
+const comparisonForms = (form, raw) => {
+  if (form === 'digits') {
+    return [inForm(form, raw), ...plainValuesIn(String(raw)).filter((v) => v.kind === 'phone').map((v) => v.norm)];
+  }
+  if (form !== 'url') return [inForm(form, raw)];
+  const original = String(raw ?? '').normalize('NFKC').replace(/[。．｡]/g, '.');
+  const texts = [original, ...decodedForms(original)];
+  const hosts = texts.flatMap((text) => {
+    const candidates = [text, ...all(URL, text).map((m) => m[0])];
+    return candidates.flatMap((candidate) => {
+      try {
+        const parsed = new globalThis.URL(/^https?:\/\//i.test(candidate.trim()) ? candidate.trim() : `https://${candidate.trim()}`);
+        return [inForm('url', parsed.hostname)];
+      } catch {
+        return [];
+      }
+    });
+  });
+  return [...new Set([...texts.map((text) => inForm('url', text)), ...hosts])];
+};
+
 // pure — one value of a class, normalised; null when too short to trace.
 const value = (kind, raw) => {
   const form = FORM_OF[kind];
@@ -174,7 +195,7 @@ const carriedBy = (texts) => {
   const formed = new Map();
   return (v) => {
     const form = FORM_OF[v.kind];
-    if (!formed.has(form)) formed.set(form, texts.map((text) => inForm(form, text)));
+    if (!formed.has(form)) formed.set(form, texts.flatMap((text) => comparisonForms(form, text)));
     return formed.get(form).some((text) => text.includes(v.norm));
   };
 };

@@ -10,6 +10,7 @@ import { readPipelineReview } from '../services/sales/pipeline-review-read.js';
 import { STAGES, STANDARD } from '../services/sales/pipeline-standard.js';
 import { readSchedule, setSchedule, makeSetting } from '../services/sales/lead-run-schedule.js';
 import { readSegments } from '../services/sales/sales-store.js';
+import { makeGoal, readGoal, setGoal } from '../services/sales/send-goal.js';
 import { createLogger } from '../services/logger.js';
 
 const log = createLogger('LeadRunRoutes');
@@ -36,6 +37,16 @@ router.get('/run/standing', async (req, res) => {
     const running = new Set(leadRunsOf(req.walletAddress).filter((r) => r.active).map((r) => r.segmentId));
     return res.json({ audiences: await readRunStanding(req.walletAddress, { running }), lists: LIST_SOURCES, gathers: listGathersOf(req.walletAddress) });
   } catch (error) { log.error('The audiences\' standing could not be read', { error: error.message }); return res.status(500).json({ error: 'Could not read where the audiences stand' }); }
+});
+
+// THE WEEKLY SENDING GOAL (sales/send-goal.js): GET reads it; PUT {weekly, campaigns: [id]} sets it (weekly 0 takes it away).
+router.get('/send-goal', async (req, res) => {
+  try { return res.json({ goal: await readGoal(req.walletAddress) }); } catch (error) { log.error('The sending goal could not be read', { error: error.message }); return res.status(500).json({ error: 'Could not read the sending goal' }); }
+});
+router.put('/send-goal', async (req, res) => {
+  let goal;
+  try { goal = makeGoal(req.body); } catch (error) { return res.status(400).json({ error: error.message }); }
+  try { await setGoal(req.walletAddress, goal); return res.json({ ok: true, goal: await readGoal(req.walletAddress) }); } catch (error) { log.error('The sending goal could not be set', { error: error.message }); return res.status(500).json({ error: 'Could not set the sending goal' }); }
 });
 
 // THE DAILY LEAD RUN (lead-run-schedule.js): each audience's own setting. GET reads them; PUT {segment, on, leads?, credits?, hour?} sets one.

@@ -91,6 +91,20 @@ const parseSignIn = (text) => {
 
 const MAX_UINT256 = (1n << 256n) - 1n;
 
+const canonicalTypedValue = (types, type, value, name) => {
+  const array = /^(.*)\[\d*\]$/.exec(type);
+  if (array) {
+    if (!Array.isArray(value)) throw new Error(`typed data: ${name} is not a list`);
+    return value.map((item, i) => canonicalTypedValue(types, array[1], item, `[${i}]`);
+  }
+  if (types[type]) {
+    if (!value || typeof value !== 'object') throw new Error(`typed data: ${name} is not a ${type}`);
+    return Object.fromEntries(types[type].map((field) => [field.name, canonicalTypedValue(types, field.type, value[field.name], field.name)]));
+  }
+  if (type === 'bool' && typeof value !== 'boolean') throw new Error(`typed data: ${name} must be a boolean, not ${JSON.stringify(value)}`);
+  return value;
+};
+
 // pure — one typed-data leaf as words
 const leafWords = (type, value) => {
   if (/^u?int/.test(type)) {
@@ -119,6 +133,7 @@ const typedLines = (types, type, value, name, depth) => {
 
 // Field names that hand another address power over this wallet's tokens.
 const GRANT_FIELDS = Object.freeze(['spender', 'operator']);
+const GRANT_FLAGS = Object.freeze(['authorized', 'allowed', 'approved', 'isAuthorized']);
 
 /**
  * Typed data as the person reads it: every signed field, in the order its type
@@ -130,14 +145,16 @@ const GRANT_FIELDS = Object.freeze(['spender', 'operator']);
  * @returns {{primaryType: string, body: string, grantee: string|null}}
  */
 const describeTypedData = (domain, types, value) => {
-  ethers.TypedDataEncoder.hash(domain || {}, types, value); // refuses anything the wallet could not sign
   const { primaryType } = ethers.TypedDataEncoder.from(types);
-  const lines = typedLines(types, primaryType, value, '', 0);
+  const canonical = canonicalTypedValue(types, primaryType, value, primaryType);
+  ethers.TypedDataEncoder.hash(domain || {}, types, canonical); // refuses anything the wallet could not sign
+  const lines = typedLines(types, primaryType, canonical, '', 0);
   const granted = types[primaryType].find((f) => GRANT_FIELDS.includes(f.name) && f.type === 'address');
+  const grantFlag = types[primaryType].find((f) => GRANT_FLAGS.includes(f.name) && f.type === 'bool' && canonical[f.name] === true);
   return {
     primaryType,
     body: [primaryType, ...lines.slice(1)].join('\n'),
-    grantee: granted || /permit/i.test(primaryType) ? String(value[granted?.name ?? 'spender'] ?? 'another address') : null,
+    grantee: granted || grantFlag || /permit/i.test(primaryType) ? String(canonical[granted?.name ?? 'spender'] ?? 'another address') : null,
   };
 };
 

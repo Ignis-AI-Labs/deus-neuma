@@ -20,6 +20,7 @@ import { fullAuth } from '../helpers/audit-auth.js';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { postQueue } from '../../backend/services/social/post-queue.js';
 import { schedulerTick } from '../../backend/services/social/post-scheduler.js';
+import { socialPostIntent } from '../../backend/services/intents/social-post.js';
 import { grantMandate } from '../../backend/services/marketing/mandate/mandate-lifecycle.js';
 import {
   buildMandateHouse, teardownMandateHouse, resetHouse, stagePost, lastEntry, entryOf, grantInput, HOUSE,
@@ -190,6 +191,20 @@ describe('the send re-checks the bytes', () => {
     const after = await entryOf(entry.id);
     expect(after.status).toBe('failed');
     expect(after.error).toContain('changed after it was staged');
+  });
+
+  test('an instant post re-checks the sealed image immediately before upload', async () => {
+    const file = path.join(art, 'instant.png');
+    await fs.writeFile(file, PNG_A);
+    const approved = await socialPostIntent.validate({ channel: 'x', text: 'Now, exactly this image.', media: [{ path: file, alt: 'instant' }] }, { connection: h.connection });
+    expect(approved.ok, JSON.stringify(approved)).toBe(true);
+    expect(approved.value.media[0].sha256).toBe(sha(PNG_A));
+    await fs.writeFile(file, PNG_B);
+    const sent = await socialPostIntent.execute(approved.value, { signal: AbortSignal.timeout(5000) });
+    expect(sent.ok).toBe(false);
+    expect(sent.reason).toContain('changed after it was staged');
+    expect(h.x.state.uploads).toBe(0);
+    expect(h.x.state.posts).toEqual([]);
   });
 
   test('the same image, untouched, goes out', async () => {

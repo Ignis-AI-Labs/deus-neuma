@@ -22,6 +22,11 @@ const SECRET_PATH = new RegExp('(?:^|/)(?:'
   + '|\\.azure/(?:accessTokens\\.json|msal_token_cache\\.(?:json|bin))'
   + '|(?:google-chrome(?:-beta|-unstable)?|chromium|BraveSoftware/Brave-Browser|microsoft-edge|vivaldi|Google/Chrome)/[^/]+/(?:Login Data|Cookies|Web Data|Network/Cookies)'
   + '|\\.ethereum/(?:[^/]+/)?keystore(?:/.+)?|\\.config/solana/[^/]+\\.json|\\.foundry/keystores(?:/.+)?|\\.electrum/wallets(?:/.+)?'
+  + '|browsers/[^/]+/(?:[^/]+/)*(?:Login Data|Cookies|Web Data|Network/Cookies|Local Storage)'
+  + '|(?:Arc|microsoft-edge)/(?:[^/]+/)*(?:Login Data|Cookies|Web Data|Network/Cookies)'
+  + '|login\\.keychain-db|\\.aws/sso/cache/.+|\\.config/stripe/.+|\\.config/\\.wrangler/.+'
+  + '|\\.cache/huggingface/token|\\.gemini/oauth_creds\\.json|(?:github-copilot|\\.copilot)/apps\\.json'
+  + '|\\.s3cfg|\\.my\\.cnf|\\.boto|Exodus/seed\\.seco|MetaMask/(?:[^/]+/)*leveldb(?:/.+)?'
   + '|\\.neuma/cli/token-[^/]+\\.json|hooks/hooks\\.json'
   + ')$', 'i');
 const CREDENTIAL_SOURCE = /^(?:[a-z0-9_-]+[-.])?credentials?(?:[-.][a-z0-9_-]+)*\.(?:js|mjs|cjs|jsx|ts|tsx)(?:\.map)?$/i;

@@ -21,6 +21,8 @@ import { assertNeumaOwner } from '../middleware/require-neuma-owner.js';
 import { getAppConfig } from '../config.js';
 import { getCapabilities } from '../services/model-capabilities.js';
 import { assertSafeEndpoint } from '../services/endpoint-guard.js';
+import { isAllowedEndpoint } from './llm-endpoint-rules.js';
+import { canonicalLoopbackEndpoint, checkSavedRoutes } from '../services/loopback-route-owner.js';
 import { requireInstallOwner } from '../services/install-owner.js';
 import { createLogger } from '../services/logger.js';
 const log = createLogger('LLM');
@@ -70,52 +72,6 @@ router.get('/lm-studio/config', requireAuth, async (req, res) => {
 });
 
 // --- LLM test connection (auth required — fetches from user-supplied URLs) ---
-
-// SSRF protection: only allow known LLM provider hostnames
-const ALLOWED_ENDPOINT_PATTERNS = [
-  /^https?:\/\/localhost(:\d+)?$/,
-  /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-  /^https?:\/\/\[::1\](:\d+)?$/,
-  /^https?:\/\/api\.openai\.com$/,
-  /^https?:\/\/api\.anthropic\.com$/,
-  /^https?:\/\/generativelanguage\.googleapis\.com$/,
-];
-
-const isPrivateIP = (ip) =>
-  ip.startsWith('169.254.') || ip.startsWith('10.') ||
-  ip.startsWith('192.168.') || /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
-  ip === '127.0.0.1' || ip === '::1' || ip === '0.0.0.0';
-
-const isAllowedEndpoint = async (endpoint) => {
-  if (!endpoint) return false;
-  try {
-    const url = new URL(endpoint);
-    const host = url.hostname;
-
-    // Block private IP ranges in hostname
-    if (isPrivateIP(host)) {
-      // Allow localhost patterns explicitly (for local LLM servers)
-      const base = `${url.protocol}//${url.host}`;
-      return ALLOWED_ENDPOINT_PATTERNS.some(p => p.test(base));
-    }
-
-    // For non-IP hostnames, resolve DNS and check resolved IP against private ranges
-    if (!/^\d+\.\d+\.\d+\.\d+$/.test(host) && host !== 'localhost') {
-      const { promises: dns } = await import('dns');
-      try {
-        const addresses = await dns.resolve4(host);
-        if (addresses.some(ip => isPrivateIP(ip))) {
-          return false; // DNS rebinding: domain resolves to private IP
-        }
-      } catch { /* DNS resolution failed — let allowlist check handle it */ }
-    }
-
-    const base = `${url.protocol}//${url.host}`;
-    return ALLOWED_ENDPOINT_PATTERNS.some(p => p.test(base));
-  } catch {
-    return false;
-  }
-};
 
 router.post('/llm/test', requireAuth, async (req, res) => {
   try {
@@ -330,7 +286,11 @@ router.put('/llm/provider', requireAuth, requireInstallOwner, async (req, res) =
     }
     const update = {};
     if (provider !== undefined) update.provider = provider;
-    if (endpoint !== undefined) update.endpoint = endpoint;
+    if (endpoint !== undefined) {
+      update.endpoint = canonicalLoopbackEndpoint(endpoint);
+      const foreign = await checkSavedRoutes([update.endpoint]);
+      if (foreign.length) return res.status(403).json({ success: false, error: 'The model server on this port is run by another account and is not used' });
+    }
     if (apiKey !== undefined) update.apiKey = apiKey;
     if (model !== undefined) update.model = model;
     if (temperature !== undefined) update.temperature = temperature;

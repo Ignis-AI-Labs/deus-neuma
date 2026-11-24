@@ -84,7 +84,11 @@ export const openZip = async (file) => {
       const start = entry.offset + 30 + local.readUInt16LE(26) + local.readUInt16LE(28);
       const raw = await readAt(fh, start, entry.compSize);
       if (entry.method === 0) return raw;
-      if (entry.method === 8) return inflateRaw(raw);
+      if (entry.method === 8) {
+        const inflated = await inflateRaw(raw, { maxOutputLength: max + 1 });
+        if (inflated.length > max) throw new Error(`${name} expands beyond the ${max.toLocaleString('en-US')} bytes this import reads`);
+        return inflated;
+      }
       throw new Error(`${name} is packed in a way this import does not read (method ${entry.method})`);
     };
     return { entries: entries.map(({ name, size: n }) => ({ name, size: n })), read, close: () => fh.close() };

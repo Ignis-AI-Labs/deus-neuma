@@ -414,7 +414,7 @@ export const GLOBAL_DEFAULTS = Object.freeze({
       // The CLO office's acts: the operator's one yes per filing (a reading
       // the house will act on, a run, a matter entered on the record).
       'legal.scan', 'legal.assess', 'legal.file', 'legal.opinion', 'legal.never-list',
-      'email.send', 'raise.reach', // raise.reach is email to an investor a being listed: the operator reads the address and every word (P6-39)
+      'email.send', 'raise.reach', 'sales.kind', 'sales.call', // raise.reach is email; re-filing a lead changes its checks; a call link takes the operator to a meeting host (PR20 H-02/M-07)
       'media.save', 'web.download', 'forge.install', 'forge.workflow', 'image.generate', 'ksp.command', 'team.workspace-run', 'sovereignty.propose',
       // A video render (image/generate on a video pipeline) asks on its own row:
       // it holds the machine for minutes, so ALWAYS for stills never covers it.

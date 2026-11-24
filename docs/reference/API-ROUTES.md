@@ -5,7 +5,7 @@
 > Request and response shapes live with each router in `backend/routes/`; the
 > WebSocket portal and the CLI protocols (`neuma agent`, `neuma acp`) are described in `cli/README.md`.
 
-802 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install; `requireLocalScope`: the local desk, never a paired remote).
+805 endpoints. **Guards** are the checks a request passes before the handler, in order (`requireAuth`: a signed-in operator; `requireInstallOwner`: the owner of this install; `requireLocalScope`: the local desk, never a paired remote).
 > `?ticket=` marks only the headerless file lanes that accept a short-lived exact-resource ticket;
 > it is not an alternate authentication transport on any other route.
 
@@ -768,6 +768,7 @@
 | POST | `/api/v1/revenue/lead-engine/import` | `requireAuth`, `textParser` |
 | DELETE | `/api/v1/revenue/lead-engine/leads/:id/call` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/leads/:id/call` | `requireAuth` |
+| POST | `/api/v1/revenue/lead-engine/leads/:id/call/show` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/leads/:id/kind` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/leads/:id/said` | `requireAuth` |
 | GET | `/api/v1/revenue/lead-engine/mail/:uid` | `requireAuth` |
@@ -802,6 +803,8 @@
 | PUT | `/api/v1/revenue/lead-engine/segments/:id/required` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/state` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/segments/:id/test` | `requireAuth` |
+| GET | `/api/v1/revenue/lead-engine/send-goal` | `requireAuth` |
+| PUT | `/api/v1/revenue/lead-engine/send-goal` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/spend` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/suppress` | `requireAuth` |
 | POST | `/api/v1/revenue/lead-engine/suppress/lift` | `requireAuth` |

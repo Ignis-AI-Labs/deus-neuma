@@ -62,7 +62,7 @@ export const emailSendIntent = Object.freeze({
     try {
       blocked = wallet ? await suppressedRecipients(wallet, to) : [];
       // To a lead: only what the approved sales facts back, from an AI that says so (MAKOTO).
-      unchecked = wallet ? await leadEmailRefusal(wallet, { to, subject: payload.subject, text: payload.text, promise: payload.promise, laneId: connection.companion?.neumaId }) : null;
+      unchecked = wallet ? await leadEmailRefusal(wallet, { to, subject: payload.subject, text: payload.text, promise: payload.promise, laneId: connection.companion?.neumaId, external: false }) : null;
     } catch (err) {
       return { ok: false, status: 'denied', reason: `the house's do-not-contact list or lead records could not be read (${err.message}) — nothing is sent until they can` };
     }
@@ -97,6 +97,8 @@ export const emailSendIntent = Object.freeze({
       return { ok: false, reason: `The email was not sent: the house's do-not-contact list could not be read (${err.message}).` };
     }
     if (blocked.length) return { ok: false, reason: `The email was not sent: ${blocked.join(', ')} went on the do-not-contact list after the card was raised — never written to again.` };
+    const unchecked = wallet ? await leadEmailRefusal(wallet, { to: [].concat(value.to), subject: value.subject, text: value.text, promise: value.promise, laneId: connection.companion?.neumaId }) : null;
+    if (unchecked) return { ok: false, reason: `The email was not sent: ${unchecked}.` };
     const credentials = await resolveEmailCredential(await houseOfLane(connection.companion?.neumaId)).catch(() => null);
     // Sales mail carries its way out: a line under it and the List-Unsubscribe header (sales/opt-out.js). A sales
     // email that cannot carry it does not go.

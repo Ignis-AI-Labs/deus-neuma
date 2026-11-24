@@ -50,7 +50,7 @@ export const OUTWARD = Object.freeze(['intents/social.post', 'intents/email.send
 export const BENCH_LAUNCH = 'bench/bench_run';
 
 /** The operator's yes every time, never the Optio's (Design note, 2026-10-17: taking something off their own list). */
-const THEIR_YES = Object.freeze(['intents/tasks.operator-drop']);
+const THEIR_YES = Object.freeze(['intents/tasks.operator-drop', 'intents/house.charter']);
 
 /** The review's bounds: a one-line answer, a little room for a thinking model, and a clock. */
 const REVIEW_MAX_TOKENS = 120;

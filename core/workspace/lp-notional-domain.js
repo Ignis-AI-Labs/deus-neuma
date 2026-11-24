@@ -41,13 +41,12 @@ export const createLpNotionalDomain = () => Object.freeze({
     for (const name of names) {
       const index = Number(name.slice(0, -5));
       if (!Number.isSafeInteger(index) || index < 0) throw new Error('LP notional record is invalid');
-      if (index >= ticket) continue;
       const claim = await this._readTrustedJSON(path.join(dir, name));
       if (claim?.day !== day || !validAmount(claim?.amountMicro)) throw new Error('LP notional record is invalid');
       usedMicro += claim.amountMicro;
       if (!Number.isSafeInteger(usedMicro)) throw new Error('LP notional record is invalid');
     }
-    if (usedMicro + amountMicro > capMicro) {
+    if (usedMicro > capMicro) {
       await fs.unlink(finalPath);
       return null;
     }

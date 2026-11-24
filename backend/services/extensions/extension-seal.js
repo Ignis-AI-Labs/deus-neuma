@@ -43,6 +43,13 @@ const linesOf = async (root, rel) => {
 export const sealOf = async (dir) => {
   const hash = createHash('sha256');
   for (const rel of SEALED) hash.update(`${(await linesOf(dir, rel)).join('\n')}\n`);
+  let parent = path.dirname(path.resolve(dir));
+  for (;;) {
+    hash.update(`${(await linesOf(parent, 'node_modules')).join('\n')}\n`);
+    const next = path.dirname(parent);
+    if (next === parent) break;
+    parent = next;
+  }
   return hash.digest('hex');
 };
 

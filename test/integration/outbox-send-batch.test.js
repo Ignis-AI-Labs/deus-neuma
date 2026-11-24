@@ -65,7 +65,7 @@ describe('the batch through the real route', () => {
     const ids = drafts.map((d) => d.id);
     const steps = [];
     let sends = 0;
-    const end = await runSendBatch({ ids, send: (one) => { sends += 1; return send(one); }, onStep: (s) => steps.push(sendingView({ ...s })), stopped: () => sends >= 3 });
+    const end = await runSendBatch({ ids: drafts, send: (one) => { sends += 1; return send(one); }, onStep: (s) => steps.push(sendingView({ ...s })), stopped: () => sends >= 3 });
 
     // One email a request, and the screen told after every change: queued, then each SENDING… and each answer.
     expect(sends).toBe(3);
@@ -101,5 +101,19 @@ describe('the batch through the real route', () => {
     expect(doneMarkup).toContain('data-outbox-sending="done"');
     expect(doneMarkup).toContain('>DONE</button>');
     expect(doneMarkup).toContain('on the do-not-contact list');
+  }, 60000);
+
+  test('PR20 M-08: a revision made after the operator read it cannot be sent under the old digest', async () => {
+    const staged = await stageDraft(me.address, { to: ['first@example.com'], subject: 'First words', text: 'The words the operator reviewed.', by: 'merc' });
+    const reviewed = (await readOutbox(me.address)).drafts.find((d) => d.id === staged.id);
+    await stageDraft(me.address, { id: staged.id, to: ['changed@example.com'], subject: 'Changed words', text: 'A different recipient and body.', by: 'merc' });
+    const send = async (ids) => (await request(app).post('/api/v1/revenue/lead-engine/outbox/send').set('Authorization', `Bearer ${me.token}`).send({ ids })).body;
+    const refused = await send([{ id: staged.id, digest: reviewed.digest }]);
+    expect(refused.sent).toEqual([]);
+    expect(refused.refused[0].reason).toContain('changed after you read it');
+    const legacy = await request(app).post('/api/v1/revenue/lead-engine/outbox/send').set('Authorization', `Bearer ${me.token}`).send({ ids: [staged.id] });
+    expect(legacy.status).toBe(400);
+    const current = (await readOutbox(me.address)).drafts.find((d) => d.id === staged.id);
+    expect(current).toMatchObject({ state: 'waiting', to: ['changed@example.com'], subject: 'Changed words' });
   }, 60000);
 });

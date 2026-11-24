@@ -17,7 +17,7 @@ import { installLpManager, installLpPool, registerLpIntegrityPins } from '../hel
 import { startLpReceiptRpc } from '../helpers/lp-receipt-rpc-kit.js';
 import { connectionsOn } from '../helpers/connections-kit.js';
 import { viaIntent, granting } from '../helpers/intent-path.js';
-import { startUmbraeStandIn, POOL, USDC } from '../helpers/umbrae-stand-in.js';
+import { startUmbraeStandIn, POOL, USDC, WETH } from '../helpers/umbrae-stand-in.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
 import { resetChainProviders } from '../../backend/services/chain/chain-registry.js';
 import { _resetConfig } from '../../backend/config.js';
@@ -119,12 +119,22 @@ describe('the LP intents through the real sweep', () => {
     expect(umbrae.seen).toEqual([]);
   });
 
+  test('PR20 H-04: a token send card carries the resolved contract, and a look-alike never reaches it', async () => {
+    const intent = intentType('lp/send');
+    const prepared = await intent.prepare({ to: 'operator', amount: '1', token: 'USDC' }, { connection: connection() });
+    expect(prepared.ok, prepared.reason).toBe(true);
+    expect(intent.cardArgs(prepared.value)).toMatchObject({ token: `USDC (${USDC})` });
+    const spoof = await intent.prepare({ to: 'operator', amount: '1', token: 'USDC\u200b' }, { connection: connection() });
+    expect(spoof.ok).toBe(false);
+    expect(spoof.reason).toContain('plain printable ASCII');
+  });
+
   test('approved lp/swap and lp/send answer with the run\'s own reason', async () => {
     const [send] = await viaIntent(connection(), 'lp/send', { to: '0x2222222222222222222222222222222222222222', amount: '0.01' }, 'ask', granting('lp.send'));
     expect(send.status).toBe('error');
     expect(send.error).toMatch(/^lp\/send did not complete: That is not a wallet of the house/);
     const [swap] = await viaIntent(connection(), 'lp/swap', { tokenIn: 'USDC', tokenOut: 'SCAM', amount: '1' }, 'ask', granting('lp.swap'));
-    expect(swap.error).toMatch(/^lp\/swap did not complete: Swaps are between tokens Umbrae's pools trade/);
+    expect(swap.error).toMatch(/pools trade no token|(Swaps|Quotes) are between tokens Umbrae's pools trade/);
     const [bad] = await viaIntent(connection(), 'lp/swap', { tokenIn: 'USDC' });
     expect(bad.error).toMatch(/needs \{tokenIn, tokenOut, amount\}/);
     expect(sends()).toEqual([]);

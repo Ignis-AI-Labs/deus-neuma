@@ -12,6 +12,7 @@
 
 import readline from 'node:readline';
 import { readApproval, approvalTerminalText } from './approval-text.js';
+import { ttyText } from './tty-text.js';
 
 /** Classify one frame emitted by the real consciousness path. Pure. */
 export const classifyFrame = (raw) => {
@@ -156,7 +157,7 @@ export const createCliPortal = ({ stdin, stdout, stderr, connection, resolveTool
   };
   let held = '';
   const emit = (text) => {
-    stdout.write(text);
+    stdout.write(ttyText(text));
     state.speechOpen = true;
     state.speechEndsWithNewline = text.endsWith('\n');
   };

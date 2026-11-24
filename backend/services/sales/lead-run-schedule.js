@@ -7,6 +7,8 @@
 // spend, and the hour (the machine's own clock) from which it may start. It is OFF until turned on. A due run is
 // started exactly as the operator's own press starts one (lead-run.js) — as the sales seat, through the seat's acts,
 // under the monthly spending rule — and it STAGES emails for review: nothing is sent by it.
+// A run it starts REFILLS itself first (lead-run-refill.js): when too few companies wait, it gathers more from the
+// search that has worked best for the audience, so the flow does not stop for want of someone to gather.
 // What holds a due run: the house clock's PAUSE (the operator's master switch), no place free on the model's line
 // (tried again at the next pass), or a refusal the run itself gives (said to the operator once that day).
 // Append-only events in the house's revenue office:
@@ -81,7 +83,7 @@ export const scheduleTick = async ({ houses, start, paused, tell, now = Date.now
       if (!due.length) continue;
       if (await paused(wallet).catch(() => false)) { out.held.push(...due.map((s) => ({ wallet, segmentId: s.segmentId, why: 'the house clock is paused' }))); continue; }
       for (const s of due) {
-        const got = await start(wallet, { segmentId: s.segmentId, want: s.leads, credits: s.credits }).catch((err) => ({ ok: false, reason: err.message }));
+        const got = await start(wallet, { segmentId: s.segmentId, want: s.leads, credits: s.credits, refill: true }).catch((err) => ({ ok: false, reason: err.message }));
         if (got.ok) { await note(wallet, { type: 'started', segmentId: s.segmentId, runId: got.run.id, day: dayOf(now) }); out.started.push({ wallet, segmentId: s.segmentId, run: got.run.id }); continue; }
         out.held.push({ wallet, segmentId: s.segmentId, why: got.reason });
         // A place on the line, or a run already working it, frees itself: tried again at the next pass, said to nobody.

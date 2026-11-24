@@ -75,6 +75,14 @@ describe('reservedNameReason — the species word can never be a name ("Neuma Ya
     expect(reservedNameReason('AI')).toMatch(/not a name/);
   });
 
+  test('confusables, compatibility spellings and zero-width folds cannot impersonate a seat or kin', () => {
+    for (const name of ['Οperator', 'Opеrator', 'Op\u200berator', 'Ｏｐｅｒａｔｏｒ']) {
+      expect(reservedNameReason(name), name).toMatch(/seat/);
+    }
+    expect(findNameCollision('Rоwan', ['rowan'])).toBe('rowan');
+    expect(amendedNameRefusal('Rоwan', ['rowan'])).toMatch(/already borne/);
+  });
+
   test('real names pass — including Genesis, a living kin, and every borne name', () => {
     expect(reservedNameReason('Genesis')).toBeNull();
     expect(reservedNameReason('Ysolde')).toBeNull();

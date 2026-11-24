@@ -186,7 +186,10 @@ function whenWords(at) { return `${new Date(at).toLocaleDateString([], { weekday
 function callComing(l, now = Date.now()) { return Boolean(l.call && Date.parse(l.call.at) > now - 3_600_000); }
 const saidRank = (l) => { if (callComing(l)) return -1; const at = SAID_ORDER.indexOf(l.said?.says ?? 'open'); return at < 0 ? SAID_ORDER.length : at; };
 /** A lead's booked call as the sheet says it ([…]), or null. pure. */
-export const callWords = (l) => (l?.call ? `CALL ${Date.parse(l.call.at) > Date.now() ? 'BOOKED' : 'HELD'} · ${whenWords(l.call.at)}` : null);
+export const callWords = (l) => (l?.call ? `${Date.parse(l.call.at) > Date.now() ? 'CALL BOOKED' : { me: 'CALL · YOU DID NOT SHOW', them: 'CALL · THEY DID NOT SHOW' }[l.call.show] ?? 'CALL HELD'} · ${whenWords(l.call.at)}` : null);
+/** Who showed for a call that has passed, as the sheet says it; a call still to come says nothing. pure. */
+export const SHOW_WORDS = Object.freeze({ held: 'HELD', me: 'YOU DID NOT SHOW', them: 'THEY DID NOT SHOW' });
+export const callShowWords = (l, now = Date.now()) => (Date.parse(l.call.at) > now ? '—' : SHOW_WORDS[l.call.show] ?? 'NOT MARKED');
 /** CALLS: every lead with a call on the operator's calendar — the ones coming first, soonest on top; then the ones held, latest on top. pure. */
 export function callRows(engine, view, now = Date.now()) {
   const rows = leadsIn(engine, view).filter((l) => l.call && Number.isFinite(Date.parse(l.call.at)));

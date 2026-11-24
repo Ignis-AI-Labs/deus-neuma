@@ -105,6 +105,13 @@ export const describeTarget = (view, ref) => {
   return element ? `${elementLine(element)} on ${view.url}` : null;
 };
 
+/** The exact page and DevTools node identity bound to the approval, never model-supplied. Pure. */
+export const approvedTarget = (view, ref) => {
+  const element = view?.elements?.find((e) => e.ref === Number(ref));
+  if (!element || !Number.isSafeInteger(element.identity)) return null;
+  return { ref: element.ref, identity: element.identity, url: view.url };
+};
+
 /**
  * Route a browser tool call: switch → being → secret screen → card → the act. impure
  * @param {{sendToolEvent: Function, webSettings?: Object}} ports
@@ -146,7 +153,9 @@ export const handleBrowserTool = async (ws, connection, neumaPolicy, toolMode, m
 
   if (act.kind !== 'look') {
     const target = act.ref !== undefined ? describeTarget(running?.view, act.ref) : null;
-    if (act.ref !== undefined && !target) return fail('error', `nothing numbered ${args?.ref} on your last look — look again`);
+    const approved = act.ref !== undefined ? approvedTarget(running?.view, act.ref) : null;
+    if (act.ref !== undefined && (!target || !approved)) return fail('error', `nothing numbered ${args?.ref} on your last look — look again`);
+    if (approved) act.target = approved;
     const cardArgs = act.kind === 'click' ? { click: target }
       : act.kind === 'type' ? { into: target, text: act.text, enter: act.enter }
         : act.kind === 'back' ? { from: running.view.url }

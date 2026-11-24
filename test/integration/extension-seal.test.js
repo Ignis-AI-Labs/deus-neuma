@@ -88,4 +88,11 @@ describe('an extension starts only as the copy its security check read', () => {
     await fs.writeFile(path.join(extensionDir(ID), 'node_modules', 'planted', 'index.js'), 'export default 1;\n');
     await expect(listExtensionTools(ID)).rejects.toThrow(/files changed after its security check/);
   }, 60_000);
+
+  test('PR20 M-19: a package planted in an upward node_modules breaks the seal', async () => {
+    const parent = path.dirname(extensionDir(ID));
+    await fs.mkdir(path.join(parent, 'node_modules', 'planted'), { recursive: true });
+    await fs.writeFile(path.join(parent, 'node_modules', 'planted', 'index.js'), 'module.exports = {};\n');
+    await expect(listExtensionTools(ID)).rejects.toThrow(/files changed after its security check/);
+  }, 60_000);
 });

@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import net from 'node:net';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { heldPaths, purgeHolding, reclaimEntries, staleEntries, HOLDING_PREFIX } from '../../backend/services/ram-keeper/tmp-janitor.js';
+import { KEEPER } from '../../backend/services/ram-keeper/ram-keeper.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 let root;
@@ -38,6 +39,15 @@ describe('the tmp janitor', () => {
     child = null;
     await fs.rm(root, { recursive: true, force: true });
     await fs.rm(holding, { recursive: true, force: true });
+  });
+
+  test('PR20 M-11: the janitor is opt-in, and its holding is private to this user', async () => {
+    expect(KEEPER.janitorEnabled).toBe(false);
+    await aged(join(root, 'neuma-private'), 3 * DAY);
+    const moved = await reclaimEntries([join(root, 'neuma-private')], holding);
+    const stat = await fs.stat(moved.holding);
+    expect(stat.mode & 0o777).toBe(0o700);
+    expect(stat.uid).toBe(process.getuid());
   });
 
   test('only an old, unheld, user-owned folder is stale', async () => {
@@ -90,7 +100,10 @@ describe('the tmp janitor', () => {
     await fs.mkdir(join(holding, `${HOLDING_PREFIX}2026-11-08`));
     await fs.mkdir(join(holding, `${HOLDING_PREFIX}2026-11-12`));
     await fs.mkdir(join(holding, 'someone-elses-folder'));
+    await fs.mkdir(join(root, 'must-survive'));
+    await fs.symlink(join(root, 'must-survive'), join(holding, `${HOLDING_PREFIX}2026-11-07`));
     expect(await purgeHolding(holding, now)).toEqual([join(holding, `${HOLDING_PREFIX}2026-11-08`)]);
-    expect((await fs.readdir(holding)).sort()).toEqual([`${HOLDING_PREFIX}2026-11-12`, 'someone-elses-folder']);
+    expect((await fs.readdir(holding)).sort()).toEqual([`${HOLDING_PREFIX}2026-11-07`, `${HOLDING_PREFIX}2026-11-12`, 'someone-elses-folder']);
+    expect(await fs.stat(join(root, 'must-survive'))).toBeTruthy();
   });
 });

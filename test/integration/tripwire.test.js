@@ -173,6 +173,32 @@ describe.skipIf(!linux)('decoy tripwire', () => {
     expect(await fs.readFile(mine, 'utf8')).toBe('{}');
   });
 
+  test('a real credential written over a decoy survives both retirement and turn-off', async () => {
+    wire = make();
+    await wire.setEnabled(true);
+    const decoy = await fileOf('aws');
+    const realCredentials = '[default]\naws_access_key_id = TESTREALKEY\naws_secret_access_key = test-real-secret\n';
+    await fs.writeFile(decoy, realCredentials);
+
+    await wire.setEnabled(false);
+    expect(await fs.readFile(decoy, 'utf8')).toBe(realCredentials);
+  });
+
+  test('a changed decoy is not deleted when a real app moves into its folder', async () => {
+    wire = make();
+    await wire.setEnabled(true);
+    const decoy = await fileOf('aws');
+    const realCredentials = '[default]\naws_access_key_id = TESTREALKEY\n';
+    await fs.writeFile(decoy, realCredentials);
+    await fs.writeFile(path.join(home, '.aws', 'config'), '[default]\nregion = eu-west-1\n');
+    wire.stop();
+
+    wire = make();
+    await wire.start();
+    expect((await wire.status()).decoys.find((d) => d.id === 'aws').status).toBe('retired');
+    expect(await fs.readFile(decoy, 'utf8')).toBe(realCredentials);
+  });
+
   test('turned off, every decoy and every folder it made is gone', async () => {
     await fs.mkdir(path.join(home, '.config', 'keep'), { recursive: true });
     wire = make();

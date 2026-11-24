@@ -10,8 +10,8 @@
 
 const ACCOUNT_SHAPES = Object.freeze([
   [/0x[0-9a-fA-F]{40}/, 'a wallet address'],
-  [/\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b/, 'an IBAN'],
-  [/\b(routing|account|acct|swift|bic|iban|aba)\s*(number|no\.?|#|code)?\s*[:#]?\s*[A-Z0-9-]{6,}/i, 'bank details'],
+  [/\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]){11,30}\b/, 'an IBAN'],
+  [/\b(?:routing|account|acct|swift|bic|iban|aba)\b[^\n]{0,40}?[A-Z0-9-]{6,}/i, 'bank details'],
 ]);
 const LONE_NUMBER = Object.freeze([/\b\d{8,}\b/, 'a long number that reads like an account']);
 // An invoice honestly carries long numbers (an order, a purchase order, a licence): there a long
@@ -45,8 +45,10 @@ const kindOf = (found) => {
  *   only beside a banking word
  * @returns {string[]} e.g. ['a wallet address', 'bank details']
  */
+const normalized = (text) => String(text ?? '').normalize('NFKC').replace(new RegExp('[\\u200b-\\u200d\\u2060\\ufeff]', 'g'), '');
+
 export const paymentShapesIn = (text, { loneNumbers = true } = {}) => [...ACCOUNT_SHAPES, loneNumbers ? LONE_NUMBER : NUMBER_BY_BANK_WORD]
-  .filter(([shape]) => shape.test(String(text ?? ''))).map(([, words]) => words);
+  .filter(([shape]) => shape.test(normalized(text))).map(([, words]) => words);
 
 /**
  * The pointers a text carries that nobody pinned: links, email addresses, bare
@@ -62,7 +64,7 @@ export const paymentShapesIn = (text, { loneNumbers = true } = {}) => [...ACCOUN
 export const pointersIn = (text, { pinned = [], bareDomains = true } = {}) => {
   const allowed = new Set(pinned.map(bare).filter(Boolean));
   const seen = new Set();
-  return [...String(text ?? '').matchAll(POINTER)].map((m) => trimmed(m[0]))
+  return [...normalized(text).matchAll(POINTER)].map((m) => trimmed(m[0]))
     .filter((found) => found && !allowed.has(bare(found)) && !seen.has(found.toLowerCase()) && seen.add(found.toLowerCase()))
     .map((found) => ({ found, kind: kindOf(found) }))
     .filter(({ found, kind }) => bareDomains || kind !== 'a web address' || found.includes('/'));

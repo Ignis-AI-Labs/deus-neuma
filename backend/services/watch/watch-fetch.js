@@ -16,6 +16,9 @@ import { createLogger } from '../logger.js';
 import { readablePath } from '../fs-read-clearance.js';
 import { checkPathAccess, isWithinRoots } from '../sandbox-path-policy.js';
 import { startWatchEgress } from './watch-egress.js';
+import { withReadGrants } from '../fs-read-clearance.js';
+import { isOtherHouse } from '../explorer-walls.js';
+import { focusGroundRoots } from '../focus-ground.js';
 import { ensureFfmpeg, ensureYtDlp, jsRuntime, runTool, watchHome } from './watch-tools.js';
 import { fetchFailure, isWatchableUrl, ytDlpArgs } from './watch-plan.js';
 import { probeMedia } from './watch-media.js';
@@ -152,7 +155,7 @@ const readyLink = async (url, need) => {
  * @param {string} requested
  * @param {string|null} laneDir - the neuma's workspace, where a relative path starts
  */
-const readyFile = async (requested, laneDir) => {
+const readyFile = async (requested, laneDir, connection) => withReadGrants(connection?._sensitiveGrants, async () => {
   const asked = laneDir && !path.isAbsolute(requested) ? path.join(laneDir, requested) : requested;
   let real;
   try {
@@ -160,6 +163,10 @@ const readyFile = async (requested, laneDir) => {
   } catch (err) {
     return { ok: false, why: err.code === 'ENOENT' ? 'there is no such file' : `that file is outside what a neuma may read (${err.message})` };
   }
+  const ownLane = laneDir && isWithinRoots(real, [fs.realpathSync(laneDir)]);
+  const granted = [...(connection?._grantedReadRoots || []), ...(connection?._grantedWriteRoots || []), ...focusGroundRoots(connection)];
+  if (connection && !ownLane && !isWithinRoots(real, granted)) return { ok: false, why: 'that recording is outside this lane and the ground granted to it' };
+  if (isOtherHouse(real, String(connection?.walletAddress ?? '').toLowerCase())) return { ok: false, why: 'that recording is another house\'s data' };
   const verdict = checkPathAccess(real);
   if (!verdict.allowed) return { ok: false, why: `that file is outside what a neuma may read (${verdict.reason})` };
   const st = await fsp.stat(real);
@@ -179,19 +186,19 @@ const readyFile = async (requested, laneDir) => {
     await saveEntry(entry);
   }
   return { ok: true, entry };
-};
+}, { reader: connection?.walletAddress, lanes: laneDir ? [laneDir] : [] });
 
 /**
  * A source made ready to watch ('video') or hear ('sound'). impure
  * @param {string} source - a link, or a path on this computer
  * @param {{need: 'video'|'sound', laneDir: string|null}} ask
  */
-export const readySource = async (source, { need, laneDir }) => {
+export const readySource = async (source, { need, laneDir, connection }) => {
   const s = String(source || '').trim();
   if (!s) return { ok: false, why: 'no source was given: name a link or a file' };
   if (isWatchableUrl(s)) return readyLink(s, need);
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return { ok: false, why: 'only an http or https link, or a file on this computer, can be watched' };
-  return readyFile(s, laneDir);
+  return readyFile(s, laneDir, connection);
 };
 
 /** A scratch folder for one call's frames, inside the source's own folder. Pure. */

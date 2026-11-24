@@ -26,7 +26,7 @@
  * the intent do the reads).
  */
 import { createHash } from 'crypto';
-import { safePrefix } from './templates.js';
+import { safePrefix, PACK_NODE_CLASSES } from './templates.js';
 import { choicesOf, describeInput } from './node-catalog.js';
 
 export const WORKFLOW_ID = /^custom\.[a-z0-9][a-z0-9-]{1,40}$/;
@@ -111,6 +111,10 @@ export const checkWorkflowProposal = (proposal) => {
     const node = graph[nodeId];
     if (!node || typeof node.class_type !== 'string' || !/^[\w .+-]{1,80}$/.test(node.class_type) || !node.inputs || typeof node.inputs !== 'object' || Array.isArray(node.inputs)) {
       errors.push(`node ${nodeId} must be {class_type, inputs}`);
+      continue;
+    }
+    if (!PACK_NODE_CLASSES.includes(node.class_type)) {
+      errors.push(`node ${nodeId}: '${node.class_type}' is not a drawing class the platform allows in a registered workflow`);
       continue;
     }
     for (const [input, value] of Object.entries(node.inputs)) {
@@ -205,14 +209,15 @@ export const checkWorkflowAgainstEngine = (pipeline, objectInfo) => {
         : `node ${nodeId} input '${input}'${who}: '${v}' is not a choice this engine offers`);
       const knob = knobAt.get(`${nodeId}\u0000${input}`);
       const slot = knob ? pipeline.slots[knob] : null;
+      const about = specs[input] ? describeInput(input, specs[input], true) : null;
+      if (knob && about?.wired) errors.push(`knob ${knob} points at node ${nodeId} input '${input}', which is wired: a knob may set only a primitive value`);
+      // A number must sit inside the node's own range, and so must every value its knob can reach.
       if (options) {
         if (!options.includes(value)) refuse(value, '');
         // A knob over choices may only offer choices the engine has — a model file above all.
         for (const v of slot?.type === 'enum' ? slot.values : []) if (!options.includes(v)) refuse(v, ` (knob ${knob})`);
         continue;
       }
-      // A number must sit inside the node's own range, and so must every value its knob can reach.
-      const about = specs[input] ? describeInput(input, specs[input], true) : null;
       if (about && typeof value === 'number') {
         const outside = (n) => (Number.isFinite(about.min) && n < about.min) || (Number.isFinite(about.max) && n > about.max);
         if (outside(value)) errors.push(`node ${nodeId} input '${input}': ${value} is outside the node's own range (${about.min} to ${about.max})`);

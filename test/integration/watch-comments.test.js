@@ -108,6 +108,10 @@ describe('instructionPrompt', () => {
 });
 
 describe('readInstruction', () => {
+  beforeEach(async () => {
+    await fs.rm(path.join(ground, '.git'), { recursive: true, force: true });
+  });
+
   test('a new instruction is read once; context rides with it; a second read of the same file is silent', async () => {
     await write('src/a.js', '// the list may be empty AI\nexport const first = (xs) => xs[0]; // guard the empty case AI!\n');
     const handled = new Set();
@@ -131,6 +135,7 @@ describe('readInstruction', () => {
   });
 
   test('ignored, binary, oversized and vanished files are never read', async () => {
+    git('init', '-q');
     await write('.gitignore', 'build/\n*.log\n');
     await write('build/out.js', '// do it AI!\n');
     await write('trace.log', '// do it AI!\n');
@@ -143,6 +148,10 @@ describe('readInstruction', () => {
 });
 
 describe('watchAiComments — real watches on a real folder', () => {
+  const track = (...files) => {
+    git('add', '--', ...files);
+    git('-c', 'user.name=proof', '-c', 'user.email=proof@example.invalid', 'commit', '-q', '-m', 'baseline');
+  };
   const start = async (opts = {}) => {
     const got = [];
     const errors = [];
@@ -153,6 +162,7 @@ describe('watchAiComments — real watches on a real folder', () => {
 
   test('a comment standing at start is left alone; one saved while watching fires once', async () => {
     await write('a.js', '// old request AI!\n');
+    track('a.js');
     const { got, watch } = await start();
     try {
       await settle();
@@ -170,6 +180,8 @@ describe('watchAiComments — real watches on a real folder', () => {
   });
 
   test('a burst of saves is one scan', async () => {
+    await write('burst.js', '\n');
+    track('burst.js');
     const { got, watch } = await start();
     try {
       for (let i = 0; i < 5; i += 1) await write('burst.js', `// do the thing AI!\n${'.'.repeat(i)}\n`);
@@ -180,11 +192,12 @@ describe('watchAiComments — real watches on a real folder', () => {
     }
   });
 
-  test('deep folders, and folders made while watching, are watched; dependencies and ignored folders are not', async () => {
+  test('deep folders are watched; dependencies, ignored folders and new untracked files are not acted on', async () => {
     await write('.gitignore', 'dist/\n');
     await write('src/deep/x.js', '\n');
     await write('node_modules/pkg/i.js', '\n');
     await write('dist/o.js', '\n');
+    track('.gitignore', 'src/deep/x.js');
     const { got, watch, info } = await start();
     try {
       expect(info.capped).toBe(false);
@@ -197,11 +210,9 @@ describe('watchAiComments — real watches on a real folder', () => {
       expect(got[0].file).toBe(path.join('src', 'deep', 'x.js'));
       await fs.mkdir(path.join(ground, 'made'));
       await settle();
-      await write('made/new.js', '// AI! yes, new folder\n');
-      expect(await until(() => got.length === 2)).toBe(true);
-      expect(got[1].file).toBe(path.join('made', 'new.js'));
+      await write('made/new.js', '// AI! no, untracked\n');
       await settle();
-      expect(got).toHaveLength(2);
+      expect(got).toHaveLength(1);
     } finally {
       watch.stop();
     }
@@ -305,6 +316,26 @@ describe('P6-60: only the operator\'s own uncommitted lines are instructions', (
     expect(await readInstruction(ground, 'staged.js', new Set())).toBeNull();
   });
 
+  test('untracked files, nested clones and submodules never open an instruction', async () => {
+    await write('untracked.js', '// untrusted AI!\n');
+    expect(await readInstruction(ground, 'untracked.js', new Set())).toBeNull();
+
+    await fs.mkdir(path.join(ground, 'nested'));
+    execFileSync('git', ['init', '-q', 'nested'], { cwd: ground });
+    await write('nested/inside.js', '// nested clone AI!\n');
+    expect(await readInstruction(ground, 'nested/inside.js', new Set())).toBeNull();
+
+    const source = await fs.mkdtemp(path.join(os.tmpdir(), 'neuma-watch-submodule-'));
+    execFileSync('git', ['init', '-q'], { cwd: source });
+    await fs.writeFile(path.join(source, 'base.js'), 'export const base = true;\n');
+    execFileSync('git', ['add', 'base.js'], { cwd: source });
+    execFileSync('git', ['-c', 'user.name=proof', '-c', 'user.email=proof@example.invalid', 'commit', '-q', '-m', 'base'], { cwd: source });
+    git('-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', source, 'vendor');
+    await write('vendor/inside.js', '// submodule AI!\n');
+    expect(await readInstruction(ground, 'vendor/inside.js', new Set())).toBeNull();
+    await fs.rm(source, { recursive: true, force: true });
+  });
+
   test('a checkout that writes a hostile comment while the watch runs opens no turn', async () => {
     await hostileBranch();
     const got = [];
@@ -336,6 +367,9 @@ describe('P6-60: only the operator\'s own uncommitted lines are instructions', (
     const turns = [];
     const said = [];
     const work = [];
+    for (const file of ['a.js', 'b.js', 'c.js']) await write(file, '\n');
+    git('add', 'a.js', 'b.js', 'c.js');
+    git('-c', 'user.name=proof', '-c', 'user.email=proof@example.invalid', 'commit', '-q', '-m', 'watch baseline');
     const watch = startCommentWatch({
       ground,
       stderr: { write: (text) => said.push(text) },

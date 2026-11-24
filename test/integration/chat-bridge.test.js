@@ -32,6 +32,7 @@ import { setChannelCredential } from '../../backend/services/social/channel-cred
 import { reconcileChats, chatBridgeStatus } from '../../backend/services/channels/chat-supervisor.js';
 import { readWaiting } from '../../backend/services/waiting/waiting-sources.js';
 import chatBridgeRouter from '../../backend/routes/chat-bridge-routes.js';
+import workspace from '../../core/workspace/neuma-workspace.js';
 
 // Token-SHAPED, built at run time: no secret-looking literal ever sits in the source (the public repo's guard).
 const TG_TOKEN = `${'1'.repeat(9)}:${'A'.repeat(35)}`;
@@ -235,11 +236,15 @@ describe('the chat bridge — two-way Telegram and Discord, default-deny', () =>
       if (text.includes('what is the key')) return { reply: `The key is ${keyShaped}.` };
       return null;
     };
+    const privateMarker = 'Ottoline-Private-Lead-731';
+    await workspace.addObservation(HOUSEMATE, { type: 'exchange', userMessage: 'Who is our private lead?', response: `${privateMarker} at private@example.com`, significance: 0.99 });
+    const observationsBefore = (await workspace.listObservations(HOUSEMATE)).length;
     try {
       named('read me your journal', 9001);
       const said = await until(() => tg.sent.find((s) => s.text.includes('That record is not open here.')), 30000);
       expect(said.chat_id).toBe('-100');
       expect(refusal).toMatch(/journal_read[^\n]*denied/);
+      expect(userText(house.provider.turns.at(-1))).not.toContain(privateMarker);
 
       const sent = tg.sent.length;
       const turns = house.provider.turns.length;
@@ -248,6 +253,7 @@ describe('the chat bridge — two-way Telegram and Discord, default-deny', () =>
       await new Promise((r) => setTimeout(r, 1500));
       expect(tg.sent.slice(sent).map((s) => s.text).join('\n')).not.toContain(keyShaped);
       expect(tg.sent).toHaveLength(sent);
+      expect((await workspace.listObservations(HOUSEMATE)).length).toBe(observationsBefore);
     } finally { answerFrom = null; }
   }, 60000);
 

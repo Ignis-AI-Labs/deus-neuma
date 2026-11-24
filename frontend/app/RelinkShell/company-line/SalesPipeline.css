@@ -145,6 +145,13 @@ ul.spl-detail { padding-left: var(--space-4); }
 .spl-call-add > .spl-note { flex-basis: 100%; }
 .spl-call-hand { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-bottom: var(--space-3); }
 .spl-call-hand > .cline-input { flex: 0 1 240px; min-width: 0; }
+/* the week's sending goal: its number, the campaigns it is split between, and the press, on one wrapping line */
+.spl-pace-form { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; border: 0; padding: 0; margin: var(--space-3) 0; min-width: 0; }
+.spl-pace-form > legend { padding: 0; margin-bottom: var(--space-2); }
+.spl-pace-picks { display: inline-flex; flex-wrap: wrap; gap: var(--space-3); }
+/* who showed for a call that has passed: its own group on the hand's line; the one that stands is marked */
+.spl-call-show { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.spl-call-show > button[aria-pressed='true'] { background: var(--surface-band); border-color: var(--signal-dim); color: var(--color-text-primary); }
 
 /* COSTS: the numbers to say out loud, in one row (SalesCosts.jsx). */
 .spl-costs { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); margin: 0 0 var(--space-3); padding: var(--space-3); background: var(--surface-sunk); border: 1px solid var(--line-strong); }

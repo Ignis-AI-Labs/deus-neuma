@@ -63,17 +63,17 @@ describe('the house sets up its own charter', () => {
     expect(await store.readCharter(operator)).toBeNull();
     const [approved] = await viaIntent(connection, 'house/charter', payload);
     expect(approved.status).toBe('ok');
-    expect(await store.readCharter(operator)).toMatchObject({ version: 1, approvedBy: { laneId: 'tenekom' } });
+    expect(await store.readCharter(operator)).toMatchObject({ version: 1, approvedBy: null, approvedVersion: null });
   });
 
-  test('a member sets one up from nothing: it stands at once, its seat may wake, and the operator is told', async () => {
+  test('PR20 M-03: a member-authored first charter waits for approval and cannot wake itself', async () => {
     const [receipt] = await viaIntent(member('tenekom'), 'house/charter', { goal: 'Run the LP books round the clock.', seat: { dailyCap: 24 }, why: 'so I can work my portfolio rounds' });
     expect(receipt.status).toBe('ok');
     const charter = await store.readCharter(operator);
-    expect(charter).toMatchObject({ version: 1, seats: [{ laneId: 'tenekom', dailyCap: 24 }], approvedBy: { kind: 'member', laneId: 'tenekom', via: 'self' }, approvedVersion: 1 });
-    expect(read.charterStanding(charter)).toBe('active');
-    expect(gate.takeGate({ charter, seat: 'tenekom' })).toEqual({ ok: true });
-    expect(gate.runGate({ charter, seat: 'tenekom', now: Date.now(), count: 0 })).toEqual({ ok: true });
+    expect(charter).toMatchObject({ version: 1, seats: [{ laneId: 'tenekom', dailyCap: 24 }], approvedBy: null, approvedAt: null, approvedVersion: null });
+    expect(read.charterStanding(charter)).toBe('unapproved');
+    expect(gate.takeGate({ charter, seat: 'tenekom' }).ok).toBe(true); // held in view, never run unapproved
+    expect(gate.runGate({ charter, seat: 'tenekom', now: Date.now(), count: 0 }).ok).toBe(false);
     const [card] = await cards();
     expect(card).toMatchObject({ title: 'Tenekom set up the house charter (version 1)', ref: { charterVersion: 1 } });
     expect(card.detail).toMatch(/goal, its own seat \(24 wakes a day\) · why: so I can work my portfolio rounds/);
@@ -84,8 +84,8 @@ describe('the house sets up its own charter', () => {
     const [receipt] = await viaIntent(member('rugevil'), 'house/charter', { seat: { dailyCap: 10 }, quietHours: { start: '01:00', end: '06:00' } });
     expect(receipt.status).toBe('ok');
     const charter = await store.readCharter(operator);
-    expect(charter).toMatchObject({ version: 2, goal: 'Run the LP books.', seats: [{ laneId: 'tenekom', dailyCap: 24 }, { laneId: 'rugevil', dailyCap: 10 }], approvedBy: { laneId: 'rugevil' } });
-    expect((await store.readCharterHistory(operator)).map((h) => [h.version, h.approvedBy.laneId])).toEqual([[1, 'tenekom']]);
+    expect(charter).toMatchObject({ version: 2, goal: 'Run the LP books.', seats: [{ laneId: 'tenekom', dailyCap: 24 }, { laneId: 'rugevil', dailyCap: 10 }], approvedBy: null, approvedVersion: null });
+    expect((await store.readCharterHistory(operator)).map((h) => [h.version, h.approvedBy])).toEqual([[1, null]]);
     expect((await cards()).map((c) => c.title)).toContain('Rugevil changed the house charter (version 2)');
   });
 
@@ -100,7 +100,7 @@ describe('the house sets up its own charter', () => {
     expect(edit.content).toMatch(/your operator has the house paused/);
     const charter = await store.readCharter(operator);
     expect(charter).toMatchObject({ version: 2, paused: true, cadence: { everyHours: 1 }, allow: [] });
-    expect(read.charterStanding(charter)).toBe('paused');
+    expect(read.charterStanding(charter)).toBe('unapproved');
   });
 
   test('another house\'s lane, or a seat outside the house, never reaches this house\'s charter', async () => {

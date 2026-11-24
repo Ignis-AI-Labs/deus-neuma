@@ -28,6 +28,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { withoutBackendSecrets } from '../../backend/services/agent-terminal-environment.js';
+import { UNTRUSTED_GIT_ARGS, repoConfigIsInert, untrustedGitEnv } from '../../backend/services/untrusted-git.js';
+import { ttyText } from './tty-text.js';
 
 const run = promisify(execFile);
 
@@ -65,10 +67,11 @@ export const workSnapshot = async (ground) => {
   let root;
   let listed;
   try {
-    root = (await run('git', ['rev-parse', '--show-toplevel'], { cwd: ground })).stdout.trim();
+    root = (await run('git', [...UNTRUSTED_GIT_ARGS, 'rev-parse', '--show-toplevel'], { cwd: ground, env: untrustedGitEnv() })).stdout.trim();
+    if (!(await repoConfigIsInert(root))) return null;
     // The platform's own undo records are not the being's work.
-    listed = (await run('git', ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', '.', ':(exclude).neuma'],
-      { cwd: root, maxBuffer: 64 * 1024 * 1024 })).stdout;
+    listed = (await run('git', [...UNTRUSTED_GIT_ARGS, 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--', '.', ':(exclude).neuma'],
+      { cwd: root, env: untrustedGitEnv(), maxBuffer: 64 * 1024 * 1024 })).stdout;
   } catch {
     return null;
   }
@@ -120,7 +123,7 @@ export const checkRunQuestion = (command, changed) => {
   const what = changed
     ? `  that turn changed ${changed.length} file(s):\n${shown.map((name) => `    ${name}`).join('\n')}${more}`
     : '  that turn may have changed files here (no git repository to compare)';
-  return `${what}\n  your check runs as you, outside the being's sandbox, and runs what those files say.\n  run it now — ${command}? [y/N] `;
+  return ttyText(`${what}\n  your check runs as you, outside the being's sandbox, and runs what those files say.\n  run it now — ${command}? [y/N] `);
 };
 
 // impure — stop the check and everything it started. Never throws.

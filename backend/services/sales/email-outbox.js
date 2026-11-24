@@ -27,7 +27,7 @@
 //   review    { on }            the setting
 // The fold is PURE; the reads, writes and the send are impure.
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { officeFile } from '../house-office.js';
 import { createWriteChain } from '../write-chain.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
@@ -51,6 +51,12 @@ const fileOf = (wallet) => officeFile(wallet, 'revenue', FILE);
 const OPEN_STATES = Object.freeze(['waiting', 'returned']);
 const line = (v, max) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, max);
 
+/** The exact recipient and words an operator approved. Pure. */
+export const draftDigest = (draft) => createHash('sha256').update(JSON.stringify({
+  to: (Array.isArray(draft?.to) ? draft.to : []).map(normalizeEmail).filter(Boolean).sort(),
+  subject: String(draft?.subject ?? ''), text: String(draft?.text ?? ''),
+})).digest('hex');
+
 /**
  * pure — the outbox from its events.
  * @returns {{review: boolean, drafts: object[]}} review: is REVIEW FIRST on (it is until turned off) · drafts: every
@@ -73,7 +79,7 @@ export const foldOutbox = (events) => {
     else if (e.type === 'sent') Object.assign(d, { state: 'sent', sentAt: e.at, from: e.from ?? null });
     else if (e.type === 'uncertain') Object.assign(d, { state: 'uncertain', sentAt: e.at, from: e.from ?? null });
   }
-  return { review, drafts: [...by.values()].reverse() };
+  return { review, drafts: [...by.values()].reverse().map((draft) => ({ ...draft, digest: draftDigest(draft) })) };
 };
 
 /** pure — the outbox in one line, as the operator's screen says it. */
@@ -143,11 +149,11 @@ export const stageDraft = (wallet, { to, subject, text, promise, by, id, followU
   const draft = { to: recipients, subject: line(subject, SUBJECT_MAX), text: String(text).trim(), ...(promise ? { promise: line(promise, 300) } : {}), ...(followUp ? { followUp: true } : {}), ...(formula ? { formula } : {}), by, factsSheetId: facts?.approved?.id ?? null, at: new Date().toISOString() };
   if (target) {
     await append(wallet, { type: 'revised', id: target.id, draft });
-    return { ok: true, id: target.id, revised: target.state };
+    return { ok: true, id: target.id, revised: target.state, digest: draftDigest(draft) };
   }
   const fresh = `m-${randomBytes(4).toString('hex')}`;
   await append(wallet, { type: 'staged', id: fresh, draft });
-  return { ok: true, id: fresh, revised: null };
+  return { ok: true, id: fresh, revised: null, digest: draftDigest(draft) };
 });
 
 /**
@@ -213,10 +219,11 @@ export const returnDraft = (wallet, id, note) => serialize(async () => {
  */
 // acceptRisk: the OPERATOR sends a first email to an address no database confirmed live, knowing it may bounce (the
 // outbox's SEND ANYWAY) — never the seat's.
-export const sendDraft = (wallet, id, { signal, acceptRisk = false } = {}) => serialize(async () => {
+export const sendDraft = (wallet, id, { signal, acceptRisk = false, expectedDigest = null } = {}) => serialize(async () => {
   const no = (reason) => ({ ok: false, id, reason });
   const draft = await waitingDraft(wallet, id);
   if (!draft) return no('no such email waits in the outbox');
+  if (expectedDigest && draft.digest !== expectedDigest) return no('this email changed after you read it — review the new recipient and words, then send that version');
   if (!draft.followUp) {
     const before = await writtenAlready(wallet, draft.to, id);
     if (before) return no(`${draft.to.join(', ')} was already emailed on ${String(before.at).slice(0, 10)}${before.subject ? ` ("${before.subject}")` : ''} — this would be a second first email. Delete it, or have it rewritten and staged as a follow-up`);

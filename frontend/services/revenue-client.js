@@ -109,6 +109,8 @@ export const changeSalesFact = (sheetId, change) => revenueCall('POST', `/lead-e
 export const bookLeadCall = (leadId, { at, title, link }) => revenueCall('POST', `/lead-engine/leads/${encodeURIComponent(leadId)}/call`, { body: { at, title, ...(link ? { link } : {}) }, errorPrefix: 'Could not book the call' });
 /** Call a lead's call off. */
 export const cancelLeadCall = (leadId) => revenueCall('DELETE', `/lead-engine/leads/${encodeURIComponent(leadId)}/call`, { errorPrefix: 'Could not call the call off' });
+/** Say who showed for a call whose time has passed: 'held', 'me' (you did not show) or 'them'. */
+export const markLeadCallShow = (leadId, show) => revenueCall('POST', `/lead-engine/leads/${encodeURIComponent(leadId)}/call/show`, { body: { show }, errorPrefix: 'Could not mark the call' });
 /** File (or replace) what a lead-data partner costs a month; end one. */
 export const setLeadPlan = (plan) => revenueCall('PUT', '/lead-engine/plans', { body: plan, errorPrefix: 'Could not file the plan' });
 export const endLeadPlan = (partner) => revenueCall('DELETE', `/lead-engine/plans/${encodeURIComponent(partner)}`, { errorPrefix: 'Could not end the plan' });
@@ -126,6 +128,9 @@ export const getPipelineReview = (segment = null, size = null) => revenueCall('G
 /** The daily lead run of each audience: read them; set one (on or off, leads a day, the day's credit limit, the hour it may start from). */
 export const getRunSchedule = () => revenueCall('GET', '/lead-engine/run/schedule', { errorPrefix: 'Could not read the daily lead runs' });
 export const setRunSchedule = (setting) => revenueCall('PUT', '/lead-engine/run/schedule', { body: setting, errorPrefix: 'Could not set the daily lead run' });
+/** The week's sending goal: how many emails, split between which campaigns. weekly 0 takes it away. */
+export const getSendGoal = () => revenueCall('GET', '/lead-engine/send-goal', { errorPrefix: 'Could not read the sending goal' });
+export const setSendGoal = (goal) => revenueCall('PUT', '/lead-engine/send-goal', { body: goal, errorPrefix: 'Could not set the sending goal' });
 /** Test an audience against companies that ARE it (their sites, commas or lines between them): they are screened now. */
 export const testAudience = (segmentId, companies) => revenueCall('POST', `/lead-engine/segments/${encodeURIComponent(segmentId)}/test`, { body: { companies }, errorPrefix: 'Could not test the audience' });
 /** The never-list: the places the house never writes to (kept by its legal office). Read it, set it, or answer what was proposed. */

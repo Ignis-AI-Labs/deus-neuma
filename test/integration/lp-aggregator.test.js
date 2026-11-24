@@ -26,6 +26,8 @@ import { openLpWallet } from '../../backend/services/umbrae-lp/lp-wallet.js';
 import { runSwap } from '../../backend/services/umbrae-lp/lp-trade.js';
 import { marketQuote } from '../../backend/services/umbrae-lp/lp-market.js';
 import { readBook } from '../../backend/services/umbrae-lp/lp-book.js';
+import { returnContract } from '../helpers/evm-return-contract.js';
+import { startLyingRpc } from '../helpers/lying-rpc.js';
 
 const KYBER = new ethers.Interface(KYBER_ABI);
 let anvil, provider, root, originalRoot, umbrae, kyber, connections, lp;
@@ -48,6 +50,7 @@ beforeAll(async () => {
   // Token contracts that answer every call with 6: decimals 6, balance and allowance 0.000006.
   await provider.send('anvil_setCode', [USDC, '0x600660005260206000f3']);
   await provider.send('anvil_setCode', [WETH, '0x600660005260206000f3']);
+  await provider.send('anvil_setCode', [KYBER_ROUTER, returnContract({ fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [1000n]) })]);
   umbrae = await startUmbraeStandIn({ provider });
   kyber = await startKyberStandIn({ amountOut: 1000n });
 }, 30000);
@@ -66,6 +69,7 @@ afterAll(async () => {
 beforeEach(() => {
   umbrae.reset();
   kyber.reset();
+  umbrae.state.marketWethPrice = 1;
   connections?.restore();
   connections = connectionsOn(['umbrae-liquidity', 'swap-aggregator', 'market-data']);
 });
@@ -88,6 +92,35 @@ describe('the aggregator road', () => {
     const line = (await readBook('tenekom')).journal.at(-1);
     expect(line).toMatchObject({ act: 'swap', why: 'enter at the deeper price' });
     expect(line.what).toMatch(/via KyberSwap \(uniswap-v3, aerodrome\); Umbrae's router quoted no route/);
+  }, 60000);
+
+  test('PR20 H-05: a one-wei aggregator quote cannot become the floor, and nothing is signed', async () => {
+    kyber.state.amountOut = 1n;
+    const before = await nonce(lp);
+    const out = await swapUsdc();
+    expect(out.ok).toBe(false);
+    expect(out.reason).toContain('below the minimum set by independent market prices');
+    expect(await nonce(lp)).toBe(before);
+  }, 60000);
+
+  test('PR20 H-05: two nodes that simulate different aggregator outputs sign nothing', async () => {
+    const lying = await startLyingRpc(anvil.url, (request) => {
+      if (request.method === 'eth_call' && String(request.params[0]?.to).toLowerCase() === KYBER_ROUTER.toLowerCase()) {
+        return ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [2n]);
+      }
+      return undefined;
+    });
+    const second = new ethers.JsonRpcProvider(lying.url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 100 });
+    try {
+      const before = await nonce(lp);
+      const out = await runSwap('tenekom', { tokenIn: 'USDC', tokenOut: 'WETH', amount: '0.000005' }, { provider, receiptProvider: second, receiptConfirmations: 1 });
+      expect(out.ok).toBe(false);
+      expect(out.reason).toContain('Two Base nodes disagree about what this aggregator swap would pay');
+      expect(await nonce(lp)).toBe(before);
+    } finally {
+      second.destroy();
+      await lying.close();
+    }
   }, 60000);
 
   test('a KyberSwap that pays someone else, takes a fee, names another router or lowers the floor: refused, nothing signed', async () => {

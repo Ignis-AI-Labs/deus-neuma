@@ -68,11 +68,11 @@ export const watchContent = ({ e, mode, heard, w, shown, file }, token) => {
  * @param {{laneId: string|null, laneDir: string|null, source: string, from?: unknown, to?: unknown, mode: 'watch'|'listen'}} ask
  * @returns {Promise<{ok: boolean, content?: string, error?: string, summary: string, imageIds?: string[], file?: string|null}>}
  */
-export const watchSource = async ({ laneId, laneDir, source, from, to, mode }) => {
+export const watchSource = async ({ laneId, laneDir, source, from, to, mode, connection }) => {
   const verb = mode === 'watch' ? 'watch' : 'listen to';
   let ready;
   try {
-    ready = await readySource(source, { need: mode === 'watch' ? 'video' : 'sound', laneDir });
+    ready = await readySource(source, { need: mode === 'watch' ? 'video' : 'sound', laneDir, connection });
   } catch (err) {
     log.warn('a source could not be made ready', { error: err.message });
     ready = { ok: false, why: err.message };

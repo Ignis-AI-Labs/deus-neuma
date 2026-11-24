@@ -149,7 +149,7 @@ export const handleMediaTool = async (ws, connection, neumaPolicy, toolMode, mat
     const mode = toolName === 'media_watch' ? 'watch' : 'listen';
     const laneId = companion.neumaId;
     const watched = await watchSource({
-      laneId, laneDir: neumaWorkspace.pathFor(laneId), source: args?.source, from: args?.from, to: args?.to, mode,
+      laneId, laneDir: neumaWorkspace.pathFor(laneId), source: args?.source, from: args?.from, to: args?.to, mode, connection,
     });
     if (!watched.ok) {
       ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: watched.summary, detail: watched.error });

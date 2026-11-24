@@ -7,7 +7,7 @@ import process from 'node:process';
 import { URL } from 'node:url';
 import { verifyLocalAuthProof } from '../../cli/lib/local-auth-proof.js';
 
-const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+const LOOPBACK = new Set(['127.0.0.1']);
 const SIGN_IN_SUFFIX = ' wants you to sign in with your Ethereum account:';
 const STATEMENT = 'Sign this message to authenticate with Neuma.';
 

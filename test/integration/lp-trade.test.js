@@ -26,6 +26,7 @@ import { resolveToken, tokenLabel } from '../../backend/services/umbrae-lp/lp-to
 import { UMBRAE_ROUTER } from '../../core/wallet/trade-policy.js';
 import { returnContract } from '../helpers/evm-return-contract.js';
 import { startLyingRpc } from '../helpers/lying-rpc.js';
+import { prepareSwapApproval } from '../../backend/services/umbrae-lp/lp-swap-prepare.js';
 
 const OPERATOR = ethers.Wallet.createRandom().address;
 const STRANGER_OPERATOR = ethers.Wallet.createRandom().address;
@@ -51,9 +52,11 @@ beforeAll(async () => {
     lp[lane] = (await openLpWallet(lane)).address;
   }
   await provider.send('anvil_setBalance', [lp.tenekom, ethers.toQuantity(ethers.parseEther('1'))]);
-  // A token contract that answers every call with 6: decimals 6, and a transfer that returns true.
+  // USDC has 6 decimals and WETH 18; other calls answer 6 (small held balance / true allowance).
   await provider.send('anvil_setCode', [USDC, '0x600660005260206000f3']);
-  await provider.send('anvil_setCode', [WETH, '0x600660005260206000f3']);
+  await provider.send('anvil_setCode', [WETH, returnContract({ fallback: ethers.AbiCoder.defaultAbiCoder().encode(['uint256'], [6n]), routes: {
+    [ethers.id('decimals()').slice(0, 10)]: ethers.AbiCoder.defaultAbiCoder().encode(['uint8'], [18]),
+  } })]);
   umbrae = await startUmbraeStandIn({ provider, receiptProvider: provider, receiptConfirmations: 1 });
 }, 30000);
 
@@ -232,8 +235,8 @@ describe('a swap\'s price is two Base nodes\' word, not one (P6-11)', () => {
   let lie = () => undefined;
 
   beforeAll(async () => {
-    // A router that quotes 1,000,000 out for any route and takes any swap: the real node's word.
-    await provider.send('anvil_setCode', [UMBRAE_ROUTER, returnContract({ fallback: ethers.ZeroHash, routes: { [selector]: quoteOf(1_000_000n) } })]);
+    // A router that quotes 1,000,000,000 out for any route and takes any swap: the real node's word.
+    await provider.send('anvil_setCode', [UMBRAE_ROUTER, returnContract({ fallback: ethers.ZeroHash, routes: { [selector]: quoteOf(1_000_000_000n) } })]);
     lying = await startLyingRpc(anvil.url, (request, honest) => lie(request, honest));
     liar = new ethers.JsonRpcProvider(lying.url, ethers.Network.from(8453), { staticNetwork: true, pollingInterval: 100 });
   });
@@ -248,7 +251,29 @@ describe('a swap\'s price is two Base nodes\' word, not one (P6-11)', () => {
     const out = await runSwap('tenekom', ask, { provider: liar, receiptProvider: provider, receiptConfirmations: 1 });
     expect(out).toMatchObject({ ok: true, via: 'umbrae', tokens: { in: USDC, out: WETH } });
     const tx = (await Promise.all(out.txHashes.map((hash) => provider.getTransaction(hash)))).find((sent) => sent.to === UMBRAE_ROUTER);
-    expect(SWAP.decodeFunctionData('swapExactTokensForTokens', tx.data).amountOutMin).toBe(990_000n);
+    expect(SWAP.decodeFunctionData('swapExactTokensForTokens', tx.data).amountOutMin).toBe(990_000_000n);
+  }, 60000);
+
+  test('PR20 H-04/H-05: the swap approval names both contracts, the expected output and the market-bound minimum', async () => {
+    const prepared = await prepareSwapApproval(ask, { provider });
+    expect(prepared.ok, prepared.reason).toBe(true);
+    expect(prepared.value.approvalPreview).toEqual({
+      tokenIn: `USDC (${USDC})`, tokenOut: `WETH (${WETH})`,
+      expectedOut: '0.000000001 WETH', minimumOut: '0.00000000099 WETH',
+    });
+  });
+
+  test('PR20 H-05: even two nodes agreeing on a route far below independent markets signs nothing', async () => {
+    await provider.send('anvil_setCode', [UMBRAE_ROUTER, returnContract({ fallback: ethers.ZeroHash, routes: { [selector]: quoteOf(2n) } })]);
+    try {
+      const before = await nonce(lp.tenekom);
+      const out = await runSwap('tenekom', ask, { provider, receiptProvider: provider, receiptConfirmations: 1 });
+      expect(out.ok).toBe(false);
+      expect(out.reason).toContain('below the minimum set by independent market prices');
+      expect(await nonce(lp.tenekom)).toBe(before);
+    } finally {
+      await provider.send('anvil_setCode', [UMBRAE_ROUTER, returnContract({ fallback: ethers.ZeroHash, routes: { [selector]: quoteOf(1_000_000_000n) } })]);
+    }
   }, 60000);
 
   test('a node that quotes almost nothing, so the floor it would sign is almost nothing: refused, nothing signed', async () => {

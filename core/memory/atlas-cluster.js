@@ -32,6 +32,8 @@ const TALK = new Set([
 ]);
 
 const WORD = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
+const MAX_TEXT_CHARS = 200_000;
+const MAX_WORDS = 50_000;
 
 /**
  * The words of one text, in order, each with the spelling it was written in.
@@ -44,10 +46,11 @@ const WORD = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
  * @returns {Array<{key:string, shown:string, joins:boolean, skip:boolean}>}
  */
 export const wordsOf = (text) => {
-  const whole = String(text || '');
+  const whole = String(text || '').slice(0, MAX_TEXT_CHARS);
   const out = [];
   let end = 0;
   for (const match of whole.matchAll(WORD)) {
+    if (out.length >= MAX_WORDS) break;
     const shown = match[0].replace(/['’-]+$/, '');
     const key = shown.toLowerCase().replace(/['’]s$/, '');
     // Anything but blank space since the last word (a comma, a full stop, a bracket) parts the two.

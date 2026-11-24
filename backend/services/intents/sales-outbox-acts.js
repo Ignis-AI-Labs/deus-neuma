@@ -66,8 +66,10 @@ const salesDraftEmailIntent = Object.freeze({
       return denied(`the house's do-not-contact list or lead records could not be read (${err.message}) — nothing is staged until they can`);
     }
     if (blocked.length) return denied(`${blocked.join(', ')} ${blocked.length === 1 ? 'is' : 'are'} on the house's do-not-contact list — never written to again`);
-    const stranger = await notALead(context.wallet, to[0]).catch(() => null);
-    if (stranger) return invalid(stranger);
+    for (const address of to) {
+      const stranger = await notALead(context.wallet, address).catch(() => null);
+      if (stranger) return invalid(stranger);
+    }
     // Never the same first email twice (Design note, 2026-11-18: someone already emailed hears again only by a follow-up.
     const followUp = payload?.followUp === true;
     if (!followUp) {
@@ -92,7 +94,7 @@ const salesDraftEmailIntent = Object.freeze({
     if (!secret.ok) return denied(secret.reason);
     let unchecked;
     try {
-      unchecked = await leadEmailRefusal(context.wallet, { to, subject, text, promise, laneId: context.laneId });
+      unchecked = await leadEmailRefusal(context.wallet, { to, subject, text, promise, laneId: context.laneId, external: false });
     } catch (err) {
       return denied(`the house's do-not-contact list or lead records could not be read (${err.message}) — nothing is staged until they can`);
     }
@@ -101,6 +103,8 @@ const salesDraftEmailIntent = Object.freeze({
   },
   summarize: (payload) => `stage an email to ${Array.isArray(payload?.to) ? payload.to.join(', ') : String(payload?.to ?? '?')} for review: "${String(payload?.subject ?? '').slice(0, 100)}"`,
   execute: async ({ context, to, subject, text, promise, formula, id, followUp }) => {
+    const delivery = await leadEmailRefusal(context.wallet, { to, subject, text, promise, laneId: context.laneId });
+    if (delivery) return { ok: false, reason: delivery };
     const staged = await stageDraft(context.wallet, { to, subject, text, promise, by: context.laneId, id, followUp, formula });
     if (!staged.ok) return { ok: false, reason: staged.reason };
     const done = staged.revised ? `Replaced [${staged.id}] in place (it was ${staged.revised === 'returned' ? 'returned by your operator' : 'waiting'}) with this version` : `Staged for your operator's review [${staged.id}]`;

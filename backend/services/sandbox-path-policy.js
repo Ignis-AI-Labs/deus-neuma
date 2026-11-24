@@ -19,7 +19,7 @@ import { secretLinkReason } from './secret-inodes.js';
 // Re-exported for the filesystem organ, which is at the size cap and keeps one policy import.
 export { secretLinkReason };
 import { platformWallWriteReason, platformWriteWalls } from './platform-write-walls.js';
-import { foldName, wallSpelling } from './wall-spelling.js';
+import { foldName, wallSpelling, macFirmlinkRefusal } from './wall-spelling.js';
 import { windowsPathShapeRefusal } from './windows-path-shape.js';
 
 // Denied path patterns — tools cannot access these (reads OR writes). Split in
@@ -304,6 +304,8 @@ export const checkPathAccess = (filePath, allowedRoots = [], { requireRoot = fal
   if (!filePath || typeof filePath !== 'string') {
     return { allowed: false, reason: 'Invalid path' };
   }
+  const firmlink = macFirmlinkRefusal(filePath, platform);
+  if (firmlink) return { allowed: false, reason: firmlink };
   const shape = windowsPathShapeRefusal(filePath, platform);
   if (shape) return { allowed: false, reason: shape };
 

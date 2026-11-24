@@ -92,6 +92,7 @@ describe('machine-wide settings belong to the install owner, changed at its own 
     app.use('/api/v1/preflight', (await import('../../backend/routes/preflight-routes.js')).default);
     app.use('/api/v1/web', (await import('../../backend/routes/web-routes.js')).default);
     app.use('/api/v1/substrate', (await import('../../backend/routes/substrate-routes.js')).default);
+    app.use('/api/v1/revenue/lead-engine', (await import('../../backend/services/auth.js')).requireAuth, (await import('../../backend/routes/lead-engine-routes.js')).default);
     app.use('/api/v1/install-owner', (await import('../../backend/routes/install-owner-routes.js')).default);
     app.use('/api/v1/remote', createRemoteRouter({ store }));
     server = http.createServer(app);
@@ -173,6 +174,22 @@ describe('machine-wide settings belong to the install owner, changed at its own 
     expect(theirs.failures.map((row) => row.msg)).toContain('guest house bind failed');
     expect(theirs.failures.map((row) => row.msg)).not.toContain('owner house bind failed');
     expect(theirs.failuresWithheld).toBeGreaterThan(0);
+  });
+
+  test('machine connection history and paid lead-data rules are owner-only, including from a phone', async () => {
+    for (const route of ['/api/v1/substrate/network', '/api/v1/substrate/network/history', '/api/v1/substrate/holders']) {
+      expect((await atDesk(guest, request(base()).get(route))).status).toBe(403);
+      expect((await atDesk(owner, request(base()).get(route))).status).not.toBe(403);
+    }
+    const spend = (place, who) => place(who, request(base()).post('/api/v1/revenue/lead-engine/spend')).send({ mode: 'off', cap: 100 });
+    expect((await spend(atDesk, guest)).status).toBe(403);
+    expect((await spend(fromPhone, owner)).status).toBe(403);
+    expect((await spend(atDesk, owner)).status).toBe(200);
+
+    const { forgeInstallIntent } = await import('../../backend/services/intents/forge-install.js');
+    const filing = { repo: 'owner/model', file: 'diffusion_models/model.safetensors' };
+    expect((await forgeInstallIntent.validate(filing, { connection: { walletAddress: guest.address } })).status).toBe('denied');
+    expect((await forgeInstallIntent.validate(filing, { connection: { walletAddress: owner.address } })).ok).toBe(true);
   });
 
   test('the owner names a co-owner, who may then change the machine; no one else names one', async () => {

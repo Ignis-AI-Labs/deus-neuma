@@ -346,15 +346,21 @@ export const renderCardForLane = async ({ laneId, args, rasterize, laneDir = nul
  */
 export const CARD_RASTER_SCALE = 2.5;
 
-/** Rasterise with the Chromium already on this rig. impure — browser. */
+const CARD_CONTENT_POLICY = "default-src 'none'; img-src data:; style-src 'unsafe-inline' data:; font-src data:";
+
+/** Rasterise with scripts off, a sandbox and every non-inline request refused. impure — browser. */
 export const chromiumRasterize = async (svg, out, { width, height, scale = CARD_RASTER_SCALE }) => {
   const { chromium } = await import('playwright');
-  const browser = await chromium.launch({ args: ['--disable-gpu'] });
+  const browser = await chromium.launch({ args: ['--disable-gpu'], chromiumSandbox: true });
   try {
-    const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: scale });
-    await page.setContent(`<style>html,body{margin:0;padding:0;background:transparent}svg{display:block}</style>${svg}`);
+    const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.route('**/*', (route) => route.request().url().startsWith('data:') ? route.continue() : route.abort('blockedbyclient'));
+    const style = '<style>html,body{margin:0;padding:0;background:transparent}svg{display:block}</style>';
+    await page.setContent(`<meta http-equiv="Content-Security-Policy" content="${CARD_CONTENT_POLICY}">${style}${svg}`);
     await page.evaluate(() => globalThis.document.fonts.ready);
     await page.locator('svg').screenshot({ path: out });
+    await context.close();
   } finally {
     await browser.close();
   }

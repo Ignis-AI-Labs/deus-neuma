@@ -14,6 +14,7 @@
 import { seatOf } from '../flight-check.js';
 import { lpWalletAddress } from '../umbrae-lp/lp-wallet.js';
 import { runSwap, runSend, MAX_SLIPPAGE_PCT } from '../umbrae-lp/lp-trade.js';
+import { prepareSwapApproval, prepareSendApproval } from '../umbrae-lp/lp-swap-prepare.js';
 import { lpOffered, walletWords, failedOutcome } from './lp-acts.js';
 
 // impure — the shared seat and wallet checks every lp act makes before running.
@@ -43,6 +44,8 @@ export const lpSwapIntent = Object.freeze({
     return { ok: true, value };
   },
   summarize: (p) => `swap ${p?.amount ?? '?'} ${p?.tokenIn ?? '?'} for ${p?.tokenOut ?? '?'}`,
+  prepare: (value) => prepareSwapApproval(value),
+  cardArgs: (value) => ({ amount: value.amount, ...value.approvalPreview, slippagePct: value.slippagePct ?? 1, ...(value.why ? { why: value.why } : {}) }),
   // impure — the whole swap: route, quote, approve, swap, confirm.
   execute: async (value, { connection }) => {
     const out = await runSwap(connection.companion?.neumaId, value);
@@ -66,6 +69,8 @@ export const lpSendIntent = Object.freeze({
     return { ok: true, value };
   },
   summarize: (p) => `send ${p?.amount ?? '?'} ${p?.token || 'ETH'} to ${p?.to ?? '?'}`,
+  prepare: prepareSendApproval,
+  cardArgs: (value) => ({ to: value.to, amount: value.amount, ...value.approvalPreview, ...(value.why ? { why: value.why } : {}) }),
   // impure — resolve the house address, sign through the rule, confirm.
   execute: async (value, { connection }) => {
     const out = await runSend(connection.companion?.neumaId, value);

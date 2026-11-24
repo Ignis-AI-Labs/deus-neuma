@@ -1,0 +1,2 @@
+Added
+- THIS WEEK'S SENDING, at the top of EMAILS. Set how many emails you mean to send in a week and tick the campaigns it is split between. One line a campaign shows its share, what was sent this week and today, what is still to go, how many a working day that takes, and of the people written to this week how many bounced and how many wrote back. BOUNCED turns to alert above 3 in 100. It is a measure only: it sends nothing and holds nothing.

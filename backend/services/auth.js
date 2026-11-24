@@ -413,8 +413,10 @@ export const createAuthRouter = (express) => {
       return res.status(400).json({ error: 'Valid Ethereum address required' });
     }
     const challenge = generateChallenge(address);
-    const localProof = req.accessScope === 'local'
-      ? await (await import('./owner-claim.js')).localAuthProof({ challenge, origin: `${req.protocol}://${req.headers.host}` })
+    const boundHost = `127.0.0.1:${req.socket.localPort}`;
+    const proofOrigin = req.headers.host === boundHost ? `${req.protocol}://${boundHost}` : null;
+    const localProof = req.accessScope === 'local' && proofOrigin
+      ? await (await import('./owner-claim.js')).localAuthProof({ challenge, origin: proofOrigin })
       : null;
     res.json({ challenge, ...(localProof ? { localAuthProof: localProof } : {}) });
   });

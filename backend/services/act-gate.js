@@ -30,7 +30,7 @@ import {
   resolvePolicy, checkToolAccess, applyToolMode, addAllowedTool, removeAllowedTool, GLOBAL_DEFAULTS,
 } from './tool-policy.js';
 import { requestToolApproval } from './tool-approval.js';
-import { applyProtocolGuard, holdForWake } from './protocol-guard.js';
+import { applyProtocolGuard, holdForWake, canAlwaysAllow } from './protocol-guard.js';
 import { landsInOpenFolder } from './open-folder-autonomy.js';
 import { focusGroundOf } from './focus-ground.js';
 import { capturePolicyGrant } from './policy-grant-context.js';
@@ -197,7 +197,7 @@ export const gateAct = async (connection, opts) => {
       tool: toolLabel, args: cardArgs ?? args, signal,
     });
     try { origin.beforeCommit(); } catch { return interrupted(); }
-    if (decision === 'always') {
+    if (decision === 'always' && canAlwaysAllow(server, tool)) {
       try { await grantAlwaysAllow(connection, server, tool, origin); }
       catch { return interrupted(); }
     }

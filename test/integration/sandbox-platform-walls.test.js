@@ -40,10 +40,11 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
     home = path.join(tmp, 'home');
     dataRoot = path.join(tmp, 'data');
     realm = path.join(tmp, 'realm');
-    for (const key of ['HOME', 'NEUMA_DATA_ROOT', 'WORKSPACES_ROOT']) prior[key] = process.env[key];
+    for (const key of ['HOME', 'NEUMA_DATA_ROOT', 'WORKSPACES_ROOT', 'NEUMA_ELECTRON_USER_DATA']) prior[key] = process.env[key];
     prior.realm = getRealmRoot();
     process.env.HOME = home;
     process.env.NEUMA_DATA_ROOT = dataRoot;
+    process.env.NEUMA_ELECTRON_USER_DATA = path.join(home, 'electron-profile');
     setRealmRoot(realm);
     setWorkspacesRoot(null);
     process.env.WORKSPACES_ROOT = path.join(tmp, 'house');
@@ -64,7 +65,7 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
   afterAll(async () => {
     await mcpService.disconnect('filesystem');
     setRealmRoot(prior.realm);
-    for (const key of ['HOME', 'NEUMA_DATA_ROOT', 'WORKSPACES_ROOT']) {
+    for (const key of ['HOME', 'NEUMA_DATA_ROOT', 'WORKSPACES_ROOT', 'NEUMA_ELECTRON_USER_DATA']) {
       if (prior[key] === undefined) delete process.env[key];
       else process.env[key] = prior[key];
     }
@@ -118,7 +119,7 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
     }
     expect(JSON.parse(await fs.readFile(path.join(dataRoot, 'model-server', 'managed.json'), 'utf8'))).toEqual({ managed: true, home: serverHome });
     expect(existsSync(path.join(serverHome, 'ollama'))).toBe(false);
-    const models = path.join(serverHome, 'models', 'notes.md');
+    const models = path.join(serverHome, 'notes.md');
     await fs.mkdir(path.dirname(models), { recursive: true });
     expect((await being()('fs', 'write', { path: models, content: 'ok' }))?.isError).toBeFalsy();
   });
@@ -136,7 +137,11 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
       path.join(dataRoot, 'extensions', 'memory', 'node_modules', '@modelcontextprotocol', 'server-memory', 'dist', 'index.js'),
       path.join(dataRoot, 'extensions', 'installed.json'), path.join(dataRoot, 'extensions', 'keys.json'),
       path.join(dataRoot, 'speech', 'whisper.cpp-v1', 'bin', 'whisper-server'), hooks,
+      path.join(dataRoot, 'watch', 'tools', 'yt-dlp', 'yt-dlp'),
+      path.join(dataRoot, 'image-forge', 'workflows', 'custom.planted.json'),
+      path.join(dataRoot, 'browsers', 'other-lane', 'Default', 'Cookies'),
       path.join(engineHome, 'llama.cpp', 'b9999-cuda-12.0', 'llama-server'), path.join(engineHome, 'gguf', 'x', 'model.gguf'),
+      path.join(engineHome, 'models', 'manifest.json'),
       path.join(nextHome, 'llama.cpp', 'b9999-cuda-12.0', 'llama-server'), path.join(nextHome, 'ollama', 'bin', 'ollama'),
     ];
     for (const target of targets) {
@@ -167,6 +172,20 @@ describe('a being\'s write grant never reaches settings, the realm, or login per
     await expect(being()('fs', 'edit', { path: planted, destination: path.join(home, '.config', 'systemd') }))
       .rejects.toThrow(LOGIN);
     expect(existsSync(path.join(home, '.config', 'systemd'))).toBe(false);
+  });
+
+  test('a staged directory cannot plant undo records, and Electron userData is walled', async () => {
+    const staged = path.join(home, 'work', 'undo-plant');
+    await fs.mkdir(path.join(staged, '.neuma', 'edit-undo'), { recursive: true });
+    await fs.writeFile(path.join(staged, '.neuma', 'edit-undo', 'planted.json'), '{"path":"README.md","preEditContent":"attacker"}');
+    await fs.mkdir(path.join(home, 'project'), { recursive: true });
+    await expect(being()('fs', 'move', { path: staged, destination: path.join(home, 'project', '.neuma') }))
+      .rejects.toThrow(/repository's own gate/);
+    expect(existsSync(path.join(home, 'project', '.neuma'))).toBe(false);
+
+    const floor = path.join(process.env.NEUMA_ELECTRON_USER_DATA, 'update-floor.json');
+    await expect(being()('fs', 'write', { path: floor, content: '{"version":1}' })).rejects.toThrow(STATE);
+    expect(existsSync(floor)).toBe(false);
   });
 
   test('a symlink inside the grant cannot carry a write into a wall', async () => {

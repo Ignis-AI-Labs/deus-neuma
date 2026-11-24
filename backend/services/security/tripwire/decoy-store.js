@@ -8,7 +8,7 @@
 // read moves the access time — a read we can see with a plain stat.
 
 import fs from 'fs/promises';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import { join, dirname, sep } from 'path';
 import { DECOYS, decoyById } from './decoy-catalog.js';
 
@@ -57,7 +57,7 @@ const plantOne = async (spec, home, { rand, nowMs }) => {
     const aged = new Date(agedMs(rand, nowMs));
     await fs.utimes(path, aged, aged);
     const armed = await armFile(path);
-    files.push({ path, size: file.data.length, mtimeMs: armed.mtimeMs });
+    files.push({ path, size: file.data.length, sha256: createHash('sha256').update(file.data).digest('hex'), mtimeMs: armed.mtimeMs });
   }
   return { id: spec.id, status: 'planted', top, made, files, plantedAt: new Date(nowMs).toISOString() };
 };
@@ -72,15 +72,30 @@ const pruneEmptyDirs = async (from, top) => {
   }
 };
 
+const holdsRecordedBytes = async (file) => {
+  if (!/^[0-9a-f]{64}$/.test(file.sha256 || '')) return false;
+  const stat = await fs.lstat(file.path).catch(() => null);
+  if (!stat?.isFile() || stat.size !== file.size) return false;
+  const bytes = await fs.readFile(file.path).catch(() => null);
+  return bytes !== null && createHash('sha256').update(bytes).digest('hex') === file.sha256;
+};
+
 /**
- * Take one planted decoy off the disk: its recorded files, then the folders
- * that held nothing else. impure.
+ * Take one planted decoy off the disk only while every byte is the one planted.
+ * Changed or legacy-unsealed paths are real files now and are returned, never removed. impure.
  */
 const removeDecoy = async (record) => {
+  const kept = [];
   for (const file of record.files || []) {
-    await fs.rm(file.path, { force: true });
+    if (!(await holdsRecordedBytes(file))) {
+      if (await exists(file.path)) kept.push(file.path);
+      else if (record.top) await pruneEmptyDirs(dirname(file.path), record.top);
+      continue;
+    }
+    await fs.rm(file.path);
     if (record.top) await pruneEmptyDirs(dirname(file.path), record.top);
   }
+  return kept;
 };
 
 // impure — does the decoy's folder hold anything the record does not name?
@@ -121,8 +136,8 @@ export const syncDecoys = async (home, records = {}, { rand = randomBytes, nowMs
     }
     if (had?.status === 'planted') {
       if (await hasStrangers(had)) {
-        await removeDecoy({ ...had, top: null });
-        next[spec.id] = { id: spec.id, status: 'retired', reason: 'something else now keeps files in that folder', files: [] };
+        const kept = await removeDecoy({ ...had, top: null });
+        next[spec.id] = { id: spec.id, status: 'retired', reason: 'something else now keeps files in that folder', files: kept };
         continue;
       }
       const present = await Promise.all(had.files.map((f) => exists(f.path)));

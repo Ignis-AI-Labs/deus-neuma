@@ -9,7 +9,7 @@ import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { toAllowlist } from '../../../core/wallet/spend-policy.js';
 import { getAddress as identityAddress } from '../neuma-wallet.js';
 import { laneName } from '../house-titles.js';
-import { reservedNameReason } from '../../../core/birth/name-guard.js';
+import { reservedNameReason, canonicalBorneName } from '../../../core/birth/name-guard.js';
 import { lpWalletAddress } from './lp-wallet.js';
 import { lpFundsAddress } from '../agent-vault/vault-store.js';
 
@@ -65,10 +65,10 @@ const holderOf = (r) => r.lane ?? `${r.wallet}:${r.address}`;
 export const resolveRecipient = (recipients, to) => {
   const said = String(to ?? '').trim();
   if (ethers.isAddress(said)) return recipients.find((r) => r.address === ethers.getAddress(said)) ?? null;
-  const key = said.toLowerCase();
+  const key = canonicalBorneName(said);
   if (key === OPERATOR_ROLE) return recipients.find((r) => r.wallet === OPERATOR_ROLE) ?? null;
   const named = recipients.filter((r) => r.wallet !== OPERATOR_ROLE);
-  const answersTo = (word) => named.filter((r) => r.name.toLowerCase() === word || r.lane?.toLowerCase() === word);
+  const answersTo = (word) => named.filter((r) => canonicalBorneName(r.name) === word || canonicalBorneName(r.lane) === word);
   const [who, which] = key.split(/\s+(?=(?:main|liquidity)$)/);
   const whole = answersTo(key);
   const part = which ? answersTo(who) : [];

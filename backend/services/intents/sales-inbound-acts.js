@@ -68,16 +68,16 @@ const inboundIntent = Object.freeze({
     const ledger = await leadLedgerFor(context.wallet);
     const held = (await ledger.load()).find((l) => normalizeEmail(l.contact) === email);
     if (held) return invalid(`${email} is already on the lead list as "${held.name}" (${kindOf(held)}) — re-file them with sales/kind if they are something else`);
-    // Never a guessed address: it must be one that wrote to the house.
-    const scan = await scanMailbox(context.wallet, { limit: SCAN_MAX_MESSAGES });
-    if (!scan.ok) return { ok: false, status: 'denied', reason: `the mailbox could not be read to confirm they wrote: ${scan.detail}` };
-    const sender = scan.missed.find((s) => s.email === email);
-    if (!sender) return invalid(`${email} is not a sender the mailbox shows — only someone who wrote to the house is filed here (a company you found yourself goes through sales/prospect and sales/lead)`);
-    const message = sender.messages.find((m) => m.uid === Number(payload?.uid)) ?? sender.messages[0];
-    return { ok: true, value: { context, ledger, email, name, kind: payload.kind, about, message } };
+    return { ok: true, value: { context, ledger, email, name, kind: payload.kind, about, uid: Number(payload?.uid) || null } };
   },
   summarize: (payload) => `file ${payload?.email ?? '?'} as ${payload?.kind ?? '?'}`,
-  execute: async ({ context, ledger, email, name, kind, about, message }) => {
+  execute: async ({ context, ledger, email, name, kind, about, uid }, { signal } = {}) => {
+    // Never a guessed address: the real mailbox is read only after policy admits the filing.
+    const scan = await scanMailbox(context.wallet, { limit: SCAN_MAX_MESSAGES, signal });
+    if (!scan.ok) return { ok: false, reason: `the mailbox could not be read to confirm they wrote: ${scan.detail}` };
+    const sender = scan.missed.find((s) => s.email === email);
+    if (!sender) return { ok: false, reason: `${email} is not a sender the mailbox shows — only someone who wrote to the house is filed here (a company you found yourself goes through sales/prospect and sales/lead)` };
+    const message = sender.messages.find((m) => m.uid === uid) ?? sender.messages[0];
     const lead = await ledger.add({
       name, contact: email, channelId: 'email', kind, status: 'replied', direction: 'in',
       source: `mailbox: they wrote first · uid ${message.uid} "${message.subject}"`,

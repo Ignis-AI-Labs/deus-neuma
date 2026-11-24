@@ -128,7 +128,20 @@ describe('sales mail carries its way out, and the house honours it', () => {
     expect(asksToStop('Can you stop by the booth?')).toBe(false);
     expect(provenAddresses({ addresses: ['mika@flow.example'], leads, ids: [sent] })).toEqual(['mika@flow.example']);
     expect(provenAddresses({ addresses: ['mika@flow.example'], leads, ids: ['<other@h.example>'] })).toEqual([]);
+    expect(provenAddresses({ addresses: ['mika@flow.example'], leads: [{ contact: 'mika@flow.example', touches: [{ direction: 'in', messageId: sent }] }], ids: [sent] })).toEqual([]);
   }, 60000);
+
+  test('a no is recorded as their words but closes the lead only with outgoing-message proof', async () => {
+    const ledger = await leadLedgerFor(me.address);
+    const lead = await ledger.add({ name: 'No Proof', contact: 'no@proof.example', channelId: 'email', kind: 'buyer', status: 'contacted', addedBy: 'merc' });
+    const { cleanSaid, readReply } = await import('../../backend/services/sales/reply-reading.js');
+    const { recordReceived } = await import('../../backend/services/sales/email-ledger.js');
+    const said = cleanSaid(readReply({ subject: 'No', text: 'No thanks.', from: lead.contact }), 'mail-watch');
+    await recordReceived(me.address, { from: lead.contact, ref: 'mail #forged', said, closeProven: false });
+    expect((await ledger.load()).find((l) => l.id === lead.id).status).not.toBe('lost');
+    await recordReceived(me.address, { from: lead.contact, ref: 'mail #proven', said, closeProven: true });
+    expect((await ledger.load()).find((l) => l.id === lead.id).status).toBe('lost');
+  });
 
   test('email/send checks the do-not-contact list again when it runs: a card raised before an unsubscribe sends nothing', async () => {
     const ledger = await leadLedgerFor(me.address);

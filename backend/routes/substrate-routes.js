@@ -3,10 +3,9 @@
  *
  * The capacity scan measures the SUBSTRATE (rig + model server), so these
  * routes are deliberately non-:id and mount on a fresh router: there is no
- * workspace to own, and requireOwnership must not apply. Any authenticated
- * wallet may read — a rig fact has no owner, and inventing one would be a lie
- * the honesty doctrine forbids. Acting on the rig (a scan's load, an unload,
- * the standby switch) is the install owner's, at its own desk.
+ * workspace to own, and requireOwnership must not apply. Ordinary rig facts
+ * stay readable to an authenticated house. Machine connection history, process
+ * holders and every machine change are the install owner's, at its own desk.
  *
  * GET  /capacity — { runs, latest, current, measurable } (scan history, newest
  *                  first; `current` = the model LOADED RIGHT NOW + its loaded
@@ -304,7 +303,7 @@ router.get('/machine', async (req, res) => {
 // (machine-holders.js). The same map a being reads with machine_map. One read shared by every open window:
 // it samples the cores for a third of a second and walks the process table.
 const readHolders = createSharedSnapshot(() => readMachineHolders({ enginePid: supervisedEnginePid() }), 3000);
-router.get('/holders', async (req, res) => {
+router.get('/holders', requireInstallOwner, async (req, res) => {
   try {
     res.json(await readHolders());
   } catch (error) {
@@ -328,7 +327,7 @@ router.get('/image-engine', async (req, res) => {
 // and to which address, and which of the platform's own self-running connections are on (network/network-watch.js).
 // One read shared by every open window: it asks the kernel's socket table.
 const readNetworkShared = createSharedSnapshot(readNetwork, 2500);
-router.get('/network', async (req, res) => {
+router.get('/network', requireInstallOwner, async (req, res) => {
   try {
     res.json(await readNetworkShared());
   } catch (error) {
@@ -340,7 +339,7 @@ router.get('/network', async (req, res) => {
 // THE NETWORK'S HISTORY AND AUDIT — what this machine was connected to over the days kept, and what in it is worth the
 // operator's eye: what came in from outside, what began listening, what hid its program (network/network-log.js).
 const readHistoryShared = createSharedSnapshot(readNetworkHistory, 5000);
-router.get('/network/history', async (req, res) => {
+router.get('/network/history', requireInstallOwner, async (req, res) => {
   try {
     res.json(await readHistoryShared());
   } catch (error) {

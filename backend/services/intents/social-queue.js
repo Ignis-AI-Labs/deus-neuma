@@ -30,6 +30,7 @@ import { quoteOf } from '../social/quote-post.js';
 const stageableAccounts = async (laneId) => usableAccounts({ house: await houseOfLane(laneId), laneId, mode: 'stage', needKeys: true });
 
 const DESCRIPTION = 'Stage a post as a DRAFT in the channel\'s campaign queue — nothing is published now; your operator decides the draft, and it goes out at scheduledFor (ISO-8601) once approved. Use this for planned content and calendars. campaignId + angle place it in a campaign (the account it posts as names its sub-campaign); group: one short name shared by the posts that carry ONE asset to several accounts of one company — your operator approves the whole group with one press. quote (X only): the post to quote, its link or id — the draft goes out as a quote post, the link ending your words and counting as 23 characters; quote only posts that mention the house or are the house\'s own (X restricts quoting anyone else), and every quote waits for your operator.';
+const QUEUE_FIELDS = new Set(['channel', 'text', 'scheduledFor', 'campaignId', 'angle', 'group', 'quote', 'media', 'account', 'company', 'pillar']);
 
 // pure — a refused TikTok draft names the way forward when its video is the problem.
 const withVideoFix = (channelId, reason) => (channelId === 'tiktok' ? `${reason}. ${TIKTOK_VIDEO_FIX}` : reason);
@@ -53,6 +54,8 @@ export const socialQueueIntent = Object.freeze({
   // impure — media authorization reads the disk; the crew/binding stores are
   // re-read per act (fail closed: an unreadable store on either side denies).
   validate: async (payload, { connection }) => {
+    const unknown = Object.keys(payload ?? {}).filter((key) => !QUEUE_FIELDS.has(key));
+    if (unknown.length) return { ok: false, status: 'invalid', reason: `unknown social/queue field(s): ${unknown.join(', ')} — the card shows only validated fields` };
     const channel = typeof payload?.channel === 'string' ? getChannel(payload.channel.trim()) : null;
     if (!channel) {
       return { ok: false, status: 'invalid', reason: `unknown channel "${payload?.channel ?? ''}" — the INTENTS section names the channels you may stage for` };
@@ -90,18 +93,16 @@ export const socialQueueIntent = Object.freeze({
     // Its place in the house's marketing: the campaign, the sub (its account), the angle, the group.
     const placed = await placeDraft(house, { accountId, campaignId, angle: payload?.angle, pillar, group: payload?.group });
     if (placed.error) return { ok: false, status: 'invalid', reason: placed.error };
-    // TikTok: the account it will post as, and a too-long video refused now, before any card.
-    let tiktok = null;
-    if (channel.id === 'tiktok') {
-      const checked = await tiktokStagingCheck(house, media[0], { signal: connection.activeTurn?.signal, accountId });
-      if (!checked.ok) return { ok: false, status: 'invalid', reason: checked.reason };
-      tiktok = { mode: parseTikTokDraft(text).meta.mode, account: checked.account, note: checked.note };
-    }
-    const postsAs = await postsAsWords(house, chosen.account, tiktok?.account || null);
+    const tiktok = channel.id === 'tiktok' ? { mode: parseTikTokDraft(text).meta.mode } : null;
+    const postsAs = await postsAsWords(house, chosen.account, null);
     return {
       ok: true,
       value: {
-        channel, accountId, text, scheduledFor, media, tiktok, quote, card: { 'posts as': postsAs, ...payload, ...(quote ? { quote: quote.url } : {}) },
+        channel, accountId, text, scheduledFor, media, tiktok, quote, card: {
+          'posts as': postsAs, channel: channel.id, account: accountId, text, media,
+          ...(scheduledFor ? { scheduledFor } : {}), ...(placed.campaignId ? { campaignId: placed.campaignId } : {}),
+          ...(placed.angleId ? { angle: placed.angleId } : {}), ...(placed.groupId ? { group: placed.groupId } : {}), ...(quote ? { quote: quote.url } : {}),
+        },
         campaignId: placed.campaignId, pillar: placed.pillar, angleId: placed.angleId, groupId: placed.groupId,
       },
     };
@@ -122,6 +123,12 @@ export const socialQueueIntent = Object.freeze({
   // impure — the real queue store. Publishing stays the scheduler's act.
   execute: async ({ channel, accountId, text, scheduledFor, campaignId, pillar, angleId, groupId, media, tiktok, quote }, { connection }) => {
     const author = connection.companion?.neumaId || null;
+    let stagedTiktok = tiktok;
+    if (tiktok) {
+      const checked = await tiktokStagingCheck(await houseOfLane(author), media[0], { signal: connection.activeTurn?.signal, accountId });
+      if (!checked.ok) return { ok: false, reason: checked.reason };
+      stagedTiktok = { ...tiktok, account: checked.account, note: checked.note };
+    }
     // Its links become counted /go/ links, published to the site counter first (queue-links.js).
     const linkHouse = await houseOfLane(author);
     const tracked = await trackLinks(linkHouse, { channelId: channel.id, accountId, text, campaignId, angleId });
@@ -146,7 +153,7 @@ export const socialQueueIntent = Object.freeze({
     }
     await bindTrackedLinks(linkHouse, tracked.codes, entry.id);
     const linkNote = tracked.note ? ` (${tracked.note})` : '';
-    if (tiktok) return { ok: true, detail: tiktokStagedWords({ id: entry.id, scheduledFor, ...tiktok }) };
+    if (stagedTiktok) return { ok: true, detail: tiktokStagedWords({ id: entry.id, scheduledFor, ...stagedTiktok }) };
     // THE MANDATE (marketing/mandate/): a post it covers is approved now and needs no card.
     // a quote post always waits for the operator: no mandate covers quoting another account
     const mandated = author && !quote ? await approveUnderMandate({ laneId: author, entry, sessionId: connection.sessionId || null, text }) : { covered: false };

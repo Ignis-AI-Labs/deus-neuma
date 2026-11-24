@@ -18,6 +18,7 @@ import { readFileSync } from 'fs';
 import { randomUUID } from 'crypto';
 import { resolveComfyConfig, comfyInstallState, ensureComfyReady, noteComfyActivity } from '../image-forge/comfyui-supervisor.js';
 import { installsWaiting } from '../image-forge/model-install.js';
+import { verifyPinnedModelFiles } from '../image-forge/model-integrity.js';
 import { findPipeline, findModel } from '../image-forge/workflow-store.js';
 import { parameterize } from '../image-forge/parameterizer.js';
 import { loadScreenList } from '../image-forge/prompt-screen.js';
@@ -181,6 +182,8 @@ export const imageGenerateIntent = Object.freeze({
         label: renderLeaseLabel(kind, pipeline.label), needGB: pipeline.needGB ?? MIN_ENGINE_VRAM_GB, signal,
         onWait: ({ position }) => publishActivity({ jobId, phase: 'queued', detail: `waiting for the machine — place ${position}` }),
       }, async () => {
+        const pinned = await verifyPinnedModelFiles(model, cfg, pipeline);
+        if (!pinned.ok) return { ready: { state: 'refused' }, error: pinned.reason };
         const ready = await ensureComfyReady(cfg);
         if (ready.state !== 'ready' && !ready.serving) return { ready };
         if (pipeline.requiresSourceImage) {

@@ -138,7 +138,6 @@ export const teamRunIntent = Object.freeze({
     if (!plan) {
       // A relink dropped the connection copy — the durable record still stands.
       plan = await rehydrateApprovedPlan(connection).catch(() => null);
-      if (plan) connection._approvedPlan = plan;
     }
     if (!plan) {
       return { ok: false, status: 'invalid', reason: 'There is no approved plan of record — submit one with plan_submit and wait for your operator\'s approval first.' };
@@ -178,6 +177,7 @@ export const teamRunIntent = Object.freeze({
   // conversation, every desk watches and can stop it. The lead learns how it
   // ended from its plan of record and the report file named there.
   execute: async ({ plan, resume = null }, { connection }) => {
+    connection._approvedPlan = plan;
     const started = await startTeamRun({
       plan,
       lead: { neumaId: connection.companion.neumaId, name: connection.companion.name || connection.companion.neumaId },

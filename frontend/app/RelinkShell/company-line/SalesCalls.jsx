@@ -7,13 +7,13 @@ import { Fold } from '../fold/Fold.jsx';
 import { CallAdd } from './CallAdd.jsx';
 import { Thread } from './SalesStagesOut.jsx';
 import { rowStatus } from './people-view.js';
-import { callRows, calledOffRows, callAway, callWhen, saidLabel, ALL } from './sales-pipeline-view.js';
+import { callRows, calledOffRows, callAway, callWhen, callShowWords, SHOW_WORDS, saidLabel, ALL } from './sales-pipeline-view.js';
 
 const campaignColumn = (view) => (view === ALL ? [{ head: 'CAMPAIGN', cell: (l) => l.origin?.campaign ?? 'NO CAMPAIGN' }] : []);
 const coming = (l) => callAway(l) !== 'HELD';
 
 // One call's own controls: a new time moves it; calling it off takes two presses (the second says it).
-const CallHand = ({ lead, busy, onBook, onCancel }) => {
+const CallHand = ({ lead, busy, onBook, onCancel, onShow = null }) => {
   const [when, setWhen] = useState('');
   const [armed, setArmed] = useState(false);
   const at = when && !Number.isNaN(Date.parse(when)) ? new Date(when).toISOString() : null;
@@ -25,24 +25,34 @@ const CallHand = ({ lead, busy, onBook, onCancel }) => {
       <button type="button" className="sec-scan label-data" disabled={busy} data-call-off={armed ? 'armed' : ''} onClick={() => { if (armed) onCancel(lead); setArmed(!armed); }} onBlur={() => setArmed(false)}>
         {armed ? 'PRESS AGAIN TO CALL IT OFF' : coming(lead) ? 'CALL IT OFF' : 'REMOVE FROM CALLS'}
       </button>
+      {/* A call whose time has passed: who showed. Nothing is assumed about why; the lead stays open. */}
+      {!coming(lead) && onShow ? (
+        <span className="spl-call-show" role="group" aria-label={`who showed for the call with ${lead.name || lead.contact}`}>
+          <span className="spl-k label-data">WHO SHOWED?</span>
+          {[['held', 'IT WAS HELD'], ['me', 'I DID NOT SHOW'], ['them', 'THEY DID NOT SHOW']].map(([show, words]) => (
+            <button key={show} type="button" className="sec-scan label-data" disabled={busy} aria-pressed={lead.call.show === show} data-call-show={show} onClick={() => onShow(lead, show)}>{words}</button>
+          ))}
+        </span>
+      ) : null}
     </div>
   );
 };
 
 /** @param {{engine: object, view: string, busy?: boolean, onBook?: Function, onCancel?: Function}} props */
-export const CallsStage = ({ engine, view, busy = false, onBook = null, onCancel = null }) => {
+export const CallsStage = ({ engine, view, busy = false, onBook = null, onCancel = null, onShow = null }) => {
   const off = calledOffRows(engine, view);
   return (
     <>
       {/* A call can be with anyone on the ledger, whatever campaign is in view. */}
       {onBook ? <CallAdd leads={engine?.leads ?? []} busy={busy} onBook={onBook} /> : null}
       <Sheet label="calls" rows={callRows(engine, view)} rowKey={(l) => l.id} rowName={(l) => l.name || l.contact} rowAttrs={(l) => ({ 'data-lead-id': l.id, 'data-call': coming(l) ? 'coming' : 'held' })}
-        detail={(l) => <>{onBook && onCancel ? <CallHand lead={l} busy={busy} onBook={onBook} onCancel={onCancel} /> : null}<Thread engine={engine} lead={l} /></>}
+        detail={(l) => <>{onBook && onCancel ? <CallHand lead={l} busy={busy} onBook={onBook} onCancel={onCancel} onShow={onShow} /> : null}<Thread engine={engine} lead={l} /></>}
         detailLabel={(l) => `move or call off the call with ${l.name || l.contact}, and the messages with them`}
         empty={<p className="spl-empty label-data">NO CALL BOOKED YET — ADD ONE ABOVE, OR YOUR SALES MEMBER FILES THE ONES IT VERIFIES</p>}
         columns={[
           { head: 'WHEN', cell: (l) => callWhen(l.call.at), sort: (l) => Date.parse(l.call.at), exact: true },
           { head: 'AWAY', cell: (l) => callAway(l), sort: (l) => Date.parse(l.call.at), tone: (l) => (!coming(l) ? 'dim' : /MIN|NOW| H$/.test(callAway(l)) ? 'alert' : 'on') },
+          { head: 'SHOWED', cell: (l) => callShowWords(l), tone: (l) => (l.call.show === 'me' || l.call.show === 'them' ? 'alert' : callShowWords(l) === 'NOT MARKED' ? 'dim' : null), attrs: (l) => ({ 'data-call-showed': l.call.show ?? undefined }), title: (l) => (callShowWords(l) === 'NOT MARKED' ? `Open the row to say who showed: ${Object.values(SHOW_WORDS).join(', ')}` : null) },
           { head: 'CHANGED', cell: (l) => (l.call.movedFrom ? `MOVED · WAS ${callWhen(l.call.movedFrom)}` : '—'), tone: (l) => (l.call.movedFrom && coming(l) ? 'alert' : null), attrs: (l) => ({ 'data-call-moved': l.call.movedFrom ? '' : undefined }) },
           { head: 'PERSON', cell: (l) => l.name || l.contact },
           { head: 'JOIN', cell: (l) => (l.call.link ? <a className="cline-link" href={l.call.link} target="_blank" rel="noreferrer noopener" aria-label={`join the call with ${l.name || l.contact}`}>OPEN LINK</a> : '—') },

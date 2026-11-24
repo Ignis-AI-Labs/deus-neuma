@@ -30,7 +30,7 @@ import { readEngineRecord } from './managed-engine-record.js';
 import { readManagedRecord } from './managed-ollama-record.js';
 import { chosenModelHome } from './model-home.js';
 import { getRealmRoot } from './user-realm.js';
-import { foldName } from './wall-spelling.js';
+import { foldName, macFirmlinkRefusal } from './wall-spelling.js';
 import { windowsLoginWalls, windowsPathShapeRefusal } from './windows-path-shape.js';
 
 const PLATFORM_STATE_REFUSAL = 'That path is this install\'s own state (its settings, its model server, the programs it runs '
@@ -62,7 +62,7 @@ const HOME_TRUSTED_CONFIG = Object.freeze([
 // Inside any checkout, matched by path segments: the hooks git runs and the
 // config that names them, the hooks directory a repo's hooksPath names, and
 // the agent settings that decide what a coding agent may run.
-const REPO_GATES = Object.freeze([['.git', 'hooks'], ['.git', 'config'], ['scripts', 'git-hooks'], ['.claude']]);
+const REPO_GATES = Object.freeze([['.git', 'hooks'], ['.git', 'config'], ['scripts', 'git-hooks'], ['.claude'], ['.neuma', 'edit-undo']]);
 // impure (fs) — the data root's control and evidence files (re-audit 2026-10-29, NEW-H1): the
 // platform's own model server (its record names the program every boot starts, and its program and
 // libraries sit in the server's home), the act ledger, and the covenant acceptances. The rest of the
@@ -72,8 +72,8 @@ const REPO_GATES = Object.freeze([['.git', 'hooks'], ['.git', 'config'], ['scrip
 // audit P6-58): the extensions (their code, the record of what was checked, their keys), the speech
 // engine, the hooks file, and under every model home (the record's, the engine's, the person's
 // choice for the next setup) the Ollama program, the llama.cpp builds and the GGUF models they load.
-const MODEL_HOME_STORES = Object.freeze(['ollama', 'llama.cpp', 'gguf']);
-const DATA_ROOT_STORES = Object.freeze(['settings-store', 'model-server', 'acts', 'covenant', 'extensions', 'speech', 'hooks']);
+const MODEL_HOME_STORES = Object.freeze(['ollama', 'llama.cpp', 'gguf', 'models']);
+const DATA_ROOT_STORES = Object.freeze(['settings-store', 'model-server', 'acts', 'covenant', 'extensions', 'speech', 'hooks', 'watch', 'image-forge', 'browsers']);
 const dataRootState = (dataRoot) => {
   const homes = [readManagedRecord()?.home, readEngineRecord()?.home, chosenModelHome()]
     .filter((home) => typeof home === 'string' && path.isAbsolute(home));
@@ -129,7 +129,10 @@ const homePathDirs = (home, env) => String(env.PATH || '').split(path.delimiter)
  */
 export const platformWriteWalls = (env = process.env, platform = process.platform) => {
   const home = path.resolve(os.homedir());
-  const state = [getSettingsDir(), ...dataRootState(getDataRoot()), getRealmRoot()];
+  const state = [
+    getSettingsDir(), ...dataRootState(getDataRoot()), getRealmRoot(),
+    ...(path.isAbsolute(env.NEUMA_ELECTRON_USER_DATA || '') ? [env.NEUMA_ELECTRON_USER_DATA] : []),
+  ];
   const persistence = [
     ...underHome(home, HOME_PERSISTENCE, env), ...homePathDirs(home, env), ...CRON_SPOOLS, ...windowsLoginWalls(home, env, platform),
   ];
@@ -183,6 +186,8 @@ const reachesRepoGate = (target, segments, lib) => {
  * @returns {string|null} the refusal, or null when no wall is reached
  */
 export const platformWallWriteReason = (filePath, walls, platform = process.platform) => {
+  const firmlink = macFirmlinkRefusal(filePath, platform);
+  if (firmlink) return firmlink;
   const shape = windowsPathShapeRefusal(filePath, platform);
   if (shape) return shape;
   const lib = platform === 'win32' ? path.win32 : path;

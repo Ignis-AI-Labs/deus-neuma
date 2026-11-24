@@ -17,6 +17,19 @@ import { notifyOperator } from '../notification-bus.js';
 import { KIND, STANDING } from '../../../core/runtime/notification-record.js';
 
 const OPEN = new Set(['cold', 'contacted', 'replied']);
+const MEETING_HOSTS = Object.freeze(['zoom.us', 'zoom.com', 'meet.google.com', 'teams.microsoft.com', 'teams.live.com', 'webex.com', 'webex.meetings.com', 'calendly.com', 'whereby.com', 'meet.jit.si']);
+
+/** The verified meeting host of a join link, or null for a non-meeting/unsafe URL. Pure. */
+export const meetingHost = (link) => {
+  try {
+    const url = new URL(link);
+    const host = url.hostname.toLowerCase();
+    if (url.protocol !== 'https:' || url.username || url.password) return null;
+    return MEETING_HOSTS.some((allowed) => host === allowed || host.endsWith(`.${allowed}`)) ? host : null;
+  } catch {
+    return null;
+  }
+};
 const mark = (key) => `[call ${key}]`;
 const whenWords = (ms) => `${new Date(ms).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}, ${new Date(ms).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
@@ -47,7 +60,7 @@ export const callOf = (lead) => {
   const touch = notes.at(-1);
   if (!touch || touch.callOff) return null;
   const prior = notes.at(-2);
-  return { at: touch.callAt, title: touch.callTitle ?? null, link: touch.callLink ?? null, ...(prior && !prior.callOff && prior.callAt !== touch.callAt ? { movedFrom: prior.callAt } : {}) };
+  return { at: touch.callAt, title: touch.callTitle ?? null, link: touch.callLink ?? null, ...(prior && !prior.callOff && prior.callAt !== touch.callAt ? { movedFrom: prior.callAt } : {}), ...(touch.callShow ? { show: touch.callShow } : {}) };
 };
 
 /** The call a lead HAD, when the last word on it is that it was called off: when it was for, when it was called off, by whom. Pure. */
@@ -78,7 +91,7 @@ export const readCall = ({ at, title, link } = {}, now = Date.now()) => {
   if (ms < now - 86_400_000) return { ok: false, reason: 'at: that time is more than a day ago — a call is booked for when it will be held' };
   if (ms > now + 366 * 86_400_000) return { ok: false, reason: 'at: that is more than a year away' };
   const where = String(link ?? '').trim();
-  if (where && !/^https:\/\/\S+$/.test(where)) return { ok: false, reason: 'link: the https address the call is joined at, or leave it out' };
+  if (where && !meetingHost(where)) return { ok: false, reason: 'link: a Zoom, Google Meet, Teams, Webex, Calendly, Whereby or Jitsi meeting address, or leave it out' };
   return { ok: true, call: { at: new Date(ms).toISOString(), title: String(title ?? '').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Call', link: where || null } };
 };
 
@@ -124,6 +137,32 @@ export const cancelCall = async (house, { leadId, by, why = '' }) => {
   if (!done.ok) return { ok: false, reason: done.reason ?? 'the lead could not be written to' };
   if (by !== 'operator' && Date.parse(was.at) > Date.now() - 3_600_000) await tell(house, lead, `Call called off: ${lead.name || lead.contact} — was ${whenWords(Date.parse(was.at))}`, `"${was.title ?? 'Call'}"${said ? ` — ${said}` : ''}. It has left CALLS and your house calendar; the lead stays open.`, { call: was.at, off: true });
   return { ok: true, lead: done.lead, was };
+};
+
+// WHO SHOWED. Design note, 2026-11-24: […]
+// A call whose time has passed is HELD until someone says otherwise. The operator marks it: held, I did not show, or
+// they did not show. Nothing is assumed about why, the lead stays open either way, and the note stands on the lead so
+// the sales member reads it before it writes to them again (a call the operator missed is owed an apology and a new
+// time; one they missed is asked about, never blamed).
+export const SHOWS = Object.freeze({ held: 'the call was held', me: 'the operator did not show', them: 'they did not show' });
+
+/**
+ * Say who showed for a lead's call. impure.
+ * @param {string} house
+ * @param {{leadId: string, show: 'held'|'me'|'them', by: string}} said
+ * @returns {Promise<{ok: true, lead: object}|{ok: false, reason: string}>}
+ */
+export const markCallShow = async (house, { leadId, show, by }, { now = Date.now() } = {}) => {
+  if (!Object.hasOwn(SHOWS, show)) return { ok: false, reason: 'show: held, me (you did not show) or them (they did not show)' };
+  const ledger = await leadLedgerFor(house);
+  const lead = (await ledger.load()).find((l) => l.id === leadId);
+  if (!lead) return { ok: false, reason: 'no lead with that id' };
+  const was = callOf(lead);
+  if (!was) return { ok: false, reason: 'no call is booked with them' };
+  if (Date.parse(was.at) > now) return { ok: false, reason: 'that call has not happened yet — move it or call it off instead' };
+  const done = await ledger.touch(lead.id, { call: { at: was.at, title: was.title ?? '', link: was.link ?? '' }, callShow: show, note: `call of ${whenWords(Date.parse(was.at))} ("${was.title ?? 'Call'}"): ${SHOWS[show]}`, by });
+  if (!done.ok) return { ok: false, reason: done.reason ?? 'the lead could not be written to' };
+  return { ok: true, lead: done.lead };
 };
 
 /**

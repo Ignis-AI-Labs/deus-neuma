@@ -14,7 +14,7 @@
 import { officeContext } from './revenue-acts.js';
 import { leadLedgerFor } from '../leads/lead-ledger.js';
 import { normalizeEmail } from '../sales/suppress-shape.js';
-import { readCall, bookCall, cancelCall, callOf } from '../sales/booked-calls.js';
+import { readCall, bookCall, cancelCall, callOf, meetingHost } from '../sales/booked-calls.js';
 
 const officerRefusal = { ok: false, status: 'denied', reason: 'the lead engine is the Mercator office\'s — only the seated Mercator files to it (house/post reaches them; the operator seats the office)' };
 const invalid = (reason) => ({ ok: false, status: 'invalid', reason });
@@ -41,6 +41,10 @@ const salesCallIntent = Object.freeze({
     return { ok: true, value: { context, lead: hits[0], call: read.call, source } };
   },
   summarize: (payload) => (payload?.cancelled === true ? `call off the call with ${payload?.lead ?? '?'}` : `book a call with ${payload?.lead ?? '?'} at ${payload?.at ?? '?'}`),
+  cardArgs: (value) => value.off ? { cancelled: true, lead: value.lead.id, source: value.source } : {
+    lead: value.lead.id, at: value.call.at, title: value.call.title,
+    ...(value.call.link ? { link: value.call.link, host: meetingHost(value.call.link) } : {}), source: value.source,
+  },
   execute: async ({ context, lead, call, source, off }) => {
     if (off) {
       const gone = await cancelCall(context.wallet, { leadId: lead.id, by: context.laneId, why: `verified from ${source}` });

@@ -92,12 +92,12 @@ export const isPlatformSitting = (connection) =>
 // A sitting that recalls nothing and crystallizes nothing: a benchmark's
 // (which also keeps no rows), or a harness lane's (whose chat history DOES
 // persist — there is simply no being to remember or crystallize into). Pure.
-export const isMemorylessSitting = (connection) => isEphemeralSitting(connection) || isHarnessSitting(connection);
+export const isMemorylessSitting = (connection) => isEphemeralSitting(connection) || isHarnessSitting(connection) || connection?.toolMode === 'visitor';
 
 // A sitting that RECALLS nothing: a benchmark's or a harness lane's. A
 // self-check writes nothing and still recalls — finding its own memories is
 // what it measures. Pure.
-export const isRecallBlindSitting = (connection) => Boolean(connection?._benchmarkControls) || isHarnessSitting(connection);
+export const isRecallBlindSitting = (connection) => Boolean(connection?._benchmarkControls) || isHarnessSitting(connection) || connection?.toolMode === 'visitor';
 
 // impure — the SOLO self-compaction lane (Founder doctrine 2026-07-09): the being
 // authors its own summary + torch through its own resolved stack; a cold

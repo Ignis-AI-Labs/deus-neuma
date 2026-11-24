@@ -16,6 +16,15 @@
 
 import { classifyFrame } from './terminal-portal.js';
 import { readApproval, approvalEditorText } from './approval-text.js';
+import { addAllowedTool } from '../../backend/services/tool-policy.js';
+
+/** A session-only grant on this ACP connection, never a persisted lane ALWAYS. */
+export const grantAcpSession = (connection, tool) => {
+  const slash = String(tool).indexOf('/');
+  const server = slash > 0 ? String(tool).slice(0, slash) : 'platform';
+  const name = slash > 0 ? String(tool).slice(slash + 1) : String(tool);
+  connection._sessionToolPolicy = addAllowedTool(connection._sessionToolPolicy || null, server, name);
+};
 
 /** The ACP tool kind for one of our tool names. Pure. */
 export const acpToolKind = (tool) => {
@@ -116,6 +125,10 @@ export const createAcpPortal = ({ wire, sessionId, connection, resolveToolApprov
       decision = decisionFor(answer?.outcome);
     } catch (error) {
       log(`acp: permission for ${frame.tool} not answered — ${error.message}; refused`);
+    }
+    if (decision === 'always') {
+      grantAcpSession(connection, frame.tool);
+      decision = 'allow';
     }
     if (decision === 'deny') {
       open.delete(frame.tool);

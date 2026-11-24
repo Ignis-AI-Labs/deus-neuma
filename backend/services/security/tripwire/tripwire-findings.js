@@ -7,10 +7,8 @@ import { decoyName } from './decoy-catalog.js';
 import { isSwappedAddress } from '../../../../core/wallet/address-family.js';
 
 // The desktop session and the login chain: freezing one hangs the screen.
-const SESSION_PROCESSES = new Set([
-  'systemd', 'gnome-shell', 'gnome-session-b', 'plasmashell', 'kwin_wayland', 'kwin_x11', 'Xwayland', 'Xorg',
-  'sshd', 'login', 'gdm-session-wor', 'sddm', 'dbus-daemon', 'dbus-broker', 'pipewire', 'wireplumber',
-]);
+const SESSION_EXECUTABLES = new Set(['systemd', 'gnome-shell', 'gnome-session-binary', 'plasmashell', 'kwin_wayland', 'kwin_x11', 'Xwayland', 'Xorg', 'sshd', 'login', 'gdm-session-worker', 'sddm', 'dbus-daemon', 'dbus-broker', 'pipewire', 'wireplumber']);
+const SESSION_DIRS = Object.freeze(['/usr/bin/', '/usr/sbin/', '/usr/libexec/', '/usr/lib/', '/usr/lib64/', '/bin/', '/sbin/']);
 // File indexers and scanners that open everything they are pointed at. Known
 // by the executable's NAME and a root-owned LOCATION together: a process may
 // call itself anything, but it cannot put its binary in /usr/bin without root.
@@ -29,8 +27,9 @@ const SYSTEM_DIRS = Object.freeze(['/usr/bin/', '/usr/libexec/', '/usr/lib/', '/
  */
 export const readerStanding = (proc, { selfPid, selfAncestors = [], procAncestors = [] }) => {
   if (proc.pid === selfPid) return 'self';
-  if (proc.pid === 1 || selfAncestors.includes(proc.pid) || SESSION_PROCESSES.has(proc.comm)) return 'protected';
+  if (proc.pid === 1 || selfAncestors.includes(proc.pid)) return 'protected';
   const exe = proc.exe || '';
+  if (SESSION_EXECUTABLES.has(basename(exe)) && SESSION_DIRS.some((dir) => exe.startsWith(dir))) return 'protected';
   if (INDEXERS.has(basename(exe)) && SYSTEM_DIRS.some((dir) => exe.startsWith(dir))) return 'indexer';
   return procAncestors.includes(selfPid) ? 'house' : 'outside';
 };

@@ -39,7 +39,7 @@ const cliDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(cliDir, '..', '..');
 const pkg = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8'));
 
-const DEFAULT_BACKEND = 'http://localhost:3333';
+const DEFAULT_BACKEND = 'http://127.0.0.1:3333';
 
 /**
  * Format the no-arg CLI snapshot from already-collected facts. PURE —

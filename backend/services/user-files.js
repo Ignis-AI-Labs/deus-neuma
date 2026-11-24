@@ -21,6 +21,7 @@ import { assertRenameName } from './rename-name.js';
 import { realpathSync, statSync, lstatSync } from 'fs';
 import path from 'path';
 import { MAX_TEXT_BYTES, looksBinary, isLossyAsUtf8, lossyCharCount, lossyVerdict } from './text-encoding-law.js';
+import { macFirmlinkRefusal } from './wall-spelling.js';
 
 let roots = [];
 
@@ -87,6 +88,8 @@ export const containWithinRoots = (target) => {
   if (typeof target !== 'string' || !path.isAbsolute(target)) {
     throw new Error('Path must be absolute');
   }
+  const firmlink = macFirmlinkRefusal(target);
+  if (firmlink) throw new Error(firmlink);
   const resolved = path.resolve(target);
   const bases = (ownRoots.getStore() ?? roots).map((r) => path.resolve(r));
   // Lexical containment first (catches `..` and partial-name siblings).

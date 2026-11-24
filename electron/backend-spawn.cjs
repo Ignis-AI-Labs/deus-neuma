@@ -151,6 +151,7 @@ const startBackend = ({ onRestarted }) => {
       // so the backend watches this pid and exits when its desk is gone
       // (backend/services/desk-parent-watch).
       NEUMA_DESK_PID: String(process.pid),
+      NEUMA_ELECTRON_USER_DATA: app.getPath('userData'),
       // Stable, self-provisioned at-rest secrets (see secret-provisioning.js)
       NEUMA_SECRETS_FILE: process.env.NEUMA_SECRETS_FILE || path.join(neumaHome, 'secrets.json'),
       // Locked by the keychain: the keys come over the IPC channel, never this env (key-lock-main.cjs).

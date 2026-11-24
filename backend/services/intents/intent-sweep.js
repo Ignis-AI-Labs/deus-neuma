@@ -59,7 +59,7 @@ import { mandateRenderAccess } from '../marketing/mandate/mandate-act.js';
 import { salesSendAccess } from '../sales/sales-cover.js';
 import { tripMandateForLane } from '../marketing/mandate/mandate-tripwire.js';
 import { cosDesignation } from '../staff/cos-designation.js';
-import { applyProtocolGuard, askInWake, escalateInWake } from '../protocol-guard.js';
+import { applyProtocolGuard, askInWake, escalateInWake, canAlwaysAllow } from '../protocol-guard.js';
 import { requestToolApproval } from '../tool-approval.js';
 import { grantAlwaysAllow, ACT_REFUSALS, refusalForDecision } from '../act-gate.js';
 import { capturePolicyGrant } from '../policy-grant-context.js';
@@ -70,6 +70,8 @@ import { captureIntentContext, validateIntentPolicy } from './intent-context.js'
 import { maySettle } from './intent-owners.js';
 import { pulseWaiting } from '../waiting/waiting-pulse.js';
 import { acquireFileLock, releaseFileLock, LOCK_TIMEOUT } from '../file-lock.js';
+import { injectedValueSplit, noteTaintedResults } from '../security/injected-value-gate.js';
+import { recordHeldActs } from '../security/injected-value-record.js';
 
 const log = createLogger('IntentSweep');
 
@@ -221,8 +223,10 @@ const settleClaimedIntent = async (connection, dir, name, { mode, lanePolicy, em
   }
 
   let payload;
+  let raw;
   try {
-    payload = JSON.parse(await fs.readFile(file, 'utf8'));
+    raw = await fs.readFile(file, 'utf8');
+    payload = JSON.parse(raw);
   } catch (err) {
     if (!current()) return null;
     const reason = `not a readable JSON intent: ${err.message}`;
@@ -252,6 +256,18 @@ const settleClaimedIntent = async (connection, dir, name, { mode, lanePolicy, em
   // `type` key named the registry entry — it is not an argument, so validate
   // and execute never see it (a spread payload would leak it into executors).
   const { type: _typeKey, ...fields } = payload;
+  // Split writes and copied files are judged WHOLE here, and JSON escapes are
+  // judged again as parsed values before any type validation or external call.
+  noteTaintedResults(connection, [{ tool: 'intents/file', content: raw }]);
+  const held = injectedValueSplit(connection, [{ server: 'intents', toolName: payload.type, args: fields }]).refused;
+  if (held.length) {
+    const reason = held[0].result.error;
+    await recordHeldActs(connection, held);
+    await writeResult(dir, name, { status: 'denied', reason });
+    await logToolCall(neumaWorkspace, laneId, 'intents', payload.type, payload, 'denied', reason);
+    emit({ tool: `intents/${payload.type}`, status: 'denied', summary: `${type.name} — held: planted value`, detail: reason });
+    return { tool: `intents/${payload.type}`, status: 'denied', error: reason };
+  }
   // The name a person reads for THIS filing — one type may do two things a
   // person tells apart (image/generate renders stills and videos). The filed
   // type stays the type's own.
@@ -290,6 +306,20 @@ const settleClaimedIntent = async (connection, dir, name, { mode, lanePolicy, em
     return { tool: tool(policyTool), status: 'denied', error: ACT_REFUSALS.policyDenied.error };
   }
 
+  // Impure preparation (token resolution, quotes) runs only after policy and
+  // observe have admitted the act; validate itself never touches the network.
+  if (type.prepare) {
+    const prepared = await type.prepare(verdict.value, { connection });
+    if (!current()) return null;
+    if (!prepared.ok) {
+      const status = prepared.status ?? 'denied';
+      await writeResult(dir, name, { status, reason: prepared.reason });
+      emit({ tool: tool(policyTool), status: status === 'invalid' ? 'error' : 'denied', summary: `${shown} — ${status}`, detail: prepared.reason });
+      return { tool: tool(policyTool), status: status === 'invalid' ? 'error' : 'denied', error: prepared.reason };
+    }
+    verdict.value = prepared.value;
+  }
+
   if (access === 'approval_required') {
     // A card no screen could show is no decision: the intent stays pending for
     // the next sweep (a card already on screen when the portal closes parks).
@@ -303,7 +333,7 @@ const settleClaimedIntent = async (connection, dir, name, { mode, lanePolicy, em
       signal,
     });
     if (!current()) return null;
-    if (decision === 'always') {
+    if (decision === 'always' && canAlwaysAllow('intents', policyTool)) {
       await grantAlwaysAllow(connection, 'intents', policyTool, grantOrigin);
       syncPolicy('intents', policyTool);
     }

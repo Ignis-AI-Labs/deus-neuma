@@ -281,8 +281,8 @@ const sameServer = (a, b) => {
 export const probeProviders = async () => {
   const [ollamaBase, lmStudioBase] = await Promise.all([
     // the platform's own server's address (NEUMA_OLLAMA_ENDPOINT moves it), unless one is configured
-    endpointFor('ollama', process.env.NEUMA_OLLAMA_ENDPOINT ? managedEndpoints(process.env.NEUMA_OLLAMA_ENDPOINT).usual : 'http://localhost:11434'),
-    endpointFor('lm-studio', 'http://localhost:1234'),
+    endpointFor('ollama', process.env.NEUMA_OLLAMA_ENDPOINT ? managedEndpoints(process.env.NEUMA_OLLAMA_ENDPOINT).usual : 'http://127.0.0.1:11434'),
+    endpointFor('lm-studio', 'http://127.0.0.1:1234'),
   ]);
   // The DYNAMIC sweep beside the two configured probes (Bastien, 2026-08-08:
   // his llama.cpp on a custom port was invisible — […]). Discovery reads the machine's real listeners

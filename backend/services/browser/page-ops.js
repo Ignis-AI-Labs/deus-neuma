@@ -67,37 +67,32 @@ function pageSnapshot(textMax, elementMax) {
   return { url: location.href, title: document.title, text: words.slice(0, textMax), textTotal: words.length, elements, elementTotal: total };
 }
 
-// Runs INSIDE the page: brings a numbered thing into view and says where its middle is.
-function pageLocate(ref) {
-  const el = document.querySelector(`[data-nref="${ref}"]`);
-  if (!el) return { gone: true };
-  el.scrollIntoView({ block: 'center', inline: 'center' });
-  const box = el.getBoundingClientRect();
+// These run with `this` bound by DevTools to the exact backend node the operator approved.
+function pageLocate(url, ref) {
+  if (location.href !== url || !this.isConnected || this.getAttribute('data-nref') !== String(ref)) return { gone: true };
+  this.scrollIntoView({ block: 'center', inline: 'center' });
+  const box = this.getBoundingClientRect();
   return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
 }
 
-// Runs INSIDE the page: puts the caret in a numbered field, its old text selected so typing replaces it.
-function pageFocus(ref) {
-  const el = document.querySelector(`[data-nref="${ref}"]`);
-  if (!el) return { gone: true };
-  if (el.tagName === 'INPUT' && el.type === 'password') return { password: true };
-  el.scrollIntoView({ block: 'center' });
-  el.focus();
-  if (el.tagName === 'SELECT') return { select: true };
-  if (typeof el.select === 'function') el.select();
+function pageFocus(url, ref) {
+  if (location.href !== url || !this.isConnected || this.getAttribute('data-nref') !== String(ref)) return { gone: true };
+  if (this.tagName === 'INPUT' && this.type === 'password') return { password: true };
+  this.scrollIntoView({ block: 'center' });
+  this.focus();
+  if (this.tagName === 'SELECT') return { select: true };
+  if (typeof this.select === 'function') this.select();
   return { ok: true };
 }
 
-// Runs INSIDE the page: picks a dropdown's option by the words it shows (or its value).
-function pageChoose(ref, wanted) {
-  const el = document.querySelector(`[data-nref="${ref}"]`);
-  if (!el) return { gone: true };
+function pageChoose(url, ref, wanted) {
+  if (location.href !== url || !this.isConnected || this.getAttribute('data-nref') !== String(ref)) return { gone: true };
   const want = String(wanted).trim().toLowerCase();
-  const option = [...el.options].find((o) => o.textContent.trim().toLowerCase() === want || o.value.toLowerCase() === want);
+  const option = [...this.options].find((o) => o.textContent.trim().toLowerCase() === want || o.value.toLowerCase() === want);
   if (!option) return { missing: true };
-  el.value = option.value;
-  el.dispatchEvent(new Event('input', { bubbles: true }));
-  el.dispatchEvent(new Event('change', { bubbles: true }));
+  this.value = option.value;
+  this.dispatchEvent(new Event('input', { bubbles: true }));
+  this.dispatchEvent(new Event('change', { bubbles: true }));
   return { ok: true };
 }
 
@@ -108,6 +103,24 @@ const inPage = async (send, fn, ...args) => {
   const out = await send('Runtime.evaluate', { expression: call(fn, ...args), returnByValue: true, awaitPromise: true });
   if (out.exceptionDetails) throw new Error(out.exceptionDetails.exception?.description || out.exceptionDetails.text || 'the page refused');
   return out.result?.value;
+};
+
+// impure — call on the exact node identity captured by look, never on whatever now claims its number
+const onApprovedNode = async (send, expected, fn, ...args) => {
+  const { object } = await send('DOM.resolveNode', { backendNodeId: expected?.identity });
+  if (!object?.objectId) return { gone: true };
+  try {
+    const out = await send('Runtime.callFunctionOn', {
+      objectId: object.objectId,
+      functionDeclaration: `function(...args) { return (${fn.toString()}).apply(this, args); }`,
+      arguments: [expected.url, expected.ref, ...args].map((value) => ({ value })),
+      returnByValue: true,
+    });
+    if (out.exceptionDetails) throw new Error(out.exceptionDetails.exception?.description || out.exceptionDetails.text || 'the page refused');
+    return out.result?.value;
+  } finally {
+    await send('Runtime.releaseObject', { objectId: object.objectId }).catch(() => {});
+  }
 };
 
 const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
@@ -131,8 +144,22 @@ const settle = async (send) => {
   await sleep(300);
 };
 
-/** Read the page as it stands. impure */
-export const look = (send) => inPage(send, pageSnapshot, TEXT_MAX, ELEMENT_MAX);
+/** Read the page as it stands, retaining DevTools' unforgeable identity for each numbered node. impure */
+export const look = async (send) => {
+  const view = await inPage(send, pageSnapshot, TEXT_MAX, ELEMENT_MAX);
+  await send('DOM.getDocument', { depth: 0 });
+  const { nodes } = await send('DOM.getFlattenedDocument', { depth: -1, pierce: true });
+  const identities = new Map();
+  for (const node of nodes) {
+    const attributes = node.attributes || [];
+    const at = attributes.indexOf('data-nref');
+    if (at >= 0) identities.set(attributes[at + 1], node.backendNodeId);
+  }
+  return {
+    ...view,
+    elements: view.elements.map((element) => ({ ...element, identity: identities.get(String(element.ref)) })),
+  };
+};
 
 /**
  * Open an address in the page. impure
@@ -145,10 +172,10 @@ export const navigate = async (send, url) => {
   return { ok: true };
 };
 
-/** Click a numbered thing with a real mouse event. impure */
-export const click = async (send, ref) => {
-  const at = await inPage(send, pageLocate, ref);
-  if (!at || at.gone) return { ok: false, error: `nothing numbered ${ref} on the page now — look again` };
+/** Click the exact approved node with a real mouse event. impure */
+export const click = async (send, expected) => {
+  const at = await onApprovedNode(send, expected, pageLocate);
+  if (!at || at.gone) return { ok: false, error: `the thing numbered ${expected?.ref} changed after approval — look again` };
   for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased']) {
     await send('Input.dispatchMouseEvent', { type, x: at.x, y: at.y, button: 'left', clickCount: type === 'mouseMoved' ? 0 : 1 });
   }
@@ -157,16 +184,17 @@ export const click = async (send, ref) => {
 };
 
 /**
- * Type into a numbered field (replacing what it held), or choose a dropdown's option by its words;
+ * Type into the exact approved field (replacing what it held), or choose a dropdown's option by its words;
  * `enter` presses Enter after. impure
  */
-export const type = async (send, ref, text, enter = false) => {
-  const focus = await inPage(send, pageFocus, ref);
-  if (!focus || focus.gone) return { ok: false, error: `nothing numbered ${ref} on the page now — look again` };
+export const type = async (send, expected, text, enter = false) => {
+  const focus = await onApprovedNode(send, expected, pageFocus);
+  if (!focus || focus.gone) return { ok: false, error: `the thing numbered ${expected?.ref} changed after approval — look again` };
   if (focus.password) return { ok: false, error: 'that is a password field — a sign-in is your operator\'s to do, never yours; ask them' };
   if (focus.select) {
-    const chosen = await inPage(send, pageChoose, ref, text);
-    if (chosen?.missing) return { ok: false, error: `no option "${text}" in that list — look again for its options` };
+    const chosen = await onApprovedNode(send, expected, pageChoose, text);
+    if (!chosen || chosen.gone) return { ok: false, error: `the thing numbered ${expected?.ref} changed after approval — look again` };
+    if (chosen.missing) return { ok: false, error: `no option "${text}" in that list — look again for its options` };
   } else {
     await send('Input.insertText', { text });
   }

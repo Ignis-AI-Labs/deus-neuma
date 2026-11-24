@@ -21,10 +21,12 @@ import { posterFor } from '../social/poster-registry.js';
 import { resolvePostMedia } from '../social/post-media.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { markedMedia } from '../social/disclosure-line.js';
+import { fileSha256, verifySealedMedia } from '../social/approval-seal.js';
 
 // Defensive ceiling only — each API is the authority on its own limit (local
 // counting gets CJK/URL weighting wrong in both directions).
 const POST_MAX_CHARS = 4000;
+const POST_FIELDS = new Set(['channel', 'text', 'media', 'account', 'company']);
 
 // impure — the accounts this lane may SPEAK through: held AND credentialed,
 // in the lane's own house (house-positions.js). A queue-only channel
@@ -53,6 +55,8 @@ export const socialPostIntent = Object.freeze({
   // (re-read per act: a released channel refuses the former holder's very
   // next intent).
   validate: async (payload, { connection }) => {
+    const unknown = Object.keys(payload ?? {}).filter((key) => !POST_FIELDS.has(key));
+    if (unknown.length) return { ok: false, status: 'invalid', reason: `unknown social/post field(s): ${unknown.join(', ')} — the card shows only validated fields` };
     const channel = typeof payload?.channel === 'string' ? getChannel(payload.channel.trim()) : null;
     if (!channel) {
       return { ok: false, status: 'invalid', reason: `unknown channel "${payload?.channel ?? ''}" — the INTENTS section names the channels you may speak through` };
@@ -92,9 +96,14 @@ export const socialPostIntent = Object.freeze({
     const postsAs = await postsAsWords(house, chosen.account);
     // A being's post: its images' alt text opens with the AI marker, on the card as it will go out.
     const media = markedMedia({ authorNeumaId: 'being', media: resolvedMedia.media });
+    for (const item of media) {
+      const sha256 = await fileSha256(item.path).catch(() => null);
+      if (!sha256) return { ok: false, status: 'invalid', reason: `${item.path} could not be sealed for approval — attach it again` };
+      item.sha256 = sha256;
+    }
     return {
       ok: true,
-      value: { channel, accountId: chosen.account.id, text, media, house, card: { 'posts as': postsAs, ...payload, text, ...(media.length ? { media } : {}) } },
+      value: { channel, accountId: chosen.account.id, text, media, house, card: { 'posts as': postsAs, channel: channel.id, account: chosen.account.id, text, ...(media.length ? { media } : {}) } },
     };
   },
 
@@ -117,7 +126,9 @@ export const socialPostIntent = Object.freeze({
     // composition is not what was approved.
     const mediaIds = [];
     for (const item of media) {
-      const up = await uploadXMedia(credentials, item.path, { signal }); // a still, or one video sent in pieces
+      const sealed = await verifySealedMedia(item);
+      if (!sealed.ok) return { ok: false, reason: sealed.detail };
+      const up = await uploadXMedia(credentials, sealed.path, { signal }); // a still, or one video sent in pieces
       if (!up.ok) return { ok: false, reason: up.refused ? `media refused: ${up.detail}` : `the media did not upload: ${up.detail}` };
       if (item.alt) await setAltText(credentials, up.mediaId, item.alt, { signal });
       mediaIds.push(up.mediaId);

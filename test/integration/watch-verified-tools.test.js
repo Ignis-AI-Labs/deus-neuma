@@ -7,6 +7,8 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { obtainArchive } from '../../backend/services/managed-ollama-download.js';
 import { fileSha256, gzipMatchesFile, matchesSha256 } from '../../backend/services/watch/verified-tool.js';
+import { runTool } from '../../backend/services/watch/watch-tools.js';
+import { ytDlpFor } from '../../backend/services/watch/watch-plan.js';
 
 const roots = [];
 const servers = [];
@@ -77,6 +79,27 @@ describe('managed media tool integrity', () => {
     await expect(obtainArchive({ ...asset, url: `${origin}/hostile` }, hostileArchive, { tries: 1 })).rejects.toThrow('pinned SHA-256');
     expect(fs.existsSync(hostileArchive)).toBe(false);
     expect(fs.readFileSync(archive)).toEqual(payload);
+  });
+
+  test('PR20 H-06: a planted managed executable is re-hashed and never runs on repeated attempts', async () => {
+    const dir = root();
+    const previous = process.env.NEUMA_DATA_ROOT;
+    process.env.NEUMA_DATA_ROOT = dir;
+    try {
+      const pin = ytDlpFor(process.platform, process.arch);
+      const bin = path.join(dir, 'watch', 'tools', 'yt-dlp', pin.bin);
+      const marker = path.join(dir, 'planted-code-ran');
+      fs.mkdirSync(path.dirname(bin), { recursive: true });
+      fs.writeFileSync(bin, `#!/bin/sh\necho planted > "${marker}"\n`, { mode: 0o755 });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const out = await runTool(bin, []);
+        expect(out.ok).toBe(false);
+        expect(out.stderr).toContain('no longer match the pinned release');
+        expect(fs.existsSync(marker)).toBe(false);
+      }
+    } finally {
+      if (previous === undefined) delete process.env.NEUMA_DATA_ROOT; else process.env.NEUMA_DATA_ROOT = previous;
+    }
   });
 
   test('production reuse checks pins and contains no self-update channel', () => {

@@ -3,7 +3,7 @@
  * rows that stand at each. Pure, over the shapes the lead engine route really returns.
  */
 import { describe, expect, it } from 'vitest';
-import { STAGES, MORE, ALL, LOOSE, pipelineOf, campaignChoices, discoverRows, filterRows, validateRows, listApprovals, sentRows, replyRows, callRows, calledOffRows, callAway, readyRows, messagesOf, channelOf, emailedBefore } from '../../frontend/app/RelinkShell/company-line/sales-pipeline-view.js';
+import { STAGES, MORE, ALL, LOOSE, pipelineOf, campaignChoices, discoverRows, filterRows, validateRows, listApprovals, sentRows, replyRows, callRows, calledOffRows, callAway, callShowWords, callWords, readyRows, messagesOf, channelOf, emailedBefore } from '../../frontend/app/RelinkShell/company-line/sales-pipeline-view.js';
 import { leadThread } from '../../backend/services/sales/lead-thread.js';
 import { hubTabs, pickTab } from '../../frontend/app/RelinkShell/positions/positions-view.js';
 import { recordNames } from '../../backend/services/sales/record-names.js';
@@ -186,6 +186,13 @@ describe('CALLS stands just before DEALS: every call booked with a lead, the nex
   it('says how far off each call is, and keeps a call that began within the hour as NOW', () => {
     const away = (hours) => callAway({ call: { at: at(hours) } }, now);
     expect([away(0.5), away(3), away(47), away(50), away(-0.5), away(-2)]).toEqual(['IN 30 MIN', 'IN 3 H', 'IN 47 H', 'IN 2 D', 'NOW', 'HELD']);
+  });
+
+  it('says who showed for a call that has passed: held, missed by you, missed by them, or not marked yet; a call to come says nothing', () => {
+    const showed = (hours, show) => callShowWords({ call: { at: at(hours), ...(show ? { show } : {}) } }, now);
+    expect([showed(3), showed(-2), showed(-2, 'held'), showed(-2, 'me'), showed(-2, 'them')]).toEqual(['—', 'NOT MARKED', 'HELD', 'YOU DID NOT SHOW', 'THEY DID NOT SHOW']);
+    const past = new Date(Date.now() - 2 * 3600_000).toISOString();
+    expect([callWords({ call: { at: past } }), callWords({ call: { at: past, show: 'me' } }), callWords({ call: { at: past, show: 'them' } })].map((w) => w.split(' · ').slice(0, -1).join(' · '))).toEqual(['CALL HELD', 'CALL · YOU DID NOT SHOW', 'CALL · THEY DID NOT SHOW']);
   });
 
   it('the stage counts the calls coming, names the next one, and waits on the operator while one is coming', () => {

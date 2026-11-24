@@ -7,7 +7,7 @@
 import { describe, test, expect } from 'vitest';
 import { planRouting } from '../../backend/services/house-clock/wake-plan.js';
 import { parseVerdicts, wakeThought, WAKE_HEAD } from '../../backend/services/house-clock/wake-thought.js';
-import { holdForWake, askInWake, escalateInWake } from '../../backend/services/protocol-guard.js';
+import { holdForWake, askInWake, escalateInWake, isAutoHardGated } from '../../backend/services/protocol-guard.js';
 import { houseHolds, HOUSE_ASKS } from '../../backend/services/house-clock/wake-approvals.js';
 import { actRoute } from '../../backend/services/house-clock/optio-review.js';
 import { GLOBAL_DEFAULTS } from '../../backend/services/tool-policy-defaults.js';
@@ -56,6 +56,17 @@ describe('what a wake may take without the operator', () => {
     expect(holdForWake(work, 'allowed', 'intents', 'house.post')).toBe('allowed');
     expect(holdForWake(work, 'denied', 'intents', 'email.send')).toBe('denied');
   });
+  test('PR20 M-02/M-03: AUTO and wakes hold every publishing act, charters and company hands', () => {
+    for (const [server, tool] of [
+      ['social', 'queue_retract'], ['intents', 'delivery.publish'], ['intents', 'vault.publish'],
+      ['intents', 'marketing.plan'], ['intents', 'house.charter'], ['intents', 'company.hands.example.com'],
+    ]) expect(isAutoHardGated(server, tool), `${server}/${tool}`).toBe(true);
+    expect(isAutoHardGated('intents', 'company.inspect')).toBe(false);
+    const work = { _wakeHolds: houseHolds(null), _wakeAsks: HOUSE_ASKS };
+    expect(askInWake(work, 'allowed', 'intents', 'house.charter')).toBe('approval_required');
+    expect(actRoute({ charter: charter(), tool: 'intents/house.charter', args: {}, seat: 'lead', officer: 'optio', inGround: true })).toMatchObject({ to: 'operator' });
+  });
+
   test('P6-105: the table sends each of them to the operator, and only the charter\'s allow runs one', () => {
     for (const tool of ['intents/raise.reach', 'intents/lp.reward', 'intents/treasury.invoice', 'intents/treasury.invoice-paid']) {
       const act = { tool, args: {}, seat: 'lead', officer: 'optio', inGround: true };

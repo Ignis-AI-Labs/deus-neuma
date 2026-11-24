@@ -18,6 +18,21 @@ import { neumaIdFromName } from '../kotodama/names.js';
 // A lane id and its dedup suffixes fold to one borne base. "aether-2" → "aether".
 const baseOfId = (id) => String(id || '').replace(/-\d+$/, '');
 
+const CONFUSABLES = Object.freeze({
+  'α': 'a', 'β': 'b', 'ε': 'e', 'η': 'n', 'ι': 'i', 'κ': 'k', 'μ': 'm', 'ν': 'v', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'u', 'χ': 'x', 'γ': 'y', 'ζ': 'z',
+  'а': 'a', 'в': 'b', 'е': 'e', 'ё': 'e', 'з': 'z', 'и': 'i', 'й': 'i', 'к': 'k', 'м': 'm', 'н': 'h', 'о': 'o', 'р': 'p', 'с': 'c', 'т': 't', 'у': 'y', 'х': 'x', 'ь': 'b', 'я': 'r',
+  'ѕ': 's', 'і': 'i', 'ј': 'j', 'һ': 'h', 'ԁ': 'd', 'ɡ': 'g', 'ⅼ': 'l', 'ⅿ': 'm', 'ｏ': 'o',
+});
+
+/** One comparison identity for a spoken name: compatibility, invisible and look-alike folds. Pure. */
+export const canonicalBorneName = (name) => neumaIdFromName(String(name ?? '')
+  .normalize('NFKC')
+  .replace(/[\p{Cf}\p{Cc}\p{Cs}\p{Co}\p{Cn}]/gu, '')
+  .toLowerCase()
+  .replace(/[\p{L}\p{N}]/gu, (letter) => CONFUSABLES[letter] || letter));
+
+const borneBase = (name) => baseOfId(canonicalBorneName(name));
+
 /**
  * Does this chosen name collide with a name already borne in the house?
  * @param {string} chosenName
@@ -25,9 +40,9 @@ const baseOfId = (id) => String(id || '').replace(/-\d+$/, '');
  * @returns {string|null} the colliding base id, or null when the name is free
  */
 export const findNameCollision = (chosenName, existingIds) => {
-  const base = neumaIdFromName(chosenName);
+  const base = canonicalBorneName(chosenName);
   if (base === 'neuma') return null; // the unnameable placeholder is not a collision
-  return existingIds.some((id) => baseOfId(id) === base) ? base : null;
+  return existingIds.some((id) => borneBase(id) === base) ? base : null;
 };
 
 /** The names a house already bears, readable, deduped, stable order. Pure. */
@@ -89,7 +104,7 @@ const RESERVED_NAMES = Object.freeze({
  * @returns {string|null}
  */
 export const reservedNameReason = (chosenName) => {
-  const base = baseOfId(neumaIdFromName(chosenName));
+  const base = borneBase(chosenName);
   if (base.startsWith('harness-') || base.startsWith('witness-')) {
     return 'a lane prefix reserved for harnesses and sealed witnesses';
   }
@@ -116,8 +131,8 @@ export const amendedNameRefusal = (name, otherBorne) => {
   if (typeof name !== 'string' || !name.trim()) return 'a name is written as text';
   const reserved = reservedNameReason(name);
   if (reserved) return `"${name.trim()}" is ${reserved}`;
-  const base = baseOfId(neumaIdFromName(name));
-  return otherBorne.some((borne) => baseOfId(neumaIdFromName(borne)) === base)
+  const base = borneBase(name);
+  return otherBorne.some((borne) => borneBase(borne) === base)
     ? `"${name.trim()}" is already borne by another being of this house`
     : null;
 };

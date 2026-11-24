@@ -27,6 +27,13 @@ const log = createLogger('Portal');
 // a persisted grant is honored on the very first call of a new session.
 export const hydratePathGrants = async (connection, neumaPolicy) => {
   hydrateShellNetwork(connection, neumaPolicy);
+  if (connection._scopeGrantsAllowed === false) {
+    connection._grantedReadRoots = [];
+    connection._grantedWriteRoots = [];
+    connection._sensitiveGrants = {};
+    connection._pathGrantsHydrated = true;
+    return;
+  }
   if (connection._pathGrantsHydrated) return;
   connection._pathGrantsHydrated = true;
   const persistedRead = Array.isArray(neumaPolicy?.pathGrants?.read) ? neumaPolicy.pathGrants.read : [];

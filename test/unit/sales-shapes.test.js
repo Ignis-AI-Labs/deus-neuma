@@ -214,11 +214,19 @@ describe('the sales cover — approve the list once, then the sequence runs insi
     { id: 'p-2', segmentId: 's-1', leadId: 'l-2', domain: 'b.example' },
     { id: 'p-3', segmentId: 's-2', leadId: 'l-3', listApproved: true, domain: 'c.example' },
   ];
-  const lead = (id, contact, touches = []) => ({ id, contact, status: 'cold', touches });
+  const lead = (id, contact, touches = []) => ({ id, contact, kind: 'buyer', status: 'cold', touches });
   const judge = (recipients, leads, extra = {}) => judgeCover({ recipients, leads, prospects, segments, now, ...extra });
 
-  test('a listed lead of an approved audience is covered for the first email', () => {
+  test('a listed buyer of an approved audience is covered for the first email', () => {
     expect(judge(['Ann@acme.example'], [lead('l-1', 'ann@acme.example')])).toEqual({ covered: true });
+  });
+
+  test('PR20 H-02: re-filing a buyer as anything else removes the sales cover', () => {
+    for (const kind of ['partner', 'investor', 'vendor', 'press', 'other', 'unsorted']) {
+      const verdict = judge(['ann@acme.example'], [{ ...lead('l-1', 'ann@acme.example'), kind }]);
+      expect(verdict.covered).toBe(false);
+      expect(verdict.reason).toContain('not a buyer');
+    }
   });
 
   test('P6-123: the list approved is companies — a listed lead whose address sits at another domain asks', () => {
