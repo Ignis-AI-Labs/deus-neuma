@@ -22,16 +22,32 @@ import {
   DEAD_FOR_BEING, DEAD_PARENT, _text, _flat, _kindOf, threadIndex, renderQueueSelection,
 } from './queue-render.js';
 
+import { dayOf, localDay, momentOf, queueOverview } from './queue-overview.js';
+
 export { renderQueueSelection, drawQueueSelection, formatQueueEntryForBeing } from './queue-render.js';
 
 /** The queue as the being may scan it — dead copy out, order untouched. Pure. */
 export const liveQueueForBeing = (entries) =>
   (entries || []).filter((e) => !DEAD_FOR_BEING.includes(e?.status));
 
-export const QUEUE_VIEWS = Object.freeze(['full', 'index']);
+// summary: the queue at a glance, no copy (queue-overview.js) — the map before the reading.
+export const QUEUE_VIEWS = Object.freeze(['full', 'index', 'summary']);
 export const QUEUE_ORDERS = Object.freeze(['decision', 'calendar']);
 export const QUEUE_KINDS = Object.freeze(['post', 'reply', 'self-reply']);
-const STATUS_GROUPS = Object.freeze(['live', 'all']);
+// open: what can still move (the default bare read); live: open and sent (the duplicate check);
+// dead: withdrawn, declined and taken down; all: the whole record.
+const OPEN = Object.freeze(['draft', 'approved', 'sending', 'failed']);
+const STATUS_GROUPS = Object.freeze({
+  open: OPEN, live: null, dead: DEAD_FOR_BEING, all: null,
+});
+// The words a being reaches for, read as the standing it means: "pending" refused as an unknown
+// status left a being mid-turn with no read at all (2026-11-16).
+const STATUS_WORDS = Object.freeze({
+  pending: ['draft'], drafts: ['draft'], awaiting: ['draft'], staged: ['draft', 'approved'],
+  scheduled: ['approved'], queued: ['draft', 'approved'], posted: ['sent'], published: ['sent'],
+  declined: ['rejected'], cancelled: ['withdrawn'], canceled: ['withdrawn'], pulled: ['withdrawn'],
+  deleted: ['retracted'], removed: ['retracted'],
+});
 
 // Page sizes per view. FULL carries verbatim copy (~400 chars an entry), so it
 // stays small enough that a scan never floods the turn; INDEX carries one
@@ -57,18 +73,19 @@ const _statusesOf = (raw) => {
  * @returns {{ok: true, test: (e: object) => boolean, named: Array<string>}
  *   | {ok: false, error: string}}
  */
-const statusFilter = (raw, known) => {
-  const named = _statusesOf(raw);
-  if (!named.length || (named.length === 1 && named[0] === 'live')) {
-    return { ok: true, named: [], test: (e) => !DEAD_FOR_BEING.includes(e?.status) };
+const statusFilter = (raw, known, fallback) => {
+  const given = _statusesOf(raw);
+  const named = given.length ? given : [fallback];
+  if (named.length === 1 && named[0] === 'live') {
+    return { ok: true, named: given, test: (e) => !DEAD_FOR_BEING.includes(e?.status) };
   }
-  if (named.includes('all')) return { ok: true, named: ['all'], test: () => true };
-  const unknown = named.filter((s) => !known.includes(s));
+  if (named.includes('all')) return { ok: true, named: given.length ? ['all'] : [], test: () => true };
+  const unknown = named.filter((s) => !known.includes(s) && !STATUS_GROUPS[s] && !STATUS_WORDS[s]);
   if (unknown.length) {
-    return { ok: false, error: `unknown status ${unknown.join(', ')} — use one of ${[...STATUS_GROUPS, ...known].join(' | ')}` };
+    return { ok: false, error: `unknown status ${unknown.join(', ')} — use one of ${[...Object.keys(STATUS_GROUPS), ...known].join(' | ')}` };
   }
-  const set = new Set(named);
-  return { ok: true, named, test: (e) => set.has(e?.status) };
+  const set = new Set(named.flatMap((s) => STATUS_GROUPS[s] || STATUS_WORDS[s] || [s]));
+  return { ok: true, named: given, test: (e) => set.has(e?.status) };
 };
 
 // An unparseable slot reads as NO slot, never as NaN: the store validates
@@ -194,7 +211,15 @@ export const selectQueueForBeing = (entries, query = {}, known = {}) => {
   if (!QUEUE_ORDERS.includes(order)) {
     return { ok: false, error: `unknown order ${order} — use ${QUEUE_ORDERS.join(' | ')}` };
   }
-  const status = statusFilter(q.status, knownStatuses);
+  const now = Number.isFinite(known.now) ? known.now : Date.now();
+  const day = dayOf(q.day, now);
+  if (!day.ok) return day;
+  const needle = _flat(q.q).toLowerCase();
+  // Unnamed, the standing is what the read is for: a bare read is what can still move (open), a
+  // text search is the duplicate check against everything said (live), a day or the summary is
+  // everything that happened (all). The header always says what the record holds besides.
+  const fallback = view === 'summary' || day.day ? 'all' : needle ? 'live' : 'open';
+  const status = statusFilter(q.status, knownStatuses, fallback);
   if (!status.ok) return status;
 
   const kind = q.kind === undefined ? '' : _flat(q.kind).toLowerCase();
@@ -209,7 +234,6 @@ export const selectQueueForBeing = (entries, query = {}, known = {}) => {
   const campaignId = _flat(q.campaignId);
   const channelId = _flat(q.channelId);
   const pillar = _flat(q.pillar);
-  const needle = _flat(q.q).toLowerCase();
 
   // One index for the whole read: the window, the calendar order, and every
   // thread marker all ask the same question of it.
@@ -238,16 +262,35 @@ export const selectQueueForBeing = (entries, query = {}, known = {}) => {
     if (from.at !== null && !(slot >= from.at)) return false;
     if (to.at !== null && !(slot <= to.at)) return false;
     if (needle && !_text(e?.text).toLowerCase().includes(needle)) return false;
+    // The day it HAPPENED, by its own standing (queue-overview.js momentOf): sent posts by when
+    // they went out, pulled ones by when they were pulled, the rest by their slot.
+    if (day.day) {
+      const moment = momentOf(e, slotOf);
+      if (moment === null || localDay(moment) !== day.day) return false;
+    }
     return true;
   }).sort(order === 'calendar' ? _byCalendarWith(slotOf, posOf) : _byDecisionWith(posOf));
 
   const asked = Number(q.limit ?? q.max);
+  const paged = view === 'summary' ? 'index' : view;
   const limit = Math.min(
-    PAGE_MAX[view],
-    Number.isFinite(asked) && asked > 0 ? Math.floor(asked) : PAGE_DEFAULT[view],
+    PAGE_MAX[paged],
+    Number.isFinite(asked) && asked > 0 ? Math.floor(asked) : PAGE_DEFAULT[paged],
   );
   const wanted = Number(q.offset);
   const offset = Number.isFinite(wanted) && wanted > 0 ? Math.floor(wanted) : 0;
+  const filters = {
+    ...(status.named.length ? { status: status.named.join(',') } : {}),
+    ...(campaignId ? { campaignId } : {}),
+    ...(channelId ? { channelId } : {}),
+    ...(pillar ? { pillar } : {}),
+    ...(kind ? { kind } : {}),
+    ...(q.from ? { from: _flat(q.from) } : {}),
+    ...(q.to ? { to: _flat(q.to) } : {}),
+    ...(needle ? { q: needle } : {}),
+    ...(day.day ? { day: day.day } : {}),
+  };
+  const scope = Object.entries(filters).map(([k, v]) => `${k}: ${v}`).join(', ');
 
   return {
     ok: true,
@@ -262,18 +305,14 @@ export const selectQueueForBeing = (entries, query = {}, known = {}) => {
     threads,
     total: all.length,
     dead: all.length - liveQueueForBeing(all).length,
+    sent: all.filter((e) => e?.status === 'sent').length,
+    // the standing a read that named none was given (open | live | all), for the header to say
+    defaulted: status.named.length ? null : fallback,
     matched: matched.length,
+    // view:'summary' — the matched entries at a glance, no copy (queue-overview.js)
+    summary: view === 'summary' ? queueOverview(matched, { slotOf, now, scope: scope && `{${scope}}` }) : null,
     page: matched.slice(offset, offset + limit),
-    filters: {
-      ...(status.named.length ? { status: status.named.join(',') } : {}),
-      ...(campaignId ? { campaignId } : {}),
-      ...(channelId ? { channelId } : {}),
-      ...(pillar ? { pillar } : {}),
-      ...(kind ? { kind } : {}),
-      ...(q.from ? { from: _flat(q.from) } : {}),
-      ...(q.to ? { to: _flat(q.to) } : {}),
-      ...(needle ? { q: needle } : {}),
-    },
+    filters,
   };
 };
 

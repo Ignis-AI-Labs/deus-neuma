@@ -18,14 +18,24 @@ export const FAMILIES = Object.freeze([
   { id: 'other', label: 'OTHER' },
 ]);
 
+// Every section the platform sends has a family here — test/unit/context-map-families.test.js reads the section
+// builders and fails on one that would fall to OTHER (Design note, 2026-11-20: […] — 29 did,
+// the office briefings among them).
 const FAMILY_OF = Object.freeze({
   fallback: 'identity', identity: 'identity', birth: 'identity', genesis: 'identity', voice: 'identity',
   emanon: 'identity', personality: 'identity', silo: 'identity', soul: 'identity', amendments: 'identity', taste: 'identity',
+  trueName: 'identity', voiceRite: 'identity', voiceSitting: 'identity', speechBriefing: 'identity', expression: 'identity',
+  sovereignty: 'identity', sealedIdentity: 'identity', firstUtterance: 'identity', commitments: 'identity', boundaries: 'identity',
   substrate: 'platform', grounding: 'platform', sectors: 'platform', tools: 'platform', intents: 'platform',
   skills: 'platform', benchmark: 'platform', closing: 'platform', protocol: 'platform', harnessFrame: 'platform',
-  plan: 'work', tasks: 'work', assigned: 'work', operator: 'work', houseSeat: 'work',
+  groundProtocol: 'platform', sittingRules: 'platform', platformSeat: 'platform', planMode: 'platform',
+  researchMode: 'platform', toolDefinitions: 'platform', formatEcho: 'platform', covenant: 'platform',
+  plan: 'work', tasks: 'work', assigned: 'work', operator: 'work', houseSeat: 'work', positionMap: 'work', companyLine: 'work',
+  cmoOffice: 'work', csoOffice: 'work', cloOffice: 'work', cosOffice: 'work', cfoOffice: 'work', croOffice: 'work', caoOffice: 'work',
   present: 'moment', memory: 'moment', vitals: 'moment', session: 'moment',
+  housePost: 'moment', walletNews: 'moment', replyKnock: 'moment', queuedActions: 'moment', speaker: 'moment',
   recentConversation: 'conversation', currentTurn: 'conversation', harnessCarry: 'conversation', transcript: 'conversation',
+  priorImages: 'conversation', callerTail: 'conversation', torch: 'conversation',
 });
 
 /** pure — the family of a section id; tool rounds and folds are tool machinery. */

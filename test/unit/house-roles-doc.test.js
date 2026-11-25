@@ -19,6 +19,8 @@ describe('docs/governance/house-roles.md mirrors TITLE_LEGEND', () => {
       expect(docFlat).toContain(seat.title.toLowerCase());
       expect(docFlat).toContain(seat.position.toLowerCase());
       expect(docFlat).toContain(seat.seat.toLowerCase());
+      // the plain sentence of what the seat is for, word for word (deus-neuma #32)
+      expect(doc).toContain(seat.summary);
     }
   });
 

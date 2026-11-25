@@ -28,7 +28,7 @@ import { frameUntrustedContent } from '../untrusted-content.js';
 import { resolveEmailCredential } from './email-credentials.js';
 import { emailBinding, canNeumaUseEmail } from './email-binding.js';
 import { houseOfLane } from '../social/house-positions.js';
-import { listInbox, readMessage, INBOX_MAX_MESSAGES } from './imap-reader.js';
+import { listInbox, readMessage, listLabels, labelMessage, INBOX_MAX_MESSAGES, LABEL_MAX } from './imap-reader.js';
 import { createLogger } from '../logger.js';
 
 const log = createLogger('EmailTools');
@@ -54,6 +54,27 @@ export const EMAIL_TOOLS = Object.freeze([
       type: 'object',
       properties: Object.freeze({
         uid: Object.freeze({ type: 'number', description: 'the message uid from check_email_inbox' }),
+      }),
+      required: Object.freeze(['uid']),
+    }),
+  }),
+  Object.freeze({
+    name: 'list_email_labels',
+    server: 'email',
+    description: 'List the labels (folders) the connected mailbox already has, so you file under one that exists before making another.',
+    inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}), required: Object.freeze([]) }),
+  }),
+  Object.freeze({
+    name: 'label_email',
+    server: 'email',
+    description: `Keep the mailbox in order — args {uid, label?, remove?, archive?}. Puts a label on one inbox message (uid from check_email_inbox); a label the mailbox does not have yet is made first, and "Leads/Replied" nests Replied under Leads (at most ${LABEL_MAX} characters). remove: true takes the label off. archive: true moves the message out of the inbox, still under its labels. Nothing is deleted and nothing is marked read.`,
+    inputSchema: Object.freeze({
+      type: 'object',
+      properties: Object.freeze({
+        uid: Object.freeze({ type: 'number', description: 'the message uid from check_email_inbox' }),
+        label: Object.freeze({ type: 'string', description: 'the label, e.g. Leads/Replied' }),
+        remove: Object.freeze({ type: 'boolean', description: 'take the label off instead of putting it on' }),
+        archive: Object.freeze({ type: 'boolean', description: 'move the message out of the inbox' }),
       }),
       required: Object.freeze(['uid']),
     }),
@@ -199,6 +220,21 @@ export const handleEmailTool = async (ws, connection, neumaPolicy, toolMode, mat
     });
     await journalEmailCall(connection, tool, `listed ${outcome.messages.length} of ${outcome.total}`, 'ok');
     return { tool, status: 'ok', content: renderInbox(outcome) };
+  }
+
+  if (toolName === 'list_email_labels' || toolName === 'label_email') {
+    const listing = toolName === 'list_email_labels';
+    const outcome = listing ? await listLabels(credentials, { signal }) : await labelMessage(credentials, args ?? {}, { signal });
+    if (!outcome.ok) {
+      const error = `${listing ? 'The labels could not be read' : 'The mailbox was not changed'}: ${outcome.detail}.`;
+      ports.sendToolEvent(ws, companion, { tool, status: 'error', summary: `${toolName} — failed`, detail: error });
+      await journalEmailCall(connection, tool, outcome.detail, 'error');
+      return { tool, status: 'error', error };
+    }
+    const said = listing ? (outcome.labels.length ? `Labels: ${outcome.labels.join(', ')}` : 'The mailbox has no labels of its own yet.') : `uid ${args.uid}: ${outcome.done.join('; ')}.`;
+    ports.sendToolEvent(ws, companion, { tool, status: 'ok', summary: listing ? `${outcome.labels.length} label(s)` : said.slice(0, 100) });
+    await journalEmailCall(connection, tool, said.slice(0, 200), 'ok');
+    return { tool, status: 'ok', content: said };
   }
 
   // read_email

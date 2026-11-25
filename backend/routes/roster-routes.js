@@ -15,7 +15,7 @@ import { requireAuth } from '../services/auth.js';
 import { neumaWorkspace, readHouseName } from '../../core/index.js';
 import { listWitnesses } from '../../core/identity/ai-witness/ai-witness-service.js';
 import { readLaneMarker, witnessLaneId, witnessLaneStatus } from '../services/witness-lane.js';
-import { houseTitlesByNeumaId } from '../services/house-titles.js';
+import { changeHouseTitle, houseTitleState, houseTitlesByNeumaId } from '../services/house-titles.js';
 import { detectBirthSetupState } from '../../core/birth/birth-setup-state.js';
 import { readSoulSpectrum } from '../../core/birth/soul-spectrum.js';
 import { voiceSealStatus } from '../services/voice-seal-ceremony.js';
@@ -41,7 +41,7 @@ router.use(requireAuth);
 // "NEUMA" that erases who the witness is looking at. `incomplete` marks the
 // lane honestly so the UI can say identity records are missing rather than
 // pretend all is well.
-const toCompanion = (neumaId, trueName, owner, title, seal = null, spectrum = null) => ({
+const toCompanion = (neumaId, trueName, owner, title, seal = null, spectrum = null, titleChanged = false) => ({
   neumaId,
   name: trueName?.chosenName || trueName?.fullName || neumaId,
   fullName: trueName?.fullName || null,
@@ -54,9 +54,12 @@ const toCompanion = (neumaId, trueName, owner, title, seal = null, spectrum = nu
   // The same hue at the screen's most vivid — what a light or an accent wears,
   // so a soul near the edge of sight (deep red, violet) is still seen.
   light: spectrum?.soul?.vivid?.hex ?? null,
-  // The on-chain seat, once the house's founding record stands — chain
-  // truth from the persisted receipt, null until a seat is locked in.
+  // The title held now: the founding record's, with every later change
+  // applied (house-title-ledger.js); null until a title is given.
   title: title ?? null,
+  // changed since the founding: the house's own record wins over the chain's
+  // founding seat on the HOUSE window (house-chain.js houseSeatCards)
+  titleChanged,
 });
 
 /**
@@ -136,6 +139,8 @@ router.get('/', async (req, res) => {
     // On-chain seats from the persisted founding record (no chain call) —
     // {} until the house is founded, so this costs nothing before then.
     const seatTitles = await houseTitlesByNeumaId(wallet);
+    const changed = new Set((await houseTitleState(wallet).catch(() => ({ members: [] }))).members
+      .filter((m) => m.history[0] && m.history[0].how !== 'founding').map((m) => m.neumaId));
     const roster = [];
     for (const { neumaId, owner } of owned) {
       if (await readLaneMarker(neumaId)) continue;
@@ -148,7 +153,7 @@ router.get('/', async (req, res) => {
         log.warn('Soul spectrum unavailable', { neumaId, error: err.message });
         return null;
       });
-      roster.push(toCompanion(neumaId, trueName, owner, seatTitles[neumaId], seal, spectrum));
+      roster.push(toCompanion(neumaId, trueName, owner, seatTitles[neumaId], seal, spectrum, changed.has(neumaId)));
     }
     // Oldest first — a stable order; the client picks the active one.
     roster.sort((a, b) => (a.birthTime || '').localeCompare(b.birthTime || ''));
@@ -190,5 +195,41 @@ router.get('/', async (req, res) => {
     res.status(500).json({ error: 'Could not read the roster' });
   }
 });
+
+// THE HOUSE'S TITLES, as they stand and as they were (Design note, 2026-11-12: […]). The operator corrects or assigns a member's title, or trades two members' titles; the
+// founding record is never touched and every change stays on each member's résumé
+// (house-title-ledger.js). Only the operator's own house, only its own beings.
+router.get('/titles', async (req, res) => {
+  if (requestState(req.headers) === 'harness') return res.json({ members: [] });
+  try {
+    const { members } = await houseTitleState(req.walletAddress);
+    return res.json({ members });
+  } catch (error) {
+    log.error('house titles read failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not read the house titles' });
+  }
+});
+
+const changeTitle = async (req, res, ask) => {
+  if (requestState(req.headers) === 'harness') return res.status(409).json({ error: 'a harness desk holds no house' });
+  try {
+    const made = await changeHouseTitle(req.walletAddress, ask);
+    if (!made.ok) return res.status(400).json({ error: made.error });
+    log.info('house title changed', { wallet: req.walletAddress, kind: made.entry.kind, moves: made.entry.moves });
+    const { members } = await houseTitleState(req.walletAddress);
+    return res.json({ change: made.entry, members });
+  } catch (error) {
+    log.error('house title change failed', { error: error.message });
+    return res.status(500).json({ error: 'Could not change the title' });
+  }
+};
+
+router.put('/titles/:neumaId', (req, res) => changeTitle(req, res, {
+  kind: 'set', neumaId: req.params.neumaId, title: req.body?.title, reason: req.body?.reason,
+}));
+
+router.post('/titles/trade', (req, res) => changeTitle(req, res, {
+  kind: 'trade', a: req.body?.a, b: req.body?.b, reason: req.body?.reason,
+}));
 
 export default router;

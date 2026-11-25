@@ -5,8 +5,8 @@
 //
 // The card shows the path, the tier, and the being's reason — NEVER the
 // file's content (the secret stays secret while the operator decides). ALLOW
-// ONCE grants for the session; ALWAYS grants and persists to the lane's own
-// policy (sensitiveGrants), honored from the next connection onward
+// ONCE grants for the session; ALWAYS grants and persists both the sensitive
+// path and its containing root to the lane's policy, honored from the next connection onward
 // (_hydratePathGrants). The never-requestable set has no card: another
 // being's sovereign state, .git internals, keys, owner.json, and the policy
 // file itself are refused outright. Portal-stream owns the socket, so the
@@ -19,7 +19,9 @@
 // is the refusal vocabulary (refusalResult).
 
 import path from 'path';
-import { resolvePolicy, checkToolAccess, applyToolMode, GLOBAL_DEFAULTS } from './tool-policy.js';
+import {
+  addGrantedReadRoot, addGrantedWriteRoot, resolvePolicy, checkToolAccess, applyToolMode, GLOBAL_DEFAULTS,
+} from './tool-policy.js';
 import { requestToolApproval } from './tool-approval.js';
 import { refusalResult, refusalForDecision } from './act-gate.js';
 import { addSensitiveGrant, requestablePattern, sensitiveGrantCovers } from './sensitive-grants.js';
@@ -28,6 +30,7 @@ import { ensureFilesystemRoots } from './mcp-filesystem.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
 import { createLogger } from './logger.js';
 import { capturePolicyGrant } from './policy-grant-context.js';
+import { refreshPortalScopeStanding } from './portal-install-standing.js';
 
 const log = createLogger('AccessRequest');
 
@@ -85,6 +88,11 @@ const validateRequest = (args) => {
 // impure
 export const handleAccessRequestTool = async (ws, connection, neumaPolicy, toolMode, match, args, ports) => {
   const tool = 'filesystem/request_file_access';
+  if (!(await refreshPortalScopeStanding(connection))) {
+    const error = 'Filesystem scope is the install owner\'s or a co-owner\'s to grant; a guest house stays in its own ground.';
+    ports.sendToolEvent(ws, connection.companion, { tool, status: 'denied', summary: `request_file_access — ${error}` });
+    return { tool, status: 'denied', error };
+  }
   const { companion } = connection;
   const origin = capturePolicyGrant(connection);
   const policy = resolvePolicy(GLOBAL_DEFAULTS, neumaPolicy, connection._sessionToolPolicy || null);
@@ -126,16 +134,21 @@ export const handleAccessRequestTool = async (ws, connection, neumaPolicy, toolM
     // is the […] lie), and the lane's
     // persisted policy on ALWAYS.
     origin.beforeCommit();
+    const grantDir = await resolveGrantDir('read_file', resolved);
+    const rootKey = tier === 'edit' ? '_grantedWriteRoots' : '_grantedReadRoots';
+    connection[rootKey] = [...new Set([...(connection[rootKey] || []), grantDir])];
     const current = connection._sensitiveGrants || {};
     connection._sensitiveGrants = {
       ...current,
       [tier]: [...new Set([...(current[tier] || []), resolved])],
     };
-    await ensureFilesystemRoots([await resolveGrantDir('read_file', resolved)])
+    await ensureFilesystemRoots([grantDir])
       .catch((err) => log.warn('filesystem server not widened for a sensitive grant', { err: err.message }));
     if (decision === 'always') {
       try {
-        await neumaWorkspace.updateToolPolicy(neumaId, (existing) => addSensitiveGrant(existing, tier, resolved), origin);
+        const addRoot = tier === 'edit' ? addGrantedWriteRoot : addGrantedReadRoot;
+        await neumaWorkspace.updateToolPolicy(neumaId,
+          (existing) => addSensitiveGrant(addRoot(existing, grantDir), tier, resolved), origin);
       } catch (err) {
         origin.beforeCommit();
         // Persistence failure degrades to session-only, said loudly — never a

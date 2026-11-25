@@ -1,6 +1,6 @@
 /**
  * THE CONNECTIONS PANEL in a real Chromium against the real backend (Settings → Security): every
- * connection listed from the app's one list, the seven that run by themselves reading OFF with what
+ * connection listed from the app's one list, every one that runs by itself reading OFF with what
  * the person does without while off, the install owner turning one on (it lands on disk), and a
  * guest's press answered with the server's own refusal. Real signed-wallet auth; nothing is mocked.
  * Screenshots land in test/e2e/shots/connections-*.png.
@@ -17,6 +17,9 @@ import { createTempDir } from '../helpers/temp-fs.js';
 import { shotPath } from '../helpers/first-run-door-kit.js';
 
 const REPO = fileURLToPath(new URL('../..', import.meta.url));
+// The rows that run by themselves, read from the app's one list: the count moves as connections are added.
+const LIST = JSON.parse(await fs.readFile(path.join(REPO, 'electron/connections.json'), 'utf8'));
+const SWITCHED = (LIST.connections || LIST).filter((row) => row.control === 'switch').map((row) => row.id);
 
 describe('the CONNECTIONS panel', () => {
   let dir, vite, server, browser, owner, guest, url;
@@ -53,19 +56,20 @@ describe('the CONNECTIONS panel', () => {
     await vite?.close();
   });
 
-  const open = async (who) => {
+  const open = async (who, query = '') => {
     const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
     await page.addInitScript((t) => sessionStorage.setItem('authToken', t), who.token);
-    await page.goto(url);
+    await page.goto(`${url}${query}`);
     await page.getByTestId('connections').locator('[data-connection="update-check"]').waitFor({ timeout: 60_000 });
     return page;
   };
   const row = (page, id) => page.locator(`[data-connection="${id}"]`);
 
-  test('a fresh install: the seven that run by themselves read OFF and say what is lost; the rest happen only on use', async () => {
+  test('a fresh install: every connection that runs by itself reads OFF and says what is lost; the rest happen only on use', async () => {
     const page = await open(owner);
-    await pw(page.getByText('RUNS BY ITSELF · 0 OF 7 ON')).toBeVisible();
-    for (const id of ['update-check', 'security-watch', 'spellcheck', 'platform-data', 'mail-watch', 'sanctions-list', 'chat-bridge']) {
+    expect(SWITCHED).toContain('umbrae-liquidity');
+    await pw(page.getByText(`RUNS BY ITSELF · 0 OF ${SWITCHED.length} ON`)).toBeVisible();
+    for (const id of SWITCHED) {
       await pw(row(page, id).locator('.conn-state')).toHaveText('OFF');
       await pw(row(page, id)).toContainText('While off:');
       await pw(row(page, id).getByRole('button', { name: 'TURN ON' })).toBeEnabled();
@@ -74,9 +78,19 @@ describe('the CONNECTIONS panel', () => {
     await pw(row(page, 'web')).toContainText('Settings → API');
     await pw(row(page, 'wallets').getByRole('button')).toHaveCount(0);
     // the privacy policy's whole paragraph, one press away
-    await row(page, 'spellcheck').getByText('MORE').click();
-    await pw(row(page, 'spellcheck')).toContainText('downloads a dictionary for it from Google');
+    await row(page, 'security-watch').getByText('MORE').click();
+    await pw(row(page, 'security-watch')).toContainText('run by Google');
     await page.screenshot({ path: shotPath('connections-fresh-1366'), fullPage: true });
+    await page.close();
+  }, 90_000);
+
+  test('a door from another window lands on its row: scrolled into view and marked, the others not', async () => {
+    const page = await open(owner, '?focus=connections/umbrae-liquidity');
+    const target = row(page, 'umbrae-liquidity');
+    await pw(target).toHaveClass(/is-focus/);
+    await pw(target).toBeInViewport();
+    await pw(target.getByRole('button', { name: 'TURN ON' })).toBeEnabled();
+    await pw(page.locator('.conn-row.is-focus')).toHaveCount(1);
     await page.close();
   }, 90_000);
 
@@ -93,7 +107,7 @@ describe('the CONNECTIONS panel', () => {
     const page = await open(owner);
     await row(page, 'update-check').getByRole('button', { name: 'TURN ON' }).click();
     await pw(row(page, 'update-check').locator('.conn-state')).toHaveText('ON');
-    await pw(page.getByText('RUNS BY ITSELF · 1 OF 7 ON')).toBeVisible();
+    await pw(page.getByText(`RUNS BY ITSELF · 1 OF ${SWITCHED.length} ON`)).toBeVisible();
     await pw(row(page, 'update-check')).not.toContainText('While off:');
     await pw(row(page, 'update-check')).toHaveClass(/is-on/);
     const saved = JSON.parse(await fs.readFile(path.join(dir, 'data', 'settings', 'connections.json'), 'utf8'));

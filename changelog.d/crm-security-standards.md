@@ -1,0 +1,12 @@
+Security
+- Every sales email now carries a way out: a line under it saying to reply "stop", and the sending company's name and postal address. A "stop" reply to the email closes that person for good; the same word from anyone else closes nobody. The outbox shows the line under each email before you send it.
+- Each company has a POSTAL ADDRESS line under POSITIONS, SALES, COMPANY. US law asks for one in every sales email; the company file names it as missing until it is set. A company under another one mails with its parent's address until it has its own.
+- An email a member was approved to send is checked against the do-not-contact list again at the moment it goes, so a "stop" that arrives while the card waits is honoured.
+- A paired phone can no longer change the house mailbox, who holds it, or the keys of the services it pays or is paid through (Stripe, lead data, model providers). These are set at the desk.
+- Stripe takes a restricted key only (it starts rk_). A secret key, which can move any money in the account, is refused. The key bills only the house of the computer's owner, never a guest's. When a voided or paid invoice's card link cannot be closed, you are told to close it in Stripe.
+- SETTINGS, SECURITY, REMOTE has an ACCESS LOG: every phone paired or signed in, every change a phone made, every phone cut, every road opened or closed, and every refused request, kept on this computer.
+- A lead deleted from the list leaves a record of which lead and who removed it, never who the person was.
+- Under each person in LEADS: EXPORT THEIR DATA saves everything the house holds on them as one file, and ERASE removes them from every record, keeping only their do-not-contact entry so they are never written to again. Erasing is done at the desk and asks for their address twice.
+- Backups seal the house's sales records (leads and their replies, the outbox, research, deals, invoices) under the computer's master key. `neuma backup open` opens them on any computer holding that key.
+- A contacts spreadsheet can no longer carry a formula in a name or title read from a web page.
+- A mailbox scan marks the sender names and subjects it shows a member as written by outsiders.

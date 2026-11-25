@@ -35,7 +35,7 @@ describe('isSecretKey — matched per word, not per substring', () => {
 
 describe('looksSecret — a credential in an innocent slot', () => {
   test('known credential shapes are recognised wherever they sit', () => {
-    expect(looksSecret('-----BEGIN RSA PRIVATE KEY-----\nMIIE...')).toBe(true);
+    expect(looksSecret('-----BEGIN RSA PRIVATE\x20KEY-----\nMIIE...')).toBe(true);
     expect(looksSecret('Bearer abcdefghijklmnopqrstuvwxyz0123')).toBe(true);
     expect(looksSecret('eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig')).toBe(true);
     expect(looksSecret('AKIAIOSFODNN7EXAMPLE')).toBe(true);

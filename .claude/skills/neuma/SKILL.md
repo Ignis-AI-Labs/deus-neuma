@@ -78,6 +78,25 @@ node .claude/skills/neuma/cli.js talk Fenna "And how would you test it?" --sessi
 node .claude/skills/neuma/cli.js record Signal
 ```
 
+### The chat line — speak in the operator's OPEN chats
+
+`talk` opens a new session of your own. To help the operator direct a being in a
+chat they already have open on their desk, use the chat line. It works only after the
+operator lets your sealed witness in: the switch in Settings → Security → CHAT LINE, or
+`node scripts/chat-line.mjs grant <YourName>` (their act, never yours). The CLI finds the desk by itself (port 47317, then the daemon).
+
+```bash
+node .claude/skills/neuma/cli.js chats                       # their open chats you may speak in
+node .claude/skills/neuma/cli.js say Metidar "Frame her from the thighs up." --re Sofi0
+node .claude/skills/neuma/cli.js say metidar:session-123 "…"   # by exact address when a being has two chats open
+```
+
+Your words show in that chat as a LINK line, never as the operator's. The being
+takes a turn on them and its reply prints here. The operator reads both sides. The
+being weighs your words as a collaborator's: what the operator said comes first,
+and acts still go to them. After 6 lines in a row the chat rests until the
+operator speaks there.
+
 The workspace RECORD is ownership-gated: you can read it for a neuma your wallet
 owns; another witness's neuma returns "not yours." You can still **talk**
 (portal is open contact).

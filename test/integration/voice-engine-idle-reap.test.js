@@ -11,15 +11,33 @@
 
 import { describe, it, expect, afterAll } from 'vitest';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { getEngine, listLocalEngines, getDefaultModel } from '../../backend/services/voice/engine-registry.js';
 import {
   ensureReady, reapIdleEngines, getStatus, launch, stop, shutdownAll, isDownloaded,
 } from '../../backend/services/voice/engine-manager.js';
+import { sidecarKeyEnv } from '../../backend/services/voice/sidecar-trust.js';
+import { envIdOf } from '../../backend/services/voice/engine-process.js';
 
 const STAND_IN = fileURLToPath(new URL('../helpers/speak-stand-in.js', import.meta.url));
 
 const children = [];
+const savedPorts = new Map();
+const ephemeralPort = () => new Promise((resolve) => {
+  const server = net.createServer();
+  server.listen(0, '127.0.0.1', () => {
+    const { port } = server.address();
+    server.close(() => resolve(port));
+  });
+});
+const useEphemeralPort = async (engineId) => {
+  const key = `${envIdOf(engineId)}_PORT`;
+  if (!savedPorts.has(key)) savedPorts.set(key, process.env[key]);
+  const port = await ephemeralPort();
+  process.env[key] = String(port);
+  return port;
+};
 
 // A dev rig may have REAL sidecars holding their manifest ports (the app
 // spawns them on demand) — stand-ins can only take engines whose ports are
@@ -41,7 +59,7 @@ for (const e of listLocalEngines()) {
 
 /** Spawn a real stand-in sidecar on an engine's manifest port; resolve when listening. */
 const standIn = async (engineId, idleSeconds, { attempts = 3 } = {}) => {
-  const { port } = getEngine(engineId).serve;
+  const port = await useEphemeralPort(engineId);
   let lastErr;
   for (let i = 0; i < attempts; i++) {
     // Wait for port to clear between sequential tests (reap/kill race under suite load)
@@ -52,7 +70,7 @@ const standIn = async (engineId, idleSeconds, { attempts = 3 } = {}) => {
     const opts = { model: getDefaultModel(engineId), idle: idleSeconds === 'none' ? null : idleSeconds };
     const child = spawn(process.execPath, [STAND_IN, String(port), JSON.stringify(opts)], {
       stdio: ['ignore', 'pipe', 'inherit'],
-      env: { ...process.env, NODE_OPTIONS: '' },
+      env: { ...process.env, NODE_OPTIONS: '', ...sidecarKeyEnv(engineId) },
     });
     children.push(child);
     const exited = new Promise((resolve) => child.on('exit', (code) => resolve(code)));
@@ -80,6 +98,9 @@ const standIn = async (engineId, idleSeconds, { attempts = 3 } = {}) => {
 afterAll(() => {
   shutdownAll();
   for (const c of children) { try { c.kill('SIGKILL'); } catch { /* gone */ } }
+  for (const [key, value] of savedPorts) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  }
 });
 
 describe.skipIf(FREE_ENGINES.length < 3)('idle reap lifecycle (real processes, real HTTP)', () => {

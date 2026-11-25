@@ -13,8 +13,9 @@
  * house's line runs exactly as wide as `localBudget` would say (substrate-lease.js,
  * via resolveTeamCapacity), and a waiting chat is told its place.
  *
- * This module keeps the reading of that number — measured, unmeasured,
- * incomplete or stale, and the words for each — for every surface that shows it.
+ * This module keeps the reading of that number — measured, carried, unmeasured,
+ * incomplete or stale, and the words for each — for every surface that shows it,
+ * and which stored scan speaks for the model served now (scanForModel).
  *
  * Pure — every input is passed in. The caller owns the live counts and the
  * capacity read.
@@ -38,6 +39,7 @@ export const LOCAL_BASIS = Object.freeze({
   unmeasured: 'unmeasured',
   incomplete: 'incomplete',
   stale: 'stale',
+  carried: 'carried',
 });
 
 /**
@@ -83,6 +85,35 @@ export const sameSubstrate = (a, b) => {
 };
 
 /**
+ * Which stored scan speaks for the model served now. Pure.
+ *
+ * A MEASUREMENT IS NEVER THROWN AWAY BY A MODEL SWITCH (Design note, 2026-11-10: […]). Every
+ * reader used to take only the NEWEST scan and call it stale when its model
+ * differed, so a switch from A to B and back to A asked for a scan each time,
+ * and the line ran one at a time until it got one.
+ *
+ * So: the model's own newest finished scan when it has one; otherwise the
+ * machine's newest finished scan, CARRIED and named as such (`carriedFrom`). The
+ * server's --parallel slots still bound whatever is carried (usableCapacity),
+ * so a carried number can never admit more than the server holds. With no model
+ * known, or no finished scan at all, the newest run reads as it always did.
+ *
+ * @param {Array<object>} runs - scans newest first (listCapacity)
+ * @param {?string} model - the model served now; 'local-model' is a placeholder
+ * @returns {?{run: object, carriedFrom: ?string}}
+ */
+export const scanForModel = (runs, model) => {
+  const list = Array.isArray(runs) ? runs : [];
+  if (!list.length) return null;
+  const known = typeof model === 'string' && model.trim() && model !== 'local-model' ? model : null;
+  const finished = list.filter((r) => Number.isFinite(r?.ceiling) && r.ceiling >= 1 && r.incomplete !== true);
+  if (!known || !finished.length) return { run: list[0], carriedFrom: null };
+  const own = finished.find((r) => sameSubstrate(known, r.substrate?.model));
+  if (own) return { run: own, carriedFrom: null };
+  return { run: finished[0], carriedFrom: finished[0].substrate?.model ?? null };
+};
+
+/**
  * The LOCAL budget: how many local sittings this rig may hold, and on what
  * evidence. Pure.
  *
@@ -125,6 +156,18 @@ export const localBudget = (capacity, activeSubstrate = null) => {
   }
 
   const ceiling = Math.max(0, Math.floor(capacity.ceiling));
+
+  // Never measured on this model: the machine's measurement carries over (scanForModel).
+  if (capacity.carriedFrom) {
+    return Object.freeze({
+      limit: ceiling,
+      basis: LOCAL_BASIS.carried,
+      limitedBy: capacity.limitedBy ?? null,
+      substrate: scanned,
+      reason: `${ceiling} local sitting${ceiling === 1 ? '' : 's'} may run at once, measured on this machine`
+        + ` with ${capacity.carriedFrom} and carried to ${activeSubstrate || 'this model'}.`,
+    });
+  }
 
   // The ceiling was measured against ONE model. A different model is a
   // different workload, and carrying the old number over would be the kind of

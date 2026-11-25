@@ -38,6 +38,7 @@ test('gallery client grants, lists, displays and revokes a real temporary root',
     const app = express();
     app.use(express.json());
     app.use('/api/v1/gallery', (await import('../../backend/routes/gallery-routes.js')).default);
+    app.use('/api/v1/desk-tickets', (await import('../../backend/routes/desk-ticket-routes.js')).default);
     vite = await createServer({ configFile: false, root: fileURLToPath(new URL('../..', import.meta.url)),
       cacheDir: path.join(root, 'vite'), appType: 'custom',
       server: { middlewareMode: true, hmr: { port: 1 }, ws: false, watch: null }, optimizeDeps: { noDiscovery: true } });
@@ -66,17 +67,20 @@ test('gallery client grants, lists, displays and revokes a real temporary root',
     expect((await invoke('getRoots')).result.roots.some((entry) => entry.id === granted.id)).toBe(true);
     const items = (await invoke('getItems', [granted.id])).result.items;
     expect(items).toHaveLength(1);
-    const dimensions = await page.evaluate((item) => new Promise((resolve, reject) => {
+    const dimensions = await page.evaluate((item) => new Promise(async (resolve, reject) => {
       const image = new Image();
       image.onload = () => resolve([image.naturalWidth, image.naturalHeight]);
       image.onerror = () => reject(new Error('Gallery image did not decode'));
-      image.src = window.client.fileSrc(item);
+      image.src = await window.client.fileSrc(item);
       document.body.append(image);
     }), items[0]);
     expect(dimensions).toEqual([1, 1]);
     expect((await invoke('removeRoot', ['comfy-output'])).http).toBe(400);
     expect((await invoke('removeRoot', [granted.id])).result.roots.some((entry) => entry.id === granted.id)).toBe(false);
-    const denied = await page.evaluate(async (item) => (await window.fetch(window.client.fileSrc(item), { cache: 'no-store' })).status, items[0]);
+    const denied = await page.evaluate(async (item) => {
+      const url = await window.client.fileSrc(item);
+      return (await window.fetch(url, { cache: 'no-store' })).status;
+    }, items[0]);
     expect(denied).toBe(404);
     expect(await fs.readFile(path.join(folder, 'proof & image.png'))).toEqual(PNG);
     await page.evaluate(() => sessionStorage.setItem('authToken', 'expired-proof'));

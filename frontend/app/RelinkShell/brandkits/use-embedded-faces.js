@@ -53,20 +53,18 @@ export const useEmbeddedFaces = (families, ids) => {
     for (const family of families) {
       for (const weight of family.weights) byId.set(weight.id, { ...weight, family: family.family });
     }
-    const rules = [];
-    for (const id of ids) {
-      if (installed.has(id)) continue;
+    const wanted = ids.filter((id) => !installed.has(id) && byId.has(id));
+    for (const id of wanted) installed.add(id);
+    Promise.all(wanted.map(async (id) => {
       const face = byId.get(id);
-      if (!face) continue;
-      installed.add(id);
-      rules.push(
-        `@font-face{font-family:'${face.family}';font-weight:${face.weight};font-style:normal;`
-        + `font-display:block;src:url('${faceFileUrl(id)}') format('${face.format === 'otf' ? 'opentype' : 'truetype'}')}`,
-      );
-    }
+      const url = await faceFileUrl(id);
+      return `@font-face{font-family:'${face.family}';font-weight:${face.weight};font-style:normal;`
+        + `font-display:block;src:url('${url}') format('${face.format === 'otf' ? 'opentype' : 'truetype'}')}`;
+    })).then((rules) => {
+      if (rules.length) styleEl().textContent += rules.join('\n');
+    }).catch(() => { for (const id of wanted) installed.delete(id); });
     // Appended, never replaced: a later kit's faces must not evict an earlier
     // one's while both are on screen.
-    if (rules.length) styleEl().textContent += rules.join('\n');
     // Deliberately no cleanup. The rules are immutable bytes keyed by a face id
     // that names one file shipped with the source; removing them on unmount
     // would only force a refetch the next time the panel opens.

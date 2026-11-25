@@ -104,6 +104,14 @@ describe('what TikTok\'s answers become', () => {
     expect(accountView({ bio_description: '' }).bio).toBe('');
   });
 
+  test('the profile link is the @handle page: TikTok\'s share link redirects to a broken address', () => {
+    const share = 'https://www.tiktok.com/share/user/7697543211140891668?source=ad_review';
+    expect(accountView({ username: 'ignisailabs', profile_web_link: share }).profileUrl).toBe('https://www.tiktok.com/@ignisailabs');
+    expect(accountView({ username: 'deus.neuma_1', profile_web_link: share }).profileUrl).toBe('https://www.tiktok.com/@deus.neuma_1');
+    expect(accountView({ username: 'bad/../name', profile_web_link: share }).profileUrl).toBe(share);
+    expect(accountView({ username: '', profile_deep_link: 'https://vm.tiktok.com/Z/' }).profileUrl).toBe('https://vm.tiktok.com/Z/');
+  });
+
   test('a video: title before description, the posted moment from epoch seconds, its counts; a missing one is null', () => {
     expect(videoView({
       id: '7300000000000000003', title: '', video_description: 'Forge night', create_time: 1761200000, duration: 15,

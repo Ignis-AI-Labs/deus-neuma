@@ -164,6 +164,23 @@ describe('wallet-service: recovery + import', () => {
     expect(svc.importPrivateKey(w.privateKey, PW).address).toBe(w.address);
     expect(svc.list()).toHaveLength(2);
   });
+
+  it('reveals an imported private key with its password and restores it in a clean wallet root', () => {
+    const original = ethers.Wallet.createRandom();
+    const imported = svc.importPrivateKey(original.privateKey, PW);
+    expect(() => svc.revealSecret(imported.id, 'wrong-password-value')).toThrow();
+    const recovered = svc.revealSecret(imported.id, PW);
+    expect(recovered).toBe(original.privateKey);
+    const cleanDir = fs.mkdtempSync(path.join(os.tmpdir(), 'neuma-wallet-restored-'));
+    try {
+      const restored = makeService({ walletDir: cleanDir });
+      const reopened = restored.importPrivateKey(recovered, PW);
+      expect(reopened.address).toBe(original.address);
+      expect(restored.unlock(reopened.id, PW).unlocked).toBe(true);
+    } finally {
+      fs.rmSync(cleanDir, { recursive: true, force: true });
+    }
+  });
 });
 
 describe('wallet-service: signing (active wallet)', () => {

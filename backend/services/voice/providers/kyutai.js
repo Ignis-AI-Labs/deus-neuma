@@ -65,7 +65,7 @@ const postSynthesize = (url, body, signal) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
     signal,
-  });
+  }, 'kyutai');
 
 export const kyutaiAdapter = {
   // Embedding-conditioned voice: tts-provider loads the sealed workspace

@@ -126,10 +126,10 @@ export const AppShell = ({ wsService }) => {
   }, []);
 
   // THE FIRST SEAL rides the same full-screen ceremony staging — the founding
-  // of a being's voice is a rite, not a desk panel. Dispatched by the desk's
-  // voice notice (BEGIN THE FIRST SEAL) and by the attunement seal (CONTINUE
-  // INTO THE FIRST SEAL — the compile step after the 89 questions). The
-  // dispatch always names the being.
+  // of a being's voice is a rite, not a desk panel. Dispatched when the
+  // operator chooses it (NITE, and the attunement seal's CONTINUE INTO THE
+  // FIRST SEAL — the compile step after the 89 questions); never forced on the
+  // desk (2026-11-14). The dispatch always names the being.
   const [voiceSealTarget, setVoiceSealTarget] = useState(null);
   useEffect(() => {
     const toVoiceSeal = (e) => {

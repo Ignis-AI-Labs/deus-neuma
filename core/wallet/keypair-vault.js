@@ -62,7 +62,7 @@ export const MIN_KEY_PASSWORD = 12;
  * Encrypt a keypair with a password.
  * Returns a frozen envelope containing all data needed for decryption.
  *
- * @param {Object} keypair - { privateKey, publicKey, address }
+ * @param {Object} keypair - { privateKey, publicKey, address, mnemonic? }
  * @param {string} password - Witness-provided password (min MIN_KEY_PASSWORD)
  * @returns {Object} Encrypted envelope (frozen)
  */
@@ -82,6 +82,7 @@ export const encryptKeypair = (keypair, password) => {
     privateKey: keypair.privateKey,
     publicKey: keypair.publicKey,
     address: keypair.address,
+    ...(keypair.mnemonic !== undefined ? { mnemonic: keypair.mnemonic } : {}),
   });
 
   const cipher = crypto.createCipheriv(AES_ALGORITHM, key, iv);
@@ -148,6 +149,7 @@ export const decryptKeypair = (encrypted, password) => {
       privateKey: keypair.privateKey,
       publicKey: keypair.publicKey,
       address: keypair.address,
+      ...(keypair.mnemonic !== undefined ? { mnemonic: keypair.mnemonic } : {}),
     });
   } catch (err) {
     if (err.message.includes('integrity') || err.message.includes('mismatch')) {
@@ -208,7 +210,7 @@ export const verifyRecoveryCodes = (codes, storedHash) => {
  * Encrypt a keypair using recovery codes as the password.
  * This provides an alternative decryption path if the witness loses their password.
  *
- * @param {Object} keypair - { privateKey, publicKey, address }
+ * @param {Object} keypair - { privateKey, publicKey, address, mnemonic? }
  * @param {string[]} codes - Recovery codes
  * @returns {Object} Encrypted envelope (frozen)
  */

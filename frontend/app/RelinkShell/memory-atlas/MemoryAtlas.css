@@ -1,0 +1,142 @@
+/* MEMORY — the context map's memory view (design-language.md § SURFACES): the rail is sunk, the list is the
+   window's own ground, the reader is raised, and heads are bands, so the three parts tell apart by tone. */
+.atlas { display: flex; flex-direction: column; gap: var(--space-3); flex: 1 1 auto; min-height: 0; container-type: inline-size; }
+.atlas-head { display: flex; flex-direction: column; gap: var(--space-2); flex-shrink: 0; }
+.atlas-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin: 0; color: var(--color-text-secondary); font-size: 13px; letter-spacing: 0.1em; }
+.atlas-sum b { color: var(--color-text-primary); font-weight: 600; font-size: 16px; letter-spacing: 0.04em; }
+.atlas-sum span { color: var(--color-text-tertiary); }
+.atlas-tools { display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--space-2); }
+.atlas-search { flex: 1 1 14rem; min-width: 10rem; padding: var(--space-2) var(--space-3); background: var(--surface-sunk); border: 1px solid var(--line-strong); color: var(--color-text-primary); font: inherit; font-size: 14px; }
+.atlas-search::placeholder { color: var(--color-text-tertiary); }
+.atlas-search:focus-visible { outline: none; border-color: var(--signal); }
+.atlas-seg { display: inline-flex; }
+.atlas-seg .atlas-btn + .atlas-btn { border-left: 0; }
+.atlas-btn { padding: var(--space-1) var(--space-3); background: none; border: 1px solid var(--line-strong); color: var(--color-text-secondary); font-size: 13px; letter-spacing: 0.1em; cursor: pointer; }
+.atlas-btn:hover:not(:disabled) { color: var(--color-text-primary); background: var(--surface-raised); }
+.atlas-btn:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
+.atlas-btn.is-on { color: var(--color-text-primary); background: var(--surface-band); }
+.atlas-btn:disabled { color: var(--color-text-tertiary); cursor: default; }
+.atlas-chips { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0; min-height: 1.75rem; color: var(--color-text-secondary); font-size: 13px; letter-spacing: 0.08em; }
+.atlas-shown b, .atlas-chip b { color: var(--color-text-primary); font-weight: 600; }
+.atlas-chip { display: inline-flex; align-items: center; gap: var(--space-2); padding: 1px var(--space-2); background: var(--surface-band); border: 1px solid var(--signal-dim); color: var(--color-text-secondary); font: inherit; letter-spacing: inherit; cursor: pointer; }
+.atlas-chip b { letter-spacing: 0.02em; text-transform: none; }
+.atlas-chip:hover { border-color: var(--signal); color: var(--color-text-primary); }
+.atlas-chip:focus-visible { outline: 1px solid var(--signal); outline-offset: 1px; }
+.atlas-chip.is-clear { background: none; border-color: var(--line-strong); }
+.atlas .is-alert { color: var(--alert); }
+
+/* Three parts side by side; the reader takes its column only while a memory is open. */
+.atlas-body { display: grid; grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr); gap: var(--space-3); flex: 1 1 auto; min-height: 0; }
+.atlas.has-open .atlas-body { grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr) minmax(20rem, 26rem); }
+.atlas-rail, .atlas-main, .atlas-reader { min-height: 0; overflow: auto; }
+.atlas-reader.is-empty { display: none; }
+
+/* THE RAIL — sunk, with each group's name on a band. */
+.atlas-rail { background: var(--surface-sunk); border: 1px solid var(--line-strong); }
+.atlas-group + .atlas-group { border-top: 1px solid var(--line-strong); }
+.atlas-group-sum { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-band); cursor: pointer; list-style: none; position: sticky; top: 0; z-index: 1; }
+.atlas-group-sum::-webkit-details-marker { display: none; }
+.atlas-group-sum::before { content: '▸' / ''; color: var(--color-text-tertiary); width: 1em; }
+.atlas-group[open] > .atlas-group-sum::before { content: '▾' / ''; }
+.atlas-group-sum:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
+.atlas-group-title { flex: 1; color: var(--color-text-primary); font-size: 13px; letter-spacing: 0.16em; }
+.atlas-group-n { color: var(--color-text-secondary); font-size: 13px; }
+.atlas-ways { list-style: none; margin: 0; padding: var(--space-1) 0; }
+.atlas-way { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--space-2); width: 100%; padding: var(--space-2) var(--space-3); background: none; border: 0; border-left: 2px solid transparent; color: var(--color-text-primary); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.atlas-way:hover { background: var(--surface-raised); }
+.atlas-way:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
+.atlas-way.is-on { background: var(--surface-band); border-left-color: var(--signal); }
+.atlas-way.is-none { color: var(--color-text-tertiary); }
+.atlas-way-name { overflow-wrap: anywhere; line-height: 1.35; }
+.atlas-way-n { grid-column: 2; grid-row: 1; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+.atlas-way.is-on .atlas-way-n { color: var(--signal); }
+.atlas-spark, .atlas-way-bar { grid-column: 1 / -1; margin-top: var(--space-1); }
+.atlas-spark { display: flex; align-items: flex-end; gap: 2px; height: 12px; border-bottom: 1px solid var(--line); }
+.atlas-spark i { flex: 1; background: var(--color-text-tertiary); }
+.atlas-way.is-on .atlas-spark i { background: var(--signal); }
+.atlas-way-bar { height: 3px; background: var(--line); }
+.atlas-way-bar i { display: block; height: 100%; background: var(--color-text-tertiary); }
+.atlas-way.is-on .atlas-way-bar i { background: var(--signal); }
+.atlas-none { margin: 0; padding: var(--space-2) var(--space-3); color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
+
+/* THE LIST — a sheet; the memory's own line is the row's name and opens it. */
+.atlas-main { display: flex; flex-direction: column; }
+.atlas-row-open { background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 400; line-height: 1.45; text-align: left; cursor: pointer; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.atlas-row-open:hover { color: var(--signal); }
+.atlas-row-open:focus-visible { outline: 1px solid var(--signal); outline-offset: 1px; }
+.atlas-main .sheet-table tbody tr[data-atlas-open] > * { background: var(--surface-band); }
+.atlas-main .sheet-table tbody tr[data-atlas-open] > th { box-shadow: inset 2px 0 0 var(--signal); }
+
+/* THE READER — raised: one memory in full. */
+.atlas-reader > * { flex-shrink: 0; }
+.atlas-reader { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-3) var(--space-3); background: var(--surface-raised); border: 1px solid var(--line-strong); }
+.atlas-read-bar { display: flex; justify-content: space-between; gap: var(--space-2); margin: 0 calc(-1 * var(--space-3)); padding: var(--space-2) var(--space-3); background: var(--surface-band); border-bottom: 1px solid var(--line-strong); position: sticky; top: 0; z-index: 1; }
+.atlas-facts { margin: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.atlas-facts > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: var(--space-2); align-items: baseline; }
+.atlas-facts dt { color: var(--color-text-tertiary); font-size: 13px; letter-spacing: 0.12em; }
+.atlas-facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); color: var(--color-text-primary); font-size: 13px; overflow-wrap: anywhere; }
+.atlas-exact { font-family: var(--font-mono, ui-monospace, monospace); color: var(--color-text-secondary); user-select: all; }
+.atlas-link { background: none; border: 0; border-bottom: 1px solid var(--signal-dim); padding: 0; color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+.atlas-link:hover { color: var(--signal); border-bottom-color: var(--signal); }
+.atlas-link:focus-visible { outline: 1px solid var(--signal); outline-offset: 1px; }
+.atlas-read-h { margin: 0; padding-bottom: var(--space-1); border-bottom: 1px solid var(--line-strong); color: var(--color-text-primary); font-size: 13px; letter-spacing: 0.14em; }
+.atlas-read-text { padding: var(--space-3); background: var(--surface-sunk); border: 1px solid var(--line); color: var(--color-text-primary); font-family: var(--font-voice, inherit); font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 22rem; overflow: auto; }
+.atlas-reader .atlas-none { padding-inline: 0; }
+.atlas-turns { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--surface-sunk); border: 1px solid var(--line); max-height: 26rem; overflow: auto; }
+.atlas-turn { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-3); border-left: 2px solid transparent; color: var(--color-text-secondary); }
+.atlas-turn + .atlas-turn { border-top: 1px solid var(--line); }
+.atlas-turn.is-kept { border-left-color: var(--signal); background: var(--surface-raised); color: var(--color-text-primary); }
+.atlas-turn-who { font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }
+.atlas-turn.is-kept .atlas-turn-who { color: var(--signal); }
+.atlas-turn-words { font-family: var(--font-voice, inherit); font-size: 14px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.atlas-near { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); }
+.atlas-near li + li { border-top: 1px solid var(--line); }
+.atlas-near li:nth-child(even) { background: var(--surface-stripe); }
+.atlas-near-row { display: flex; flex-direction: column; gap: 2px; width: 100%; padding: var(--space-2) var(--space-3); background: none; border: 0; color: var(--color-text-primary); font: inherit; text-align: left; cursor: pointer; }
+.atlas-near-row:hover { background: var(--color-glass-hover); }
+.atlas-near-row:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
+.atlas-near-when { color: var(--color-text-secondary); font-size: 13px; letter-spacing: 0.08em; }
+.atlas-near-line { font-size: 13px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* THE MAP — monochrome; signal marks only the chosen topic and the opened memory with its threads. */
+.atlas-map { display: flex; flex-direction: column; gap: var(--space-2); flex: 1 1 auto; min-height: 0; border: 1px solid var(--line-strong); background: var(--surface-sunk); }
+.atlas-map-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--surface-band); border-bottom: 1px solid var(--line-strong); }
+.atlas-map-key { color: var(--color-text-secondary); font-size: 13px; letter-spacing: 0.08em; }
+.atlas-zoom { display: inline-flex; }
+.atlas-zoom .atlas-btn + .atlas-btn { border-left: 0; }
+.atlas-map-stage { flex: 1 1 auto; min-height: 240px; }
+.atlas-map-svg { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.atlas-map-svg:active { cursor: grabbing; }
+.atlas-tie { stroke: var(--color-text-tertiary); stroke-opacity: 0.35; stroke-linecap: round; }
+.atlas-disc circle { fill: var(--surface-raised); stroke: var(--line-strong); stroke-width: 1.5; vector-effect: non-scaling-stroke; cursor: pointer; outline: none; }
+.atlas-disc.is-loose circle { stroke-dasharray: 4 4; fill: none; }
+.atlas-disc circle:hover, .atlas-disc circle:focus-visible { stroke: var(--color-text-primary); }
+.atlas-disc.is-on circle { stroke: var(--signal); fill: var(--surface-band); }
+.atlas-disc-name { fill: var(--color-text-secondary); font-family: var(--font-data, inherit); font-size: 13px; letter-spacing: 0.04em; pointer-events: none; paint-order: stroke; stroke: var(--color-background); stroke-width: 4px; stroke-linejoin: round; }
+.atlas-disc-name.is-on { fill: var(--color-text-primary); }
+.atlas-dot { fill: var(--color-text-primary); stroke: none; cursor: pointer; }
+.atlas-dot:hover { stroke: var(--signal); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.atlas-dot.is-dim { fill-opacity: 0.08; }
+.atlas-dot.is-near { fill: var(--signal); fill-opacity: 0.9 !important; }
+.atlas-dot.is-open { fill: var(--signal); fill-opacity: 1 !important; stroke: var(--color-text-primary); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.atlas-thread { stroke: var(--signal); stroke-opacity: 0.7; stroke-width: 1.5; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+/* THE SPACE — the same memory to move through. Its lights take the theme's text colour. */
+.atlas-space-stage { position: relative; flex: 1 1 auto; min-height: 280px; overflow: hidden; color: var(--color-text-primary); background: radial-gradient(ellipse at 50% 45%, var(--surface-raised), transparent 70%); }
+.atlas-space-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; outline: none; }
+.atlas-space-canvas:active { cursor: grabbing; }
+.atlas-space-canvas:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
+.atlas-space-tip { position: absolute; margin: 0; transform: translate(12px, 12px); max-width: 22rem; padding: var(--space-1) var(--space-2); background: var(--color-surface); border: 1px solid var(--line-strong); color: var(--color-text-primary); font-size: 13px; line-height: 1.4; pointer-events: none; z-index: 2; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* A narrow window: the reader moves under the list instead of crushing it. */
+@container (max-width: 1060px) {
+  .atlas.has-open .atlas-body { grid-template-columns: minmax(11rem, 14rem) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .atlas.has-open .atlas-rail { grid-row: 1 / span 2; }
+}
+@container (max-width: 640px) {
+  .atlas-body, .atlas.has-open .atlas-body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; overflow: auto; }
+  .atlas.has-open .atlas-rail { grid-row: auto; }
+  .atlas-rail { max-height: 14rem; }
+  .atlas-rail, .atlas-main, .atlas-reader { overflow: visible; }
+  .atlas-rail { overflow: auto; }
+}

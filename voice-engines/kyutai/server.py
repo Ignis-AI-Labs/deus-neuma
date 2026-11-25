@@ -102,7 +102,7 @@ async def _track_activity(request, call_next):
     # Stamped on arrival; for a StreamingResponse turn the post-call_next stamp
     # lands at stream START (headers ready), so /synthesize stamps per frame as
     # the body streams — a long synthesis can never be mistaken for idleness.
-    answer = guard(request.headers, request.url.path, request.url.query)  # browser_guard.py: page, key
+    answer = guard(request.headers, request.url.path, request.url.query, local=request.scope.get("server"))
     if answer:
         return JSONResponse(answer[1], status_code=answer[0])
     global _last_activity

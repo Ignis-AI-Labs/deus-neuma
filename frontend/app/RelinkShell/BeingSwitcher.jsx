@@ -15,6 +15,7 @@ import { useCouncil } from './council-context.js';
 import { getRoster, getWitnesses } from '../../utils/companion-data.js';
 import { recoverRoster } from '../roster-recovery.js';
 import { houseMembers, witnessMembers } from './house-members.js';
+import { fullRole, legendEntry, shortRole } from './role-label.js';
 import { uiSound } from '../../services/ui-sound.js';
 import './BeingSwitcher.css';
 
@@ -112,7 +113,11 @@ export const BeingSwitcher = () => {
       <span className="being-switcher-name">
         {(member.name || member.neumaId).toUpperCase()}
         {member.title ? (
-          <span className="being-switcher-title">{String(member.title).toUpperCase()}</span>
+          // the role beside the Roman title (#31); the seat in full on hover and to a screen reader
+          <span className="being-switcher-title" title={fullRole(member.title)}>
+            {shortRole(member.title)}
+            {legendEntry(member.title) ? <span className="sr-only">{`, ${legendEntry(member.title).seat}`}</span> : null}
+          </span>
         ) : null}
       </span>
       <span className="being-switcher-meta">

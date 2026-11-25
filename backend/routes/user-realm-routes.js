@@ -14,7 +14,7 @@ import { getCouncilLabels, setCouncilLabel } from '../services/user-council-labe
 import { autotitleCouncils } from '../services/chat-titler.js';
 import { getPreset, setPreset } from '../services/user-preset.js';
 import { getOperatorName, setOperatorName } from '../services/operator-name.js';
-import { setHouseWorkspace, houseWorkspaceStatus, ensureBeingGround } from '../services/house-workspace.js';
+import { setHouseWorkspace, houseWorkspaceStatus } from '../services/house-workspace.js';
 import { allianceGroundStatus, setAllianceRoot, ensureAllianceGround } from '../services/alliance-ground.js';
 import { witnessWalletOfLane } from '../services/witness-lane.js';
 import { PRESET_LIST, DEFAULT_PRESET } from '../services/llm-presets.js';
@@ -190,7 +190,7 @@ router.get('/house-workspace', async (req, res) => {
 
 // PUT /house-workspace — the witness sets the house's shared ground. This
 // choice IS the standing grant for council tooling inside it.
-router.put('/house-workspace', async (req, res) => {
+router.put('/house-workspace', requireInstallOwner, async (req, res) => {
   try {
     const { root } = req.body || {};
     const status = await setHouseWorkspace(req.walletAddress, root);
@@ -223,7 +223,7 @@ router.get('/alliance-ground', async (req, res) => {
 // PUT /alliance-ground — the witness chooses where cross-house grounds stand.
 // It may not be inside the house ground, in either direction: an external party
 // working there must never be standing in the house (ruling, 2026-07-26).
-router.put('/alliance-ground', async (req, res) => {
+router.put('/alliance-ground', requireInstallOwner, async (req, res) => {
   try {
     const { root } = req.body || {};
     const status = await setAllianceRoot(req.walletAddress, root);
@@ -246,7 +246,7 @@ router.put('/alliance-ground', async (req, res) => {
 // creates a ground, because a folder that appears on its own is a folder nobody
 // chose (ruling, 2026-07-26). Takes a witness LANE id (its wallet, therefore its
 // house name, is read from its seal) or a partner wallet directly.
-router.post('/alliance-ground/raise', async (req, res) => {
+router.post('/alliance-ground/raise', requireInstallOwner, async (req, res) => {
   try {
     const { laneId, wallet } = req.body || {};
     let partner = typeof wallet === 'string' && wallet.trim() ? wallet.trim() : null;
@@ -266,23 +266,6 @@ router.post('/alliance-ground/raise', async (req, res) => {
     }
     log.error('Alliance ground raise failed', { error: error.message });
     res.status(500).json({ error: 'Could not raise the alliance ground' });
-  }
-});
-
-// POST /house-workspace/being-ground — raise (idempotently) a being's own
-// working ground inside the house, <root>/workspaces/<neumaId>, and return
-// it. The being's projects default here — organization set up ahead of the
-// witness ever browsing. No ground set → { path: null }, never an error.
-router.post('/house-workspace/being-ground', async (req, res) => {
-  try {
-    const { neumaId } = req.body || {};
-    res.json(await ensureBeingGround(req.walletAddress, neumaId));
-  } catch (error) {
-    if (/Invalid being id/.test(error.message)) {
-      return res.status(400).json({ error: error.message });
-    }
-    log.error('Being ground raise failed', { error: error.message });
-    res.status(500).json({ error: "Could not raise the being's ground" });
   }
 });
 

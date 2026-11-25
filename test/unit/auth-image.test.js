@@ -13,7 +13,7 @@
 //
 // AuthImage is now the FALLBACK path, for lane-scoped routes that accept a
 // header and nothing else. THE GALLERY no longer uses it — /gallery/file takes
-// `?token=`, so a tile is a plain <img> the browser loads, caches and evicts on
+// `?ticket=`, so a tile is a plain <img> the browser loads, caches and evicts on
 // its own (proven in api-gallery-file.test.js). The IntersectionObserver
 // load/release machine that used to live here went with it: it existed only for
 // the gallery, and `loading="lazy"` is the browser's own version of it.

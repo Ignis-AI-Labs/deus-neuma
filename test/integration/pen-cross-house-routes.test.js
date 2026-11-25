@@ -96,7 +96,6 @@ const MACHINE_GATED = Object.freeze({
 // breach it reopens. The matrix excuses none of them.
 const FOUND_BREACHES = Object.freeze({
   'PUT /api/v1/user/realm/house-workspace': 'a guest set its house ground to another house\'s realm dir and the platform wrote its marker and folders there',
-  'POST /api/v1/user/projects/': 'a guest attached another house\'s lane as its project folder, which opened it as a machine-wide explorer root',
   'POST /api/v1/gallery/roots': 'any wallet added any folder (another house\'s lane included) to the machine-wide gallery, which served its images',
   'DELETE /api/v1/gallery/roots/:id': 'any wallet removed a gallery folder another house added',
   'PUT /api/v1/chain/access': 'any wallet flipped the machine-wide chain-access switch every house\'s beings read',
@@ -190,7 +189,6 @@ describe('cross-house pen matrix — every mutating route, unsigned and as anoth
   };
   const knownRequest = {
     'PUT /api/v1/user/realm/house-workspace': () => ({ root: path.join(process.env.NEUMA_REALM_ROOT, ctx.a.address) }),
-    'POST /api/v1/user/projects/': () => ({ name: 'B project', folder: path.join(process.env.WORKSPACES_ROOT, ctx.lanes.a), channel: 'neuma', neumaId: ctx.lanes.b }),
     'POST /api/v1/gallery/roots': () => ({ dir: path.join(process.env.WORKSPACES_ROOT, ctx.lanes.a), label: 'B looks in' }),
     'DELETE /api/v1/gallery/roots/:id': () => ({}),
     'PUT /api/v1/chain/access': () => ({ enabled: false }),

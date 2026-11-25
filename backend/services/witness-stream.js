@@ -31,6 +31,7 @@ import { resolveWitnessRoute } from './witness-route-resolver.js';
 import { openTurnRecord, collectToolAction, turnRecordFor, closeTurnRecord } from './tool-action-record.js';
 
 import { persistTurnPoint, ensureSession, persistExchange } from './witness-turn-record.js';
+import { keepTurn } from './turn-keep.js';
 import { buildWitnessTurnContext } from './witness-turn-context.js';
 // Crystallization from its home directly (size-law breakdown end-sweep;
 // the leaf moved to portal-turn-persist in step 12) — no portal-stream
@@ -204,6 +205,7 @@ export const streamWitnessTurn = async (connection, message) => {
   // The point lands BEFORE the provider is asked (RETRY-ANYWHERE): every
   // check the turn must pass has passed, so a provider failure from here on
   // leaves a retryable point on disk — the ask never vanishes with the error.
+  await keepTurn(connection, { neumaId: laneId, sessionId, take }); // kept as it goes: a close never loses it (turn-keep.js)
   if (!retryTurn) await persistTurnPoint(connection, laneId, sessionId, thought, { images, docs, take });
 
   const interrupt = new AbortController();

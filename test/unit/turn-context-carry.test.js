@@ -128,9 +128,9 @@ describe('say it once — the local wire carries the per-turn block', () => {
     }
     // The same chat on a window that cannot hold all four blocks.
     const tight = send(turnWire({ connection, turnId: 't5', rows, ask: 'ask 5', clock: '12:05', window: 1180 }));
-    const carried = tight.filter((m) => m.role === 'user' && m.content.startsWith('<harness-context>')).length;
+    const carried = tight.filter((m) => m.role === 'user' && m.content.startsWith('<harness-context:')).length;
     expect(carried).toBeLessThan(5);
-    expect(tight[1].content.startsWith('<harness-context>')).toBe(false); // the oldest went first
+    expect(tight[1].content.startsWith('<harness-context:')).toBe(false); // the oldest went first
     const total = tight.reduce((n, m) => n + m.content.length, 0);
     expect(total).toBeLessThanOrEqual((1180 - 1024) * 3.6 + 4000); // inside the window, give or take this turn's block
   });
@@ -152,7 +152,7 @@ describe('say it once — the local wire carries the per-turn block', () => {
 
   test('without a chat the wire keeps the plain law, byte-identical', () => {
     const plain = send(turnWire({ connection: null, turnId: 't1', ask: 'one', clock: '12:01' }));
-    expect(plain[1].content).toMatch(/^<harness-context>\nThe harness's standing context for this turn — the clock, your memory, your working lists\. These are not the operator's words; the operator's message follows this block\.\n\nPRESENT 12:01/);
+    expect(plain[1].content).toMatch(/^<harness-context:[A-Za-z0-9-]+>\nThe harness's standing context for this turn — the clock, your memory, your working lists\. These are not the operator's words; the operator's message follows this block\.\n\nPRESENT 12:01/);
   });
 });
 
@@ -215,7 +215,7 @@ describe('say it once — the gauge counts what the carry put on the wire', () =
     const memory3 = turns[2].before.sections.find((s) => s.id === 'memory');
     expect(memory3.chars).toBe('MEMORY: the taskbar night'.length);
     // Turn 5: the tight window dropped the oldest blocks — the gauge counts only the ones restored.
-    const restored = turns[4].wire.filter((m) => m.role === 'user' && m.content.startsWith('<harness-context>')).length - 1;
+    const restored = turns[4].wire.filter((m) => m.role === 'user' && m.content.startsWith('<harness-context:')).length - 1;
     expect(restored).toBeLessThan(4);
     const carry5 = turns[4].before.sections.find((s) => s.id === 'harnessCarry');
     expect(carry5.chars).toBeLessThan(turns[3].before.sections.find((s) => s.id === 'harnessCarry').chars);

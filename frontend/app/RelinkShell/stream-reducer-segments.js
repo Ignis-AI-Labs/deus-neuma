@@ -4,6 +4,7 @@
 // deterministic exactly as the reducer is: no IO, no clocks.
 
 import { isInflightStatus } from '../../../core/runtime/tool-status.js';
+import { cutAfter } from './timeline-refold-pure.js';
 
 /** Index of the live (still-streaming) neuma message, or -1. At most one
  *  message streams at a time, and a retried TAKE streams IN PLACE at its
@@ -25,7 +26,8 @@ const withStreaming = (state, at, take) => {
         ...(message.takes || []),
         { takeIndex: take.takeIndex ?? (message.takes?.length || 0) + 1, at: at ?? null, segments: [], meta: null },
       ];
-      const messages = state.messages.slice();
+      // THE TIMELINE: what followed the older take leaves the view with it (timeline-refold.js).
+      const messages = cutAfter(state.messages, idx).slice();
       messages[idx] = {
         ...message, streaming: true,
         takeCount: takes.length, takeIndex: takes.length, takes,
@@ -164,7 +166,7 @@ export const segmentHandlers = Object.freeze({
     }, action.at, action.take),
 
   TOOL_RESULT: (state, action) => {
-    const { tool, status, summary, detail, sources, images, findings, bench } = action.data;
+    const { tool, status, summary, detail, sources, images, findings, bench, split } = action.data;
     return mapStreamingSegments(state, (segments) => {
       const i = firstActingTool(segments);
       const resolved = {
@@ -187,6 +189,13 @@ export const segmentHandlers = Object.freeze({
         // a benchmark the chat launched — the card watches it to its end
         bench: bench || (i !== -1 ? segments[i].bench || null : null),
       };
+      // A shadow clone split (clone-split.js): its sub-channels stand on the chip; the kept record
+      // (each clone's report and acts) settles them, and each clone's live words — and its work in order — stay readable.
+      const prior = i !== -1 ? segments[i] : segments[lastLiveToolIndex(segments, resolved.label)];
+      const liveSplit = prior?.split ?? null;
+      const liveOf = (c) => liveSplit?.clones?.find((l) => l.index === c.index);
+      const kept = split ? { ...split, clones: split.clones.map((c) => ({ ...c, text: liveOf(c)?.text ?? '', feed: liveOf(c)?.feed ?? [] })) } : liveSplit;
+      if (kept) resolved.split = kept;
       if (i !== -1) {
         const copy = segments.slice();
         copy[i] = resolved;
@@ -206,6 +215,26 @@ export const segmentHandlers = Object.freeze({
         return copy;
       }
       return [...segments, resolved];
+    }, action.at, action.take);
+  },
+
+  // EVERY ACT OPENS TO WHAT IT RETURNED (Design note, 2026-11-14: […]): a platform tool's result arrives after its chip (tool:detail, sendResultDetail
+  // in portal-tools/tool-events.js) and fills the newest chip for that tool that came up with
+  // nothing to open. A chip with its own detail or a stored ref keeps what it has; with no reply
+  // streaming there is no chip of this turn to fill.
+  TOOL_DETAIL: (state, action) => {
+    const { tool, detail } = action.data || {};
+    if (!tool || !detail || !state.messages.some((m) => m.streaming)) return state;
+    return mapStreamingSegments(state, (segments) => {
+      for (let i = segments.length - 1; i >= 0; i -= 1) {
+        const segment = segments[i];
+        if (segment.kind !== 'tool' || segment.label !== tool) continue;
+        if (segment.detail || segment.ref) return segments;
+        const copy = segments.slice();
+        copy[i] = { ...segment, detail };
+        return copy;
+      }
+      return segments;
     }, action.at, action.take);
   },
 });

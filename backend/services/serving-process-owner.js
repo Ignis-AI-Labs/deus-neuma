@@ -6,6 +6,7 @@ import path from 'node:path';
 import { refinementSha256 } from '../../core/refinement/training-contract.js';
 import { sha256HandleStable } from './file-digest.js';
 import { modelHasMtpHeads } from './gguf-mtp.js';
+import { drafterFor, engineSupportsReplay, speculativePlan } from './serving-drafter.js';
 import { borrowStagedArtifactForSpawn } from './refinement-artifact-internal/held-authority.js';
 import { assertRefinementProcessOperation } from './refinement-process-operation.js';
 import {
@@ -189,11 +190,18 @@ export const spawnServingProcessOwner = async ({
       loras: childFds.slice(1).map((fd) => `/proc/self/fd/${fd}`),
     });
     const mtp = launchConfig.model ? await modelHasMtpHeads(launchConfig.model) : false;
-    const argv = servingLaunchArguments(childConfig, { mtp });
+    const drafter = launchConfig.model ? await drafterFor(launchConfig.model) : null;
+    const plan = speculativePlan({
+      mtp, drafter, replay: (mtp || drafter !== null) && await engineSupportsReplay(executable),
+    });
+    const argv = servingLaunchArguments(childConfig, {
+      mtp: plan.kind === 'mtp', drafter: plan.kind === 'dflash' ? plan.drafter : null,
+    });
     const environment = servingChildEnvironment({
       disableCudaGraphs: launchConfig.disableCudaGraphs,
       disableCudaFusion: launchConfig.disableCudaFusion,
       gpuBinding,
+      rsReplay: plan.rsReplay,
     });
     const adapters = adapterProjection(artifacts.adapters);
     const adapterSetSha256 = refinementSha256(adapters);

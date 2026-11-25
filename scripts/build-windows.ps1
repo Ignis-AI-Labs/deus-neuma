@@ -99,7 +99,9 @@ Push-Location node_modules\better-sqlite3
 $prebuilt = ($LASTEXITCODE -eq 0)
 Pop-Location
 if ($prebuilt) {
-  Write-Host "   better-sqlite3 for Electron $electron (the official prebuild)"
+  $prebuiltNode = Join-Path $PWD 'node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+  Run node @((Join-Path $PSScriptRoot 'verify-native-prebuild.mjs'), '--file', $prebuiltNode, '--electron', $electron, '--platform', 'win32', '--arch', 'x64')
+  Write-Host "   better-sqlite3 for Electron $electron (the official prebuild, SHA-256 verified)"
 } else {
   # A module built for plain Node fails silently in the app (the platform database turns into a no-op),
   # so with no prebuild for this Electron it is compiled here, with the repo's pinned @electron/rebuild.

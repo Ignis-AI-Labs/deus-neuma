@@ -20,7 +20,8 @@
 
 import { performance } from 'node:perf_hooks';
 
-import { readLatestCapacity } from './capacity-store.js';
+import { readCapacityFor } from './capacity-store.js';
+import { sameSubstrate } from '../../core/runtime/tab-budget.js';
 import { getSubstrateProfile } from './substrate-detector.js';
 import { STATUS_ASK, SIGNOFF_ASK } from './team-board.js';
 import { TORCH_ASK, torchPickup } from './team-torch.js';
@@ -42,29 +43,28 @@ import { SERVING_PARALLEL_SLOTS } from './serving-launch-config.js';
 // have not measured. A config-bound single-slot rig (boundClass 'B') is also
 // held to 1: its ceiling of 1 IS the real limit.
 //
-// The ceiling is a property of rig + MODEL, not the rig alone (a 122B and a
-// 31B on the same GPU knee at different widths). A scan taken on one model
-// says nothing about another, so when the currently loaded model differs from
-// the one the scan measured, the scan is STALE here: back to the floor of 1
-// until a re-scan, with both names surfaced so the mismatch is visible.
-// 'local-model' is a placeholder, not an identity — never compared.
+// The ceiling is a property of rig + MODEL, so the scan read is the one that
+// speaks for the model loaded now (scanForModel): its own newest finished scan,
+// else the machine's newest, CARRIED — a model switch never sends the line back
+// to 1 or asks for a re-scan (Design note, 2026-11-10. Both names stay surfaced
+// (scannedModel, carriedFrom). Stale is left only for a scan that never
+// finished on another model. 'local-model' is a placeholder, never compared.
 /**
  * @param {Object} [deps]
  * @param {Function} [deps.getProfile] - substrate profile source (injected in tests)
  * @returns {Promise<{ maxParallel: number, measured: boolean, ceiling: ?number,
- *   scannedModel: ?string, currentModel: ?string, stale: boolean }>}
+ *   scannedModel: ?string, currentModel: ?string, stale: boolean, carriedFrom: ?string }>}
  */
 export const resolveTeamCapacity = async ({ getProfile = getSubstrateProfile } = {}) => {
-  const [latest, profile] = await Promise.all([
-    readLatestCapacity(),
-    Promise.resolve().then(getProfile).catch(() => null),
-  ]);
+  const profile = await Promise.resolve().then(getProfile).catch(() => null);
+  const rawCurrent = profile?.llm?.model || null;
+  const currentModel = rawCurrent === 'local-model' ? null : rawCurrent;
+  const latest = await readCapacityFor(currentModel);
   const ceiling = latest?.ceiling ?? null;
   const hasCeiling = Number.isInteger(ceiling) && ceiling >= 1;
   const scannedModel = latest?.substrate?.model || null;
-  const rawCurrent = profile?.llm?.model || null;
-  const currentModel = rawCurrent === 'local-model' ? null : rawCurrent;
-  const stale = Boolean(hasCeiling && scannedModel && currentModel && scannedModel !== currentModel);
+  const carriedFrom = latest?.carriedFrom ?? null;
+  const stale = Boolean(hasCeiling && !carriedFrom && scannedModel && currentModel && !sameSubstrate(scannedModel, currentModel));
   const measured = hasCeiling && !stale;
   // NEVER WIDER THAN THE SERVER SERVES. A scan measures latency on tiny
   // requests and can find its knee past the server's slot count (Sep 9: 6, on
@@ -81,6 +81,7 @@ export const resolveTeamCapacity = async ({ getProfile = getSubstrateProfile } =
     scannedModel,
     currentModel,
     stale,
+    carriedFrom,
   });
 };
 

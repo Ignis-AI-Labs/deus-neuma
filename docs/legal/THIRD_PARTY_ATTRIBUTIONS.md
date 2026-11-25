@@ -62,6 +62,7 @@ from its publisher's repository. Licences read from each Hugging Face model card
 
 | Model | Repository | Licence | Notes |
 | --- | --- | --- | --- |
+| Qwen3.8-27B-Neuma-T4 (6-bit, 4-bit, 3.5-bit, 3-bit, and its vision projector) | IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF | Apache-2.0 | Our own tuned build of Qwen/Qwen3.8-27B, by Ignis AI Labs. |
 | Qwen3.8-27B-Uncensored-HauhauCS-Aggressive, Q8_K_P | HauhauCS/Qwen3.8-27B-Uncensored-HauhauCS-Aggressive-MTP-GGUF | Apache-2.0 | Fine-tune of Qwen/Qwen3.8-27B. |
 | Qwen3.8-27B (6-bit, 4-bit) | unsloth/Qwen3.8-27B-GGUF, lmstudio-community/Qwen3.8-27B-GGUF | Apache-2.0 | Quantized builds of Qwen/Qwen3.8-27B. |
 | Qwen3.8-27B (3.5-bit, 3-bit) | ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF | Apache-2.0 | IST Austria GSQ-RCO quantization. |
@@ -78,6 +79,17 @@ its GitHub release, checked against its published SHA-256, and kept under the pl
 | Component | Source | Licence | Notes |
 | --- | --- | --- | --- |
 | Ollama 0.40.7 | github.com/ollama/ollama (release v0.40.7) | MIT | Downloaded at setup, not bundled; the version and checksums are pinned in `managed-ollama-plan.js`. |
+
+On Linux with an NVIDIA card our launch fits (`backend/services/managed-engine.js`), the setup instead
+downloads llama.cpp's own release build and the CUDA runtime it ships with, each checked against the
+SHA-256 GitHub publishes, and on cards of 32 GB and up a speculative drafter beside the model. Nothing
+here is bundled.
+
+| Component | Source | Licence | Notes |
+| --- | --- | --- | --- |
+| llama.cpp b12212 | github.com/ggml-org/llama.cpp (release b12212) | MIT | Downloaded at setup; the build and checksums are pinned in `managed-engine-plan.js`. |
+| NVIDIA CUDA runtime (cudart, cuBLAS, cuBLASLt) | the same release's `cudart-llama-*` archive | NVIDIA CUDA Toolkit EULA (redistributable components) | As redistributed by the llama.cpp release; downloaded at setup. |
+| Qwen3.8-27B DFlash2 drafter, Q8_0 | z-lab/Qwen3.8-27B-DFlash2-GGUF | Apache-2.0 | Downloaded beside the model on 32 GB cards and up. Licence read from its model card 2026-11-09. |
 
 ## Image & Video Forge (models the pack recognises — NOT shipped)
 
@@ -102,10 +114,13 @@ Licences read at their sources on 2026-10-20.
 | SDXL Base 1.0 | Stability AI | CreativeML Open RAIL++-M | Yes | Use restrictions (para. 5) apply. |
 | xinsir ControlNet OpenPose SDXL | xinsir | Apache-2.0 | Yes | |
 | perfectDeliberate v10 | Desync (CivitAI) | Illustrious License (Fair AI Public License 1.0-SD) | Yes | Selling the model is not permitted. |
+| WAI-illustrious-SDXL v17 | WAI0731 (CivitAI 827184) | Illustrious License (FAIPL 1.0-SD) | Yes | Selling the model is not permitted. Offered by still.wai.txt2img. |
+| Nova Anime XL IL v19 | Crody (CivitAI 376130) | Illustrious License (FAIPL 1.0-SD) | Yes | Selling the model is not permitted; the author asks that its images not be used commercially unedited. Offered by still.nova.txt2img. |
 | iLLMyth Dark Lines v2, AddMicroDetails Illustrious v6 (LoRAs) | CivitAI creators | Illustrious License (FAIPL 1.0-SD) | Yes | No credit required. |
+| Real-ESRGAN x4plus anime 6B | xinntao (GitHub release v0.2.2.4) | BSD-3-Clause | Yes | The forge loads a safetensors copy converted from the official .pth (weights only, pixel-identical output). |
 | **Anima Aesthetic v1.1** + Anima Myth Dark Lines LoRA | CircleStone Labs | **CircleStone Labs Non-Commercial License v1.2** + NVIDIA Open Model License | Outputs yes; **the model is non-commercial**: powering a feature of a monetized product is not permitted without a commercial licence | Notice on distribution: "The CircleStone Model is licensed by CircleStone Labs LLC under the CircleStone Non-Commercial License. Copyright CircleStone Labs LLC." Qwen3-0.6B encoder and Qwen-Image VAE: Apache-2.0. |
 | Illustrious-XL v2.0 (listed, no pipeline) | OnomaAI | CreativeML OpenRAIL-M (HF card) / Illustrious License (CivitAI) | Yes | Sources disagree; not offered by any pipeline. |
-| CyberRealistic XL, NovaAnimeXL IL (listed, no pipeline) | CivitAI creators | CreativeML Open RAIL++-M; Illustrious License | Yes | Not offered by any pipeline. |
+| CyberRealistic XL (listed, no pipeline) | CivitAI creators | CreativeML Open RAIL++-M | Yes | Not offered by any pipeline. |
 
 Every forge output (PNG, MP4) carries an AI-generated disclosure in its own
 metadata (`backend/services/image-forge/ai-disclosure.js`); the prompt and

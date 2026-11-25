@@ -18,6 +18,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
+import { holdsSealedData } from '../../core/workspace/master-check.js';
+import { getDataRoot } from './data-root.js';
 
 // env var → the field it is stored under in the secrets file
 const MANAGED = Object.freeze([
@@ -46,14 +48,28 @@ export const secretsFilePath = () =>
 const readSecrets = (file) => {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch {
-    return {};
+  } catch (err) {
+    if (err?.code === 'ENOENT') return undefined;
+    throw new Error(`${file} exists but cannot be read — Neuma will not replace its master keys`, { cause: err });
   }
 };
 
 const writeSecrets = (file, data) => {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  fs.writeFileSync(file, JSON.stringify(data, null, 2), { mode: 0o600 });
+  const tmp = `${file}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`;
+  let fd = null;
+  try {
+    fd = fs.openSync(tmp, 'wx', 0o600);
+    fs.writeFileSync(fd, JSON.stringify(data, null, 2), 'utf8');
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
+    fd = null;
+    fs.renameSync(tmp, file);
+  } catch (err) {
+    if (fd !== null) fs.closeSync(fd);
+    fs.rmSync(tmp, { force: true });
+    throw err;
+  }
 };
 
 /**
@@ -110,26 +126,36 @@ export const ensureSecrets = ({ env = process.env } = {}) => {
 
   const file = secretsFilePath();
   const stored = readSecrets(file);
+  const record = stored ?? {};
   // A keychain-locked record (electron/key-lock) holds no plain key: minting one
   // here would strand every being encrypted under the locked one.
-  if (stored.v === 2 && MANAGED.some(({ env: envKey }) => !env[envKey])) {
+  if (record.v === 2 && MANAGED.some(({ env: envKey }) => !env[envKey])) {
     throw new Error(`${file} is locked by the desk's keychain — start Neuma from the app, or set the keys in the environment`);
+  }
+  // No stored key, none in the environment, and a master has already sealed data here: a new key would
+  // open none of it and would look like an empty install. Stop and say where the key has to come from.
+  const dataRoot = env.NEUMA_DATA_ROOT || getDataRoot();
+  if (stored === undefined && !env.DNA_ENCRYPTION_KEY && holdsSealedData(dataRoot)) {
+    throw new Error(`${dataRoot} already holds data sealed under a master key, and that key is missing (${file} is not there and DNA_ENCRYPTION_KEY is not set). Put the key back — from your Recovery Kit, your password manager or a backup of the secrets file. Neuma will not make a new key over it.`);
   }
   const generated = [];
   let dirty = false;
 
   for (const { env: envKey, key } of MANAGED) {
     if (env[envKey]) { sources[envKey] = 'environment'; continue; } // explicit env wins — never overwrite
-    if (stored[key]) { env[envKey] = stored[key]; sources[envKey] = 'stored'; continue; } // reuse persisted
+    if (record[key]) { env[envKey] = record[key]; sources[envKey] = 'stored'; continue; } // reuse persisted
+    if (stored !== undefined) {
+      throw new Error(`${file} exists but ${key} is missing — Neuma will not regenerate over an existing secrets file`);
+    }
     const value = crypto.randomBytes(32).toString('hex');     // 256-bit, generated once
-    stored[key] = value;
+    record[key] = value;
     env[envKey] = value;
     sources[envKey] = 'generated';
     generated.push(envKey);
     dirty = true;
   }
 
-  if (dirty) writeSecrets(file, stored);
+  if (dirty) writeSecrets(file, record);
   // the env file dotenv loaded (backend/server.js: the working directory's) closes to its owner too
   return { generated, file: dirty ? file : null, folder: closeFolder(path.dirname(file)), envFile: closeFile(path.resolve('.env')) };
 };

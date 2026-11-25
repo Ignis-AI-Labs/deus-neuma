@@ -15,6 +15,7 @@ import './HouseApp.css';
 import './HouseReadability.css';
 import './HouseDossier.css';
 import { HouseSeatReference } from './HouseSeatReference.jsx';
+import { HousePositions } from './HousePositions.jsx';
 import { useConsciousnessPick } from './consciousness-context.js';
 import { AppTitle } from './app-title.jsx';
 import { EmptyState } from './empty-state.jsx';
@@ -133,7 +134,8 @@ const HouseBody = () => {
     summoning: <SummoningSpace cards={cards} onSummon={onSummon} onRehearse={onRehearse} />,
     gather: <GatherSpace held={rows.length} onTeam={onTeams} onCouncil={onCouncil} />,
     seats: (
-      <SheetSection code="04" title="SEATS" aside="THE HOUSE'S ORDER: FOUNDED HERE, AND ON THE NETWORK">
+      <SheetSection code="04" title="POSITIONS" aside="WHO HOLDS WHAT — THE ONE PLACE IT CHANGES">
+        <HousePositions onChanged={refresh} />
         <HouseSeatReference phase={rite.phase} localFounded={localRite.phase === 'founded'} hasSeats={cards.some((card) => card.title)} onRetry={actions.probe} />
         {wsService ? <HouseFoundingRite rite={rite} localRite={localRite} actions={actions} witnessName={witnessName} /> : null}
       </SheetSection>

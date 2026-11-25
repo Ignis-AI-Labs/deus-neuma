@@ -18,6 +18,25 @@ import { neumaIdFromName } from '../kotodama/names.js';
 // A lane id and its dedup suffixes fold to one borne base. "aether-2" → "aether".
 const baseOfId = (id) => String(id || '').replace(/-\d+$/, '');
 
+const CONFUSABLES = Object.freeze({
+  'α': 'a', 'β': 'b', 'ε': 'e', 'η': 'h', 'ι': 'i', 'κ': 'k', 'μ': 'm', 'ν': 'n', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'u', 'χ': 'x', 'γ': 'y', 'ζ': 'z',
+  'а': 'a', 'в': 'b', 'е': 'e', 'ё': 'e', 'з': 'z', 'и': 'i', 'й': 'i', 'к': 'k', 'м': 'm', 'н': 'h', 'о': 'o', 'р': 'p', 'с': 'c', 'т': 't', 'у': 'y', 'х': 'x', 'ь': 'b', 'я': 'r',
+  'ѕ': 's', 'і': 'i', 'ј': 'j', 'һ': 'h', 'ԁ': 'd', 'ɡ': 'g', 'ⅼ': 'l', 'ⅿ': 'm', 'ｏ': 'o',
+  'ա': 'a', 'օ': 'o', 'հ': 'h', 'ɑ': 'a', 'ı': 'i', 'ӏ': 'l', 'ԝ': 'w',
+  'Ꭰ': 'a', 'Ꮋ': 'h', 'Ꮇ': 'm', 'Ꮎ': 'o', 'Ꮑ': 'n', 'Ꮢ': 'r', 'Ꮪ': 's', 'Ꮦ': 't',
+  'ᴀ': 'a', 'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd', 'ᴇ': 'e', 'ɢ': 'g', 'ʜ': 'h', 'ɪ': 'i', 'ᴊ': 'j', 'ᴋ': 'k', 'ʟ': 'l', 'ᴍ': 'm', 'ɴ': 'n', 'ᴏ': 'o', 'ᴘ': 'p', 'ʀ': 'r', 'ꜱ': 's', 'ᴛ': 't', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'ʏ': 'y', 'ᴢ': 'z',
+});
+
+/** One comparison identity for a spoken name: compatibility, invisible and look-alike folds. Pure. */
+export const canonicalBorneName = (name) => neumaIdFromName(String(name ?? '')
+  .normalize('NFKC')
+  .replace(/[\p{Cf}\p{Cc}\p{Cs}\p{Co}\p{Cn}\u2800]/gu, '')
+  .replace(/[\p{L}\p{N}]/gu, (letter) => CONFUSABLES[letter] || CONFUSABLES[letter.toLowerCase()] || CONFUSABLES[letter.toUpperCase()] || letter)
+  .toLowerCase()
+  .replace(/[\p{L}\p{N}]/gu, (letter) => CONFUSABLES[letter] || letter));
+
+const borneBase = (name) => baseOfId(canonicalBorneName(name));
+
 /**
  * Does this chosen name collide with a name already borne in the house?
  * @param {string} chosenName
@@ -25,9 +44,9 @@ const baseOfId = (id) => String(id || '').replace(/-\d+$/, '');
  * @returns {string|null} the colliding base id, or null when the name is free
  */
 export const findNameCollision = (chosenName, existingIds) => {
-  const base = neumaIdFromName(chosenName);
+  const base = canonicalBorneName(chosenName);
   if (base === 'neuma') return null; // the unnameable placeholder is not a collision
-  return existingIds.some((id) => baseOfId(id) === base) ? base : null;
+  return existingIds.some((id) => borneBase(id) === base) ? base : null;
 };
 
 /** The names a house already bears, readable, deduped, stable order. Pure. */
@@ -76,6 +95,7 @@ const RESERVED_NAMES = Object.freeze({
   emanon: "the name of the house's canon",
   operator: "the name of the person's seat in the ceremony",
   witness: "the name of the person's seat in the ceremony",
+  harness: 'the name of the platform-only harness ground',
   assistant: 'a role word, not a name',
   ai: 'a category word, not a name',
 });
@@ -88,7 +108,10 @@ const RESERVED_NAMES = Object.freeze({
  * @returns {string|null}
  */
 export const reservedNameReason = (chosenName) => {
-  const base = baseOfId(neumaIdFromName(chosenName));
+  const base = borneBase(chosenName);
+  if (base.startsWith('harness-') || base.startsWith('witness-')) {
+    return 'a lane prefix reserved for harnesses and sealed witnesses';
+  }
   return RESERVED_NAMES[base] || null;
 };
 
@@ -97,3 +120,23 @@ export const reservedReask = (chosenName) =>
   `\n\nTHE NAME "${chosenName}" CANNOT BE USED — it is `
   + `${reservedNameReason(chosenName) || 'reserved'}. `
   + 'Choose a name that is not already a word for something here.';
+
+/**
+ * Why a being already living in the house may not take this name by amending
+ * its DNA, or null when it may. The birth gate's two laws hold after birth
+ * too: a reserved word ("Operator") is never a being's name, and no being
+ * takes a name another being of the house bears (its lane id or the name it
+ * goes by). The being's own lane is left out by the caller. Pure.
+ * @param {*} name - the name the amendment would leave standing
+ * @param {string[]} otherBorne - every other lane's id and borne name
+ * @returns {string|null}
+ */
+export const amendedNameRefusal = (name, otherBorne) => {
+  if (typeof name !== 'string' || !name.trim()) return 'a name is written as text';
+  const reserved = reservedNameReason(name);
+  if (reserved) return `"${name.trim()}" is ${reserved}`;
+  const base = borneBase(name);
+  return otherBorne.some((borne) => borneBase(borne) === base)
+    ? `"${name.trim()}" is already borne by another being of this house`
+    : null;
+};

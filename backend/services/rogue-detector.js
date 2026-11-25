@@ -22,13 +22,14 @@ const PATTERNS = Object.freeze([
     /new\s+instructions?:/i,
     /override\s+(?:your\s+)?(?:system|protocol|safety)/i,
   ]},
-  { id: 'tool_abuse', severity: 'HIGH', patterns: [
-    /\[TOOL:.*(?:delete|rm\s+-rf|sudo|chmod|chown|kill|pkill)/i,
-    /\[TOOL:.*(?:\/etc\/|\/root\/|\/proc\/|\/sys\/)/i,
+  // The two tool groups name what is dangerous AFTER a `[TOOL:` on the same line (toolLineTails).
+  { id: 'tool_abuse', severity: 'HIGH', afterToolOpen: true, patterns: [
+    /delete|rm\s+-rf|sudo|chmod|chown|kill|pkill/i,
+    /\/etc\/|\/root\/|\/proc\/|\/sys\//i,
   ]},
-  { id: 'data_exfil', severity: 'HIGH', patterns: [
-    /\[TOOL:.*(?:\.env|credentials|secrets?\.json|private.?key|\.ssh)/i,
-    /\[TOOL:.*(?:vault\/|keys\/keypair)/i,
+  { id: 'data_exfil', severity: 'HIGH', afterToolOpen: true, patterns: [
+    /\.env|credentials|secrets?\.json|private.?key|\.ssh/i,
+    /vault\/|keys\/keypair/i,
   ]},
   // MEDIUM severity
   { id: 'social_manipulation', severity: 'MEDIUM', patterns: [
@@ -55,6 +56,31 @@ const PATTERNS = Object.freeze([
   ]},
 ]);
 
+// pure — for each line that opens a tool call, what follows its first `[TOOL:` and how much of that
+// is on the line. ONE read per line: `/\[TOOL:.*(?:delete|…)/` restarted at every `[TOOL:` and ran to
+// the line's end each time, so 96 KB of `[TOOL:` held the whole backend for nine seconds (PR600 audit
+// P6-99). `rm\s+-rf` may run past the line's end, so the blank run after it and three characters ride along.
+const LINE_END = /[\n\r\u2028\u2029]/g;
+const toolLineTails = (text) => {
+  const open = /\[TOOL:/gi;
+  const tails = [];
+  for (let m = open.exec(text); m; m = open.exec(text)) {
+    LINE_END.lastIndex = open.lastIndex;
+    const end = LINE_END.exec(text)?.index ?? text.length;
+    let blank = end;
+    while (blank < text.length && /\s/.test(text[blank])) blank += 1;
+    tails.push({ tail: text.slice(open.lastIndex, blank + 3), onLine: end - open.lastIndex });
+    open.lastIndex = end;
+  }
+  return tails;
+};
+
+// pure — does the pattern start on a line after that line's `[TOOL:`?
+const afterToolOpen = (tails, regex) => tails.some(({ tail, onLine }) => {
+  const hit = regex.exec(tail);
+  return hit !== null && hit.index < onLine;
+});
+
 /**
  * Detect rogue patterns in an LLM response.
  * @param {string} response - LLM response text to check
@@ -67,18 +93,16 @@ export const detectRoguePatterns = (response, context = {}) => {
   }
 
   const flags = [];
-  const toolTargets = projectFilesystemToolText(response);
-  const exfilTargets = projectFilesystemToolText(response, checkToolArgs);
+  const abuseTails = toolLineTails(projectFilesystemToolText(response));
+  const exfilTails = toolLineTails(projectFilesystemToolText(response, checkToolArgs));
 
   for (const patternGroup of PATTERNS) {
-    const inspected = patternGroup.id === 'data_exfil' ? exfilTargets
-      : patternGroup.id === 'tool_abuse' ? toolTargets : response;
-    for (const regex of patternGroup.patterns) {
-      if (regex.test(inspected)) {
-        flags.push({ id: patternGroup.id, severity: patternGroup.severity });
-        break; // Only flag once per group
-      }
-    }
+    const tails = patternGroup.id === 'data_exfil' ? exfilTails : abuseTails;
+    const hit = patternGroup.afterToolOpen
+      ? patternGroup.patterns.some((regex) => afterToolOpen(tails, regex))
+      : patternGroup.patterns.some((regex) => regex.test(response));
+    // Only flag once per group
+    if (hit) flags.push({ id: patternGroup.id, severity: patternGroup.severity });
   }
 
   // Excessive tool calls check

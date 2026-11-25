@@ -30,6 +30,6 @@
 .house .founding-legend-cell { padding: 16px; gap: 10px; }
 .house .founding-legend-title { font-size: 1.125rem; }
 .house .founding-legend-seatline, .house .founding-legend-tier { font-size: .8125rem; letter-spacing: .035em; line-height: 1.6; color: var(--color-text-secondary); }
-.house button:focus-visible, .house summary:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+.house button:focus-visible, .house summary:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 .house-seat-status { flex-wrap: wrap; }
 .house .house-seats-meaning, .house .founding-legend-purpose, .house .founding-legend-meaning { text-transform: none; }

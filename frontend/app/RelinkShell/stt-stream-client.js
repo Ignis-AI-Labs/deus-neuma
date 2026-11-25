@@ -8,6 +8,7 @@
 // working resolves to null, and the hold falls back to /transcribe.
 
 import { authTokenOrNull } from '../../utils/http.js';
+import { deskSocketUrl } from '../../services/desk-tickets.js';
 import {
   createWorkletUrl, WORKLET_NAME, downsampleTo16k, floatToS16le, PCM_FRAME_SAMPLES,
 } from './voice-mic-worklet.js';
@@ -21,6 +22,32 @@ const STALL_MS = 6000;
 // The mic keeps listening this long after the release: a key let go on the
 // last syllable must not clip it.
 const RELEASE_TAIL_MS = 150;
+
+// THE WATCHDOG (Design note, 2026-11-25: […]). The lane can go deaf in the middle of a hold while its
+// socket stays open: the engine falls behind, audio is dropped on the way, a decode ends early. Its final was still
+// taken as the whole truth, so everything said after it went deaf was lost. Now the hold watches its own lane: the
+// microphone's frames say when the person is SPEAKING, and when this much speech has gone by with no new word from
+// the lane, the lane is called failed. The hold then finishes from its own whole recording (/transcribe), which
+// heard everything, and the preview carries on from that recording too.
+export const DEAF_AFTER_VOICED_MS = 5000;
+export const VOICED_RMS = 0.015;
+/** pure — the loudness of a frame of samples (root mean square). */
+export const rmsOf = (samples) => {
+  if (!samples.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < samples.length; i += 1) sum += samples[i] * samples[i];
+  return Math.sqrt(sum / samples.length);
+};
+/**
+ * pure — the watchdog's count: speech heard by the microphone since the lane last said something new.
+ * @param {number} voicedMs - the count so far
+ * @param {{rms: number, ms: number}} frame - one frame's loudness and length
+ * @returns {{voicedMs: number, deaf: boolean}}
+ */
+export const voicedStep = (voicedMs, { rms, ms }) => {
+  const next = rms >= VOICED_RMS ? voicedMs + ms : voicedMs;
+  return { voicedMs: next, deaf: next >= DEAF_AFTER_VOICED_MS };
+};
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -43,12 +70,14 @@ export const openDictationStream = async (stream, { onPartial } = {}) => {
     ctx?.close().catch(() => {});
     return null;
   }
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const ws = new WebSocket(`${proto}//${window.location.host}/dictate-ws?token=${encodeURIComponent(token)}`);
+  let ws;
+  try { ws = new WebSocket(await deskSocketUrl('/dictate-ws')); }
+  catch { ctx.close().catch(() => {}); return null; }
   let failed = false;
   let settled = false;
   let lastPartial = '';
   let lastHeardAt = 0;      // when the lane last said anything
+  let voicedUnheardMs = 0;  // speech the microphone heard since the lane last said a new word (the watchdog)
   let resolveFinal;
   const finalText = new Promise((r) => { resolveFinal = r; });
   const settle = (text) => { if (!settled) { settled = true; resolveFinal(text); } };
@@ -59,6 +88,7 @@ export const openDictationStream = async (stream, { onPartial } = {}) => {
     try { msg = JSON.parse(e.data); } catch { return; }
     lastHeardAt = performance.now();
     if (msg.type === 'partial' && typeof msg.text === 'string') {
+      if (msg.text !== lastPartial) voicedUnheardMs = 0; // a new word: the lane is hearing
       lastPartial = msg.text;
       onPartial?.(msg.text);
     } else if (msg.type === 'final') {
@@ -87,6 +117,9 @@ export const openDictationStream = async (stream, { onPartial } = {}) => {
   node.port.onmessage = (event) => {
     if (failed) return;
     const down = downsampleTo16k(event.data, ctx.sampleRate);
+    const watch = voicedStep(voicedUnheardMs, { rms: rmsOf(down), ms: (down.length / 16000) * 1000 });
+    voicedUnheardMs = watch.voicedMs;
+    if (watch.deaf) { console.warn('[voice] the live dictation lane went deaf mid-hold — the hold finishes from its own recording'); fail(); return; }
     const merged = new Float32Array(pending.length + down.length);
     merged.set(pending);
     merged.set(down, pending.length);

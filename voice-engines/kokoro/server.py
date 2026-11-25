@@ -53,7 +53,7 @@ from browser_guard import assert_loopback_bind, guard  # noqa: E402  (audits 202
 async def _track_activity(request, call_next):
     # Marked on arrival AND completion: idle counts from the end of the last
     # real request, so a long synthesis can never be mistaken for idleness.
-    answer = guard(request.headers, request.url.path, request.url.query)  # browser_guard.py: page, key
+    answer = guard(request.headers, request.url.path, request.url.query, local=request.scope.get("server"))
     if answer:
         return JSONResponse(answer[1], status_code=answer[0])
     global _last_activity

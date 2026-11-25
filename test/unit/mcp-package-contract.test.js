@@ -51,12 +51,22 @@ const STABLE_LIB_EXPORTS = [
 const PATH_UTIL_EXPORTS = ['expandHome', 'normalizePath'];
 
 /**
- * The arity the pinned version must show. 2.x: `validatePath(path, roots)`.
- * The organ passes its roots explicitly at every call site, so an upstream
- * change back to module state (or a third argument) is a reviewed edit here,
- * never a surprise at runtime.
+ * The arity the pinned version must show. 2.0: `validatePath(path, roots)`;
+ * 2.3 (2026-11-16): `validatePath(path, roots, access, readOnlyDirectories = [])`
+ * — roots stay the second argument, and with no read-only directories the
+ * write check refuses nothing, so the organ's two-argument calls keep their
+ * wall. An upstream change back to module state (or another argument) is a
+ * reviewed edit here, never a surprise at runtime.
  */
-const EXPECTED_VALIDATE_PATH_ARITY = 2;
+const EXPECTED_VALIDATE_PATH_ARITY = 3;
+
+/**
+ * Upstream tools the organ deliberately does not serve, each with why. 2.3 adds
+ * append_file; the organ writes whole files (write_file, edit_file), and a new
+ * write verb is served only once it is wired through the sandbox and the act
+ * policy like the rest — never by default.
+ */
+const NOT_SERVED = Object.freeze({ append_file: 'a new write verb, not yet wired through the sandbox and act policy' });
 
 /** Tool registrations as the package writes them: registerTool("name" / tool("name". */
 const TOOL_REGISTRATION = /\.(?:registerTool|tool)\(\s*["']([a-z][a-z0-9_]*)["']/g;
@@ -103,7 +113,7 @@ describe('the pinned filesystem package contract', () => {
     const upstream = upstreamToolNames();
     const served = new Set(FILESYSTEM_TOOL_CATALOG.map((entry) => entry.name));
     expect(upstream.size, 'the package registers its tools as registerTool("name"').toBeGreaterThan(0);
-    const missing = [...upstream].filter((name) => !served.has(name));
+    const missing = [...upstream].filter((name) => !served.has(name) && !NOT_SERVED[name]);
     expect(missing, 'upstream tools the catalog does not serve').toEqual([]);
   });
 
@@ -112,8 +122,8 @@ describe('the pinned filesystem package contract', () => {
     const extras = FILESYSTEM_TOOL_CATALOG
       .map((entry) => entry.name)
       .filter((name) => !upstream.has(name));
-    // The organ's own verbs (copy_file, search_content, …) live in the catalog
-    // by design; the list is pinned so an upstream rename cannot hide here.
-    expect(extras.sort()).toEqual(['copy_file', 'search_content']);
+    // The organ's own verbs live in the catalog by design; the list is pinned so an upstream
+    // rename cannot hide here. copy_file was the organ's own until 2.3 registered it upstream.
+    expect(extras.sort()).toEqual(['search_content']);
   });
 });

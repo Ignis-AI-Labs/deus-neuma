@@ -35,6 +35,63 @@ export const latestBranchView = (records) => {
   return view;
 };
 
+// THE TIMELINE — the engine's law, mirrored (core/workspace/branch-view.js hiddenPoints). (Design note, 2026-11-24: […] A take is not only
+// another answer to its own point: everything said AFTER it belongs to it. So each turn-point is pinned, by the order
+// the record was written in, to the take that was in view when it was opened: the last point then in view, and which
+// of its takes showed. A point shows only while every pin up its chain still names the take in view. Retry or edit an
+// earlier point and what followed its old take leaves the view; go back to that take and it returns, whole.
+// Nothing is stamped and nothing is rewritten: the pins are read from the append-only order alone, so every chat
+// written before this law folds the same way.
+const takeNumber = (record) => (Number.isInteger(record?.takeIndex) && record.takeIndex >= 1 ? record.takeIndex : 1);
+const shownTake = (turnId, present, view) => {
+  const takes = present.get(turnId);
+  if (!takes || !takes.size) return undefined;
+  const named = view[turnId];
+  return Number.isInteger(named) && takes.has(named) ? named : Math.max(...takes);
+};
+
+/**
+ * The turn-points the standing view does NOT show, because they followed a take that is not the one in view.
+ * @param {Array<object>} records raw session rows, in the order they were written (the whole record, for a true answer)
+ * @param {Object<string, number>} [branchView] the standing view; defaults to the one the records carry
+ * @returns {Set<string>} turnIds out of view
+ */
+// pure
+export const hiddenPoints = (records, branchView) => {
+  const list = Array.isArray(records) ? records : [];
+  const running = {};
+  const present = new Map();
+  const pins = new Map(); // turnId -> { parent, take } | null
+  const order = [];
+  const inView = (turnId, view) => {
+    for (let pin = pins.get(turnId); pin; pin = pins.get(pin.parent)) if (shownTake(pin.parent, present, view) !== pin.take) return false;
+    return true;
+  };
+  const open = (turnId) => {
+    if (pins.has(turnId)) return;
+    let pin = null;
+    for (let i = order.length - 1; i >= 0 && !pin; i -= 1) {
+      const take = shownTake(order[i], present, running);
+      if (take !== undefined && inView(order[i], running)) pin = { parent: order[i], take };
+    }
+    pins.set(turnId, pin);
+    order.push(turnId);
+  };
+  for (const record of list) {
+    if (!record || typeof record !== 'object') continue;
+    if (record.role === 'system' && record.branchView && typeof record.branchView === 'object' && !Array.isArray(record.branchView)) {
+      for (const [turnId, takeIndex] of Object.entries(record.branchView)) if (Number.isInteger(takeIndex) && takeIndex >= 1) running[turnId] = takeIndex;
+      continue;
+    }
+    const turnId = typeof record.turnId === 'string' && record.turnId ? record.turnId : null;
+    if (!turnId || (record.role !== 'user' && record.role !== 'assistant')) continue;
+    open(turnId);
+    if (record.role === 'assistant') { if (!present.has(turnId)) present.set(turnId, new Set()); present.get(turnId).add(takeNumber(record)); }
+  }
+  const view = branchView || running;
+  return new Set(order.filter((turnId) => !inView(turnId, view)));
+};
+
 /**
  * Fold raw session rows into display entries, in stream order:
  *   { kind: 'user',  record }                          a turn-point's ask (once)
@@ -53,12 +110,14 @@ export const latestBranchView = (records) => {
 export const foldForDisplay = (records, branchView) => {
   const list = Array.isArray(records) ? records : [];
   const view = branchView || latestBranchView(list);
+  const hidden = hiddenPoints(list, view); // what followed a take that is not in view
   const groupsByTurn = new Map();
   const seenTurns = new Set();
   const out = [];
   for (const record of list) {
     if (!record || typeof record !== 'object') { out.push({ kind: 'other', record }); continue; }
     const turnId = typeof record.turnId === 'string' && record.turnId ? record.turnId : null;
+    if (turnId && hidden.has(turnId) && (record.role === 'user' || record.role === 'assistant')) continue; // another timeline's
     if (record.role === 'user' && turnId) {
       if (seenTurns.has(turnId)) continue; // asked once
       seenTurns.add(turnId);

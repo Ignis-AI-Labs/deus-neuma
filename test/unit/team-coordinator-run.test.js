@@ -6,7 +6,9 @@
 // The pure scheduler decisions live in team-coordinator-plan.test.js; the
 // REAL askNeuma path is proven live in team-coordinator-live.test.js.
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import process from 'node:process';
+import { setTimeout } from 'node:timers';
 import fs from 'fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
 import {
@@ -189,7 +191,7 @@ describe('resolveTeamCapacity — the M1→M3 edge (real store, real disk)', () 
   it('with no scan yet: honest floor of 1, measured false (assume nothing unmeasured)', async () => {
     expect(await resolveTeamCapacity({ getProfile: loaded('m') })).toEqual({
       maxParallel: 1, measured: false, ceiling: null, servedSlots: 4,
-      scannedModel: null, currentModel: 'm', stale: false,
+      scannedModel: null, currentModel: 'm', stale: false, carriedFrom: null,
     });
   });
 
@@ -197,7 +199,7 @@ describe('resolveTeamCapacity — the M1→M3 edge (real store, real disk)', () 
     await scan(3, 'm', '2026-07-04T10:00:00.000Z');
     expect(await resolveTeamCapacity({ getProfile: loaded('m') })).toEqual({
       maxParallel: 3, measured: true, ceiling: 3, servedSlots: 4,
-      scannedModel: 'm', currentModel: 'm', stale: false,
+      scannedModel: 'm', currentModel: 'm', stale: false, carriedFrom: null,
     });
   });
 
@@ -213,11 +215,21 @@ describe('resolveTeamCapacity — the M1→M3 edge (real store, real disk)', () 
     expect((await resolveTeamCapacity({ getProfile: loaded('m') })).maxParallel).toBe(1);
   });
 
-  it('a scan taken on a DIFFERENT model is stale here: back to the floor, both names surfaced', async () => {
+  // Design note, 2026-11-10: […]
+  it('a model never scanned CARRIES the machine\'s measurement, named — never back to 1, never a re-scan', async () => {
     await scan(6, 'qwen3.5-122b-a10b', '2026-07-04T10:00:00.000Z');
     expect(await resolveTeamCapacity({ getProfile: loaded('gemma-4-31b-qat') })).toEqual({
-      maxParallel: 1, measured: false, ceiling: 6, servedSlots: 4,
-      scannedModel: 'qwen3.5-122b-a10b', currentModel: 'gemma-4-31b-qat', stale: true,
+      maxParallel: 4, measured: true, ceiling: 6, servedSlots: 4,
+      scannedModel: 'qwen3.5-122b-a10b', currentModel: 'gemma-4-31b-qat', stale: false,
+      carriedFrom: 'qwen3.5-122b-a10b',
+    });
+  });
+
+  it('switching BACK to a scanned model reads its own scan, not the newest one', async () => {
+    await scan(2, 'gemma-4-31b-qat', '2026-07-04T10:00:00.000Z');
+    await scan(4, 'qwen3.5-122b-a10b', '2026-07-05T10:00:00.000Z');
+    expect(await resolveTeamCapacity({ getProfile: loaded('gemma-4-31B-it-Q8_0.gguf') })).toMatchObject({
+      maxParallel: 2, measured: true, ceiling: 2, scannedModel: 'gemma-4-31b-qat', stale: false, carriedFrom: null,
     });
   });
 

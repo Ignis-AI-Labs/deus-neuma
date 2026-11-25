@@ -11,6 +11,8 @@ import { DEFAULT_STOP, dialSays } from './involvement-words.js';
 
 /** Money out is the operator's alone; the server always keeps it in `escalate`. */
 export const MONEY_OUT = 'intents/wallet.send';
+/** Every act the server holds as money out (house-clock/charter-shape.js MONEY_OUT): the payment and the liquidity wallet's acts. */
+export const MONEY_OUT_ACTS = Object.freeze([MONEY_OUT, 'intents/lp.open', 'intents/lp.add', 'intents/lp.claim', 'intents/lp.withdraw', 'intents/lp.close', 'intents/lp.swap', 'intents/lp.send', 'intents/lp.create-pool']);
 
 /**
  * Where the charter stands, in plain words. Pure.
@@ -24,7 +26,14 @@ export const charterStatus = (charter) => {
     return { key: 'unread', words: 'CHARTER NOT READ YET', detail: 'The charter has not been read yet. Nothing here can change it until it is.' };
   }
   if (!charter) {
-    return { key: 'none', words: 'NO CHARTER', detail: 'Nothing wakes until you write a charter and approve it.' };
+    return { key: 'none', words: 'NO CHARTER', detail: 'Nothing wakes until the house has a charter. Your house members can set it up themselves, or you can write one.' };
+  }
+  // Set by a house member (house/charter): its own filing is the yes; the operator overviews and keeps the pause.
+  if (charter.approvedBy?.kind === 'member' && charter.approvedVersion === charter.version) {
+    const who = charter.approvedBy.name || charter.approvedBy.laneId;
+    return charter.paused
+      ? { key: 'paused', words: `PAUSED — SET BY ${String(who).toUpperCase()} AT VERSION ${charter.version}`, detail: 'Paused: nothing new wakes, and a member\'s edit never resumes it. A wake already running finishes on its own.' }
+      : { key: 'approved', words: `RUNNING — SET BY ${String(who).toUpperCase()} AT VERSION ${charter.version}`, detail: `Your house runs its own clock. ${who} set this version ${formatDateTime(charter.approvedAt)}; every version is kept below, and PAUSE stops every wake.` };
   }
   const approvedThis = Boolean(charter.approvedAt) && charter.approvedVersion === charter.version;
   if (!approvedThis) {
@@ -330,7 +339,7 @@ export const draftFromCharter = (charter, lanes) => ({
   maxProgrammeRuns: String(charter?.delegation?.maxProgrammeRuns ?? 3),
   allow: (charter?.allow ?? []).join('\n'),
   // Money out is fixed in escalate by the server; the form shows it as a rule, not a line to delete.
-  escalate: (charter?.escalate ?? []).filter((id) => id !== MONEY_OUT).join('\n'),
+  escalate: (charter?.escalate ?? []).filter((id) => !MONEY_OUT_ACTS.includes(id)).join('\n'),
   involvement: charter?.involvement ?? DEFAULT_STOP,
 });
 

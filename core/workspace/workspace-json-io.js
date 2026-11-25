@@ -14,8 +14,10 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { encryptEnvelope, isEnvelope, parseAndDecrypt } from './workspace-crypto.js';
+import { readRetiredDeks } from './retired-deks.js';
 import { SOVEREIGN_DIR_MODE } from './sovereign-directory-modes.js';
 import { isHarnessLane, getHarnessRoot } from './lane-grounds.js';
+import { acceptWholeFileGeneration, commitWholeFileGeneration, wholeFileReadContext, wholeFileWriteContext } from './workspace-envelope-context.js';
 
 // pure — the first path segment of filePath under ground, or null when the
 // path does not sit under it ('..' for outside paths)
@@ -52,6 +54,22 @@ export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) =
     const harness = laneUnder(getHarnessRoot(root), filePath);
     if (isHarnessLane(harness)) return harness;
     return laneUnder(root, filePath);
+  },
+
+  // The last resort of every lane reader, after the being's key: the master chain, then the keys this
+  // being held before a re-key (retired-deks.js) — a record restored from an older backup, or one a
+  // re-key could not reach, still opens. The retired keys are read on the first miss only.
+  // impure — reads keys/retired-deks.json on a miss
+  async _openOlder(text, filePath, aad) {
+    try {
+      return parseAndDecrypt(text, { aad });
+    } catch (err) {
+      const neumaId = this._neumaIdFromPath(filePath);
+      for (const key of neumaId ? await readRetiredDeks(this._path(neumaId)).catch(() => []) : []) {
+        try { return parseAndDecrypt(text, { key, aad }); } catch { /* next retired key */ }
+      }
+      throw err;
+    }
   },
 
   /**
@@ -92,7 +110,8 @@ export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) =
   // impure — optional synchronous guard runs at the actual commit boundary.
   async _writeJSON(filePath, data, { beforeCommit, signal } = {}) {
     const dek = await this._resolveDEK(filePath);
-    const envelope = dek ? encryptEnvelope(data, { key: dek }) : encryptEnvelope(data);
+    const context = await wholeFileWriteContext(this, filePath);
+    const envelope = encryptEnvelope(data, { ...(dek ? { key: dek } : {}), aad: context.aad });
     const dir = path.dirname(filePath);
     await fs.mkdir(dir, { recursive: true, mode: SOVEREIGN_DIR_MODE });
     const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${locks.nextTmpName()}.tmp`;
@@ -103,6 +122,7 @@ export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) =
       beforeCommit?.();
       signal?.throwIfAborted();
       await fs.rename(tmpPath, filePath);
+      if (!context.immutable) await commitWholeFileGeneration(filePath, context.aad);
     } catch (error) {
       try { await fs.unlink(tmpPath); }
       catch (cleanup) {
@@ -137,12 +157,19 @@ export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) =
   // workspaces via parseAndDecrypt's existing envelope check.
   async _readJSON(filePath) {
     const text = await fs.readFile(filePath, 'utf8');
+    const envelope = JSON.parse(text);
+    const aad = wholeFileReadContext(this, filePath, envelope);
     const dek = await this._resolveDEK(filePath);
     if (dek) {
-      try { return parseAndDecrypt(text, { key: dek }); }
-      catch { /* try global chain — legacy file pre-DEK */ }
+      try {
+        const opened = parseAndDecrypt(text, { key: dek, aad });
+        await acceptWholeFileGeneration(filePath, envelope);
+        return opened;
+      } catch { /* try global chain — legacy file pre-DEK */ }
     }
-    return parseAndDecrypt(text);
+    const opened = await this._openOlder(text, filePath, aad);
+    await acceptWholeFileGeneration(filePath, envelope);
+    return opened;
   },
 
   // Read a file only the PLATFORM writes — the lane's consent and spend records
@@ -216,7 +243,7 @@ export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) =
         try { records.push(parseAndDecrypt(line, { key: dek })); continue; }
         catch { /* fall through to global chain */ }
       }
-      try { records.push(parseAndDecrypt(line)); }
+      try { records.push(await this._openOlder(line, filePath)); }
       catch (err) {
         if (strict) throw err;
         // One torn/corrupt line (a crash mid-append, a bad byte) must not
@@ -302,9 +329,9 @@ export const createJsonIoDomain = ({ locks, isWitnessLane, getWitnessesRoot }) =
         let entry;
         if (dek) {
           try { entry = parseAndDecrypt(trimmed, { key: dek }); }
-          catch { entry = parseAndDecrypt(trimmed); }
+          catch { entry = await this._openOlder(trimmed, filePath); }
         } else {
-          entry = parseAndDecrypt(trimmed);
+          entry = await this._openOlder(trimmed, filePath);
         }
         if (entry !== null && entry !== undefined) out.push(entry);
       } catch (err) {

@@ -11,7 +11,7 @@ import { EXECUTION_CUES, actionCueLabel } from './execution-sounds.js';
 
 const DESK = Object.freeze(['confirm', 'deny', 'menuOpen', 'menuClose', 'deliberationTick']);
 const NOTICES = Object.freeze([
-  'noticeArrival', 'replyArrived', 'messageSent', 'neumaReplying', 'portalContact',
+  'noticeArrival', 'replyArrived', 'messageSent', 'neumaThinking', 'neumaRendering', 'neumaReplying', 'portalContact',
   'portalSever', 'desyncGlitch', 'walletSignRequest', 'memoryCrystallized',
 ]);
 
@@ -24,6 +24,8 @@ const LABELS = Object.freeze({
   noticeArrival: 'Something needs you',
   replyArrived: 'Reply arrived',
   messageSent: 'Message sent',
+  neumaThinking: 'A being is thinking (loop)',
+  neumaRendering: 'A being is making an image (loop)',
   neumaReplying: 'A being is typing (loop)',
   portalContact: 'Connected',
   portalSever: 'Disconnected',

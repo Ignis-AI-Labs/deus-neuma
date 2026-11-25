@@ -1,33 +1,21 @@
 /**
  * The pure core of a desk window's working focus (Wave 1, D1/D7/D11): the
  * boundary validator over anything claiming to be a focus, equality, the
- * strip label, the space frame a focus stamps (delegating to the REAL
- * projectSpaceFrame — folder/null stamp nothing), and the D11 spawn/restore
- * decision. Proven directly with real inputs — no React, no mocks.
+ * strip label, the coding-source hint a focus carries, and the D11
+ * spawn/restore decision. A focus is a folder or nothing — Projects were
+ * removed (Design note, 2026-11-10, so a saved project focus loads as nothing.
+ * Proven directly with real inputs — no React, no mocks.
  */
 
 import { describe, test, expect } from 'vitest';
 import {
-  normalizeFocus, normalizeSlot, focusEquals, focusProject, focusLabel, focusSpaceFrame,
+  normalizeFocus, normalizeSlot, focusEquals, focusLabel,
   focusToolFrame, resolveSpawnFocus, sittingGround,
 } from '../../frontend/app/RelinkShell/desk-focus.js';
-import { projectSpaceFrame } from '../../frontend/app/RelinkShell/project-space.js';
-
-const PROJECTS = [
-  {
-    id: 'p1', name: 'Voice Layer', folder: '/repos/voice',
-    folders: [{ path: '/repos/voice', isRepo: true, branch: 'main' }],
-  },
-  { id: 'p2', name: 'Folderless', folders: [] },
-  {
-    id: 'p3', name: 'Notes', folder: '/repos/notes',
-    folders: [{ path: '/repos/notes', isRepo: false }],
-  },
-];
 
 describe('normalizeFocus — the boundary validator', () => {
-  test('a valid project focus passes, rebuilt by explicit field-picking', () => {
-    expect(normalizeFocus({ kind: 'project', id: 'p1' })).toEqual({ kind: 'project', id: 'p1' });
+  test('a saved PROJECT focus (Projects removed 2026-11-10) loads as nothing', () => {
+    expect(normalizeFocus({ kind: 'project', id: 'p1' })).toBeNull();
   });
 
   test('a valid folder focus passes (absolute path)', () => {
@@ -41,34 +29,27 @@ describe('normalizeFocus — the boundary validator', () => {
   });
 
   test('a hostile __proto__ key (as parsed JSON delivers it) is discarded and pollutes nothing', () => {
-    const raw = JSON.parse('{"kind":"project","id":"x","__proto__":{"polluted":true}}');
+    const raw = JSON.parse('{"kind":"folder","path":"/x","__proto__":{"polluted":true}}');
     const out = normalizeFocus(raw);
-    expect(out).toEqual({ kind: 'project', id: 'x' });
+    expect(out).toEqual({ kind: 'folder', path: '/x' });
     expect(out.polluted).toBeUndefined();
     expect({}.polluted).toBeUndefined(); // Object.prototype untouched
   });
 
   test('inherited fields do not count — Object.hasOwn discipline', () => {
-    expect(normalizeFocus(Object.create({ kind: 'project', id: 'p1' }))).toBeNull();
+    expect(normalizeFocus(Object.create({ kind: 'folder', path: '/a' }))).toBeNull();
   });
 
   test('non-objects and null are null', () => {
-    for (const raw of [null, undefined, 'project', 42, true, ['project']]) {
+    for (const raw of [null, undefined, 'folder', 42, true, ['folder']]) {
       expect(normalizeFocus(raw)).toBeNull();
     }
   });
 
   test('an unknown or miscased kind is null', () => {
-    expect(normalizeFocus({ kind: 'PROJECT', id: 'p1' })).toBeNull();
+    expect(normalizeFocus({ kind: 'FOLDER', path: '/a' })).toBeNull();
     expect(normalizeFocus({ kind: 'file', path: '/a' })).toBeNull();
-    expect(normalizeFocus({ id: 'p1' })).toBeNull(); // no kind at all
-  });
-
-  test('a project focus needs a non-empty string id', () => {
-    expect(normalizeFocus({ kind: 'project' })).toBeNull();
-    expect(normalizeFocus({ kind: 'project', id: '' })).toBeNull();
-    expect(normalizeFocus({ kind: 'project', id: 7 })).toBeNull();
-    expect(normalizeFocus({ kind: 'project', id: null })).toBeNull();
+    expect(normalizeFocus({ path: '/a' })).toBeNull(); // no kind at all
   });
 
   test('a folder focus needs a non-empty ABSOLUTE string path', () => {
@@ -79,7 +60,7 @@ describe('normalizeFocus — the boundary validator', () => {
     expect(normalizeFocus({ kind: 'folder', path: ['/a'] })).toBeNull();
   });
 
-  test('control characters in id or path are rejected', () => {
+  test('control characters in a path are rejected', () => {
     // Built with fromCharCode — the harness mangles \uXXXX literals.
     const nul = String.fromCharCode(0);
     const nl = String.fromCharCode(10);
@@ -88,120 +69,53 @@ describe('normalizeFocus — the boundary validator', () => {
     expect(normalizeFocus({ kind: 'folder', path: `/tmp/${nul}x` })).toBeNull();
     expect(normalizeFocus({ kind: 'folder', path: `/tmp/a${nl}b` })).toBeNull();
     expect(normalizeFocus({ kind: 'folder', path: `/tmp/${del}` })).toBeNull();
-    expect(normalizeFocus({ kind: 'project', id: `p${esc}1` })).toBeNull();
+    expect(normalizeFocus({ kind: 'folder', path: `/tmp/a${esc}b` })).toBeNull();
   });
 });
 
 describe('focusEquals — value equality over normalized focus', () => {
   test('null equals null and nothing else', () => {
     expect(focusEquals(null, null)).toBe(true);
-    expect(focusEquals(null, { kind: 'project', id: 'p1' })).toBe(false);
+    expect(focusEquals(null, { kind: 'folder', path: '/a' })).toBe(false);
     expect(focusEquals({ kind: 'folder', path: '/a' }, null)).toBe(false);
   });
 
-  test('same kind + same identity is equal; anything else is not', () => {
-    expect(focusEquals({ kind: 'project', id: 'p1' }, { kind: 'project', id: 'p1' })).toBe(true);
-    expect(focusEquals({ kind: 'project', id: 'p1' }, { kind: 'project', id: 'p2' })).toBe(false);
+  test('the same folder is equal; another folder is not', () => {
     expect(focusEquals({ kind: 'folder', path: '/a' }, { kind: 'folder', path: '/a' })).toBe(true);
     expect(focusEquals({ kind: 'folder', path: '/a' }, { kind: 'folder', path: '/b' })).toBe(false);
-    expect(focusEquals({ kind: 'project', id: '/a' }, { kind: 'folder', path: '/a' })).toBe(false);
-  });
-});
-
-describe('focusProject — resolving a focus against the projects list', () => {
-  test('project focus resolves to the exact fetched project', () => {
-    expect(focusProject({ kind: 'project', id: 'p1' }, PROJECTS)).toBe(PROJECTS[0]);
-  });
-
-  test('folder focus, no focus, a stale id, or no list resolve to null', () => {
-    expect(focusProject({ kind: 'folder', path: '/repos/voice' }, PROJECTS)).toBeNull();
-    expect(focusProject(null, PROJECTS)).toBeNull();
-    expect(focusProject({ kind: 'project', id: 'gone' }, PROJECTS)).toBeNull();
-    expect(focusProject({ kind: 'project', id: 'p1' }, null)).toBeNull();
   });
 });
 
 describe('focusLabel — what the strip shows (D7)', () => {
-  test('project focus → name + working-folder badge with branch', () => {
-    expect(focusLabel({ kind: 'project', id: 'p1' }, PROJECTS)).toEqual({
-      kind: 'project', name: 'Voice Layer', folder: { name: 'voice', branch: 'main' },
-    });
+  test('folder focus → its basename', () => {
+    expect(focusLabel({ kind: 'folder', path: '/repos/voice' })).toEqual({ kind: 'folder', folder: { name: 'voice' } });
+    expect(focusLabel({ kind: 'folder', path: '/a/b' })).toEqual({ kind: 'folder', folder: { name: 'b' } });
   });
 
-  test('project without a working folder → name, no folder badge', () => {
-    expect(focusLabel({ kind: 'project', id: 'p2' }, PROJECTS)).toEqual({
-      kind: 'project', name: 'Folderless', folder: null,
-    });
-  });
-
-  test('project whose working folder is not a repo → badge without branch', () => {
-    expect(focusLabel({ kind: 'project', id: 'p3' }, PROJECTS)).toEqual({
-      kind: 'project', name: 'Notes', folder: { name: 'notes', branch: null },
-    });
-  });
-
-  test('folder focus → basename, branch when a project already knows the repo', () => {
-    expect(focusLabel({ kind: 'folder', path: '/repos/voice' }, PROJECTS)).toEqual({
-      kind: 'folder', folder: { name: 'voice', branch: 'main' },
-    });
-    expect(focusLabel({ kind: 'folder', path: '/somewhere/else' }, PROJECTS)).toEqual({
-      kind: 'folder', folder: { name: 'else', branch: null },
-    });
-    expect(focusLabel({ kind: 'folder', path: '/a/b' }, null)).toEqual({
-      kind: 'folder', folder: { name: 'b', branch: null },
-    });
-  });
-
-  test('no focus or a stale project id → null (the strip renders nothing)', () => {
-    expect(focusLabel(null, PROJECTS)).toBeNull();
-    expect(focusLabel({ kind: 'project', id: 'gone' }, PROJECTS)).toBeNull();
-  });
-});
-
-describe('focusSpaceFrame — memory scoping (D7: bare folder stamps NOTHING)', () => {
-  test('project focus delegates to the REAL projectSpaceFrame', () => {
-    const out = focusSpaceFrame({ kind: 'project', id: 'p1' }, PROJECTS);
-    expect(out).toEqual(projectSpaceFrame(PROJECTS[0]));
-    expect(out).toEqual({ space: { id: 'p1', kind: 'project', label: 'Voice Layer' } });
-  });
-
-  test('bare-folder focus stamps nothing — exactly the no-project frame', () => {
-    expect(focusSpaceFrame({ kind: 'folder', path: '/repos/voice' }, PROJECTS))
-      .toEqual(projectSpaceFrame(null));
-    expect(focusSpaceFrame({ kind: 'folder', path: '/repos/voice' }, PROJECTS)).toEqual({});
-  });
-
-  test('no focus or a stale project id stamps nothing', () => {
-    expect(focusSpaceFrame(null, PROJECTS)).toEqual({});
-    expect(focusSpaceFrame({ kind: 'project', id: 'gone' }, PROJECTS)).toEqual({});
-  });
-
-  test('the frame spreads cleanly into a portal frame, adding nothing under folder focus', () => {
-    const base = { thought: 'hi', companion: 'Cael' };
-    expect({ ...base, ...focusSpaceFrame({ kind: 'project', id: 'p1' }, PROJECTS) })
-      .toEqual({ ...base, space: { id: 'p1', kind: 'project', label: 'Voice Layer' } });
-    expect({ ...base, ...focusSpaceFrame({ kind: 'folder', path: '/a' }, PROJECTS) }).toEqual(base);
+  test('no focus → null (the strip renders nothing)', () => {
+    expect(focusLabel(null)).toBeNull();
+    expect(focusLabel(undefined)).toBeNull();
   });
 });
 
 describe('focusToolFrame — disposable coding source hint', () => {
-  test('folder focus carries its absolute path without adding memory scope', () => {
-    const focus = { kind: 'folder', path: '/repos/voice' };
-    expect(focusToolFrame(focus, PROJECTS)).toEqual({ toolWorkspace: '/repos/voice' });
-    expect(focusSpaceFrame(focus, PROJECTS)).toEqual({});
-    expect(focusToolFrame({ kind: 'folder', path: '/somewhere/else' }, PROJECTS))
+  test('folder focus carries its absolute path and no memory space — every chat is general', () => {
+    const frame = focusToolFrame({ kind: 'folder', path: '/repos/voice' });
+    expect(frame).toEqual({ toolWorkspace: '/repos/voice' });
+    expect(frame).not.toHaveProperty('space');
+    expect(focusToolFrame({ kind: 'folder', path: '/somewhere/else' }))
       .toEqual({ toolWorkspace: '/somewhere/else' });
   });
 
-  test('project focus resolves through the project working folder', () => {
-    expect(focusToolFrame({ kind: 'project', id: 'p1' }, PROJECTS))
-      .toEqual({ toolWorkspace: '/repos/voice' });
+  test('nothing in focus grants no tool workspace hint', () => {
+    expect(focusToolFrame(null)).toEqual({});
+    expect(focusToolFrame(undefined)).toEqual({});
   });
 
-  test('missing, stale, and folderless focus grant no tool workspace hint', () => {
-    expect(focusToolFrame(null, PROJECTS)).toEqual({});
-    expect(focusToolFrame({ kind: 'project', id: 'gone' }, PROJECTS)).toEqual({});
-    expect(focusToolFrame({ kind: 'project', id: 'p2' }, PROJECTS)).toEqual({});
+  test('the frame spreads cleanly into a portal frame', () => {
+    const base = { thought: 'hi', companion: 'Cael' };
+    expect({ ...base, ...focusToolFrame({ kind: 'folder', path: '/a' }) }).toEqual({ ...base, toolWorkspace: '/a' });
+    expect({ ...base, ...focusToolFrame(null) }).toEqual(base);
   });
 });
 
@@ -234,7 +148,7 @@ describe('sittingGround — one sitting, one ground, never a sibling’s (2026-0
 });
 
 describe('resolveSpawnFocus — the D11 spawn/restore decision', () => {
-  const stored = { kind: 'project', id: 'p1' };
+  const stored = { kind: 'folder', path: '/repos/voice' };
 
   test('the main desk (slot 1) ALWAYS restores — fresh launch included', () => {
     expect(resolveSpawnFocus(1, false, stored)).toBe(stored);

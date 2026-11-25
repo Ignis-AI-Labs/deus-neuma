@@ -121,17 +121,50 @@ export const readMediaFile = async (absPath) => {
 };
 
 /**
+ * A DROPPED CONNECTION IS NOT AN ANSWER (2026-11-10, 21:01: the machine's
+ * network blinked for ten seconds and an approved post failed as "fetch
+ * failed"; 64 image posts had gone out on this path before it). An upload
+ * publishes nothing, so after a network failure or a server error (5xx) it is
+ * asked again on these waits before the post is given up. A refusal (4xx) is
+ * X's answer and is final. The post itself is never retried here: it can
+ * publish, and a lost answer must not become a second post.
+ */
+export const UPLOAD_RETRY_WAITS_MS = Object.freeze([5_000, 15_000, 40_000]);
+
+const pause = (ms, signal) => new Promise((resolve) => {
+  if (signal?.aborted) return resolve(false);
+  const timer = setTimeout(() => { signal?.removeEventListener?.('abort', stop); resolve(true); }, ms);
+  const stop = () => { clearTimeout(timer); resolve(false); };
+  signal?.addEventListener?.('abort', stop, { once: true });
+});
+
+/**
  * Upload one image and return its media id. Publishes NOTHING: an id that is
- * never named on a post simply expires.
+ * never named on a post simply expires. Retried on a dropped connection or a
+ * 5xx (UPLOAD_RETRY_WAITS_MS).
  *
  * impure — network + clock + entropy
  * @param {object} credentials - from `xPostCredentials()`
  * @param {{content: Buffer, contentType: string, filename: string}} file
- * @param {{signal?: AbortSignal}} [opts]
+ * @param {{signal?: AbortSignal, retryWaitsMs?: ReadonlyArray<number>}} [opts]
  * @returns {Promise<{ok: true, mediaId: string}|{ok: false, status?: number, detail: string}>}
  */
-export const uploadMedia = async (credentials, file, { signal } = {}) => {
+export const uploadMedia = async (credentials, file, { signal, retryWaitsMs = UPLOAD_RETRY_WAITS_MS } = {}) => {
   if (!credentials) return { ok: false, detail: 'X credentials are not configured' };
+  let result = await uploadOnce(credentials, file, signal);
+  let tries = 1;
+  for (const ms of retryWaitsMs) {
+    if (result.ok || result.final || !(await pause(ms, signal))) break;
+    result = await uploadOnce(credentials, file, signal);
+    tries += 1;
+  }
+  if (signal?.aborted && !result.ok) return { ok: false, detail: 'interrupted before the image was uploaded' };
+  const { final: _final, ...answer } = result;
+  return answer.ok || tries === 1 ? answer : { ...answer, detail: `${answer.detail} (tried ${tries} times)` };
+};
+
+// One attempt. `final` marks an answer a retry cannot change: X's own refusal, or an interruption.
+const uploadOnce = async (credentials, file, signal) => {
   const boundary = `----neuma${crypto.randomBytes(16).toString('hex')}`;
   // No body params in the signature — see the multipart note in the header.
   const header = buildOAuth1Header(credentials, {
@@ -155,10 +188,12 @@ export const uploadMedia = async (credentials, file, { signal } = {}) => {
     const mediaId = body?.data?.id || body?.id || body?.media_id_string;
     if (res.ok && mediaId) return { ok: true, mediaId: String(mediaId) };
     const detail = body?.detail || body?.errors?.[0]?.message || body?.title || `HTTP ${res.status}`;
-    return { ok: false, status: res.status, detail };
+    return { ok: false, status: res.status, detail, final: res.status < 500 };
   } catch (err) {
-    if (err.name === 'AbortError') return { ok: false, detail: 'interrupted before the image was uploaded' };
-    return { ok: false, detail: err.message };
+    if (err.name === 'AbortError') return { ok: false, detail: 'interrupted before the image was uploaded', final: true };
+    // "fetch failed" alone hides the reason; the cause names it (ECONNRESET, ENOTFOUND, a timeout)
+    const cause = err.cause?.code || err.cause?.message;
+    return { ok: false, detail: `${err.message}${cause ? ` (${cause})` : ''} — the network did not carry the upload` };
   }
 };
 

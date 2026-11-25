@@ -126,12 +126,51 @@ describe('pruning an arm64 bundle', () => {
     expect(fs.existsSync(path.join(modules, 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'))).toBe(true);
   });
 
+  it('a packed app (an archive with its native modules beside it) is pruned the same way', () => {
+    const buildDir = bundle({ exe: ARM64, prebuilds });
+    const resources = path.join(appIn(buildDir), 'Contents', 'Resources');
+    fs.renameSync(path.join(resources, 'app'), path.join(resources, 'app.asar.unpacked'));
+    prune({ appOutDir: buildDir, productFilename: 'NEUMA' });
+    const modules = path.join(resources, 'app.asar.unpacked', 'node_modules');
+    expect(fs.existsSync(path.join(modules, 'node-pty', 'prebuilds', 'darwin-arm64', 'pty.node'))).toBe(true);
+    expect(fs.existsSync(path.join(modules, 'node-pty', 'prebuilds', 'darwin-x64'))).toBe(false);
+    expect(fs.existsSync(path.join(modules, 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node'))).toBe(true);
+  });
+
   it('dryRun reports without deleting, so the list can be read first', () => {
     const buildDir = bundle({ exe: ARM64, prebuilds });
     const { removed } = prune({ appOutDir: buildDir, dryRun: true });
     const outside = path.join(appIn(buildDir), 'Contents', 'Resources', 'app', 'node_modules', 'node-pty', 'prebuilds', 'darwin-x64');
     expect(removed.length).toBe(4);
     expect(fs.existsSync(outside)).toBe(true);
+  });
+});
+
+describe('a package that is one chip\'s binary', () => {
+  // the first macOS CI run (2026-11-14): the arm64 app carried @napi-rs/canvas-darwin-x64
+  const chipPackages = (buildDir, names) => {
+    const modules = path.join(appIn(buildDir), 'Contents', 'Resources', 'app', 'node_modules');
+    for (const name of names) {
+      fs.mkdirSync(path.join(modules, name), { recursive: true });
+      fs.writeFileSync(path.join(modules, name, 'skia.node'), macho(name.endsWith('x64') ? X86_64 : ARM64));
+    }
+    return modules;
+  };
+
+  it('goes whole when it is the other chip\'s, scoped or not; this chip\'s stays', () => {
+    const buildDir = bundle({ exe: ARM64 });
+    const modules = chipPackages(buildDir, ['@napi-rs/canvas-darwin-x64', '@napi-rs/canvas-darwin-arm64', '@esbuild/darwin-x64', 'fsevents-darwin-arm64']);
+    const { kept, removed } = prune({ appOutDir: buildDir });
+    expect(removed.sort()).toEqual(['@esbuild/darwin-x64', '@napi-rs/canvas-darwin-x64']);
+    expect(kept).toEqual(expect.arrayContaining(['@napi-rs/canvas-darwin-arm64', 'fsevents-darwin-arm64']));
+    expect(fs.existsSync(path.join(modules, '@napi-rs', 'canvas-darwin-x64'))).toBe(false);
+    expect(fs.existsSync(path.join(modules, '@napi-rs', 'canvas-darwin-arm64', 'skia.node'))).toBe(true);
+  });
+
+  it('on an Intel bundle the arm64 package goes', () => {
+    const buildDir = bundle({ exe: X86_64 });
+    chipPackages(buildDir, ['@napi-rs/canvas-darwin-x64', '@napi-rs/canvas-darwin-arm64']);
+    expect(prune({ appOutDir: buildDir }).removed).toEqual(['@napi-rs/canvas-darwin-arm64']);
   });
 });
 

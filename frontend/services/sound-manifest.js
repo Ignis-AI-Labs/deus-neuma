@@ -28,6 +28,11 @@ export const SOUND_MANIFEST = Object.freeze({
   portalSever: `${PACK}/mechanical/DeviceMovement_S011SF.257.wav`,
   messageSent: `${PACK}/digital/readouts/BeepToneReadout_S011SF.153.wav`,
   neumaReplying: `${PACK}/digital/data-process/DataTextTyping_BWU.447.wav`,
+  // THE PLATFORM'S OWN (Design note, 2026-11-19: […]): his own design, cleaned, in frontend/sounds-own.
+  neumaThinking: 'own/thinking.wav',
+  // MAKING AN IMAGE, its own loop (Design note, 2026-11-20: […]). A CANDIDATE from the library until he designs his own: the one readout long enough to loop (1.5 s), level
+  // brought to the thinking loop's (SOUND_GAIN_DB). Swapping it is this line plus `npm run bake-sounds`.
+  neumaRendering: `${PACK}/digital/readouts/DataReadout_BW.44595.wav`,
   replyArrived: `${PACK}/digital/readouts/BeepToneReadout_S011SF.154.wav`,
   memoryCrystallized: `${PACK}/digital/chimes/ChimeMusicalVintage_SFXB._3.wav`,
   levelUp: 'digital/beeps-sequence/level-up.wav',
@@ -76,4 +81,12 @@ export const SOUND_MANIFEST = Object.freeze({
   //   actRead 13072 ↔ portalSever 12935 — 6× shorter (53ms vs 315ms)
   //   actEdit  6953 ↔ menuClose   7489 — button press vs beep, 160 vs 245ms
   //   actDelete 8017 ↔ confirm    8454 — mechanical cover vs digital button
+});
+
+/**
+ * A cue's level at the bake, in dB, where its source is louder or quieter than the cues it plays beside
+ * (scripts/bake-sounds.mjs). neumaRendering: the readout's mean, as baked, is −29.6 dB; the thinking loop's −27 dB.
+ */
+export const SOUND_GAIN_DB = Object.freeze({
+  neumaRendering: 3,
 });

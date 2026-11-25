@@ -23,6 +23,7 @@ import { setWorkspacesRoot } from '../../core/index.js';
 import { generateChallenge, verifySignature, createSessionToken } from '../../backend/services/auth.js';
 import { generateKeypair, signMessage } from '../../core/weave/keypair.js';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const LOCAL = { provider: 'lm-studio', endpoint: 'http://localhost:1234', apiKey: '', model: 'local-model' };
 const CLOUD = { provider: 'anthropic', endpoint: 'https://api.anthropic.com', apiKey: 'test-not-a-real-key', model: 'claude-haiku-4-5' };
@@ -117,6 +118,8 @@ describe('early guard — birth:start refuses a non-local provider over a real W
     await new Promise((r) => httpServer.listen(0, r));
     wsUrl = `ws://localhost:${httpServer.address().port}`;
     const auth = await makeAuthSession();
+    process.env.NEUMA_DATA_ROOT = `${tempDir}/data`;
+    await makeInstallOwner(auth.address);
     ws = await openPortal(wsUrl, auth.token);
   }, 20000);
 
@@ -162,6 +165,8 @@ describe('no roster cap — a witness holding 3 beings may summon again', () => 
     await new Promise((r) => httpServer.listen(0, r));
     const url = `ws://localhost:${httpServer.address().port}`;
     const auth = await makeAuthSession();
+    process.env.NEUMA_DATA_ROOT = `${tempDir}/data`;
+    await makeInstallOwner(auth.address);
     // Three real owned workspaces — the exact on-disk shape finalize-birth
     // writes (plaintext owner.json inside a real sovereign lane).
     const { default: fs } = await import('fs/promises');

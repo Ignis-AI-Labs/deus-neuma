@@ -234,8 +234,8 @@ describe('Stage C — the prefix a cache could actually hold, measured at the wi
     // LAW 1: the system prompt did not move a byte between the two turns.
     expect(bodyB.messages[0].content).toBe(bodyA.messages[0].content);
     // Each ask rides behind the harness's own block — never as the operator's words.
-    expect(bodyB.messages.at(-1).content).toMatch(/^<harness-context>\n[\s\S]*\n<\/harness-context>\n\n/);
-    expect(bodyB.messages.at(-1).content.endsWith(`</harness-context>\n\n${QB}`)).toBe(true);
+    expect(bodyB.messages.at(-1).content).toMatch(/^<harness-context:[A-Za-z0-9-]+>\n[\s\S]*\n<\/harness-context:[A-Za-z0-9-]+>\n\n/);
+    expect(bodyB.messages.at(-1).content.endsWith(QB)).toBe(true);
 
     // The divergence map, measured on the serialized message stream (the
     // shape a flat prefix cache reads):
@@ -282,7 +282,8 @@ describe('Stage C — the prefix a cache could actually hold, measured at the wi
     // …and the clock that moved is in the NEW turn's block, a time no earlier
     // byte of the wire carries.
     const turn = bodyC.messages.at(-1).content;
-    expect(turn.endsWith(`</harness-context>\n\n${QC}`)).toBe(true);
+    expect(turn.endsWith(QC)).toBe(true);
+    expect(turn).toMatch(/<\/harness-context:[A-Za-z0-9-]+>\n\n/);
     const clockLine = turn.match(/## Present Moment\n([^\n]*\d{1,2}:\d{2} [AP]M[^\n]*)\n/)?.[1];
     expect(clockLine).toBeTruthy();
     expect(streamB).not.toContain(clockLine);

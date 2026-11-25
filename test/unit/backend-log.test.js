@@ -1,11 +1,13 @@
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync, mkdirSync, closeSync } from 'node:fs';
+import { spawn } from 'node:child_process';
+import { finished } from 'node:stream/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { openBackendLog, logPaths, shouldRotate, MAX_BYTES } = require('../../electron/backend-log.cjs');
+const { openBackendLog, captureBackendLog, logPaths, shouldRotate, MAX_BYTES } = require('../../electron/backend-log.cjs');
 const { buildAppMenuTemplate } = require('../../electron/hotkeys.cjs');
 
 /**
@@ -58,12 +60,27 @@ describe('the packaged backend keeps a log', () => {
     expect(readFileSync(current, 'utf8')).not.toMatch(/THE RUN THAT BROKE/);
   });
 
-  test('the fd is real and writable — this is what stdio actually receives', () => {
+  test('the fd is real and writable — captureBackendLog writes into a real file', () => {
     const opened = openBackendLog(home);
     const { writeSync } = require('node:fs');
     writeSync(opened.fd, 'a line the backend would have written\n');
     closeSync(opened.fd);
     expect(readFileSync(opened.path, 'utf8')).toMatch(/a line the backend would have written/);
+  });
+
+  test('both real utility streams reach the log and drain after child exit', async () => {
+    const opened = openBackendLog(home);
+    const child = spawn(process.execPath, ['-e', "console.log('utility stdout'); console.error('utility stderr')"], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const output = captureBackendLog(child, opened);
+    await Promise.all([
+      new Promise((resolve) => child.once('exit', resolve)),
+      finished(output),
+    ]);
+    const text = readFileSync(opened.path, 'utf8');
+    expect(text).toContain('utility stdout');
+    expect(text).toContain('utility stderr');
   });
 
   test('an unwritable home returns null instead of throwing — the app still launches', () => {

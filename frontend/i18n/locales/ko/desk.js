@@ -20,7 +20,6 @@ export default Object.freeze({
     innerlife: '내면',
     map: '저장소 지도',
     pdf: 'PDF',
-    projects: '프로젝트',
     refinement: 'NITE',
     security: '보안',
     legal: '법무',
@@ -33,6 +32,7 @@ export default Object.freeze({
     staff: '비서실장',
     houseclock: 'HOUSE 시계',
     companyline: '회사 라인',
+    positions: '직위',
     substrate: '기판',
     teams: '팀',
     terminal: '터미널',
@@ -97,7 +97,6 @@ export default Object.freeze({
     routeProviderUnknown: '라우트 — {{provider}} — 알 수 없음',
     session: '세션 {{clock}}',
     turn: '턴 {{count}}',
-    project: '프로젝트 — {{name}}',
     folder: '폴더 — {{name}}',
   }),
 
@@ -105,7 +104,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: '새 채팅',
-    newChatTitleProject: '{{project}}에서 새 채팅 시작 — 현재 채팅을 대체합니다. {{tab}}은 나란히 새로 엽니다',
     newChatTitle: '여기서 새 채팅 시작 — 현재 채팅을 대체합니다. {{tab}}은 나란히 새로 엽니다',
     council: '평의회',
     councilTitleEnter: '이 창을 평의회로 전환 — 여러 네우마, 하나의 방',
@@ -127,7 +125,7 @@ export default Object.freeze({
     retryIgnite: '점화 재시도',
     igniteTitle: '로컬 기판 모델을 시작합니다',
     witnessTag: '위트니스',
-    urgentTitle: '지금 끼어들기 — 답변을 끊고 발언합니다',
+    urgentTitle: '지금 보내기 (Ctrl+Enter) — 바로 읽고 하던 일을 계속합니다',
     micBlocked: '마이크 차단됨 — 입력 없음, 콘솔을 확인하세요',
     micOff: '마이크 — 끔',
     micOpening: '마이크 여는 중…',

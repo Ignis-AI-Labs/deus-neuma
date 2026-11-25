@@ -4,8 +4,8 @@
 // here sends a filesystem path except when the operator is explicitly ADDING a
 // folder, which is the grant itself.
 
-import { apiCall, authHeadersOrNull as authHeaders, authTokenOrNull, jsonHeaders } from '../utils/http.js';
-import { fileUrl } from '../app/RelinkShell/gallery/gallery-view.js';
+import { apiCall, authHeadersOrNull as authHeaders, jsonHeaders } from '../utils/http.js';
+import { deskTicketUrl } from './desk-tickets.js';
 
 const req = async (path, init = {}) => {
   const headers = init.body ? jsonHeaders() : authHeaders();
@@ -17,17 +17,12 @@ const req = async (path, init = {}) => {
 
 /**
  * A src an `<img>`/`<video>` can load BY ITSELF. The element issues its own GET
- * and can attach no headers, so the session token rides the query — /file is
- * built to accept it. This is what makes the gallery an image viewer rather
- * than a fetch-decode-revoke machine: the browser owns loading, caching and
- * eviction from here on.
+ * and can attach no headers, so a short-lived ticket bound to this item rides
+ * the query. The browser owns loading, caching and eviction from here on.
  * @param {{rootId: string, rel: string}} item
- * @returns {string}
+ * @returns {Promise<string>}
  */
-export const fileSrc = (item) => {
-  const token = authTokenOrNull();
-  return token ? `${fileUrl(item)}&token=${encodeURIComponent(token)}` : fileUrl(item);
-};
+export const fileSrc = (item) => deskTicketUrl('/api/v1/gallery/file', { rootId: item.rootId, rel: item.rel });
 
 /** Every image and video in reach, plus per-root state (count/truncated/error). */
 export const getItems = (rootId = null) =>

@@ -67,5 +67,44 @@ export const ownerClaimMatches = async (presented) => {
   return crypto.timingSafeEqual(Buffer.from(offered), Buffer.from(secret));
 };
 
-/** The claim is spent: an owner stands. impure (fs). */
+const PROOF = /^[a-f0-9]{64}$/;
+const proofPath = () => path.join(claimDir(), 'proof.key');
+
+const readProof = async () => {
+  try {
+    const text = (await fs.readFile(proofPath(), 'utf8')).trim();
+    return PROOF.test(text) ? text : null;
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
+};
+
+/**
+ * Prove this backend holds an OS-user-only key, bound to the exact challenge
+ * and loopback origin. A challenge relayed from another port cannot pass.
+ * The proof key outlives the one-time owner claim so private local clients
+ * can authenticate an already-owned install. impure (fs + HMAC).
+ * @param {{challenge: string, origin: string}} input
+ * @returns {Promise<string>}
+ */
+export const localAuthProof = async ({ challenge, origin }) => {
+  await fs.mkdir(claimDir(), { recursive: true, mode: 0o700 });
+  await fs.chmod(claimDir(), 0o700);
+  let secret = await readProof();
+  if (!secret) {
+    const tmp = `${proofPath()}.${process.pid}.${crypto.randomBytes(4).toString('hex')}`;
+    await fs.writeFile(tmp, crypto.randomBytes(32).toString('hex'), { mode: 0o600, flag: 'wx' });
+    try {
+      try { await fs.link(tmp, proofPath()); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+    } finally {
+      await fs.rm(tmp, { force: true });
+    }
+    secret = await readProof();
+  }
+  if (!secret) throw new Error('local auth proof key is malformed');
+  return crypto.createHmac('sha256', Buffer.from(secret, 'hex')).update(`${origin}\n${challenge}`).digest('hex');
+};
+
+/** The claim is spent: an owner stands. The backend identity proof remains. impure (fs). */
 export const clearOwnerClaim = () => fs.rm(ownerClaimPath(), { force: true });

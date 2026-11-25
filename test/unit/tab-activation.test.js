@@ -8,8 +8,8 @@
  * the REAL pure model and the REAL house line (RULE 0 — no mock):
  *
  *   1. the door never refuses — a tab opens, focuses and connects at any load;
- *   2. the house's line runs exactly as wide as the rig was measured to run —
- *      never wider than the server's slots, one when unmeasured.
+ *   2. the house's line runs as wide as the server's slots (Design note, 2026-11-19, a shadow clone held in line on a
+ *      4-slot server while the scan's knee read 3: […]) — the measured knee plans a team's width, it no longer narrows the line.
  */
 import fs from 'fs';
 import os from 'os';
@@ -39,7 +39,7 @@ describe('LAW 1 — the door never refuses', () => {
   });
 });
 
-describe('LAW 2 — the house line runs at the measured width', () => {
+describe('LAW 2 — the house line runs every slot the server runs', () => {
   const saved = process.env.NEUMA_CAPACITY_PATH;
   let stop;
   beforeAll(() => { process.env.NEUMA_CAPACITY_PATH = fs.mkdtempSync(path.join(os.tmpdir(), 'line-width-')); });
@@ -48,10 +48,22 @@ describe('LAW 2 — the house line runs at the measured width', () => {
     if (saved === undefined) delete process.env.NEUMA_CAPACITY_PATH; else process.env.NEUMA_CAPACITY_PATH = saved;
   });
 
-  test('a measured ceiling below the server\'s slots narrows the line to it', async () => {
+  test('a measured knee below the server\'s slots plans a team\'s width but leaves the line at the server\'s slots', async () => {
     expect(substrateLine.snapshot().capacity).toBe(SERVING_PARALLEL_SLOTS); // no watch yet: the server's slots
     await writeCapacity({ runAt: '2026-10-15T10:00:00.000Z', ceiling: 3, boundClass: 'A', limitedBy: 'latency', incomplete: false, substrate: { model: null } });
     stop = startLineWidthWatch();
-    await expect.poll(() => substrateLine.snapshot().capacity, { timeout: 10000 }).toBe(Math.min(3, SERVING_PARALLEL_SLOTS));
+    const { resolveTeamCapacity } = await import('../../backend/services/team-coordinator.js');
+    await expect.poll(async () => (await resolveTeamCapacity()).maxParallel, { timeout: 10000 }).toBe(Math.min(3, SERVING_PARALLEL_SLOTS));
+    await new Promise((r) => { setTimeout(r, 300); });
+    expect(substrateLine.snapshot().capacity).toBe(SERVING_PARALLEL_SLOTS);
+  });
+
+  test('on the server\'s 4 slots, three clones (house work) and the operator\'s chat run together; a fourth clone waits', async () => {
+    const { nextAdmission } = await import('../../backend/services/substrate-line.js');
+    const running = [{ kind: 'member' }, { kind: 'member' }, { kind: 'turn' }];
+    expect(nextAdmission({ capacity: 4, running, waiting: [{ kind: 'member' }] })).toBe(0);
+    expect(nextAdmission({ capacity: 4, running: [...running, { kind: 'member' }], waiting: [{ kind: 'member' }] })).toBe(-1);
+    // Three clones at work, the operator's own chat still gets the fourth slot.
+    expect(nextAdmission({ capacity: 4, running: [{ kind: 'member' }, { kind: 'member' }, { kind: 'member' }], waiting: [{ kind: 'member' }, { kind: 'turn' }] })).toBe(1);
   });
 });

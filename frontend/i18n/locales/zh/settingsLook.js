@@ -42,6 +42,7 @@ export default Object.freeze({
   presets: Object.freeze({
     heading: '预设',
     note: '出厂妆扮。一键应用。',
+    tones: Object.freeze({ 'soft-dark': '柔和深色 — 护眼', 'soft-light': '柔和浅色 — 护眼', 'deep-dark': '深邃深色', 'bright-light': '明亮浅色' }),
   }),
 
   yourPresets: Object.freeze({

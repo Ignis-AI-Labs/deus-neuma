@@ -24,16 +24,16 @@
  */
 import { recordBenchmarkExtraCall } from './benchmark-extra-calls.js';
 import { noteRoundRoom } from './read-room.js';
-import { settleBenchmarkToolTrail } from './benchmark-tool-trail.js';
 import { noteToolResultSightings } from './security/injection-sightings.js';
 import { callerCloseTools, callerYielded, processRoundActs, yieldCloseCalls } from './caller-tools.js';
-import { yieldForQueuedThought, QUEUED_ACTION_REASON } from './queued-action-handoff.js';
+import { yieldForQueuedThought, heardWhileWorking, QUEUED_ACTION_REASON } from './queued-action-handoff.js';
+import { listenWhileThinking } from './heard-mid-thought.js';
 import { createLogger } from './logger.js';
 import { safeSend as _safeSend } from './ws-send.js';
 import { sightForResults, withSight } from './image-forge/image-sight.js';
 import { isFinalToolRound, toolRoundCap, withinToolRounds } from './tool-rounds.js';
 import { neumaWorkspace, buildCompositionEvent } from '../../core/index.js';
-import { wireContextSections } from './turn-context-carry.js';
+import { wireSectionsOf } from './wire-sections.js';
 import { markTurnText, recordThoughtStretch } from './tool-action-record.js';
 import { RESULTS_FOLLOW_UP, formatToolResult, formatToolResults, nativeToolExchange } from './tool-exchange.js';
 import { pastFoldBoundary, foldWorkingContext, workingContextNote } from './working-context.js';
@@ -66,6 +66,7 @@ import {
   recordSupervisorRedirect as _recordSupervisorRedirect,
   runSettleGates as _runSettleGates,
 } from './turn-settle.js';
+import { noteResearchRound, researchNextStep } from './research-mode.js';
 
 export { speechlessRoundClose, SPEECHLESS_ROUND_TAIL_CHARS };
 
@@ -239,7 +240,7 @@ export const runToolRounds = async ({
     // The gauge's frame on the turn's measured usage so far.
     const sendComposition = (completionText) => _safeSend(ws, {
       ...buildCompositionEvent({
-        sections: [...wireContextSections(contextSections, messages[0]), ...toolContextSections], usage: turnUsage, completionText, standing: standingUsage,
+        sections: [...wireSectionsOf(contextSections, messages[0], connection), ...toolContextSections], usage: turnUsage, completionText, standing: standingUsage,
         toolResults: connection.compositionToolResults || [], budget: contextBudget, cache: latestCacheTelemetry,
       }),
       ...contextScope,
@@ -247,9 +248,8 @@ export const runToolRounds = async ({
     const contextRecovery = contextRecoveryOptions(wireHead, (recovery) => { messages = recovery.messages; foldedRounds += recovery.foldedRounds; });
     // One speechless recovery per turn — never a loop (THE SPEECHLESS ROUND).
     let speechlessRecovered = false;
-    // THE REFINEMENT LAYERS (ARC-HARNESS L1/L2, #531 — turn-supervisor.js /
-    // answer-verify.js): declared-only via the connection flags; with neither
-    // declared every block below is inert and the turn is byte-identical.
+    // THE REFINEMENT LAYERS (ARC-HARNESS L1/L2, #531 — turn-supervisor.js / answer-verify.js): declared-only via the
+    // connection flags; with neither declared every block below is inert and the turn is byte-identical.
     let roundStates = [];
     let redirects = 0;
     let blockedThisTurn = false;
@@ -274,21 +274,21 @@ export const runToolRounds = async ({
       await adoptClose(closeResponse, closeCalls);
     };
   try {
-    // Uncapped by default — see tool-rounds.js: the policy cascade, ACTS, the
-    // sandbox and the operator's interrupt hold the line, every round.
+    // Uncapped by default (tool-rounds.js): the policy cascade, ACTS, the sandbox and the operator's interrupt hold the line, every round.
     for (let round = 0; withinToolRounds(round); round++) {
       roundReasoning = '';
-      let { content: roundResponse, toolCalls } = await _runLLMStream(ws, messages, companionName, voiceDNA, preset, nativeToolsForRound(), interrupt.signal, (usage) => captureUsage(usage, round), route, turnLora, turnEffort, take,
+      const ear = listenWhileThinking(connection, interrupt.signal); // words sent while it still thinks are heard now (heard-mid-thought.js)
+      let { content: roundResponse, toolCalls } = await _runLLMStream(ws, messages, companionName, voiceDNA, preset, nativeToolsForRound(), ear.signal, (usage) => captureUsage(usage, round), route, turnLora, turnEffort, take,
         (affect) => { if (turnAffect === null) turnAffect = affect; }, recordThought, () => yieldForQueuedThought(connection),
         (telemetry) => captureTelemetry(telemetry, round),
         // The wire's own word for a budget cut (N1) — read per round below.
-        { ...contextRecovery, onFinishReason: (reason) => { lastFinishReason = reason; },
+        { ...contextRecovery, onSpoke: ear.onSpoke, onFinishReason: (reason) => { lastFinishReason = reason; },
           // The thought leash's re-ask is a second call behind this answer — counted (#567).
-          onReask: (second) => recordBenchmarkExtraCall(connection, 'thought-leash', second?.content, roundReasoning) });
+          onReask: (second) => recordBenchmarkExtraCall(connection, 'thought-leash', second?.content, roundReasoning) }).catch((err) => (ear.cut() ? { content: '', toolCalls: [] } : Promise.reject(err)));
+      if (await ear.take(messages, roundResponse)) { if (roundResponse) { fullResponse += (fullResponse ? '\n\n' : '') + roundResponse; markTurnText(ws, fullResponse.length); } round -= 1; continue; }
       latestResponse = roundResponse;
       fullResponse += (fullResponse ? '\n\n' : '') + roundResponse;
-      // This round's words now stand in the record; marking here lets a
-      // resumed chat put the act chips back between the paragraphs they interrupted.
+      // This round's words now stand in the record: a resumed chat puts the act chips back between the paragraphs they interrupted.
       markTurnText(ws, fullResponse.length);
 
       yieldForQueuedThought(connection);
@@ -338,13 +338,14 @@ export const runToolRounds = async ({
       const epochBefore = turnToolEpochs.epoch;
       // The sender's own tools (caller-tools.js) are handed back, never run here.
       const toolResults = await processRoundActs(processToolCalls, ws, roundResponse, connection, acts, turnToolEpochs);
-      settleBenchmarkToolTrail(connection, toolResults);
       noteToolResultSightings(connection, toolResults); // a flag for the CSO, never awaited, never a gate (G13)
+      noteResearchRound(connection, acts, toolResults); // RESEARCH counts what was searched and actually read (research-mode.js)
       log.info('round tools processed', {
         name: companionName,
         round,
         results: toolResults.map((r) => `${r.tool}:${r.status}${r.error ? ` — ${String(r.error).slice(0, 200)}` : ''}`).join(','),
       });
+      if (toolResults.length === 0 && researchNextStep(connection, { messages, roundResponse }) === 'continue') continue; // back to the work, or to the report
       if (toolResults.length === 0 || callerYielded(connection)) break;
       // THE SPEECH-LOOP GUARD: no act moved the world (epoch unmoved — a
       // fresh-but-failing call, an error, a denial) AND the round said the
@@ -406,7 +407,7 @@ export const runToolRounds = async ({
       }
       const redirectNote = redirect ? redirectBrief(redirect) : '';
       const baseFollowUp = contextNote ? `${reminded}\n\n${contextNote}` : reminded;
-      const followUp = redirectNote ? (baseFollowUp ? `${baseFollowUp}\n\n${redirectNote}` : redirectNote) : baseFollowUp;
+      const followUp = [baseFollowUp, redirectNote, await heardWhileWorking(connection)].filter(Boolean).join('\n\n'); // + words the operator sent mid-turn
       // THE RETURN — a render this round produced comes back to the being's
       // own eyes before it speaks (image-sight.js). Structural, not elected
       // (Design note, 2026-08-05: a being that must choose to look will skip it. A

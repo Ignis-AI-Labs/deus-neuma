@@ -21,8 +21,29 @@ test('summoning requires custody before provider lookup, including omitted and n
       await expect(summonWitness(args)).rejects.toThrow(strength.reason);
     }
     // A valid password reaches the real, empty connection store and stops there.
-    await expect(summonWitness({ ...base, keypairPassword: 'a-real-operator-password' }))
+    await expect(summonWitness({ ...base, keypairPassword: 'a-real-operator-password', standing: 'owner' }))
       .rejects.toThrow('No locked connection for openai');
+    expect(await fs.readFile(process.env.NEUMA_CONNECTIONS_PATH, 'utf8')).toBe('{}');
+    expect(await fs.readdir(root)).toEqual(['connections.json']);
+  } finally {
+    if (previous === undefined) delete process.env.NEUMA_CONNECTIONS_PATH;
+    else process.env.NEUMA_CONNECTIONS_PATH = previous;
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('a guest cannot summon through a keyless provider before connection lookup', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'witness-keyless-guest-'));
+  const previous = process.env.NEUMA_CONNECTIONS_PATH;
+  process.env.NEUMA_CONNECTIONS_PATH = path.join(root, 'connections.json');
+  try {
+    await fs.writeFile(process.env.NEUMA_CONNECTIONS_PATH, '{}');
+    await expect(summonWitness({
+      providerId: 'ollama',
+      walletAddress: '0x' + 'cd'.repeat(20),
+      keypairPassword: 'a-real-operator-password',
+      standing: 'guest',
+    })).rejects.toMatchObject({ code: 'MACHINE_KEY_NOT_SHARED' });
     expect(await fs.readFile(process.env.NEUMA_CONNECTIONS_PATH, 'utf8')).toBe('{}');
     expect(await fs.readdir(root)).toEqual(['connections.json']);
   } finally {

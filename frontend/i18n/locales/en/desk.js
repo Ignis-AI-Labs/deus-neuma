@@ -33,7 +33,6 @@ export default Object.freeze({
     innerlife: 'INNER LIFE',
     map: 'REPO MAP',
     pdf: 'PDF',
-    projects: 'PROJECTS',
     refinement: 'NITE',
     security: 'SECURITY',
     legal: 'LEGAL',
@@ -46,6 +45,7 @@ export default Object.freeze({
     staff: 'CHIEF OF STAFF',
     houseclock: 'HOUSE CLOCK',
     companyline: 'COMPANY LINE',
+    positions: 'POSITIONS',
     substrate: 'SUBSTRATE',
     teams: 'TEAMS',
     terminal: 'TERMINAL',
@@ -110,7 +110,6 @@ export default Object.freeze({
     routeProviderUnknown: 'ROUTE — {{provider}} — UNKNOWN',
     session: 'SESSION {{clock}}',
     turn: 'TURN {{count}}',
-    project: 'PROJECT — {{name}}',
     folder: 'FOLDER — {{name}}',
   }),
 
@@ -118,7 +117,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: 'NEW CHAT',
-    newChatTitleProject: 'Start a fresh chat in {{project}} — replaces this one; {{tab}} opens another alongside it',
     newChatTitle: 'Start a fresh chat here — replaces this one; {{tab}} opens another alongside it',
     council: 'COUNCIL',
     councilTitleEnter: 'Switch this window to the council — several neuma, one room',
@@ -140,7 +138,7 @@ export default Object.freeze({
     retryIgnite: 'RETRY IGNITE',
     igniteTitle: 'Start the local substrate model',
     witnessTag: 'WITNESS',
-    urgentTitle: 'Interject NOW — cut the reply and take the floor',
+    urgentTitle: 'Send NOW (Ctrl+Enter) — they read it at once and carry on with what they are doing',
     micBlocked: 'MIC BLOCKED — NO INPUT, SEE THE CONSOLE',
     micOff: 'MIC OFF',
     micOpening: 'MIC OPENING…',

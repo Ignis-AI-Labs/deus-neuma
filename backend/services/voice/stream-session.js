@@ -149,7 +149,7 @@ export class VoiceStreamSession {
     await ensureReady('whisper');
     const { host, port } = serve;
     // the transcription audio goes only to a sidecar that proves the install key (sidecar-trust.js)
-    const ws = new WebSocket(`ws://${host}:${port}/stream`, { headers: await sidecarSocketHeaders(`http://${host}:${port}`) });
+    const ws = new WebSocket(`ws://${host}:${port}/stream`, { headers: await sidecarSocketHeaders(`http://${host}:${port}`, 'whisper') });
     this._ws = ws;
     // Open is not admitted: the lane answers `ready`, or refuses (one /stream
     // client at a time — close 1013 while another holds it). Wait for which,
@@ -185,8 +185,10 @@ export class VoiceStreamSession {
    * Over-bound bytes are dropped; the operator is told once per window.
    * @param {Buffer} pcm
    */
-  sendPcm(pcm) {
+  sendPcm(pcm, { held = false } = {}) {
     if (this.closed || !this._ws) return;
+    // held: audio the caller kept while this link opened (bounded by the caller): real speech arriving late, not a flood.
+    if (held) { this._ws.send(pcm); return; }
     const now = Date.now();
     const candidate = recordWindowBytes(this._window, now, pcm.length, PCM_RATE_LIMIT.windowMs);
     if (windowByteTotal(candidate) > PCM_RATE_LIMIT.maxBytesPerWindow) {

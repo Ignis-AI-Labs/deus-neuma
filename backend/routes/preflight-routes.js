@@ -28,7 +28,7 @@ import { probeProtocol, probeRecords, probeSealing, probeActing } from '../servi
 import { MIN_FREE_DISK_GB, freeGBAt } from '../services/storage-health.js';
 import {
   checkSubstrate, checkWorkspace, checkDisk, checkMemory, checkDnaKey,
-  checkCeremonyRoad, checkMcp, checkGpu, checkTrainer, checkForge, flightRow,
+  checkCeremonyRoad, checkMcp, checkGpu, checkForge, flightRow,
 } from './preflight-checks.js';
 import { computeAvailable, isAffordable, suggestedAllocationGB } from './preflight-allocation.js';
 
@@ -86,7 +86,6 @@ router.get('/', requireAuth, async (req, res) => {
       checkDnaKey(),
       await checkMcp(),
       await checkGpu(),
-      await checkTrainer(),
       await checkForge(),
     ];
     const home = await homeBlock();

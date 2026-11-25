@@ -8,8 +8,6 @@ import fs from 'fs/promises';
 import fsSync from 'fs';
 import os from 'os';
 import path from 'path';
-import { requireAuth } from '../services/auth.js';
-
 import { createLogger } from '../services/logger.js';
 import { getRoots, setRoots, listDir, readFile, writeFile, writeBinary, resolveBinaryFile, UPLOAD_MAX_BYTES, createEntry, renamePath, deletePath, resolveFocusPath, withRootsLock } from '../services/user-files.js';
 import { startFilesWatchers, syncFilesWatchers, stopFilesWatchers } from '../services/files-watcher.js';
@@ -20,29 +18,21 @@ import { browseDir, listDrives, createDirIn } from '../services/fs-browse.js';
 import { recordRecent, listRecents } from '../services/user-recents.js';
 import { explorerWalls } from '../services/explorer-walls.js';
 import { explorerGround } from '../services/explorer-ground.js';
+import { hasDotSegment, isUncPath } from '../services/local-path-guard.js';
+import { mapDeskTicketToBearer, requireDeskAuth } from '../services/desk-tickets.js';
 
 const router = express.Router();
 const log = createLogger('UserFiles');
 
-// A native browser download (the drag-out's DownloadURL, any raw link) and an
-// EventSource (the live watch lane) cannot carry an Authorization header — so
-// for /raw and /events ONLY, a ?token= query is mapped into the header BEFORE
-// requireAuth: the portal's own law (the WS token rides a query param), same
-// verification, nothing else loosened. EXPORTED for server.js to mount at the
-// APP level too: several routers mount at /api/v1 with blanket router-level
-// requireAuth and see every /api/v1/* request FIRST — mapped at this router
-// alone, the token arrived too late and both lanes 401'd on the real server
-// (the desk deaf to external changes, Design note, 2026-08-16. Both path shapes are
-// named so the one middleware serves both mounts.
-const HEADERLESS_LANES = new Set(['/raw', '/events', '/api/v1/user/files/raw', '/api/v1/user/files/events']);
+// Headerless raw/watch lanes carry only exact-resource, short-lived tickets.
+// The app-level mapping runs before unrelated blanket-auth routers; the router
+// also accepts the same ticket directly or an ordinary Authorization header.
+export const HEADERLESS_LANES = new Set(['/raw', '/events', '/api/v1/user/files/raw', '/api/v1/user/files/events']);
 export const mapLaneQueryToken = (req, res, next) => {
-  if (HEADERLESS_LANES.has(req.path) && !req.headers.authorization && typeof req.query.token === 'string' && req.query.token) {
-    req.headers.authorization = `Bearer ${req.query.token}`;
-  }
+  if (HEADERLESS_LANES.has(req.path)) mapDeskTicketToBearer(req);
   next();
 };
-router.use(mapLaneQueryToken);
-router.use(requireAuth);
+router.use(requireDeskAuth);
 // Secrets and another house's data are never served or written (explorer-walls.js).
 router.use(explorerWalls);
 // The whole machine is its owner's; a guest reaches its own house (explorer-ground.js).
@@ -59,6 +49,10 @@ router.post('/roots', async (req, res) => {
     const { root } = req.body || {};
     if (typeof root !== 'string' || !path.isAbsolute(root)) {
       return res.status(400).json({ error: 'root must be an absolute path' });
+    }
+    if (isUncPath(root)) return res.status(422).json({ error: 'UNC network shares are not local browse roots' });
+    if (hasDotSegment(root) || root !== path.normalize(root)) {
+      return res.status(422).json({ error: 'root must not contain dot or traversal segments' });
     }
     const resolved = path.resolve(root);
     if (resolved === path.resolve(os.homedir())) {
@@ -157,7 +151,7 @@ router.get('/browse', async (req, res) => {
   } catch (error) {
     const status = error.code === 'ENOENT' ? 404
       : error.code === 'EACCES' || error.code === 'EPERM' ? 403
-      : error.code === 'ENOTDIR' ? 400
+      : error.code === 'ENOTDIR' || error.code === 'EINVAL' ? 400
       : 500;
     if (status === 500) log.error('Browse failed', { error: error.message });
     res.status(status).json({ error: error.message });
@@ -330,8 +324,8 @@ const fsErr = (res, log, label, error) => {
 // past them.
 
 // GET /raw?path= — one file's bytes, for the browser's drag-out (DownloadURL)
-// and any DOWNLOAD act. Streamed from the contained real path; the ?token=
-// mapping above is how a native download authenticates at all.
+// and any DOWNLOAD act. Streamed from the contained real path; the exact-file
+// ?ticket= mapping above is how a native download authenticates without a header.
 router.get('/raw', async (req, res) => {
   try {
     const { real, size } = await resolveBinaryFile(req.query.path);

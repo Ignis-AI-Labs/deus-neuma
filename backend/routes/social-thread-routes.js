@@ -29,7 +29,10 @@ router.put('/queue/:id/approve-thread', async (req, res) => {
     if (!root || members.some((e) => queueEntryHouse(served, e, { served: false }) !== house)) {
       return res.status(404).json({ error: 'no such queued thread' });
     }
-    const result = await postQueue.approveThread(req.params.id, { decidedBy: req.walletAddress, textsSeen });
+    // The seals of each post's media as its card showed them: a missing one refuses a post that carries media.
+    const seals = req.body?.mediaSeen;
+    const mediaSeen = seals && typeof seals === 'object' && !Array.isArray(seals) ? seals : {};
+    const result = await postQueue.approveThread(req.params.id, { decidedBy: req.walletAddress, textsSeen, mediaSeen });
     if (!result.ok) return res.status(409).json({ error: result.error });
     log.info('Thread approved', { root: root.id, posts: result.entries.length, wallet: req.walletAddress });
     return res.json({ entries: result.entries });

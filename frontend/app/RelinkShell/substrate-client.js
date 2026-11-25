@@ -92,3 +92,25 @@ export const unloadSubstrate = async () => {
     return { ok: false, error: err.message };
   }
 };
+
+/** The network as it is now: what goes out, what came in, what listens, and the platform's own self-running connections. impure */
+export const loadNetwork = async () => {
+  try {
+    const headers = authHeaders();
+    if (!headers) return null;
+    return await apiCall('GET', '/api/v1/substrate/network', { headers, strictJson: true });
+  } catch {
+    return null;
+  }
+};
+
+/** The network's history and its audit: what this machine was connected to over the days kept, and what stands out. impure */
+export const loadNetworkHistory = async () => {
+  try {
+    const headers = authHeaders();
+    if (!headers) return null;
+    return await apiCall('GET', '/api/v1/substrate/network/history', { headers, strictJson: true });
+  } catch {
+    return null;
+  }
+};

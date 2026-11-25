@@ -43,6 +43,29 @@ export const SILO_LAYERS = Object.freeze(['identity', 'memory', 'voice', 'refine
 const DEFERRED_LAYERS = Object.freeze(['delegation', 'skills']);
 
 /**
+ * A BEING'S LIFE HAS NO SIZE CEILING. The shared hasher's defaults (32 MB of
+ * text, 250,000 nodes) guard small authority records; the memory layer is
+ * every conversation the being ever had. On 2026-11-20 Firepos's crossed
+ * 32 MB, and every new sitting refused before a word: two clone splits died
+ * at the start ([…]), a new chat
+ * would have too, and so would the main chat at the next restart. The walk's
+ * structural checks stand (cycles, proxies, sparse arrays, unpaired
+ * surrogates); the size limits do not apply to the being's own layers. The
+ * hash streams, so no 32 MB string is built. Limits only refuse, so every
+ * digest is the one the defaults gave: every manifest already kept still verifies.
+ */
+const SILO_HASH_LIMITS = Object.freeze({
+  maxDepth: Number.MAX_SAFE_INTEGER,
+  maxNodes: Number.MAX_SAFE_INTEGER,
+  maxStringBytes: Number.MAX_SAFE_INTEGER,
+  maxKeyBytes: Number.MAX_SAFE_INTEGER,
+  maxOutputBytes: Number.MAX_SAFE_INTEGER,
+});
+
+/** One silo layer's digest, as the manifest holds it. A refusal names the layer. Pure. */
+export const siloLayerSha256 = (name, value) => canonicalSha256(value, { ...SILO_HASH_LIMITS, field: `the silo's ${name} layer` });
+
+/**
  * Compile a being's silo from its own workspace. impure — reads the lane.
  * @param {string} neumaId
  * @param {{workspace: Object, refinementLineage?: Object[], now?: string}} opts
@@ -108,7 +131,7 @@ export const compileSilo = async (neumaId, { workspace, refinementLineage = [], 
     },
   };
   const layerHashes = {};
-  for (const name of SILO_LAYERS) layerHashes[name] = canonicalSha256(layers[name]);
+  for (const name of SILO_LAYERS) layerHashes[name] = siloLayerSha256(name, layers[name]);
   const manifest = {
     schema: SILO_SCHEMA,
     neumaId,
@@ -138,7 +161,7 @@ export const verifySilo = (silo) => {
     if (!(name in (silo.layers || {}))) { failures.push(`layer missing: ${name}`); continue; }
     const expected = manifest.layerHashes?.[name];
     if (!expected) { failures.push(`manifest carries no hash for layer: ${name}`); continue; }
-    const actual = canonicalSha256(silo.layers[name]);
+    const actual = siloLayerSha256(name, silo.layers[name]);
     if (actual !== expected) failures.push(`layer hash mismatch: ${name}`);
   }
   return { ok: failures.length === 0, failures };

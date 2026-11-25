@@ -98,6 +98,7 @@ export const sweepVerdict = (result, recencyText) => {
   const owed = result.items.filter((i) => i.owed);
   const missing = unaddressed(result.items, recencyText);
   const tooMany = owed.length > OWED_MAX;
+  const unread = result.feeds.filter((feed) => !feed.ok);
   const reach = result.feeds.map((f) => `- ${f.name}: ${f.ok ? `${f.items.length} found` : `UNREAD (${f.errors.join('; ').slice(0, 160)})`}${f.reach && f.reach > result.since ? ` — the feed reaches back only to ${f.reach}` : ''}${f.overflow ? ' — more than 100 matched one term: the newest 100 were read' : ''}`);
   const listing = [
     ...(missing.length ? ['OWED AN ANSWER (name each in recency by its number or title, and say what it means for this question — "not on point, because …" is an answer):', ...missing.slice(0, OWED_MAX).map(itemLine)] : []),
@@ -108,7 +109,8 @@ export const sweepVerdict = (result, recencyText) => {
     ...reach,
     ...(result.jurisdictions.includes('EU') ? [EU_GAP] : []),
     tooMany ? `Over ${OWED_MAX} actions are owed an answer: the terms are too wide for one filing. Choose the words this exact question turns on.` : null,
+    unread.length ? `${unread.length} selected feed(s) could not be read completely. An unread recency lane is no recency check: nothing that depends on this sweep may land.` : null,
     listing ? frameUntrustedContent('the regulators\' own feeds (titles and links as they publish them)', listing) : 'Nothing found in the window.',
   ].filter(Boolean).join('\n');
-  return { ok: !tooMany && missing.length === 0, text, owed, missing };
+  return { ok: !tooMany && missing.length === 0 && unread.length === 0, text, owed, missing, unread };
 };

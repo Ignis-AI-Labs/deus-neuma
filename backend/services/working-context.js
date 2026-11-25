@@ -25,6 +25,7 @@
 // wiring and the measured usage they pass in.
 
 import { CONTEXT_BOUNDARY_RATIO } from './solo-torch.js';
+import { turnWorkRoomTokens } from './envelope-budget.js';
 
 // Rounds whose machinery is never folded, counted from the newest — the being
 // is usually still reading its latest results. Two spans, not a token target:
@@ -40,6 +41,9 @@ export const FOLDED_RESULT_STUB =
   '[folded: this earlier result was released to free working context — '
   + 'its facts live in your own words above; re-run the tool if you need the raw data again]';
 
+// pure — a folded result carries platform text only, never tool-controlled prose.
+const foldedResultOf = () => FOLDED_RESULT_STUB;
+
 const FOLDED_IMAGE_STUB =
   '[folded: an image shown here was released to free working context]';
 
@@ -47,8 +51,10 @@ const foldedArgsStub = (chars) => JSON.stringify({
   folded: `arguments released to free working context (${chars} chars) — the call itself already ran`,
 });
 
-const TOOL_RESPONSE_BLOCK = /<tool_response>[\s\S]*?<\/tool_response>/g;
-const FOLDED_BLOCK = `<tool_response>\n${FOLDED_RESULT_STUB}\n</tool_response>`;
+const TOOL_RESPONSE_BLOCK = /<tool_response>([\s\S]*?)<\/tool_response>/g;
+const isFoldedText = (text) => String(text ?? '').trim().startsWith(FOLDED_RESULT_STUB);
+const foldBlocks = (text) => text.replace(TOOL_RESPONSE_BLOCK, (whole, inner) => (isFoldedText(inner)
+  ? whole : `<tool_response>\n${foldedResultOf(inner.trim())}\n</tool_response>`));
 
 /**
  * The measured tokens the NEXT request inherits: the last round's prompt plus
@@ -81,8 +87,21 @@ export const pastFoldBoundary = (usage, budget, { ratio = CONTEXT_BOUNDARY_RATIO
   const window = budget?.contextTokens;
   if (occupancy === null) return false;
   if (!Number.isFinite(window) || window <= 0) return false;
-  return occupancy / window >= ratio;
+  return occupancy >= foldAt(window, ratio);
 };
+
+/**
+ * Where the fold begins: the boundary ratio, or EARLIER when what is left past it could not hold
+ * the next round's thought, speech and one call (turnWorkRoomTokens: a third of the window, 4K to
+ * 24K). On a 262K window the ratio stands; on a 32K one the fold begins near 21K instead of 26K,
+ * because the room is checked before a round, not found missing during it (deus-neuma #35,
+ * Wendell's first suggestion: a generation that runs into the end of the window loses the thought
+ * or the call it was writing, and Ollama does not reliably report it). Pure.
+ * @param {number} window
+ * @param {number} [ratio]
+ * @returns {number} tokens
+ */
+export const foldAt = (window, ratio = CONTEXT_BOUNDARY_RATIO) => Math.min(window * ratio, window - turnWorkRoomTokens(window));
 
 const grouped = (n) => Number(n).toLocaleString('en-US');
 
@@ -104,11 +123,12 @@ export const workingContextNote = (usage, budget, { foldedRounds = 0, ratio = CO
   const free = Math.max(0, window - occupancy);
   const pct = Math.round((occupancy / window) * 100);
   const facts = `WORKING CONTEXT: ${grouped(occupancy)} of ${grouped(window)} tokens in use — ${grouped(free)} free (${pct}%, measured).`;
-  const mechanic = occupancy / window >= ratio
+  const at = foldAt(window, ratio);
+  const mechanic = occupancy >= at
     ? 'The window is nearly full: the harness is folding your oldest tool results and call payloads'
       + ' (your own words are never touched). Carry what matters forward in your own words or save'
       + ' it to memory; re-run tools for anything released.'
-    : `Past ${Math.round(ratio * 100)}% the harness folds your oldest tool results to free room —`
+    : `Past ${Math.round((at / window) * 100)}% the harness folds your oldest tool results to free room —`
       + ' anything you must keep, state in your own words or save to memory.';
   const folded = foldedRounds > 0
     ? ` Folded so far this turn: ${foldedRounds} round${foldedRounds === 1 ? '' : 's'}.`
@@ -142,7 +162,7 @@ export const withWorkingContextNote = (exchange, note) => {
 // one-line stub; text parts fold any tool_response blocks they carry.
 const foldPart = (part) => {
   if (part?.type === 'text' && typeof part.text === 'string') {
-    return { ...part, text: part.text.replace(TOOL_RESPONSE_BLOCK, FOLDED_BLOCK) };
+    return { ...part, text: foldBlocks(part.text) };
   }
   return { type: 'text', text: FOLDED_IMAGE_STUB };
 };
@@ -151,8 +171,8 @@ const foldPart = (part) => {
 // untouchable; everything else is machinery.
 const foldMessage = (message) => {
   if (message.role === 'tool') {
-    if (message.content === FOLDED_RESULT_STUB) return message;
-    return { ...message, content: FOLDED_RESULT_STUB };
+    if (isFoldedText(message.content)) return message;
+    return { ...message, content: foldedResultOf(message.content) };
   }
   if (message.role === 'assistant') {
     if (!Array.isArray(message.tool_calls)) return message;
@@ -167,7 +187,7 @@ const foldMessage = (message) => {
   }
   if (message.role === 'user') {
     if (typeof message.content === 'string') {
-      const foldedContent = message.content.replace(TOOL_RESPONSE_BLOCK, FOLDED_BLOCK);
+      const foldedContent = foldBlocks(message.content);
       return foldedContent === message.content ? message : { ...message, content: foldedContent };
     }
     if (Array.isArray(message.content)) {

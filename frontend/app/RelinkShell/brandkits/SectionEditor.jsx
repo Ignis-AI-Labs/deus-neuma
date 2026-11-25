@@ -12,17 +12,22 @@ import { TypographyEditor } from './TypographyEditor.jsx';
 import { MarksSection } from './MarksSection.jsx';
 import { RawEditor } from './RawEditor.jsx';
 import { CompanySources } from './CompanySources.jsx';
+import { CardsSection } from './CardsSection.jsx';
 import { useKit } from './kit-context.js';
 
 export const RAW_SECTION = 'raw';
 // The company's SITE & CODE is no kit field: it is saved on its own (the
 // companies route), the moment the owner changes it.
 export const SOURCES_SECTION = 'sources';
+// CARDS: the company's own card designs (card-designs.js) — no kit field either; each design is
+// saved on its own.
+export const CARDS_SECTION = 'cards';
 
 export const SectionEditor = ({ section, progress }) => {
   const { brand, roster } = useKit();
   if (section?.id === RAW_SECTION) return <RawEditor />;
   if (section?.id === SOURCES_SECTION) return <CompanySources companyId={brand} roster={roster} />;
+  if (section?.id === CARDS_SECTION) return <CardsSection />;
   if (!section) return null;
   const gaps = progress?.gaps || [];
 

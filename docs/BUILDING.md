@@ -64,7 +64,9 @@ machine is ready.
 Measured with the summon check (a whole rehearsal summoning: consent, a name
 the being writes itself, its DNA authored on disk) at the app's full
 65,536-token context, the setup screen recommends the newest Qwen your card
-can hold. Every recommendation below passed it (2026-10-06):
+can hold. The recommendations below come from measured capacity and rehearsal
+results; results vary by protocol and server, and retries or refusals remain
+possible:
 
 | Your GPU | Recommended model | Needs |
 |---|---|---|
@@ -85,8 +87,10 @@ can hold, and any local model may still be chosen. Help us measure: see
 
 ## macOS
 
-We do not release for macOS: there is no signed or notarized Mac build, and
-the core team has never tested one. If you are on a Mac, you can help:
+There is no signed or notarized production macOS release yet. CI builds each
+chip on its own Mac runner and checks the bundled binaries, but that is not a
+fresh-Mac install/acceptance proof. Unsigned artifacts are preview-only. If
+you are on a Mac, you can help:
 
 1. Run `npm install` and `npm run electron:dev`, and tell us what breaks.
 2. Build with `npm run dist:mac` and install the `.dmg`. Build each chip on

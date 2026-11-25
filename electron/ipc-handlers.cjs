@@ -5,12 +5,12 @@
 // were. Window state is never owned here — it comes in through the
 // desk-windows factory surface.
 
-const { app, BrowserWindow, Menu, Notification, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, Notification, clipboard, dialog, ipcMain, shell } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
 const residency = require('./residency.cjs');
 const { registerWalletIpc } = require('./wallet/wallet-ipc.cjs');
-const { browserTargetFor } = require('./open-in-browser.cjs');
+const { browserRealTargetFor } = require('./open-in-browser.cjs');
 const { externalUrlFor, fromDesk } = require('./desk-links.cjs');
 const { sanitizeBootPayload } = require('./desk-boot.cjs');
 const { revealBackendLog } = require('./backend-log.cjs');
@@ -22,6 +22,8 @@ const { primaryBounds } = require('./primary-placement.cjs');
 const { dataRootFor } = require('./connections.cjs');
 const { readOwnerClaim } = require('./owner-claim.cjs');
 const { openDevBrowser } = require('./dev-browser.cjs');
+const { isUncPath } = require('./local-paths.cjs');
+const { clipboardVerdict } = require('./clipboard-check.cjs');
 
 // impure — register every handler on ipcMain. `deskWindows` is the
 // createDeskWindows() surface (desk-windows.cjs).
@@ -169,20 +171,22 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
   // then the one IO check — the file must actually exist as a file — and
   // only then does the file:// URL leave the shell. Nothing else schemes
   // its way out of the app.
-  handle('app:openInBrowser', (_event, rawPath) => {
-    const target = browserTargetFor(rawPath);
+  handle('app:openInBrowser', (_event, rawPath, roots) => {
+    const target = browserRealTargetFor(rawPath, roots);
     if (!target) return { ok: false };
-    try {
-      if (!fs.statSync(rawPath).isFile()) return { ok: false };
-    } catch { return { ok: false }; }
     shell.openExternal(target);
     return { ok: true };
   });
 
   // Reveal a path in the OS file manager. String + existence checked; the
   // path itself never leaves the shell as a URL, so no scheme can ride it.
+  // Did a copied address survive on the clipboard? (clipboard-check.cjs)
+  // The read is a promise on this Electron (44): handed in unawaited, the
+  // verdict saw no text and answered "same" every time (caught live, 2026-11-21).
+  handle('clipboard:check', async (_event, expected) => clipboardVerdict(expected, await clipboard.readText()));
+
   handle('app:showInFolder', (_event, rawPath) => {
-    if (typeof rawPath !== 'string' || rawPath.length === 0) return { ok: false };
+    if (typeof rawPath !== 'string' || rawPath.length === 0 || isUncPath(rawPath)) return { ok: false };
     try { fs.statSync(rawPath); } catch { return { ok: false }; }
     shell.showItemInFolder(rawPath);
     return { ok: true };
@@ -282,6 +286,7 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
   // binding in hotkeys.cjs renders as a menu item with its accelerator.
   Menu.setApplicationMenu(Menu.buildFromTemplate(buildAppMenuTemplate({
     isMac: process.platform === 'darwin',
+    isPackaged: app.isPackaged,
     actions: {
       'desk.new': () => openDeskFromFocused().catch((err) => {
         dialog.showErrorBox('Deus Neuma', `Could not open a new desk.\n\n${err.message}`);
@@ -295,15 +300,22 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
     onShowLogs: app.isPackaged ? () => revealBackendLog(shell, app.getPath('home')) : null,
   })));
 
-  // Native folder picker — lets the witness browse to a workspace home in the
-  // pre-flight HOME & ALLOCATION step instead of typing the absolute path.
-  // Returns the chosen path, or null if cancelled. The renderer can only
-  // request the dialog; it gains no other filesystem access. The sheet
-  // attaches to the desk that ASKED, never a sibling window.
-  handle('dialog:openDirectory', async (event) => {
+  // THE SYSTEM'S OWN FOLDER DIALOG (Design note, 2026-11-10: […]): every OPEN FOLDER in the app asks
+  // for this sheet, the one the operator already knows (KDE's through the
+  // desktop portal, Explorer's, Finder's). Returns the chosen path, or null if
+  // cancelled. The renderer can only request the dialog; it gains no other
+  // filesystem access. It may name a title and a starting folder, both checked
+  // here. The sheet attaches to the desk that ASKED, never a sibling window.
+  handle('dialog:openDirectory', async (event, opts) => {
     const asking = BrowserWindow.fromWebContents(event.sender);
+    const title = typeof opts?.title === 'string' && opts.title.trim()
+      ? opts.title.trim().slice(0, 120)
+      : 'Choose the workspace home for your neuma';
+    const start = typeof opts?.defaultPath === 'string' && path.isAbsolute(opts.defaultPath)
+      && fs.existsSync(opts.defaultPath) ? opts.defaultPath : undefined;
     const result = await dialog.showOpenDialog(asking || undefined, {
-      title: 'Choose the workspace home for your neuma',
+      title,
+      ...(start ? { defaultPath: start } : {}),
       properties: ['openDirectory', 'createDirectory'],
     });
     return result.canceled || !result.filePaths.length ? null : result.filePaths[0];
@@ -320,7 +332,7 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
   // carries no PNG.
   on('files:start-drag', (event, rawPath) => {
     const filePath = String(rawPath || '');
-    if (!path.isAbsolute(filePath)) return;
+    if (!path.isAbsolute(filePath) || isUncPath(filePath)) return;
     let st;
     try { st = fs.statSync(filePath); } catch { return; }
     if (!st.isFile()) return;
@@ -357,11 +369,10 @@ const registerIpcHandlers = ({ deskWindows, getOrigin }) => {
     userDataPath: app.getPath('userData'),
   });
 
-  // Test seam (strictly env-gated, main-process only, never renderer-reachable):
+  // Test seam (development only, main-process only, never renderer-reachable):
   // the wallet-confirm security e2e drives createConfirmWindow directly to prove
   // its boundary (forged-sender rejection, no injected-markup approval, etc.).
-  // Off in every real run — no preload or IPC exposes this.
-  if (process.env.NEUMA_CONFIRM_E2E === '1') {
+  if (!app.isPackaged && process.env.NEUMA_CONFIRM_E2E === '1') {
     global.__neumaConfirmE2E = {
       createConfirmWindow: require('./wallet/confirm-window.cjs').createConfirmWindow,
       buildSignConfirmView: require('./wallet/confirm-view.cjs').buildSignConfirmView,

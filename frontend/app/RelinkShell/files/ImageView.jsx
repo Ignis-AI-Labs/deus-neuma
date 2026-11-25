@@ -6,11 +6,9 @@
 // there, with no one asking whether these particular bytes were a picture.
 //
 // WHY BLOB AND NOT A URL. `/raw` exists already, and `rawFileUrl` would be one
-// line — but it carries the session token in the QUERY STRING (a native
-// download cannot send a header, which is why that door exists). Pointing an
-// <img> at it would write the operator's token into the DOM, and from there
-// into any error report or screenshot of the element. `readRawBytes` sends the
-// token as a HEADER, exactly as the PDF reader does. The route also serves
+// line — but even its short-lived ticket belongs only in the native-download
+// lane, not retained in an image element. `readRawBytes` sends the session as
+// a HEADER, exactly as the PDF reader does. The route also serves
 // every file as `application/octet-stream` with a download disposition, so the
 // blob's type is restored from the extension or the browser will not decode it.
 

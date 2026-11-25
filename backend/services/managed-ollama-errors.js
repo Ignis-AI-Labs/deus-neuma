@@ -18,6 +18,7 @@ const PLAIN = Object.freeze({
   UNPACK: `The model server could not be unpacked. Make sure the disk has free space, ${TRY_AGAIN}.`,
   SERVER_START: `The model server did not start. Restart Deus Neuma, ${TRY_AGAIN}.`,
   SERVER_OLD: `The model server answering here is too old for this model. Close any other Ollama, ${TRY_AGAIN}.`,
+  SERVER_FOREIGN: `A program run by another account on this computer answered where the model server should be, so it was not used. Press TRY AGAIN and Deus Neuma sets up its own.`,
   PULL_FAILED: `The model download stopped before it finished. Check the internet connection, ${TRY_AGAIN}; it picks up where it stopped.`,
   MODEL_SILENT: `The model is downloaded but did not answer a test message. Close other programs to free memory, ${TRY_AGAIN}.`,
 });

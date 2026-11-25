@@ -12,7 +12,7 @@ import os from 'os';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import { createLogger } from './logger.js';
-import { agentTerminalEnvironment, withoutBackendSecrets } from './agent-terminal-environment.js';
+import { agentTerminalEnvironment } from './agent-terminal-environment.js';
 
 const log = createLogger('Terminal');
 // THE TERMINAL REGISTRY (friction-map D3) — keyed by a stable terminal id,
@@ -81,7 +81,7 @@ export const spawnTerminal = (ws, { wallet, cwd, cols = 80, rows = 24, launch = 
     if (existing.idleTimer) { clearTimeout(existing.idleTimer); existing.idleTimer = null; }
     existing.sockets.add(ws);
     socketTerms.set(ws, termId);
-    ws.send(JSON.stringify({ type: 'terminal:hello', id: termId, attached: true }));
+    ws.send(JSON.stringify({ type: 'terminal:hello', id: termId, attached: true, cwd: existing.cwd || os.homedir() }));
     for (const chunk of existing.buffer) {
       if (ws.readyState === ws.OPEN) ws.send(JSON.stringify({ type: 'terminal:data', data: chunk }));
     }
@@ -107,7 +107,7 @@ export const spawnTerminal = (ws, { wallet, cwd, cols = 80, rows = 24, launch = 
       cols,
       rows,
       cwd: cwd || os.homedir(),
-      env: launch ? agentTerminalEnvironment(process.env, process.platform) : withoutBackendSecrets(process.env),
+      env: agentTerminalEnvironment(process.env, process.platform),
     });
   } catch (err) {
     log.error('PTY spawn failed', { err: err.message, launch: launch?.id ?? null });
@@ -126,11 +126,12 @@ export const spawnTerminal = (ws, { wallet, cwd, cols = 80, rows = 24, launch = 
     bufferBytes: 0,
     idleTimer: null,
     launch,
+    cwd: cwd || os.homedir(),
     exited: false,
   };
   terminals.set(id, entry);
   socketTerms.set(ws, id);
-  ws.send(JSON.stringify({ type: 'terminal:hello', id, attached: false }));
+  ws.send(JSON.stringify({ type: 'terminal:hello', id, attached: false, cwd: entry.cwd }));
   proc.onData((data) => {
     entry.buffer.push(data);
     entry.bufferBytes += Buffer.byteLength(data);

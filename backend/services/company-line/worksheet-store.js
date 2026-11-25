@@ -10,9 +10,15 @@ import path from 'path';
 import fs from 'fs/promises';
 import { writeJsonAtomic } from '../user-realm.js';
 import { companyPath } from './company-store.js';
+import { containedFile } from '../no-follow-write.js';
 
 const STAGES = Object.freeze(['survey', 'measure', 'shape', 'choose', 'prove']);
-const nameOf = (stage, round) => `${stage}-r${round}.json`;
+const nameOf = (stage, round) => {
+  if (!STAGES.includes(stage) || !Number.isSafeInteger(round) || round < 1) {
+    throw new Error('a worksheet needs a known stage and a positive integer round');
+  }
+  return `${stage}-r${round}.json`;
+};
 
 /** The mirror's path on the house ground, as a being cites it. pure. */
 export const mirrorPath = (companyId, stage, round) => `repos/${companyId}/line/${nameOf(stage, round)}`;
@@ -23,7 +29,9 @@ export const mirrorPath = (companyId, stage, round) => `repos/${companyId}/line/
  */
 export const saveWorksheet = async ({ wallet, companyId, stage, round, worksheet, groundRoot }) => {
   await writeJsonAtomic(companyPath(wallet, companyId, path.join('worksheets', nameOf(stage, round))), worksheet);
-  await writeJsonAtomic(path.join(groundRoot, mirrorPath(companyId, stage, round)), worksheet);
+  const relativeMirror = mirrorPath(companyId, stage, round);
+  const mirror = await containedFile(groundRoot, path.dirname(path.join(groundRoot, relativeMirror)), path.basename(relativeMirror));
+  await writeJsonAtomic(mirror, worksheet);
 };
 
 /**

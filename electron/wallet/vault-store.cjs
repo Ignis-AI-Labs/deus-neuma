@@ -13,6 +13,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { writeAtomic } = require('../key-lock/key-lock.cjs');
 
 /**
  * @typedef {Object} OuterSeal
@@ -44,8 +45,7 @@ const writeVault = (filePath, envelope, outerSeal) => {
   const onDisk = sealAvailable
     ? JSON.stringify({ wrapped: true, data: outerSeal.encrypt(json).toString('base64') })
     : JSON.stringify({ wrapped: false, data: json });
-  fs.writeFileSync(filePath, onDisk, { mode: 0o600 });
-  fs.chmodSync(filePath, 0o600); // enforce perms even if the file pre-existed
+  writeAtomic(filePath, JSON.parse(onDisk));
 };
 
 // impure — read + unwrap the sealed envelope (null if no vault on disk)

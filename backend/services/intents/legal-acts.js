@@ -17,6 +17,7 @@
  * the filing must answer for, and a second reader judges each passage against
  * its claim. A failure anywhere lands nothing. A hand-off is checked only.
  */
+import { legalNeverListIntent } from './legal-never-list-act.js';
 import { matterLedgerFor, validateVerdict, MATTER_SEVERITIES } from '../legal/matter-ledger.js';
 import { runLegalWatch } from '../legal/legal-scheduler.js';
 import { CITATION_SHAPE, citationRecordsProblem, draftProblem, citationLine } from '../legal/citation-record.js';
@@ -142,4 +143,4 @@ export const legalFileIntent = Object.freeze({
   },
 });
 
-export const legalIntents = Object.freeze([legalScanIntent, legalAssessIntent, legalFileIntent, legalOpinionIntent]);
+export const legalIntents = Object.freeze([legalScanIntent, legalAssessIntent, legalFileIntent, legalOpinionIntent, legalNeverListIntent]);

@@ -22,8 +22,11 @@ const AT = Date.parse('2026-08-29T09:00:00Z');
 
 // A level that answers instantly and never knees, so the ladder runs long
 // enough to watch. The wave shape is the real one the scan consumes.
+// The wave is the shape fireCapacityProbes returns (the old {medianMs, throughput} shape left with
+// 70691dc32's server-counted rate): every agent answers in 100 ms and the wave's rate grows with it.
 const flatFire = async (concurrency) => ({
-  ok: true, concurrency, medianMs: 100, throughput: concurrency,
+  ok: true, aggregateTokPerSec: concurrency * 40, perAgentLatencyMs: Array.from({ length: concurrency }, () => 100),
+  tokenSource: 'server-usage',
 });
 
 const collect = async (fire) => {

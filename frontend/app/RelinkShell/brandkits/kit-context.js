@@ -5,7 +5,7 @@
 // and the preview renders it. Prop-drilling `draft` and `editField` through
 // four levels to reach a colour swatch is how a component tree gets rewritten
 // every time a section is added — so it rides a context, the same way
-// composition-context.js and project-context.js already do here.
+// composition-context.js already does here.
 //
 // No logic lives here on purpose. `use-kit-draft.js` owns the state; this file
 // only carries it.

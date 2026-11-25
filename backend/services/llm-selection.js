@@ -17,9 +17,9 @@ import { isFdServedName, servedModelIdentity } from './serving-identity.js';
 
 // Provider-specific defaults keyed by LLM_PROVIDER value
 const PROVIDER_DEFAULTS = Object.freeze({
-  'llama-server': { endpoint: 'http://localhost:8089', keyEnv: null, model: 'local-model' },
-  'lm-studio': { endpoint: 'http://localhost:1234', keyEnv: 'LM_STUDIO_API_KEY', model: 'local-model' },
-  'ollama':    { endpoint: 'http://localhost:11434', keyEnv: null, model: 'local-model' },
+  'llama-server': { endpoint: 'http://127.0.0.1:8089', keyEnv: null, model: 'local-model' },
+  'lm-studio': { endpoint: 'http://127.0.0.1:1234', keyEnv: 'LM_STUDIO_API_KEY', model: 'local-model' },
+  'ollama':    { endpoint: 'http://127.0.0.1:11434', keyEnv: null, model: 'local-model' },
   'openai':    { endpoint: 'https://api.openai.com', keyEnv: 'OPENAI_API_KEY', modelEnv: 'OPENAI_MODEL', model: 'gpt-4o-mini' },
   'anthropic': { endpoint: 'https://api.anthropic.com', keyEnv: 'ANTHROPIC_API_KEY', modelEnv: 'ANTHROPIC_MODEL', model: 'claude-haiku-4-5-20251001' },
   'xai':       { endpoint: 'https://api.x.ai', keyEnv: 'XAI_API_KEY', modelEnv: 'XAI_MODEL', model: 'grok-3-mini' },
@@ -49,7 +49,7 @@ const defaultConfig = () => {
 
   return {
     provider: effectiveProvider,
-    endpoint: endpointOverride || defaults.endpoint || 'http://localhost:1234',
+    endpoint: endpointOverride || defaults.endpoint || 'http://127.0.0.1:1234',
     apiKey,
     model,
     temperature: cfg?.llmTemperature ?? 0.8,

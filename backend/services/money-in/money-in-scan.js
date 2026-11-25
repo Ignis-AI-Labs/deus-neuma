@@ -8,6 +8,12 @@
 // verbs (block number, balance, nonce, block, receipt, logs). A test pins
 // that by reading the family's own source.
 //
+// ONE NODE'S WORD IS NOT A RECEIPT (audit P6-43): every row a network's scan
+// finds is confirmed by a second, independent node (receipt-proof.js) before
+// it is appended. A network whose rows are not confirmed appends nothing and
+// keeps its cursors and checkpoints where they were, so the same window is
+// read again next scan; the result names it `unconfirmed` with the reason.
+//
 // The chain-access master switch governs: off means no scan, of any kind.
 // A network whose RPC is unset or not answering is skipped and named on the
 // result — never a silent zero.
@@ -21,6 +27,7 @@ import { MONEY_IN_ASSETS, validateAssetTable } from './asset-table.js';
 import { makeReceipt, priceRows } from './receipt-rows.js';
 import { walkTokenTransfers, START_CHUNK } from './token-scan.js';
 import { scanNativeReceipts } from './native-scan.js';
+import { confirmReceipts } from './receipt-proof.js';
 import { spotUsd, PRICE_SOURCE } from './spot-price.js';
 import { houseWatchSet } from './watch-set.js';
 import { withHouseLock, readScanState, writeScanState, appendReceipts } from './money-in-store.js';
@@ -121,8 +128,16 @@ const scanNetwork = async ({ net, state, watchedBy, houseAddrs, env, detectedAt,
   }
   const head = Math.max(0, latest - net.confirmations);
   const netState = { ...(state.networks[net.network] ?? {}) };
+  const nativeBefore = { ...state.native };
   const tokens = await scanTokens({ provider, net, netState, head, watchedBy, houseAddrs, detectedAt, maxBlocks });
   const native = await scanNative({ provider, net, state, head, watchedBy, houseAddrs, detectedAt });
+  const proof = await confirmReceipts({ rows: [...tokens.rows, ...native.rows], network: net.network, primary: provider, confirmations: net.confirmations, env });
+  if (!proof.ok) {
+    state.native = nativeBefore;
+    state.networks[net.network] = { ...(state.networks[net.network] ?? {}), lastError: proof.reason };
+    log.warn('money-in receipts not confirmed by a second node; nothing recorded', { network: net.network, reason: proof.reason });
+    return { result: { network: net.network, skipped: 'unconfirmed', error: proof.reason }, rows: [], gaps: [] };
+  }
   const errors = [...(tokens.error ? [`token logs: ${tokens.error}`] : []), ...native.errors];
   state.networks[net.network] = { ...netState, lastHead: head, lastError: errors[0] ?? null };
   return {

@@ -16,9 +16,10 @@
 // as that house's lane on this backend's grounds — and never journals into a
 // lane it does not serve (the ghost lane found live 2026-10-16).
 
-import { readMediaFile, setAltText, uploadMedia } from './x-media.js';
+import { setAltText } from './x-media.js';
+import { uploadXMedia } from './x-post-media.js';
 import { markedMedia } from './disclosure-line.js';
-import { reverifyMediaFile } from './media-source.js';
+import { verifySealedMedia } from './approval-seal.js';
 import { postQueue, duePosts, threadOrphans, expiredReplies, replyCountForConversation, REPLY_CAP_PER_CONVERSATION } from './post-queue.js';
 import { readXPost, readXListings, readXAccount } from './x-reader.js';
 import { channelBindings } from './channel-bindings.js';
@@ -187,12 +188,10 @@ const journalSend = async (entry, outcome) => {
 const uploadEntryMedia = async (credentials, entry) => {
   const mediaIds = [];
   for (const item of markedMedia(entry)) { // an AI-made post's images say so in their alt text
-    const verified = await reverifyMediaFile(item.path);
+    const verified = await verifySealedMedia(item);
     if (!verified.ok) return { ok: false, detail: `media refused — ${verified.detail}` };
-    const read = await readMediaFile(verified.path);
-    if (!read.ok) return { ok: false, detail: `media refused — ${read.detail}` };
-    const up = await uploadMedia(credentials, read);
-    if (!up.ok) return { ok: false, detail: `media upload failed — ${up.detail}` };
+    const up = await uploadXMedia(credentials, verified.path); // a still, or one video sent in pieces
+    if (!up.ok) return { ok: false, detail: `${up.refused ? 'media refused' : 'media upload failed'} — ${up.detail}` };
     if (item.alt) {
       // Alt text failing must not sink a post that is otherwise ready; it is
       // logged loudly instead, because shipping an undescribed image is a real
@@ -324,7 +323,7 @@ export const publishEntry = async (entry) => {
     // The upload IS the post (a video): the poster takes the re-verified
     // paths itself, so nothing is uploaded ahead of the irreversible act.
     for (const item of entry.media) {
-      const verified = await reverifyMediaFile(item.path);
+      const verified = await verifySealedMedia(item);
       if (!verified.ok) {
         const refused = { ok: false, detail: `media refused — ${verified.detail}` };
         await postQueue.recordOutcome(entry.id, refused);
@@ -363,6 +362,8 @@ export const publishEntry = async (entry) => {
       // answers its parent's live post (the thread law, resolved above).
       ...(entry.kind === 'reply' ? { replyToId: entry.reply?.toPostId } : {}),
       ...(entry.kind === 'self-reply' && threadReplyToId ? { replyToId: threadReplyToId } : {}),
+      // a quote post's link rides to the poster, which ends the words with it (quote-post.js)
+      ...(entry.quote?.url ? { quoteUrl: entry.quote.url } : {}),
     })
     : { ok: false, detail: `no poster for channel ${entry.channelId}` };
 

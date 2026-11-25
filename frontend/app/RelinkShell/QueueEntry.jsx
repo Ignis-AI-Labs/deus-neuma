@@ -15,12 +15,13 @@ import { mediaMenuDoor } from './media-menu.js';
 import { XPostLink } from './XPostLink.jsx';
 import { AccountMark } from './accounts/AccountMark.jsx';
 import { LegalChip } from './legal-chip/LegalChip.jsx';
+import { ReplyTierMark } from './ReplyTierMark.jsx';
 import { Bar } from './hud-instruments.jsx';
 import { CountdownMark } from './CountdownMark.jsx';
 import { cardWhen } from './queue-when.js';
 import { entryAccountId } from './accounts/account-words.js';
 import {
-  approveQueuePost, approveQueueThread, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
+  approveQueuePost, approveQueueThread, mediaSeenOf, fetchQueueMediaUrl, rejectQueuePost, removeQueuePost, withdrawQueuePost,
 } from '../../services/social-channels-client.js';
 import { threadOf } from './queue-thread-view.js';
 import { TikTokPostSettings } from './TikTokPostSettings.jsx';
@@ -229,10 +230,12 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
       return;
     }
     if (tiktok) {
-      await approveQueuePost(entry.id, { textSeen: entry.text, tiktok: tiktok.approval ?? undefined });
+      await approveQueuePost(entry.id, { textSeen: entry.text, mediaSeen: mediaSeenOf(entry), tiktok: tiktok.approval ?? undefined });
       return;
     }
-    await approveQueuePost(entry.id);
+    // Every yes names the words and the image seals THIS card showed: a post
+    // rewritten while the card sat open is refused, never published unseen.
+    await approveQueuePost(entry.id, { textSeen: entry.text, mediaSeen: mediaSeenOf(entry) });
   };
 
   // A THREAD IS ONE DECISION: every draft from its root down, approved at
@@ -240,7 +243,8 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
   const thread = entry.kind === 'reply' ? null : threadOf(byId, entry.id);
   const threadDrafts = thread && thread.members.length > 1 ? thread.drafts : [];
   const approveThread = () => approveQueueThread(entry.id,
-    Object.fromEntries(threadDrafts.map((e) => [e.id, e.text])));
+    Object.fromEntries(threadDrafts.map((e) => [e.id, e.text])),
+    Object.fromEntries(threadDrafts.map((e) => [e.id, mediaSeenOf(e)])));
 
   const actions = pending ? (
     <>
@@ -350,6 +354,7 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
                       {String(entry.reply.category).toUpperCase()}
                     </span>
                   ) : null}
+                  <ReplyTierMark tier={entry.tier} />
                 </div>
                 <p className="queue-preview-text">{entry.reply.toTextPreview}</p>
               </div>
@@ -369,6 +374,14 @@ export const QueueEntry = ({ entry, byId, roster, channels, campaigns, onChanged
               </div>
             ) : null}
             <p className="queue-preview-text">{entry.text}</p>
+            {entry.quote?.postId ? (
+              // A QUOTE POST: the quoted post rides at the end of the words when it goes out; the
+              // operator opens the real post on X before approving.
+              <div className="queue-preview-head">
+                <span className="queue-preview-via">QUOTES</span>
+                <XPostLink postId={entry.quote.postId} className="queue-preview-author">{entry.quote.url}</XPostLink>
+              </div>
+            ) : null}
             {entry.media?.length ? (
               // The attachments themselves — the witness decides the images,
               // not a MEDIA ×N count. Each thumbnail is the real staged file

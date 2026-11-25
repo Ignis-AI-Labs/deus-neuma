@@ -1,0 +1,203 @@
+#!/usr/bin/python3
+"""
+load-fans — the fans follow the load (ruling, 2026-11-20): however heavy the load on the computer is, the fans match it; at full load
+they run at full speed.
+
+Before this, the graphics card's fans were left to the driver's own curve, which follows TEMPERATURE: measured with a
+being talking, the card stood at 78% load, 395 W and 74 C with its fans at 48%. The fans only caught up after the
+card was already hot. Here they follow the LOAD, so they are up the second the work starts.
+
+Runs as root (systemd). Once a second:
+  load   = the higher of the card's utilisation and its power draw against its power limit, in percent
+  fans   = the higher of that load and what the card's temperature alone asks for (so a hot, idle card is never
+           left with slow fans), never under the floor. Up at once; down only after the load has stayed lower for
+           15 seconds, and then a few percent a second — a being's reply is bursts, and fans that chase every burst
+           wear out and howl.
+  board  = the motherboard's fan headers stay on the board's own curve, and go to full while the load is at 90% or
+           more (pump and radiator headers are never slowed by this service).
+While the benchmark rig's lock exists everything is at full, as before (this service replaces bench-fans).
+Whenever it stops, fails to read the card, or is told to stop, every fan goes back to its own automatic curve.
+
+  --status    the fans, the load and what this service would ask for, changing nothing (works as any user)
+  --release   every fan back to automatic, then exit (run by systemd when the service stops)
+  --plan      read "util power limit temp" lines on stdin, print the fan percent for each, one second apart —
+              the curve with no card, for the test
+"""
+import ctypes, os, signal, sys, time
+
+LOCK = os.environ.get('LOAD_FANS_BENCH_LOCK', '/workspace/repos/project-fuvofos/active.lock')  # the benchmark rig's lock, when there is one
+FLOOR = int(os.environ.get('LOAD_FANS_FLOOR', '30'))        # the card's own minimum
+HOLD_S = float(os.environ.get('LOAD_FANS_HOLD_S', '15'))    # how long the load must stay lower before the fans come down
+DOWN_STEP = float(os.environ.get('LOAD_FANS_DOWN_STEP', '4'))  # percent a second on the way down
+BOARD_FULL_AT = 90
+COOL_C, HOT_C = 60, 85                                      # what temperature alone asks for: floor at 60 C, full at 85 C
+
+
+def load_of(util, power_w, limit_w):
+    """The load in percent: utilisation, or power against the limit, whichever is higher. Pure."""
+    by_power = 100.0 * power_w / limit_w if limit_w and limit_w > 0 else 0.0
+    return max(0.0, min(100.0, max(float(util), by_power)))
+
+
+def by_temperature(temp_c):
+    """What the temperature alone asks for. Pure."""
+    if temp_c >= HOT_C: return 100.0
+    if temp_c <= COOL_C: return float(FLOOR)
+    return FLOOR + (100.0 - FLOOR) * (temp_c - COOL_C) / (HOT_C - COOL_C)
+
+
+def want_of(load, temp_c):
+    """The fan percent this second's readings ask for. Pure."""
+    return max(float(FLOOR), load, by_temperature(temp_c))
+
+
+def step(current, want, lower_for_s, dt=1.0):
+    """The next fan percent: up at once; down only after HOLD_S of lower load, then DOWN_STEP a second. Pure.
+    Returns (next, lower_for_s)."""
+    if current is None or want >= current: return want, 0.0
+    lower_for_s += dt
+    if lower_for_s < HOLD_S: return current, lower_for_s
+    return max(want, current - DOWN_STEP * dt), lower_for_s
+
+
+def plan(lines):
+    current, lower = None, 0.0
+    for line in lines:
+        parts = line.split()
+        if len(parts) != 4: continue
+        util, power, limit, temp = (float(p) for p in parts)
+        current, lower = step(current, want_of(load_of(util, power, limit), temp), lower)
+        print(round(current))
+
+
+# ── the card (NVML) ─────────────────────────────────────────────────────────
+class Util(ctypes.Structure):
+    _fields_ = [('gpu', ctypes.c_uint), ('memory', ctypes.c_uint)]
+
+nvml = None
+def ok(rc, what):
+    if rc != 0: raise RuntimeError(f'{what}: NVML error {rc}')
+
+def handles():
+    global nvml
+    if nvml is None:
+        nvml = ctypes.CDLL('libnvidia-ml.so.1')
+        ok(nvml.nvmlInit_v2(), 'init')
+    count = ctypes.c_uint(); ok(nvml.nvmlDeviceGetCount_v2(ctypes.byref(count)), 'count')
+    out = []
+    for i in range(count.value):
+        h = ctypes.c_void_p(); ok(nvml.nvmlDeviceGetHandleByIndex_v2(i, ctypes.byref(h)), 'handle')
+        fans = ctypes.c_uint(); ok(nvml.nvmlDeviceGetNumFans(h, ctypes.byref(fans)), 'fans')
+        out.append((i, h, fans.value))
+    return out
+
+def read_card(h):
+    util = Util(); ok(nvml.nvmlDeviceGetUtilizationRates(h, ctypes.byref(util)), 'utilisation')
+    temp = ctypes.c_uint(); ok(nvml.nvmlDeviceGetTemperature(h, 0, ctypes.byref(temp)), 'temperature')
+    power = ctypes.c_uint(); limit = ctypes.c_uint()
+    # A card that will not say its power is judged by utilisation alone.
+    watts = power.value / 1000.0 if nvml.nvmlDeviceGetPowerUsage(h, ctypes.byref(power)) == 0 else 0.0
+    cap = limit.value / 1000.0 if nvml.nvmlDeviceGetPowerManagementLimit(h, ctypes.byref(limit)) == 0 else 0.0
+    return util.gpu, watts, cap, temp.value
+
+def fan_speeds(h, fans):
+    out = []
+    for f in range(fans):
+        s = ctypes.c_uint(); nvml.nvmlDeviceGetFanSpeed_v2(h, f, ctypes.byref(s)); out.append(s.value)
+    return out
+
+def set_card(h, fans, percent):
+    for f in range(fans):
+        ok(nvml.nvmlDeviceSetFanSpeed_v2(h, f, int(round(percent))) if percent is not None else nvml.nvmlDeviceSetDefaultFanSpeed_v2(h, f), 'set fan')
+
+
+# ── the motherboard's headers (nct67xx): full or the board's own curve, never slowed ───────────
+BOARD_SAVED = {}
+
+def board_headers():
+    out = []
+    for h in sorted(os.listdir('/sys/class/hwmon')):
+        base = f'/sys/class/hwmon/{h}'
+        try: name = open(f'{base}/name').read().strip()
+        except OSError: continue
+        if name.startswith('nct'):
+            out += [f'{base}/{f}' for f in sorted(os.listdir(base)) if f.startswith('pwm') and f[3:].isdigit()]
+    return out
+
+def board_full(full):
+    for pwm in board_headers():
+        try:
+            if full:
+                BOARD_SAVED.setdefault(pwm, (open(f'{pwm}_enable').read().strip(), open(pwm).read().strip()))
+                open(f'{pwm}_enable', 'w').write('1')
+                open(pwm, 'w').write('255')
+            elif pwm in BOARD_SAVED:
+                mode, duty = BOARD_SAVED.pop(pwm)
+                if mode == '1': open(pwm, 'w').write(duty)
+                open(f'{pwm}_enable', 'w').write(mode)
+            elif open(f'{pwm}_enable').read().strip() in ('0', '1'):
+                # Left in manual by an earlier run (its memory lost): back to the board's curve.
+                open(f'{pwm}_enable', 'w').write('5')
+        except OSError as error:
+            say(f'board header {pwm}: {error}')
+
+
+def say(words): print(f'{time.strftime("%H:%M:%S")} {words}', flush=True)
+
+def release():
+    """Every fan back to its own automatic curve. Never raises."""
+    try:
+        for _, h, fans in handles(): set_card(h, fans, None)
+    except Exception as error: say(f'the card\'s fans could not be released: {error}')
+    board_full(False)
+
+def status():
+    for i, h, fans in handles():
+        util, watts, cap, temp = read_card(h)
+        load = load_of(util, watts, cap)
+        print(f'gpu{i}: load {load:.0f}% (utilisation {util}%, {watts:.0f} of {cap:.0f} W)  {temp} C  fans {fan_speeds(h, fans)}%  — this service asks for {want_of(load, temp):.0f}%')
+    for pwm in board_headers():
+        print(f'{os.path.basename(pwm)}: duty {open(pwm).read().strip()}/255 mode {open(pwm + "_enable").read().strip()} (1 manual, 5 board curve)')
+    print('bench running: everything at full' if os.path.exists(LOCK) else 'no bench running: the fans follow the load')
+
+def run():
+    signal.signal(signal.SIGTERM, lambda *_: (release(), sys.exit(0)))
+    signal.signal(signal.SIGINT, lambda *_: (release(), sys.exit(0)))
+    current, lower, set_to, board, last_said, failing = {}, {}, {}, None, 0.0, False
+    last_bench = 0.0
+    while True:
+        try:
+            if os.path.exists(LOCK): last_bench = time.time()
+            bench = time.time() - last_bench < 120  # between a set's arms the lock is briefly free
+            peak = 0.0
+            for i, h, fans in handles():
+                util, watts, cap, temp = read_card(h)
+                load = load_of(util, watts, cap)
+                peak = max(peak, load)
+                want = 100.0 if bench else want_of(load, temp)
+                current[i], lower[i] = step(current.get(i), want, lower.get(i, 0.0))
+                # The card is only told when the answer moved by a whole step: no chatter on the bus.
+                if set_to.get(i) is None or abs(current[i] - set_to[i]) >= 2 or (current[i] >= 100 > set_to[i]):
+                    set_card(h, fans, current[i]); set_to[i] = current[i]
+                if time.time() - last_said >= 60:
+                    say(f'gpu{i}: load {load:.0f}%  {temp} C  fans {set_to[i]:.0f}%{" (bench: full)" if bench else ""}')
+            if time.time() - last_said >= 60: last_said = time.time()
+            full = bench or peak >= BOARD_FULL_AT
+            if full != board:
+                # Down again only once the card's own fans have come down from full (the same patience).
+                if full or all(v < BOARD_FULL_AT for v in current.values()): board_full(full); board = full
+            failing = False
+        except Exception as error:
+            # A card that cannot be read is never left on a fan speed this service chose.
+            if not failing: say(f'fan control failed, every fan back to automatic: {error}')
+            failing = True
+            release(); current.clear(); lower.clear(); set_to.clear(); board = None
+            time.sleep(10)
+        time.sleep(1)
+
+
+if __name__ == '__main__':
+    if '--plan' in sys.argv: plan(sys.stdin); sys.exit(0)
+    if '--status' in sys.argv: status(); sys.exit(0)
+    if '--release' in sys.argv: release(); sys.exit(0)
+    run()

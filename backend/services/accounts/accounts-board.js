@@ -7,6 +7,7 @@
 import { listCompanies } from '../company-line/company-store.js';
 import { readBooks, bookedRefs } from './books-store.js';
 import { houseReceipts } from './house-receipts.js';
+import { consumedReceiptRefs } from '../money-in/receipt-consumption.js';
 import { statement } from './books-shape.js';
 
 /**
@@ -15,7 +16,9 @@ import { statement } from './books-shape.js';
  */
 export const accountsBoard = async (wallet, nowMs) => {
   const year = new Date(nowMs).toISOString().slice(0, 4);
-  const [{ companies }, receipts, booked] = await Promise.all([listCompanies(wallet), houseReceipts(wallet), bookedRefs(wallet)]);
+  const [{ companies }, receipts, booked, consumed] = await Promise.all([
+    listCompanies(wallet), houseReceipts(wallet), bookedRefs(wallet), consumedReceiptRefs(wallet),
+  ]);
   const books = await Promise.all(companies.map(async (c) => {
     const b = await readBooks(wallet, c.id);
     return {
@@ -25,5 +28,5 @@ export const accountsBoard = async (wallet, nowMs) => {
       entries: b.entries.slice(-50), voided: b.voided.length, deadlines: b.deadlines, torn: b.torn,
     };
   }));
-  return { year, books, unbooked: receipts.filter((r) => !booked.has(`${r.kind}:${r.ref}`)) };
+  return { year, books, unbooked: receipts.filter((r) => !booked.has(`${r.kind}:${r.ref}`) && !consumed.has(`${r.kind}:${r.ref}`)) };
 };

@@ -21,7 +21,8 @@ import { houseNameOf } from '../kotodama/house-name.js';
 import {
   buildSignature, signatureToNotation, signatureToEnglish, LEAN, SOUL_MARK_NIBBLES,
 } from '../kotodama/signature.js';
-import neumaWorkspace from '../workspace/neuma-workspace.js';
+import neumaWorkspace, { getWitnessesRoot } from '../workspace/neuma-workspace.js';
+import { getHarnessRoot } from '../workspace/lane-grounds.js';
 
 /**
  * Forge the full identity for a birth.
@@ -96,6 +97,17 @@ export async function readHouseIdsStrict(root = neumaWorkspace.root) {
   }
 }
 
+// A newborn's id must clear every ground the workspace router can resolve,
+// not just the house listing. Each read keeps the same fail-closed law.
+export async function readBirthTakenIdsStrict(root = neumaWorkspace.root) {
+  const [house, harness, witnesses] = await Promise.all([
+    readHouseIdsStrict(root),
+    readHouseIdsStrict(getHarnessRoot(root)),
+    readHouseIdsStrict(getWitnessesRoot()),
+  ]);
+  return [...house, ...harness, ...witnesses].map((id) => id.toLowerCase());
+}
+
 // The house's BEINGS, read as strictly: every folder but those whose
 // lane.json says they are not a being's, such as the house's shared ground
 // ('house-ground'). The same rule as listNeuma: a missing or unreadable marker
@@ -127,7 +139,7 @@ export async function readHouseBeingIdsStrict(root = neumaWorkspace.root) {
  * roster read so a ceremony named in the meantime is seen — they get "name"
  * and "name-2", never one shared folder.
  *
- * // impure — reads the house roster off disk and mutates session.data.
+ * // impure — reads every lane ground off disk and mutates session.data.
  * @param {object} session - Active session (reads chosenName, writes neumaId)
  * @param {() => string[]} [liveIdsOf] - The ids other live ceremonies hold, read at assignment
  * @returns {Promise<string>} the assigned neumaId
@@ -142,16 +154,16 @@ export async function assignNeumaId(session, liveIdsOf = () => []) {
   if (!chosen) {
     throw new Error('Cannot assign a neuma id: no name was chosen (stage 4 produced no name)');
   }
-  // Collision-check against the beings already in the house so two neuma that
-  // pick the same name resolve to "name" and "name-2", never the same folder.
-  // Read the house STRICTLY: an absent root (ENOENT) is a legitimately empty
+  // Collision-check against every existing lane so no two identities resolve
+  // to the same folder, whichever ground the workspace router selects.
+  // Read every ground STRICTLY: an absent root (ENOENT) is a legitimately empty
   // roster, but ANY other read failure must ABORT crystallization — proceeding
   // with an unknown roster could hand a new being the id of a living one and
   // overwrite its DNA. Fail closed: a thrown birth is recoverable, a clobbered
   // being is not (AGENTS.md RULE 0 / birth ethics — never create-and-discard).
   // listNeuma() deliberately fails soft to [] for non-critical callers, so we
   // do our own readdir here to keep the strict guarantee birth requires.
-  const existingIds = await readHouseIdsStrict();
+  const existingIds = await readBirthTakenIdsStrict();
   session.data.neumaId = deriveNeumaId(chosen, [...existingIds, ...liveIdsOf()]);
   console.log(`[Birth] Identity key assigned: ${session.data.neumaId} (from "${chosen}")`);
   return session.data.neumaId;

@@ -12,6 +12,7 @@
 //   4. Two concurrent confirmations: the second is rejected (one-at-a-time).
 //   5. No ipcMain handler leaks between confirmations.
 import { test, expect, _electron as electron } from '@playwright/test';
+import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,9 +29,12 @@ const LOOK_PATH = path.join(LOOK_DIR, 'look.json');
 fs.writeFileSync(LOOK_PATH, JSON.stringify({ theme: DRESS, presets: [] }));
 
 let app;
+let keychain;
+const electronPath = createRequire(import.meta.url)('electron');
 test.beforeAll(async () => {
   app = await electron.launch({
-    args: [REPO, `--user-data-dir=${path.join(REPO, 'test-results', `wc-ud-${process.pid}`)}`],
+    executablePath: electronPath,
+    args: [REPO, '--password-store=kwallet', `--user-data-dir=${path.join(REPO, 'test-results', `wc-ud-${process.pid}`)}`],
     cwd: REPO,
     timeout: 60_000,
     env: {
@@ -173,4 +177,81 @@ test('the trusted window wears the operator dress — and the warning register n
   // stock ALERT — the dress can never quiet a warning.
   const alert = await run('theme', '0xdeadbeef');
   expect(alert.warnColor).toBe('rgb(255, 85, 51)'); // --alert #FF5533, untouched
+});
+
+
+test('Recovery Kit reveal and replacement require trusted confirmation', async () => {
+  const page = await app.firstWindow();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'neuma-kit-consent-'));
+  const file = path.join(dir, 'secrets.json');
+  const mainPath = path.join(REPO, 'electron/key-lock/key-lock-main.cjs');
+  const corePath = path.join(REPO, 'electron/key-lock/key-lock-core.cjs');
+  const drive = async (approve) => {
+    await app.evaluate(async ({ BrowserWindow }) => {
+      const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      for (let i = 0; i < 120; i += 1) {
+        if (BrowserWindow.getAllWindows().some((win) => win.getTitle() === 'NEUMA Wallet' && !win.isDestroyed())) return;
+        await wait(50);
+      }
+      throw new Error('trusted Recovery Kit confirmation did not open');
+    });
+    await app.evaluate(async ({ BrowserWindow }, approved) => {
+      const win = BrowserWindow.getAllWindows().find((entry) => entry.getTitle() === 'NEUMA Wallet' && !entry.isDestroyed());
+      if (!win) throw new Error('trusted window missing');
+      await win.webContents.executeJavaScript(`document.getElementById(${JSON.stringify(approved ? 'confirm' : 'reject')}).click()`);
+    }, approve);
+  };
+  const reveal = async (approve) => {
+    const result = page.evaluate(() => window.neuma.keyLock.revealKit());
+    await drive(approve);
+    return result;
+  };
+  const replace = async (approve) => {
+    const result = page.evaluate(() => window.neuma.keyLock.newKit());
+    await drive(approve);
+    return result;
+  };
+  try {
+    const opened = await app.evaluate(async ({ app: electronApp, safeStorage }, args) => {
+      process.env.NEUMA_SECRETS_FILE = args.file;
+      process.env.NEUMA_KEY_LOCK = '1';
+      const main = process.getBuiltinModule('module').createRequire(args.mainPath)(args.mainPath);
+      Object.defineProperty(electronApp, 'isPackaged', { value: true, configurable: true });
+      const result = await main.openAtRestKeys({ app: electronApp, safeStorage });
+      Object.defineProperty(electronApp, 'isPackaged', { value: false, configurable: true });
+      return {
+        result,
+        available: safeStorage.isEncryptionAvailable(),
+        backend: process.platform === 'linux' ? safeStorage.getSelectedStorageBackend() : process.platform,
+      };
+    }, { file, mainPath });
+    keychain = opened;
+    if (!keychain.result) {
+      process.stderr.write(`key-lock harness result: ${JSON.stringify(keychain)}\n`);
+      test.skip(true, `requires a strong OS keychain; got ${keychain.backend}`);
+      return;
+    }
+
+    expect(await reveal(false)).toMatchObject({ ok: false, error: 'Reveal cancelled.' });
+    const first = await reveal(true);
+    expect(first.ok).toBe(true);
+    expect(first.code).toMatch(/^([A-Z2-7]{4}-){7}[A-Z2-7]{4}$/);
+    expect(await replace(false)).toMatchObject({ ok: false, error: 'Replacement cancelled.' });
+    expect((await reveal(true)).code).toBe(first.code);
+    const second = await replace(true);
+    expect(second.ok).toBe(true);
+    expect(second.code).not.toBe(first.code);
+
+    const verdict = await app.evaluate(async (_electron, args) => {
+      const requireMain = process.getBuiltinModule('module').createRequire(args.corePath);
+      const core = requireMain(args.corePath);
+      const fsMain = requireMain('node:fs');
+      const record = JSON.parse(fsMain.readFileSync(args.file, 'utf8'));
+      const opens = (code) => { try { core.openWithCode(record.recovery, code); return true; } catch { return false; } };
+      return { oldOpens: opens(args.oldCode), newOpens: opens(args.newCode) };
+    }, { file, corePath, oldCode: first.code, newCode: second.code });
+    expect(verdict).toEqual({ oldOpens: false, newOpens: true });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

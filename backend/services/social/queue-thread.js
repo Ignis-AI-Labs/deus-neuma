@@ -9,6 +9,7 @@
  * lock and saves), or a refusal that changes nothing.
  */
 import { queuedSecretRefusal } from './queue-rules.js';
+import { seenRefusal } from './approval-seal.js';
 
 const DEAD = Object.freeze(['rejected', 'withdrawn', 'failed']);
 
@@ -39,15 +40,16 @@ export const threadMembers = (entries, rootId) => {
 
 /**
  * pure — approve every draft of the thread `id` belongs to, all or nothing.
- * Every draft must have been SEEN as it stands (textsSeen[id] === its text) —
- * the same guard a reply's approval carries — and pass the outbound-secret
+ * Every draft must have been SEEN as it stands — its words (textsSeen[id]) and
+ * the seals of its media (mediaSeen[id]), as one post's approval is bound
+ * (approval-seal.js seenRefusal, audit P6-124) — and pass the outbound-secret
  * check; a thread whose root can never publish is refused.
  * @param {Array<object>} entries - the whole store (mutated on success)
  * @param {string} id - any post of the thread
- * @param {{decidedBy: string, textsSeen: Record<string, string>, now: Date}} decision
+ * @param {{decidedBy: string, textsSeen: Record<string, string>, mediaSeen?: Record<string, Array<?string>>, now: Date}} decision
  * @returns {{approved: Array<object>} | {error: string}}
  */
-export const approveThreadIn = (entries, id, { decidedBy, textsSeen = {}, now }) => {
+export const approveThreadIn = (entries, id, { decidedBy, textsSeen = {}, mediaSeen = {}, now }) => {
   const root = threadRootOf(entries, id);
   if (!root) return { error: 'no such queued post' };
   if (root.kind === 'reply') return { error: 'a reply is no thread — it is decided through its own approval' };
@@ -60,6 +62,8 @@ export const approveThreadIn = (entries, id, { decidedBy, textsSeen = {}, now })
   for (const [n, e] of members.entries()) {
     if (e.status !== 'draft') continue;
     if (textsSeen[e.id] !== e.text) return { error: `post ${n + 1} of the thread changed since you read it — nothing was approved; read it again` };
+    const moved = seenRefusal(e, { textSeen: textsSeen[e.id], mediaSeen: mediaSeen?.[e.id] });
+    if (moved) return { error: `post ${n + 1} of the thread: ${moved} — nothing was approved` };
     const secret = queuedSecretRefusal(e, 'nothing in the thread was approved');
     if (secret) return { error: `post ${n + 1}: ${secret}` };
   }

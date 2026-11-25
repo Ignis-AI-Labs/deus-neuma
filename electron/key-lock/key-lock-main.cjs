@@ -6,15 +6,28 @@
 // would otherwise disagree with the lock), and a desktop with no real keychain
 // keeps the plain file: both say so in Settings › Security rather than pretend.
 
+const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { dialog } = require('electron');
 const lock = require('./key-lock.cjs');
+const { boundedRecovery } = require('./recovery-attempts.cjs');
 const { askRecoveryCode } = require('./unlock-window.cjs');
+const { secretGate } = require('../wallet/trusted-gate.cjs');
+const { kitDoors } = require('./kit-doors.cjs');
 
 let opened = null; // { keys, backend, kitPending } once unlocked
 const backends = new Set();
 
 const secretsFile = () => process.env.NEUMA_SECRETS_FILE || path.join(os.homedir(), '.neuma', 'secrets.json');
+
+// impure (fs) — has a master key already sealed data on this install? The marks are the ones
+// core/workspace/master-check.js names; the data root is the one backend-spawn.cjs hands the backend.
+const holdsSealedData = () => {
+  const dataRoot = process.env.NEUMA_DATA_ROOT || path.join(os.homedir(), '.neuma', 'data');
+  return ['master-check.json', 'retired-masters.json', path.join('settings', 'provider-credentials.json')]
+    .some((mark) => fs.existsSync(path.join(dataRoot, mark)));
+};
 
 /** impure — Electron safeStorage as the lock's seal; `backend()` names the keychain really in use. */
 const safeStorageSeal = (safeStorage) => ({
@@ -35,13 +48,17 @@ const openAtRestKeys = async ({ app, safeStorage }) => {
   if (!app.isPackaged || process.env.NEUMA_KEY_LOCK === '0') return false;
   const seal = safeStorageSeal(safeStorage);
   const file = secretsFile();
-  let result = lock.openKeyLock({ file, seal });
+  let result = lock.openKeyLock({ file, seal, holdsData: holdsSealedData });
+  if (result.state === 'key-missing') {
+    dialog.showErrorBox('Neuma cannot find its key', `This computer already holds your Neuma data, but the key that opens it is missing (${file} and its copy are gone).\n\nPut the key file back from a backup, or restore the key from your recovery file. Neuma will not make a new key over your data.`);
+    return null;
+  }
   if (result.state === 'no-keychain') {
     console.warn(`[NEUMA] no OS keychain (${result.backend}) — the at-rest key stays in ${file}`);
     return false;
   }
   if (result.state === 'needs-recovery') {
-    result = await askRecoveryCode((code) => lock.unlockWithCode({ file, seal, code }));
+    result = await askRecoveryCode(boundedRecovery((code) => lock.unlockWithCode({ file, seal, code })));
     if (!result) return null; // the person chose to quit
   }
   opened = { keys: result.keys, backend: result.backend, kitPending: result.kitPending };
@@ -73,7 +90,7 @@ const kitSaved = () => {
  * top frame only (isDesk — desk-links.cjs fromDesk): revealKit hands out the code that opens every
  * key (re-audit 2026-10-29, M-07 residual).
  */
-const registerKeyLockIpc = ({ ipcMain, safeStorage, isDesk }) => {
+const registerKeyLockIpc = ({ ipcMain, safeStorage, isDesk, getWindow }) => {
   const seal = () => safeStorageSeal(safeStorage);
   const handle = (channel, fn) => ipcMain.handle(channel, (event, ...args) => {
     if (!isDesk(event)) throw new Error(`${channel} refused: not the desk`);
@@ -84,13 +101,14 @@ const registerKeyLockIpc = ({ ipcMain, safeStorage, isDesk }) => {
     try { return { ok: true, ...(await fn()) }; } catch (err) { return { ok: false, error: err.message }; }
   };
   handle('keyLock:status', async () => ({ active: lockActive(), backend: opened?.backend ?? null, kitPending: Boolean(opened?.kitPending) }));
-  handle('keyLock:revealKit', guarded(async () => ({ code: lock.revealKit({ file: secretsFile(), seal: seal() }) })));
-  handle('keyLock:confirmKit', guarded(async () => { lock.confirmKit({ file: secretsFile() }); kitSaved(); return {}; }));
-  handle('keyLock:newKit', guarded(async () => {
-    lock.replaceKit({ file: secretsFile(), seal: seal(), keys: opened.keys });
-    opened = { ...opened, kitPending: true };
-    return { code: lock.revealKit({ file: secretsFile(), seal: seal() }) };
-  }));
+  // The kit is shown in the trusted window and never returned to the page (kit-doors.cjs).
+  const doors = kitDoors({
+    lock, gate: secretGate(getWindow), file: secretsFile, seal, keys: () => opened.keys,
+    onSaved: kitSaved, onReplaced: () => { opened = { ...opened, kitPending: true }; },
+  });
+  handle('keyLock:revealKit', guarded(doors.revealKit));
+  handle('keyLock:confirmKit', guarded(doors.confirmKit));
+  handle('keyLock:newKit', guarded(doors.newKit));
 };
 
 module.exports = { attachBackend, lockActive, openAtRestKeys, registerKeyLockIpc };

@@ -4,8 +4,8 @@
  * that is about to load them (better-sqlite3 and node-pty).
  *
  * WHY: a native addon is compiled for one Node ABI. `npm install` builds for
- * system Node, but the Electron app spawns the backend under Electron's bundled
- * Node (ELECTRON_RUN_AS_NODE) — a different ABI. A binary built for one cannot
+ * system Node, but the Electron app starts the backend through utilityProcess,
+ * using Electron's bundled Node ABI without ELECTRON_RUN_AS_NODE — a different ABI. A binary built for one cannot
  * load in the other, and the two ABIs cannot coexist in a single node_modules. So
  * instead of asking anyone to remember to rebuild, every entry point runs this
  * first: `node scripts/ensure-native-abi.mjs <node|electron>`.

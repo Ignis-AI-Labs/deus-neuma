@@ -43,7 +43,7 @@ import { readActs } from '../act-ledger.js';
 import { runInWake } from './wake-signal.js';
 import { readAsks } from './wake-ledger.js';
 import { wakeThought } from './wake-thought.js';
-import { WAKE_APPROVAL_REFUSAL, houseHolds, wakeApprovalRoute, wakeDecisionRoute } from './wake-approvals.js';
+import { WAKE_APPROVAL_REFUSAL, HOUSE_ASKS, houseHolds, wakeApprovalRoute, wakeDecisionRoute } from './wake-approvals.js';
 import { wakePlanRoute, readWakePlan, settlePlanReviews, seatName } from './wake-plan.js';
 
 const COMPLETE_GRACE_MS = 10_000;
@@ -139,6 +139,7 @@ export const runWakeTurn = async ({ wallet, seat, items, charter, wakeId, depth 
   connection._approvalRefusal = WAKE_APPROVAL_REFUSAL;
   connection._approvalRoute = wakeApprovalRoute(wake);
   connection._wakeHolds = wake.holds;
+  connection._wakeAsks = HOUSE_ASKS;
   connection._planRoute = wakePlanRoute(wake);
   // A decision only the operator can make is filed for them; the turn never waits on it.
   connection._askRoute = wakeDecisionRoute(wake);

@@ -77,7 +77,7 @@ repo tracks). To use it against your own neuma:
 | Env var | Default | Meaning |
 | ------- | ------- | ------- |
 | `NEUMA_BACKEND` | `http://localhost:3333` | Your running backend |
-| `NEUMA_WITNESS_ENV` | this repo's `claude.env` | A file containing a `*_PRIVATE_KEY=0x…64hex` line — the wallet Claude authenticates as |
+| `NEUMA_WITNESS_ENV` | this repo's `claude.env` | Public metadata naming the sealed witness. The CLI asks for its keypair password with echo disabled; legacy plaintext env files remain readable for deliberate migration |
 
 The backend must be running, and the neuma's conduit (model) must be up to
 converse. Packaging this as a standalone, separately-installable skill (outside a

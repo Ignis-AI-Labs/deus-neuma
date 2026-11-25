@@ -33,6 +33,7 @@ import { getWitnessesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-
 import { getHarnessRoot } from '../../core/workspace/lane-grounds.js';
 import { isOtherHouse } from './explorer-walls.js';
 import { withReadGrants } from './fs-read-clearance.js';
+import { passWriteLimit } from './write-limit.js';
 
 const log = createLogger('ToolSandbox');
 
@@ -65,7 +66,7 @@ export {
   deniedPatternsFor, matchesDeniedPattern, laneStateWriteReason, moveDestination, collectPathArgs,
   normalizeToolArgs, checkPathAccess, realpathOfNearestExisting,
   resolveGrantDir, isWithinRoots, findUngrantedReadPaths,
-  findUngrantedWritePaths, writeGrantScope,
+  findUngrantedWritePaths,
 } from './sandbox-path-policy.js';
 
 // impure (reads the current roots) — every ground that holds lanes, wherever
@@ -75,29 +76,7 @@ const laneGrounds = () => {
   return [house, getWitnessesRoot(), getHarnessRoot(house)];
 };
 
-const MAX_WRITE_OPS_PER_SESSION = 10;
 const MAX_READ_SIZE_BYTES = 1024 * 1024; // 1MB
-
-/**
- * Track and enforce write operation budget per session.
- * @param {Object} connection - Portal connection object (tracks _writeOps counter)
- * @returns {{ allowed: boolean, remaining: number }}
- */
-export const checkWriteBudget = (connection) => {
-  const count = connection._writeOps || 0;
-  if (count >= MAX_WRITE_OPS_PER_SESSION) {
-    return { allowed: false, remaining: 0 };
-  }
-  return { allowed: true, remaining: MAX_WRITE_OPS_PER_SESSION - count };
-};
-
-/**
- * Increment the write operation counter on a connection.
- * @param {Object} connection - Portal connection object
- */
-export const recordWrite = (connection) => {
-  connection._writeOps = (connection._writeOps || 0) + 1;
-};
 
 /**
  * Determine if a tool call is a write operation.
@@ -109,18 +88,19 @@ export const isWriteOperation = (toolName) =>
 
 /**
  * The SENSITIVE-GRANT DOOR (ruling, 2026-08-18): a denied-pattern refusal is a
- * wall only while no grant covers it. Returns null when the lane's grant
- * covers the path for the direction (read for reads, edit for writes — write
+ * wall only while no grant covers it inside an allowed root. Returns null when
+ * the lane's grant covers the contained path for the direction (read for reads, edit for writes — write
  * tools require edit on every path they touch, source included, because a
  * move is destructive to its source), else the refusal reason — with the
  * recourse named when the pattern is requestable at all. The never-requestable
  * set (another being's state, .git, keys, owner.json, the policy file) stays
  * a wall no grant can lift. Pure over the connection's grant set.
  */
-const sensitiveDeniedReason = (connection, isWrite, filePath, pathCheck) => {
+const sensitiveDeniedReason = (connection, isWrite, filePath, pathCheck, roots) => {
   const tier = isWrite ? 'edit' : 'read';
   const recourse = pathCheck.deniedPattern && requestablePattern(pathCheck.deniedPattern);
-  if (recourse && sensitiveGrantCovers(connection._sensitiveGrants, tier, filePath)) return null;
+  if (recourse && isWithinRoots(filePath, roots)
+    && sensitiveGrantCovers(connection._sensitiveGrants, tier, filePath)) return null;
   return pathCheck.reason + (recourse ? ' — request access with request_file_access' : '');
 };
 
@@ -191,7 +171,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
     // Arg drift heals BEFORE confinement, so the checks judge the path the
     // call will actually run with — and the MCP schema never refuses a call
     // whose intent was legible (search_files with no path, live 2026-07-23).
-    args = normalizeToolArgs(toolName, args, isWrite ? null : (roots[0] ?? null));
+    args = normalizeToolArgs(toolName, args, isWrite ? null : (roots[0] ?? null), isWrite ? null : roots);
     const pathArgs = collectPathArgs(args);
     const filesIntent = isWrite && Boolean(intentsDir) && pathArgs.length > 0
       && pathArgs.every((p) => isWithinRoots(p, [intentsDir]));
@@ -237,7 +217,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       await guardOtherHouse(p, workspaceRoot);
       const pathCheck = checkPathAccess(p, roots, { requireRoot: isWrite });
       if (!pathCheck.allowed) {
-        const reason = sensitiveDeniedReason(connection, isWrite, p, pathCheck);
+        const reason = sensitiveDeniedReason(connection, isWrite, p, pathCheck, roots);
         if (reason === null) {
           await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'granted', `sensitive ${isWrite ? 'edit' : 'read'} grant honored`);
           continue;
@@ -258,9 +238,10 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       await guardOtherHouse(real, realLane);
       if (real === path.resolve(p)) continue; // no link in the chain — lexical verdict stands
       const realRoots = await Promise.all(roots.map(realpathOfNearestExisting));
-      const realCheck = checkPathAccess(real, [...new Set([...roots, ...realRoots])], { requireRoot: isWrite });
+      const grantedRoots = [...new Set([...roots, ...realRoots])];
+      const realCheck = checkPathAccess(real, grantedRoots, { requireRoot: isWrite });
       if (!realCheck.allowed) {
-        const granted = sensitiveDeniedReason(connection, isWrite, real, realCheck) === null;
+        const granted = sensitiveDeniedReason(connection, isWrite, real, realCheck, grantedRoots) === null;
         const reason = granted ? null : `Symlink escape: ${realCheck.reason}`;
         if (granted) {
           await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'granted', 'sensitive grant honored (realpath)');
@@ -311,12 +292,12 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       }
     }
 
-    // 2. Check write budget — only the being's OWN lane is metered (10/session);
+    // 2. Check write budget — only the being's OWN lane is metered (the WRITE LIMIT, write-limit.js: the operator's rule, ten a message by default);
     // writes fully inside operator-granted folders or the focus ground are
     // governed by that consent, not the cap.
     if (isWrite && teamWs) {
       // Team-workspace writes are governed by the BYTE budget, not the
-      // 10-op session cap — a team assembling a real artifact writes far
+      // write limit — a team assembling a real artifact writes far
       // more than ten times, and the confined root + byte meter are the
       // guardrails there. Refusals carry the honest numbers (SHINKEI).
       const bytes = writePayloadBytes(args);
@@ -327,31 +308,30 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       }
       teamWs.usedBytes = (teamWs.usedBytes || 0) + bytes;
     } else if (isWrite && filesIntent) {
-      // An intent is governed by the act it files, never the 10-op cap (Design note, 2026-10-10: a being
+      // An intent is governed by the act it files, never the write limit (Design note, 2026-10-10: a being
       // running its own workflow files many) — the sweep's gate is the limit.
     } else if (isWrite) {
       // The bypass is ONLY for a write that lands entirely OUTSIDE the being's
       // own lane, in a granted folder. If a granted folder is an ancestor of the
       // lane, own-lane writes would otherwise satisfy the bypass — so exclude
-      // any write touching the lane: the 10-cap stays the guardrail there.
+      // any write touching the lane: the write limit stays the guardrail there.
       const touchesLane = workspaceRoot ? pathArgs.some((p) => isWithinRoots(p, [workspaceRoot])) : false;
       // The consented arenas: a folder the operator explicitly granted, and the
       // FOCUS GROUND (the folder standing open in their Explorer). Consent to
-      // the arena is the governor there, not a 10-op counter — a session doing
+      // the arena is the governor there, not a counter — a session doing
       // real work in the operator's repository writes far more than ten times,
       // and a cap that stops it on the eleventh edit is friction, not safety.
-      // The cap stays exactly where it was meant to be: the being authoring
-      // inside its OWN lane.
+      // The limit stays exactly where it was meant to be: the being authoring
+      // inside its OWN lane (and carrying files out of it).
       const consentedRoots = [...grantedWriteRoots, ...focusRoots];
       const consentedWrite = !touchesLane && consentedRoots.length > 0
         && pathArgs.every((p) => isWithinRoots(p, consentedRoots));
       if (!consentedWrite) {
-        const budget = checkWriteBudget(connection);
-        if (!budget.allowed) {
-          await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', 'Write budget exhausted');
-          throw new Error('Write operation limit reached for this session');
+        const limit = await passWriteLimit(connection, { tool: toolName, where: pathArgs.at(-1) });
+        if (!limit.ok) {
+          await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'denied', 'Write limit reached');
+          throw new Error(limit.reason);
         }
-        recordWrite(connection);
       }
     }
 

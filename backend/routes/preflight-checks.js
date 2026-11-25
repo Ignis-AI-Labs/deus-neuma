@@ -2,7 +2,7 @@
  * Pre-flight Checks — the SHINKEI probes behind the launch gate in
  * `preflight-routes.js`. Every row is a real measurement of the actual
  * machine: substrate reachability and liveness, workspace/disk/memory,
- * the ceremony write road, MCP, GPU, and the refinement forge. Pure row
+ * the ceremony write road, MCP, GPU, and the forge (images, video). Pure row
  * construction and the probe adapters live here so the router stays a
  * thin wiring layer.
  */
@@ -15,12 +15,12 @@ import { getActiveModel, getConfig, setConfig as setLlmConfig } from '../service
 import { reachSubstrate } from '../services/substrate-reach.js';
 import { loadProviderChoice, saveProviderChoice } from '../services/provider-choice.js';
 import { pickAutoAdopt, dedupeEndpoints } from '../services/provider-discovery.js';
+import { canonicalLoopbackEndpoint, checkSavedRoutes } from '../services/loopback-route-owner.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { probeProviders } from '../services/substrate-setup.js';
 import { probeLiveness } from '../services/substrate-liveness.js';
 import { mcpService } from '../services/mcp.js';
 import { getWorkspacesRoot } from '../../core/index.js';
-import { trainerReadiness } from '../services/trainer-readiness.js';
 import { probeCeremonyRoad } from '../services/ceremony-road.js';
 import { probeMachine } from '../services/machine-probe.js';
 import { forgeCapacity } from '../services/image-forge/forge-capacity.js';
@@ -87,18 +87,23 @@ export const checkSubstrate = async (adoptedFrom = null, probe = {}) => {
     if (!adoptedFrom && probe.mayAdopt === true) {
       const target = pickAutoAdopt(found, await loadProviderChoice());
       if (target) {
-        const adopted = { provider: target.id, endpoint: target.endpoint, model: target.models[0] };
-        setLlmConfig(adopted);
-        const checked = await checkSubstrate({ name: target.name, endpoint: target.endpoint }, probe);
-        // Remembered only once the adopted server has answered: a choice that
-        // never reached a mind must not outlive this run as the house's mind.
-        if (checked.status === 'pass') {
-          await saveProviderChoice(adopted, { chosenBy: 'auto' });
-          log.info('Substrate auto-adopted — no operator choice existed', {
-            provider: target.id, endpoint: target.endpoint, wasConfigured: config.provider,
-          });
+        const adopted = { provider: target.id, endpoint: canonicalLoopbackEndpoint(target.endpoint), model: target.models[0] };
+        const foreign = await checkSavedRoutes([adopted.endpoint]);
+        if (foreign.length) {
+          log.error('First-run auto-adopt refused a model server owned by another account', { endpoint: adopted.endpoint });
+        } else {
+          setLlmConfig(adopted);
+          const checked = await checkSubstrate({ name: target.name, endpoint: adopted.endpoint }, probe);
+          // Remembered only once the adopted server has answered: a choice that
+          // never reached a mind must not outlive this run as the house's mind.
+          if (checked.status === 'pass') {
+            await saveProviderChoice(adopted, { chosenBy: 'auto' });
+            log.info('Substrate auto-adopted — no operator choice existed', {
+              provider: target.id, endpoint: adopted.endpoint, wasConfigured: config.provider,
+            });
+          }
+          return checked;
         }
-        return checked;
       }
     }
 
@@ -356,36 +361,6 @@ export const checkGpu = async () => {
   if (driver.line) return row('gpu', 'GPU', 'warn', `${gpu} · driver ${driver.have.toFixed(2)}`, `${driver.line} ${driver.link}`);
   return row('gpu', 'GPU', profile.gpu ? 'pass' : 'warn', gpu,
     'Optional — accelerates local models');
-};
-
-// impure — can this rig FORGE, and will it forge at full speed? Never 'fail':
-// a being does not need a trainer to be born, so a missing forge toolchain
-// must not block a ceremony. It must, however, be visible — the alternative is
-// an operator discovering it mid-forge, or never (the linear-attention slow
-// path announces itself in one scrollable log line and otherwise just costs
-// hours). See services/trainer-readiness.js.
-export const checkTrainer = async () => {
-  const r = await trainerReadiness();
-  if (!r.interpreterOk) {
-    return row('trainer', 'Refinement Forge', 'warn',
-      `no trainer interpreter at ${r.python} — births work, refinement cannot run`,
-      'Set NEUMA_REFINEMENT_PYTHON to a venv with scripts/refinement/requirements.txt installed');
-  }
-  if (!r.ready) {
-    return row('trainer', 'Refinement Forge', 'warn',
-      `missing ${r.missing.map((m) => m.pip).join(', ')} — refinement cannot run`,
-      `Install into the trainer venv: ${r.installCommand}`);
-  }
-  if (r.degraded.length) {
-    return row('trainer', 'Refinement Forge', 'warn',
-      `ready, but SLOW on hybrid bases — missing ${r.degraded.map((m) => m.pip).join(', ')}`,
-      `Linear-attention layers fall back to a torch implementation (~3 of every 4 layers on Qwen3.5/3.6-class bases). Install: ${r.installCommand}`);
-  }
-  return row('trainer', 'Refinement Forge', 'pass',
-    `${r.versions.torch ? `torch ${r.versions.torch}` : 'ready'} · fast path available`,
-    r.hfToken
-      ? 'Trainer present with the linear-attention kernels'
-      : 'Trainer ready. For faster, un-rate-limited base downloads (not needed once a base is cached) save a Hugging Face Read token in Settings → API (or set HF_TOKEN) — make one at https://huggingface.co/settings/tokens');
 };
 
 // impure — what this machine can MAKE (images, video) beside the mind, and the

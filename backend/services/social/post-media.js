@@ -10,6 +10,7 @@ import { readMediaFile, ALT_TEXT_MAX, MEDIA_PER_POST_MAX } from './x-media.js';
 import { resolveMediaFile } from './media-source.js';
 import { readVideoHead } from './video-media.js';
 import { ownMediaChannel } from './poster-registry.js';
+import { readXMedia, xMediaMixRefusal } from './x-post-media.js';
 import { mediaLibraryRoot } from '../media-library.js';
 import { focusGroundRoots } from '../focus-ground.js';
 import { laneDirs, resolveImage } from '../image-forge/image-store.js';
@@ -27,7 +28,8 @@ import { laneDirs, resolveImage } from '../image-forge/image-store.js';
  *
  * A channel whose post IS its media (YouTube, TikTok: postsOwnMedia) takes one
  * VIDEO, sniffed by its head, instead of images; a still names that channel's
- * own photo refusal.
+ * own photo refusal. An X post takes up to four stills, or one video on its
+ * own (x-post-media.js).
  *
  * An item names a file by `path`, or by `image`: the id the image forge gave
  * the being for one of its OWN renders (image/generate). The id resolves in
@@ -71,18 +73,21 @@ export const resolvePostMedia = async (connection, rawMedia, { channelId = null 
     ...ownArt,
   ];
   const media = [];
+  const kinds = [];
   for (const item of rawMedia) {
     const resolved = item?.image != null ? await resolveOwnRender(laneId, item.image, ownArt) : await resolveMediaFile(item?.path, roots);
     if (!resolved.ok) return { ok: false, detail: resolved.detail };
     // Sniff now too, so a being learns at STAGE time that its file is not an
     // image (or, for a video channel, not a video) — not hours later when the
     // scheduler refuses to publish.
-    const read = video ? await readVideoHead(resolved.path) : await readMediaFile(resolved.path);
+    const read = video ? await readVideoHead(resolved.path) : channelId === 'x' ? await readXMedia(resolved.path) : await readMediaFile(resolved.path);
     if (!read.ok && video && (await readMediaFile(resolved.path)).ok) return { ok: false, detail: video.photo };
     if (!read.ok) return { ok: false, detail: read.detail };
+    kinds.push(read.kind || 'image');
     media.push({ path: resolved.path, alt: String(item?.alt || '').slice(0, ALT_TEXT_MAX) });
   }
-  return { ok: true, media };
+  const mix = channelId === 'x' ? xMediaMixRefusal(kinds) : null;
+  return mix ? { ok: false, detail: mix } : { ok: true, media };
 };
 
 // impure (disk) — one of this lane's own renders, by the id the forge gave it.

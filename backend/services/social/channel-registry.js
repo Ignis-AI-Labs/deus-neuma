@@ -44,9 +44,11 @@ const field = (key, label, secret, env, fallback) =>
 // shows a CONNECT button for it, never an input.
 const connectField = (key, label, env) => Object.freeze({ ...field(key, label, true, env), connect: true });
 
-// A field of the developer APP (consumer key, OAuth client): stored once per
-// platform per house and shared by every account the app serves — the
-// platforms' own model (one app, many authorized accounts, one shared quota).
+// A field of the developer APP (consumer key, OAuth client). The first account's
+// app is the house app, and an account with no app keys of its own rides it (one
+// app, many authorized accounts: the OAuth platforms). An account pasted with its
+// own app keys uses its own (Design note, 2026-11-11: on X every account has its own
+// developer app — account-shape.js patchAccount).
 const appField = (key, label, secret, env) => Object.freeze({ ...field(key, label, secret, env), app: true });
 
 /** @type {ReadonlyArray<ChannelEntry>} */
@@ -56,8 +58,9 @@ export const CHANNEL_CATALOG = Object.freeze([
     name: 'X (Twitter)',
     maxChars: 280,
     fields: Object.freeze([
-      appField('apiKey', 'API Key', true, 'X_API_KEY'),
-      appField('apiSecret', 'API Key Secret', true, 'X_API_SECRET'),
+      // named as X's developer portal names them now (Consumer Key), with the older name beside it
+      appField('apiKey', 'Consumer Key (API Key)', true, 'X_API_KEY'),
+      appField('apiSecret', 'Consumer Key Secret', true, 'X_API_SECRET'),
       field('accessToken', 'Access Token', true, 'X_ACCESS_TOKEN'),
       field('accessSecret', 'Access Token Secret', true, 'X_ACCESS_SECRET'),
     ]),
@@ -113,12 +116,17 @@ export const CHANNEL_CATALOG = Object.freeze([
     name: 'LinkedIn',
     maxChars: 3000,
     fields: Object.freeze([
-      field('personUrn', 'Person URN (urn:li:person:…)', false, 'LINKEDIN_PERSON_URN'),
-      field('accessToken', 'Access Token', true, 'LINKEDIN_ACCESS_TOKEN'),
+      // CONNECT signs in with the operator's own LinkedIn app (linkedin-connect.js) and sets the three
+      // fields below; an account connected before CONNECT existed keeps working without a client (the two
+      // client fields are `optional`: empty, they are absent and never read as set).
+      Object.freeze({ ...field('clientId', 'LinkedIn App Client ID', false, 'LINKEDIN_CLIENT_ID'), optional: true }),
+      Object.freeze({ ...field('clientSecret', 'LinkedIn App Client Secret', true, 'LINKEDIN_CLIENT_SECRET'), optional: true }),
+      Object.freeze({ ...field('personUrn', 'Person URN (set by CONNECT)', false, 'LINKEDIN_PERSON_URN'), connect: true }),
+      connectField('accessToken', 'Access Token (set by CONNECT)', 'LINKEDIN_ACCESS_TOKEN'),
       // REQUIRED, not optional: LinkedIn issues 60-day access tokens and gates
       // programmatic refresh to partners — the channel cannot be configured
       // without declaring when the token dies, or the lane dies silently.
-      field('tokenExpiresAt', 'Token Expiry (ISO date — the verify script prints it)', false, 'LINKEDIN_TOKEN_EXPIRES_AT'),
+      Object.freeze({ ...field('tokenExpiresAt', 'Token Expiry (set by CONNECT)', false, 'LINKEDIN_TOKEN_EXPIRES_AT'), connect: true }),
     ]),
   }),
   Object.freeze({
@@ -190,6 +198,8 @@ export const resolveChannelCredentials = (channel, storeEntry, env) => {
     const isStored = typeof stored === 'string' && stored.length > 0;
     const isEnv = !isStored && typeof fromEnv === 'string' && fromEnv.length > 0;
     const value = isStored ? stored : isEnv ? fromEnv : f.fallback;
+    // An optional field left empty is simply absent: the credential is whole without it.
+    if ((typeof value !== 'string' || value.length === 0) && f.optional) continue;
     if (typeof value !== 'string' || value.length === 0) return null;
     if (f.secret && isEnv) envSecret = true;
     if (isStored && DESTINATION_KEYS.has(f.key)) storedDestination = true;
@@ -226,6 +236,7 @@ export const maskChannelCredentials = (channel, storeEntry, env) => Object.freez
       source: stored ? 'store' : fromEnv ? 'env' : hasFallback ? 'default' : 'none',
       ...(f.connect ? { connect: true } : {}),
       ...(f.app ? { app: true } : {}),
+      ...(f.optional ? { optional: true } : {}),
     });
   })),
 });

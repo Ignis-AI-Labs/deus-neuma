@@ -20,7 +20,6 @@ export default Object.freeze({
     innerlife: '内心',
     map: '仓库图',
     pdf: 'PDF',
-    projects: '项目',
     refinement: 'NITE',
     security: '安全',
     legal: '法务',
@@ -33,6 +32,7 @@ export default Object.freeze({
     staff: '参谋长',
     houseclock: 'HOUSE 时钟',
     companyline: '公司流程',
+    positions: '职位',
     substrate: '基底',
     teams: '团队',
     terminal: '终端',
@@ -97,7 +97,6 @@ export default Object.freeze({
     routeProviderUnknown: '路由 — {{provider}} — 未知',
     session: '会话 {{clock}}',
     turn: '回合 {{count}}',
-    project: '项目 — {{name}}',
     folder: '文件夹 — {{name}}',
   }),
 
@@ -105,7 +104,6 @@ export default Object.freeze({
 
   stream: Object.freeze({
     newChat: '新聊天',
-    newChatTitleProject: '在 {{project}} 中开始新聊天 — 替换当前这一个；{{tab}} 会并排另开一个',
     newChatTitle: '在此处开始新聊天 — 替换当前这一个；{{tab}} 会并排另开一个',
     council: '议事会',
     councilTitleEnter: '将此窗口切换到议事会 — 多个 neuma，同一个房间',
@@ -127,7 +125,7 @@ export default Object.freeze({
     retryIgnite: '重试点燃',
     igniteTitle: '启动本地基底模型',
     witnessTag: '见证者',
-    urgentTitle: '立即插话 — 打断回复并接过发言权',
+    urgentTitle: '立即发送 (Ctrl+Enter) — 对方马上读到，并继续手头的工作',
     micBlocked: '麦克风被阻止 — 无输入，请查看控制台',
     micOff: '麦克风 — 关',
     micOpening: '麦克风打开中…',

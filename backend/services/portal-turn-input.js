@@ -5,9 +5,8 @@
  * attachment redemption from the wallet-bound single-use store
  * (`redeemAttachments`), the retry resolved against the RECORD
  * (`resolveRetryTurn` — THE TAKES), the vision/docs turn composers
- * (`composeVisionTurn` / `composeDocsBlock`), the lazy session mint and the
- * project pin it joins at birth (`ensureSession` / `pinSessionToProject`),
- * and the interrupt/speaker sanitizers (`INTERRUPT_MARK` /
+ * (`composeVisionTurn` / `composeDocsBlock`), the lazy session mint
+ * (`ensureSession`), and the interrupt/speaker sanitizers (`INTERRUPT_MARK` /
  * `composeInterruptedRecord` / `sanitizeSpeaker`).
  *
  * Extracted VERBATIM from portal-stream.js (size-law breakdown 2026-08-26,
@@ -15,8 +14,7 @@
  * imports the shared leaves DIRECTLY, never portal-stream (direction law:
  * leaf ← family ← catalog ← dispatch ← loop ← orchestrator). portal-stream
  * keeps the old private names alive for its orchestrator call sites and the
- * `__test` barrel (project-chat-pin pins `_pinSessionToProject`,
- * portal-stream-docs pins `_redeemAttachments`, portal-stream.test pins
+ * `__test` barrel (portal-stream-docs pins `_redeemAttachments`, portal-stream.test pins
  * `_rejectBlockedInput`), and re-exports every public symbol for the readers
  * pointed at the barrel; the witness lane (witness-stream.js,
  * witness-turn-context.js, witness-tool-loop.js) imports this slice
@@ -28,18 +26,14 @@
  * rejection frames on `ws` (verified at extraction).
  */
 import { QUEUED_ACTION_REASON, QUEUED_ACTION_MARK } from './queued-action-handoff.js';
-import { createLogger } from './logger.js';
 import { docFence as _docFence } from './doc-fence.js';
 import { attachmentStore, MAX_IMAGES_PER_MESSAGE, MAX_DOCS_PER_MESSAGE } from './attachment-store.js';
 import { fitDocs } from './read-room.js';
 import { neumaWorkspace } from '../../core/index.js';
 import { takeCounts, findTurnUserRow } from '../../core/workspace/branch-view.js';
 import { mintSessionId } from '../../core/workspace/session-id.js';
-import { pinChat } from './user-projects.js';
 import { TASK_FORMAT_ECHO, taskDemonstratesAnswerFormat } from '../../core/runtime/answer-covenant.js';
 import { randomUUID } from 'crypto';
-
-const log = createLogger('Portal');
 
 // impure — notifies client that input was rejected by the classifier
 const _rejectBlockedInput = (ws, companionName) => {
@@ -234,34 +228,6 @@ const _ensureSession = async (connection, companion) => {
   return sessionId;
 };
 
-// impure — a chat born under an active project joins it. The operator opened it
-// "inside" the project (the space rides every turn as kind: 'project'), so the
-// project owns the chat without a manual after-the-fact pin. The space id is
-// the project id (createProject mints a hex id, which normalizeSpace's slug
-// leaves byte-identical — asserted in user-projects.test.js so a future id
-// scheme can't silently break this). Idempotent (pinChat dedups by
-// sessionId+neumaId) and strictly non-critical: a failure here never costs the
-// operator their turn — the chat simply stays unpinned.
-const _pinSessionToProject = async (connection, companion, sessionId, thought) => {
-  const space = connection.space;
-  if (!space || space.kind !== 'project' || !connection.walletAddress || !companion?.neumaId) return;
-  const label = (typeof thought === 'string' && thought.trim())
-    ? thought.trim().replace(/\s+/g, ' ').slice(0, 60)
-    : sessionId;
-  try {
-    await pinChat(connection.walletAddress, space.id, {
-      neumaId: companion.neumaId,
-      companionName: companion.name || null,
-      sessionId,
-      label,
-    });
-  } catch (err) {
-    // Unknown project (deleted mid-session) or a store write race — the chat
-    // still lives, just unpinned. Log, never throw.
-    log.warn('could not pin new chat to project', { project: space.id, err: err.message });
-  }
-};
-
 // The mark an interrupted turn leaves in the session record — the revision is
 // visible to the neuma, never silently erased. Cancel-and-revise is a
 // context-clarity tool for the operator, and honesty is what keeps it clean.
@@ -296,5 +262,4 @@ export {
   _rejectImageTurn as rejectImageTurn,
   _rejectRefusedTurn as rejectRefusedTurn,
   _ensureSession as ensureSession,
-  _pinSessionToProject as pinSessionToProject,
 };

@@ -7,6 +7,7 @@ import {
   reducer, initialState, isConversationPurpose, advanceVoiceGen, isStaleVoiceGen, voiceErrorText,
 } from '../../frontend/app/RelinkShell/stream-reducer.js';
 import { run, streamingMsg } from '../helpers/stream-reducer-kit.js';
+import { cutAfter, keepIds } from '../../frontend/app/RelinkShell/timeline-refold-pure.js';
 
 describe('THE TAKES — the turn-point model', () => {
   const T1 = 'turn-1';
@@ -68,7 +69,8 @@ describe('THE TAKES — the turn-point model', () => {
       { type: 'TOOL_RESULT', data: { tool: 'read_file', status: 'ok', summary: 'read x' } },
       { type: 'COMPLETE', metadata: { emotion: 'calm' } },
     ], state);
-    expect(state.messages).toHaveLength(4);
+    // THE TIMELINE (2026-11-24): the second point followed the FIRST take, so it left the view with it.
+    expect(state.messages).toHaveLength(2);
     const point = state.messages[1];
     expect(point.streaming).toBe(false);
     expect(point.takeCount).toBe(2);
@@ -400,5 +402,37 @@ describe('thought segments — reasoning, watchable and never spoken', () => {
   test('an empty reasoning frame changes nothing', () => {
     const before = run([{ type: 'USER_SENT', text: 'x' }]);
     expect(reducer(before, { type: 'THINKING', text: '' })).toBe(before);
+  });
+});
+
+// THE TIMELINE (Design note, 2026-11-24: what was said after a take belongs to it. On the live screen: a take that opens at
+// an earlier point takes what followed the older take off the screen; a move of the view re-reads the record in place.
+describe('the timeline on the live screen', () => {
+  const point = (id, said, takes = 1) => [
+    { role: 'user', content: `ask ${id}`, turnId: id },
+    { role: 'assistant', turnId: id, takeIndex: takes, takeCount: takes, takes: Array.from({ length: takes }, (_, i) => ({ takeIndex: i + 1, content: `${said}${i + 1}` })), content: `${said}${takes}` },
+  ];
+  const words = (state) => state.messages.map((m) => (m.role === 'user' ? m.segments?.[0]?.text ?? m.content ?? m.text : `${m.turnId}:${m.takeIndex}`));
+
+  test('cutAfter and keepIds: the pure halves', () => {
+    expect(cutAfter(['a', 'b', 'c'], 0)).toEqual(['a']);
+    expect(cutAfter(['a', 'b', 'c'], 2)).toEqual(['a', 'b', 'c']);
+    expect(cutAfter(['a'], -1)).toEqual(['a']);
+    const shown = [{ id: 'h0', role: 'user', turnId: 'A' }, { id: 'h1', role: 'neuma', turnId: 'A' }, { id: 'm9', role: 'error' }];
+    expect(keepIds([{ id: 'r5', role: 'user', turnId: 'A' }, { id: 'r6', role: 'neuma', turnId: 'A' }, { id: 'r7', role: 'user', turnId: 'B' }], shown).map((m) => m.id)).toEqual(['h0', 'h1', 'r7']);
+  });
+
+  test('REFOLD replaces the messages in place from the record, keeps the ids of what stays, and never moves while a reply is arriving', () => {
+    const loaded = run([{ type: 'HISTORY', messages: [...point('A', 'a', 2), ...point('D', 'd')] }]);
+    const ids = loaded.messages.map((m) => m.id);
+    // The view moved back to A's first take: the record now folds to A, B, C.
+    const back = run([{ type: 'REFOLD', messages: [...point('A', 'a', 2).map((m) => (m.role === 'assistant' ? { ...m, takeIndex: 1, content: 'a1' } : m)), ...point('B', 'b'), ...point('C', 'c')] }], loaded);
+    expect(back.messages.map((m) => m.turnId)).toEqual(['A', 'A', 'B', 'B', 'C', 'C']);
+    expect(back.messages.slice(0, 2).map((m) => m.id)).toEqual(ids.slice(0, 2)); // A's two bubbles did not blink
+    expect(back.messages[1]).toMatchObject({ takeIndex: 1, takeCount: 2 });
+    expect(back.thread).toBe(loaded.thread); // in place: the stream's state did not start over
+    expect(words(back).filter((w) => /:/.test(w))).toEqual(['A:1', 'B:1', 'C:1']);
+    const live = { ...loaded, messages: loaded.messages.map((m, i) => (i === 3 ? { ...m, streaming: true } : m)) };
+    expect(run([{ type: 'REFOLD', messages: point('A', 'a') }], live)).toBe(live);
   });
 });

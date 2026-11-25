@@ -1,4 +1,22 @@
-.wal-identity-picker { display: grid; gap: 10px; font: .875rem var(--font-voice); color: var(--color-text-secondary); }
-.wal-identity-picker select { width: 100%; min-width: 0; min-height: 48px; padding: 12px; background: var(--color-bg-secondary, #101719); border: 1px solid var(--line); color: var(--color-text-primary); font: 1rem var(--font-voice); cursor: pointer; }
-.wal-identity-picker select:focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
-.wal-identity-help { font-size: .8125rem; line-height: 1.5; }
+/* The account bar — whose wallet, at a glance; the dropdown IS the name. */
+.wal-account { display: flex; align-items: center; gap: 14px; }
+.wal-account-mark {
+  flex: none; width: 44px; height: 44px; display: grid; place-items: center;
+  font-family: var(--font-data); font-size: 20px; color: var(--signal);
+  background: var(--signal-faint); border: 1px solid var(--signal-dim);
+}
+.wal-account.is-witness .wal-account-mark { color: var(--color-text-secondary); background: rgba(228, 234, 240, 0.06); border-color: var(--color-border-primary); }
+.wal-account-who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; cursor: pointer; }
+.wal-account-who select {
+  appearance: none; -webkit-appearance: none;
+  field-sizing: content; max-width: 100%; min-width: 0; padding: 2px 26px 2px 0;
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 L6 8 L9.5 4.5' fill='none' stroke='%23e4eaf0' stroke-width='1.4'/%3E%3C/svg%3E") no-repeat right 4px center;
+  border: none; border-bottom: 1px solid transparent;
+  color: var(--color-text-primary); font: 500 1.25rem var(--font-voice); letter-spacing: 0.01em;
+  text-overflow: ellipsis; cursor: pointer;
+  transition: border-color var(--snap);
+}
+.wal-account-who select:hover { border-bottom-color: var(--color-border-hover); }
+.wal-account-who select:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
+.wal-account-who select option, .wal-account-who select optgroup { background: #101719; color: var(--color-text-primary); font-size: 1rem; }
+.wal-account-kind { font-family: var(--font-data); font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }

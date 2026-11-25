@@ -16,6 +16,8 @@ const WAKE_REASON_WORDS = Object.freeze({
   'run-check-in': 'team run check-in',
   'run-alert': 'team run alert',
   'run-lost': 'team run cut off by a restart',
+  'lead-run-ended': 'a lead run ended',
+  'gather-ended': 'a gather ended',
   cadence: 'review cadence',
   'plan-review': 'team plan to review',
   'plan-verdict': 'the Optio\'s plan verdict',
@@ -23,6 +25,7 @@ const WAKE_REASON_WORDS = Object.freeze({
   scheduled: 'its calendar',
   'charge-due': 'a charge due now',
   mail: 'new mail',
+  hook: 'a webhook event',
   reply: 'new replies to the house\'s posts',
 });
 

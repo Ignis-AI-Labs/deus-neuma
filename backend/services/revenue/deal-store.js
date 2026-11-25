@@ -34,3 +34,21 @@ export const moveDeal = (wallet, id, move) => serialize(async () => {
   await appendJsonLine(fileOf(wallet), judged.event);
   return judged;
 });
+
+/**
+ * Move a deal and carry the outcome to its lead: a deal won or lost moves the lead it came from on the lead ledger.
+ * The one road for the seat's act and the operator's own press. A ledger that will not move never costs the deal.
+ * @returns {Promise<{ok: true, event: object, deal: ?object} | {ok: false, reason: string}>}
+ */
+export const moveDealAndLead = async (wallet, id, move) => {
+  const moved = await moveDeal(wallet, id, move);
+  if (!moved.ok) return moved;
+  const deal = (await readDeals(wallet)).deals.find((d) => d.id === id) ?? null;
+  if (deal?.leadId && ['won', 'lost'].includes(moved.event.stage)) {
+    try {
+      const { leadLedgerFor } = await import('../leads/lead-ledger.js');
+      await (await leadLedgerFor(wallet)).touch(deal.leadId, { status: moved.event.stage, note: `deal [${id}] ${moved.event.stage}: ${moved.event.note}`, by: move.by });
+    } catch { /* the deal stands */ }
+  }
+  return { ...moved, deal };
+};

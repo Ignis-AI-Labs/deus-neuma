@@ -75,7 +75,8 @@ router.put('/:id', async (req, res) => {
 // Drop one lead from the ledger.
 router.delete('/:id', async (req, res) => {
   try {
-    const removed = await (await ledgerOf(req)).remove(req.params.id);
+    // It leaves a tombstone (lead-ledger.js remove); a phone's change is in the remote access log with its device.
+    const removed = await (await ledgerOf(req)).remove(req.params.id, { by: req.walletAddress });
     if (!removed) return res.status(404).json({ error: 'no such lead' });
     log.info('Lead removed', { id: req.params.id, wallet: req.walletAddress });
     res.json({ removed });

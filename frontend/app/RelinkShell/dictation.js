@@ -5,6 +5,7 @@
 // with real inputs and real outputs.
 
 import { autoRepair } from '../../../core/text/repair.js';
+import { withoutSpeechArtifacts } from '../../../core/text/speech-artifacts.js';
 
 const EDITABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT']);
 
@@ -63,7 +64,7 @@ export const stripHoldSpace = (value, caret) =>
 // through autoRepair, so words the operator typed or already corrected by hand
 // are left exactly as they stand.
 export const appendTranscript = (draft, transcript) => {
-  const text = autoRepair((transcript || '').trim());
+  const text = autoRepair(withoutSpeechArtifacts(transcript));
   if (!text) return draft;
   return draft ? `${draft.replace(/\s+$/, '')} ${text}` : text;
 };
@@ -78,7 +79,7 @@ export const appendTranscript = (draft, transcript) => {
 // nothing. The same AUTO-TIER lexicon repair as appendTranscript runs here —
 // the preview must read exactly as the entered text will.
 export const spliceTranscript = (value, start, end, transcript) => {
-  const text = autoRepair((transcript || '').trim());
+  const text = autoRepair(withoutSpeechArtifacts(transcript));
   if (!text) return null;
   const draft = String(value ?? '');
   const from = Math.max(0, Math.min(start ?? draft.length, draft.length));

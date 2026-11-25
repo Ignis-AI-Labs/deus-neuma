@@ -30,11 +30,18 @@
 const DRIVE = /^[A-Za-z]:[\\/]/;
 const UNC = /^\\\\/;
 
+/** pure — a network share, including extended and forward-slash UNC spellings. */
+export const isUncPath = (p) => typeof p === 'string' && /^[\\/]{2}/.test(p);
+
 /** pure — does this path use Windows separators? Read from its own shape. */
 const isWindowsShaped = (p) => DRIVE.test(p) || UNC.test(p);
 
 /** pure — split a path into its segments, in its own separator alphabet. */
 const segments = (p) => (isWindowsShaped(p) ? p.split(/[\\/]/) : p.split('/'));
+
+/** pure — dot segments must be refused before a path is normalized into a grant. */
+export const hasDotSegment = (p) => typeof p === 'string'
+  && segments(p).some((segment) => segment === '.' || segment === '..');
 
 /**
  * The root a path can never be trimmed past: `/` on POSIX, `C:\` for a drive,

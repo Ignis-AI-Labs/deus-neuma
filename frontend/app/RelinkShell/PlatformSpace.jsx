@@ -36,9 +36,9 @@ import { WaitingBand } from './waiting/WaitingBand.jsx';
 import { useWaitingAccount } from './waiting/use-waiting.js';
 import { takeCardLanding, onCardLanding } from './card-landing.js';
 import { useViewHeight } from './use-view-height.js';
-import { DoorButton } from './doors/DoorButton.jsx';
 import { AccountHead } from './account-level/AccountHead.jsx';
 import { AccountDrawers } from './account-level/AccountDrawers.jsx';
+import { AccountCampaigns } from './account-level/AccountCampaigns.jsx';
 import { dayKeyOf } from './month-grid.js';
 import './PlatformConsole.css';
 
@@ -76,7 +76,7 @@ const standingDrawer = (item) => (STANDING_DRAWERS.includes(item?.section) ? ite
  * @param {{channelId: string, accountId?: ?string, landing?: ?{entryId?: ?string, section?: ?string, n: number}, companyId?: ?string}} props
  *   accountId — given (null = no account yet) only on MARKETING's account level; landing and companyId there too
  */
-export const PlatformSpace = ({ channelId, accountId = undefined, landing = null, companyId: levelCompany = null }) => {
+export const PlatformSpace = ({ channelId, accountId = undefined, landing = null, companyId: levelCompany = null, campaigns = null, onCampaign = () => {} }) => {
   const inOffice = accountId !== undefined;
   const standing = usePlatformStanding(channelId);
   const { channel, holder, notice, loadError } = standing;
@@ -214,8 +214,8 @@ export const PlatformSpace = ({ channelId, accountId = undefined, landing = null
           {inOffice ? (
             <div className="ps-tabrow">
               {tabs}
-              {/* Campaigns are the company's: the account level's door goes to its company's CAMPAIGNS tab. */}
-              <DoorButton door={{ kind: 'marketing', tab: 'campaigns', companyId: levelCompany }} />
+              {/* The campaigns this account carries, each a door to its page; none → its company's CAMPAIGNS. */}
+              <AccountCampaigns campaigns={campaigns} accountId={accountId} companyId={levelCompany} onCampaign={onCampaign} />
             </div>
           ) : tabs}
 

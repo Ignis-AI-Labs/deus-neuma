@@ -14,6 +14,7 @@ import { MAKOTO_LINE } from '../makoto.js';
 import { createLogger } from '../logger.js';
 import { readInvoices } from '../invoices/invoice-store.js';
 import { readDeliveries, readDestination } from '../delivery/delivery-store.js';
+import { leadEngineSection } from '../sales/sales-briefing.js';
 
 const log = createLogger('Revenue.Briefing');
 const LIST_CAP = 12;
@@ -68,7 +69,12 @@ export const mercatorBriefingSection = async (connection) => {
       readDeals(wallet), leadLedgerFor(wallet).then((l) => l.load()).catch(() => []),
       readInvoices(wallet).catch(() => ({ invoices: [] })), readDeliveries(wallet).catch(() => []), readDestination(wallet).catch(() => null),
     ]);
-    return mercatorBriefingText({ deals, leads, now: Date.now(), invoices, deliveries, destination });
+    const office = mercatorBriefingText({ deals, leads, now: Date.now(), invoices, deliveries, destination });
+    const engine = await leadEngineSection(wallet, leads).catch((err) => {
+      log.warn('Lead engine briefing unavailable — the office briefing stands without it', { laneId, err: err.message });
+      return '';
+    });
+    return [office, engine].filter(Boolean).join('\n\n');
   } catch (err) {
     log.warn('Mercator briefing unavailable — the turn stands without it', { laneId, err: err.message });
     return '';

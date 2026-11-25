@@ -19,6 +19,7 @@ import http from 'http';
 import https from 'https';
 import { assertSafeWebTarget, nextRedirectUrl } from './web-guard.js';
 import { pinnedLookup, readBounded } from './web-fetch.js';
+import { screenWebEgress } from './web-egress-screen.js';
 import { sniffImageType, MEDIA_MAX_BYTES } from './social/x-media.js';
 
 const MAX_REDIRECTS = 5;
@@ -58,6 +59,10 @@ export const fetchMediaBytes = async (target) => {
   if (!url) return { ok: false, error: 'no url was given' };
   let hops = 0;
   for (;;) {
+    // Every hop is egress, and so is the name lookup the guard makes: the named address is read
+    // for any secret, a redirect for this machine's own, before anything leaves (audit P6-04).
+    const secret = screenWebEgress('the image address', url, { redirect: hops > 0 });
+    if (!secret.ok) return { ok: false, error: secret.reason };
     const guard = await assertSafeWebTarget(url);
     if (!guard.ok) return { ok: false, error: `target refused (${guard.reason})` };
     const { res, error } = await requestOnce(url, guard.addrs);

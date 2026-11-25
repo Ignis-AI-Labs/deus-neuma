@@ -14,24 +14,54 @@
  * So: every Mach-O in the bundle is read, and every one of them must be able to
  * load on the chip the directory name claims.
  *
- * Signing is REPORTED, not required: mac builds are unsigned until the
- * Developer ID and the App Store Connect key exist (docs/architecture/platform/
- * macos-build.md). Pass --require-signed to make silence impossible instead.
+ * Signing and notarization are decided by codesign, spctl and stapler on macOS, never by whether
+ * credentials existed. Pass --require-signed to make their refusal fatal. --attest writes the
+ * content manifest only after public source and clean dependency/frontend comparisons pass.
  *
  * Usage:
  *   node scripts/check-mac-artifacts.mjs [--release release] [--require-signed]
  *   node scripts/check-mac-artifacts.mjs --release release/app/mac-arm64 --expect arm64
+ *   node scripts/check-mac-artifacts.mjs --attest release/content-arm64.json --signing-out release/signing-arm64.txt
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { ARCH_HEADER_BYTES, archsOf } from './macho-arch.mjs';
+import { appContentProblems, contentRows } from './artifact-content.mjs';
+import os from 'node:os';
+import { createRequire } from 'node:module';
 
 const SELF = fileURLToPath(import.meta.url);
 const REPO = path.resolve(path.dirname(SELF), '..');
 
 /** The chip an output directory claims, from electron-builder's own naming. */
+/**
+ * The app's own files inside a bundle, as a folder that can be read. Unpacked, that is Contents/Resources/app.
+ * Packed (asar: true), the files are inside app.asar with the native modules beside it: the archive is opened into a
+ * temporary folder, whole, and that folder is returned. impure (fs).
+ * @param {string} bundle - the .app
+ * @returns {string}
+ */
+export function appRootOf(bundle) {
+  const resources = path.join(bundle, 'Contents', 'Resources');
+  const plain = path.join(resources, 'app');
+  if (fs.existsSync(plain)) return plain;
+  const archive = path.join(resources, 'app.asar');
+  if (!fs.existsSync(archive)) throw new Error(`${bundle} holds neither Contents/Resources/app nor app.asar`);
+  const into = fs.mkdtempSync(path.join(os.tmpdir(), 'neuma-app-root-'));
+  try {
+    createRequire(import.meta.url)('@electron/asar').extractAll(archive, into);
+  } catch (error) {
+    // The archive's own list still names the other chip's native files, which the build pruned on purpose
+    // (prune-foreign-prebuilds.cjs). Everything else was opened; only a miss that is NOT one of those is a fault.
+    const misses = String(error.message).split('\n').filter((line) => /^Error: /.test(line));
+    const pruned = (line) => /^Error: ENOENT\b/.test(line) && line.includes(`${archive}.unpacked${path.sep}`);
+    if (!misses.length || !misses.every(pruned)) throw error;
+  }
+  return into;
+}
+
 export function expectedChipFor(dirName) {
   if (dirName === 'mac-arm64') return 'arm64';
   if (dirName === 'mac-x64' || dirName === 'mac') return 'x86_64';
@@ -83,17 +113,21 @@ export function inspectBundle(bundleDir, chip) {
   return { files: files.length, macho, mismatches };
 }
 
-/** Signed means Apple signed it: a CodeResources seal and a valid signature. */
+/** Signed and notarized means Apple's own tools accepted the artifact on the macOS runner. */
 export function signatureOf(bundleDir) {
   const sealed = fs.existsSync(path.join(bundleDir, 'Contents', '_CodeSignature', 'CodeResources'));
   if (!sealed) return { signed: false, why: 'no Contents/_CodeSignature/CodeResources' };
-  if (process.platform !== 'darwin') return { signed: true, why: 'sealed (not verified off-mac)' };
-  try {
-    execFileSync('codesign', ['--verify', '--deep', '--strict', bundleDir], { stdio: 'pipe' });
-    return { signed: true, why: 'codesign --verify --deep --strict passed' };
-  } catch (err) {
-    return { signed: false, why: `seal present, codesign refused: ${String(err.stderr || err.message).trim().split('\n')[0]}` };
+  if (process.platform !== 'darwin') return { signed: false, why: 'Apple signature and notarization cannot be verified off-mac' };
+  const checks = [
+    ['codesign', ['--verify', '--deep', '--strict', bundleDir]],
+    ['spctl', ['--assess', '--type', 'execute', bundleDir]],
+    ['xcrun', ['stapler', 'validate', bundleDir]],
+  ];
+  for (const [command, args] of checks) {
+    try { execFileSync(command, args, { stdio: 'pipe' }); }
+    catch (err) { return { signed: false, why: `${command} refused: ${String(err.stderr || err.message).trim().split('\n')[0]}` }; }
   }
+  return { signed: true, why: 'codesign, spctl, and stapler accepted the app' };
 }
 
 /** Every app bundle electron-builder left behind, with the chip it claims. */
@@ -116,11 +150,13 @@ export function bundlesUnder(releaseDir) {
 }
 
 const parseArgs = (argv) => {
-  const args = { release: path.join(REPO, 'release'), requireSigned: false, expect: null };
+  const args = { release: path.join(REPO, 'release'), requireSigned: false, expect: null, attest: null, signingOut: null };
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--release') args.release = path.resolve(argv[i += 1]);
     else if (argv[i] === '--require-signed') args.requireSigned = true;
     else if (argv[i] === '--expect') args.expect = argv[i += 1];
+    else if (argv[i] === '--attest') args.attest = path.resolve(argv[i += 1]);
+    else if (argv[i] === '--signing-out') args.signingOut = path.resolve(argv[i += 1]);
   }
   return args;
 };
@@ -141,10 +177,12 @@ export function main(argv = process.argv.slice(2)) {
   }
 
   let failed = 0;
+  const signing = [];
   for (const { bundle, chip, dirName } of targets) {
     const chipLabel = chip || 'unknown';
     const { files, macho, mismatches } = inspectBundle(bundle, chip);
     const sig = signatureOf(bundle);
+    signing.push(sig.signed);
     const name = path.basename(bundle);
 
     console.log(`\n[check-mac-artifacts] ${name}  (from ${dirName}/, claims ${chipLabel})`);
@@ -167,12 +205,34 @@ export function main(argv = process.argv.slice(2)) {
         console.log(line);
         failed += 1;
       } else {
-        console.log(`${line} (expected until the signing credentials exist)`);
+        console.log(line);
       }
     } else {
-      console.log(`  signed: ${sig.why}`);
+      console.log(`  signed and notarized: ${sig.why}`);
     }
   }
+
+  if (args.attest) {
+    if (targets.length !== 1) {
+      console.log('[check-mac-artifacts] FAILED: content attestation needs exactly one app');
+      failed += 1;
+    } else {
+      const appRoot = appRootOf(targets[0].bundle);
+      const publicBlobs = Object.fromEntries(execFileSync('git', ['-C', REPO, 'ls-tree', '-r', 'HEAD'], { encoding: 'utf8' }).split('\n').filter(Boolean).map((line) => {
+        const [meta, name] = line.split('\t');
+        return [name, meta.split(' ')[2]];
+      }));
+      const problems = appContentProblems({ appRoot, referenceRoot: REPO, publicBlobs });
+      if (problems.length) {
+        console.log(`[check-mac-artifacts] content refused: ${problems.slice(0, 10).join('; ')}`);
+        failed += 1;
+      } else if (failed === 0) {
+        const attestation = { schemaVersion: 1, source: execFileSync('git', ['-C', REPO, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), files: contentRows(appRoot) };
+        fs.writeFileSync(args.attest, `${JSON.stringify(attestation, null, 2)}\n`, { flag: 'wx' });
+      }
+    }
+  }
+  if (args.signingOut) fs.writeFileSync(args.signingOut, `${signing.every(Boolean) ? 'apple-signed-notarized' : 'unsigned'}\n`);
 
   if (failed > 0) {
     console.log(`\n[check-mac-artifacts] FAILED: ${failed} problem(s). The artifact cannot ship as it stands.`);

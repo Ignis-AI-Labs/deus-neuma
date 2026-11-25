@@ -1,11 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, test, expect } from 'vitest';
 import path from 'path';
 import os from 'os';
 import fs from 'fs/promises';
 import {
-  checkPathAccess, checkWriteBudget, recordWrite, isWriteOperation,
+  checkPathAccess, isWriteOperation,
   collectPathArgs, findUngrantedReadPaths, resolveGrantDir,
-  findUngrantedWritePaths, isWithinRoots, writeGrantScope,
+  findUngrantedWritePaths, isWithinRoots,
 } from '../../backend/services/tool-sandbox.js';
 import { writePayloadBytes, checkWorkspaceBudget } from '../../backend/services/write-metering.js';
 
@@ -137,39 +137,7 @@ describe('resolveGrantDir (real fs)', () => {
   });
 });
 
-describe('checkWriteBudget', () => {
-  it('allows writes under the limit', () => {
-    const conn = { _writeOps: 0 };
-    expect(checkWriteBudget(conn).allowed).toBe(true);
-  });
-
-  it('blocks writes at the limit', () => {
-    const conn = { _writeOps: 10 };
-    expect(checkWriteBudget(conn).allowed).toBe(false);
-    expect(checkWriteBudget(conn).remaining).toBe(0);
-  });
-
-  it('tracks remaining budget', () => {
-    const conn = { _writeOps: 7 };
-    expect(checkWriteBudget(conn).remaining).toBe(3);
-  });
-});
-
-describe('recordWrite', () => {
-  it('increments write counter', () => {
-    const conn = { _writeOps: 0 };
-    recordWrite(conn);
-    expect(conn._writeOps).toBe(1);
-    recordWrite(conn);
-    expect(conn._writeOps).toBe(2);
-  });
-
-  it('initializes counter if missing', () => {
-    const conn = {};
-    recordWrite(conn);
-    expect(conn._writeOps).toBe(1);
-  });
-});
+// The write limit (the operator's rule, counted per message, asking past it) is proven on the real sandbox: test/integration/write-limit.test.js.
 
 describe('isWriteOperation', () => {
   it('identifies write tools', () => {
@@ -214,28 +182,6 @@ describe('findUngrantedWritePaths — grantable out-of-lane write gaps', () => {
   it('checks source AND destination (move/rename carry both)', () => {
     const gaps = findUngrantedWritePaths({ source: '/house/neuma-a/x', destination: '/repos/proj/x' }, [lane]);
     expect(gaps).toEqual(['/repos/proj/x']);
-  });
-});
-
-describe('writeGrantScope — the active-project blast-radius bound', () => {
-  const folders = ['/repos/proj/backend', '/repos/proj/frontend'];
-  it('maps a gap to the single project folder that contains it', () => {
-    expect(writeGrantScope(['/repos/proj/backend/foo.js'], folders)).toEqual(['/repos/proj/backend']);
-  });
-  it('dedups multiple gaps under one folder', () => {
-    expect(writeGrantScope(['/repos/proj/backend/a.js', '/repos/proj/backend/b.js'], folders))
-      .toEqual(['/repos/proj/backend']);
-  });
-  it('drops a gap that lands in NO project folder — it stays hard-denied', () => {
-    expect(writeGrantScope(['/somewhere/else/x.js'], folders)).toEqual([]);
-    expect(writeGrantScope(['/repos/proj/backend/a.js', '/tmp/evil/x'], folders))
-      .toEqual(['/repos/proj/backend']); // only the in-project gap is grantable
-  });
-  it('grants the MOST specific folder when project folders nest (least privilege)', () => {
-    const nested = ['/repos/proj', '/repos/proj/backend'];
-    expect(writeGrantScope(['/repos/proj/backend/x.js'], nested)).toEqual(['/repos/proj/backend']);
-    expect(writeGrantScope(['/repos/proj/backend/x.js'], [...nested].reverse()))
-      .toEqual(['/repos/proj/backend']); // order-independent — longest wins
   });
 });
 

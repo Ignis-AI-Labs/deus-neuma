@@ -4,6 +4,7 @@
 // client, so nothing privileged is exposed here. We surface only a tiny marker
 // the frontend can use to know it's running inside the native shell.
 
+/* global window */ // a preload runs in the page, where window is the page's own
 const { contextBridge, ipcRenderer } = require('electron');
 
 // Which desk this window IS — parsed from the argv main passed via
@@ -107,13 +108,20 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   // Open a URL in the user's real browser (used by the wallet bridge to reach
   // their Rabby/MetaMask). Main validates the scheme; the key never crosses here.
   openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
+  walletBridge: {
+    start: () => ipcRenderer.invoke('walletBridge:start'),
+    poll: (browserCode, pollSecret) => ipcRenderer.invoke('walletBridge:poll', browserCode, pollSecret),
+  },
   // A fresh install's owner claim for the first sign-in (null once owned);
   // main answers the desk's own top frame only.
   ownerClaim: () => ipcRenderer.invoke('app:ownerClaim'),
   // Open a LOCAL HTML file in the default browser (the FILES tree's OPEN IN
-  // BROWSER). Main gates: absolute .html/.htm path that exists as a file.
-  openInBrowser: (filePath) => ipcRenderer.invoke('app:openInBrowser', filePath),
+  // BROWSER). Main gates: contained absolute .html/.htm path that exists as a file.
+  openInBrowser: (filePath, roots) => ipcRenderer.invoke('app:openInBrowser', filePath, roots),
   showInFolder: (filePath) => ipcRenderer.invoke('app:showInFolder', filePath),
+  // Did the address the desk just copied survive on the clipboard? Main answers
+  // "same" or the different ADDRESS found, never any other clipboard content.
+  clipboardCheck: (expected) => ipcRenderer.invoke('clipboard:check', expected),
   // THE DRAG-OUT: an Explorer row dragged toward the OS starts a REAL
   // OS-level drag of the file itself (Dolphin, the desktop, another app).
   // Main re-validates: absolute path, existing file, never a directory.
@@ -127,9 +135,12 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
   browser: {
     open: (url) => ipcRenderer.invoke('browser:open', url),
   },
-  // Native folder picker for the pre-flight workspace-home step. Resolves to the
-  // chosen absolute path, or null if the witness cancels.
-  chooseDirectory: () => ipcRenderer.invoke('dialog:openDirectory'),
+  // The system's own folder dialog, for every OPEN FOLDER. Resolves to the chosen
+  // absolute path, or null on cancel. Only a title and a starting folder cross.
+  chooseDirectory: (opts) => ipcRenderer.invoke('dialog:openDirectory', {
+    title: typeof opts?.title === 'string' ? opts.title : undefined,
+    defaultPath: typeof opts?.defaultPath === 'string' ? opts.defaultPath : undefined,
+  }),
   residency: {
     get: () => ipcRenderer.invoke('residency:get'),
     set: (enabled) => ipcRenderer.invoke('residency:set', enabled),
@@ -164,10 +175,16 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
       return () => ipcRenderer.removeListener('update:changed', handler);
     },
   },
-  // CONNECTIONS (electron/connections-main.cjs): the panel tells main a switch changed, so the
-  // spellcheck switch lands on every session at once.
-  connections: {
-    changed: () => ipcRenderer.invoke('connections:changed'),
+  // THE DEV REFRESH (electron/dev-refresh.cjs), a development run only: what source changes are waiting, told on
+  // every change; `act('refresh')` rebuilds and restarts in place, `act('later')` sets them aside.
+  devRefresh: {
+    state: () => ipcRenderer.invoke('devRefresh:state'),
+    act: (action) => ipcRenderer.invoke('devRefresh:act', action),
+    onChange: (cb) => {
+      const handler = (_event, view) => cb(view);
+      ipcRenderer.on('devRefresh:changed', handler);
+      return () => ipcRenderer.removeListener('devRefresh:changed', handler);
+    },
   },
   // THE KEY LOCK (electron/key-lock/key-lock-main.cjs): whether the keychain holds
   // Neuma's key, and the Recovery Kit — shown on request, confirmed saved, or replaced.
@@ -208,6 +225,8 @@ if (onAppOrigin) contextBridge.exposeInMainWorld('neuma', {
     tryRemembered: () => ipcRenderer.invoke('wallet:tryRemembered'),
     canKeepMadeKey: () => ipcRenderer.invoke('wallet:canKeepMadeKey'),
     createForMe: () => ipcRenderer.invoke('wallet:createForMe'),
+    createShown: (password) => ipcRenderer.invoke('wallet:createShown', password),
+    createForMeShown: () => ipcRenderer.invoke('wallet:createForMeShown'),
     revealMade: (id) => ipcRenderer.invoke('wallet:revealMade', id),
     lock: () => ipcRenderer.invoke('wallet:lock'),
     reveal: (id, password) => ipcRenderer.invoke('wallet:reveal', id, password),

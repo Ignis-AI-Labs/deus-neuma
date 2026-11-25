@@ -27,7 +27,7 @@ describe('provider catalog (models.dev snapshot)', () => {
     // The core ids whose routes existing keys/overrides depend on
     expect(getProvider('anthropic').endpoint).toBe('https://api.anthropic.com');
     expect(getProvider('z-ai').endpoint).toBe('https://api.z.ai/api/paas/v4');
-    expect(getProvider('lm-studio').endpoint).toBe('http://localhost:1234');
+    expect(getProvider('lm-studio').endpoint).toBe('http://127.0.0.1:1234');
   });
 
   it('has no duplicate ids across core + generated', () => {

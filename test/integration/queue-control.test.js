@@ -93,7 +93,8 @@ describe('queue control — a being can see, address, and pull its own staged co
     await postQueue.claimForSend(staged.id);
     await postQueue.recordOutcome(staged.id, { ok: true, id: '1948800000000000001' });
 
-    const result = await call('queue_list');
+    // Sent copy is read by name (Design note, 2026-11-16: the bare read is what can still move).
+    const result = await call('queue_list', { status: 'sent' });
     expect(result.content).toContain('https://x.com/i/status/1948800000000000001');
     expect(result.content).toContain('sent ');
   });
@@ -214,15 +215,22 @@ describe('queue control — a being can see, address, and pull its own staged co
       expect(out).toContain('2 withdrawn/declined left in the record, not shown');
     });
 
-    test('sent and failed STAY — anti-duplication memory and actionable failure', () => {
-      const out = formatQueueForBeing([e('s1', 'sent'), e('f1', 'failed')]);
-      expect(out).toContain('[s1]');
-      expect(out).toContain('[f1]');
+    // Design note, 2026-11-16: […]. A
+    // failure is still actionable, so it stays in the bare read; sent copy is one named read
+    // away, and a text search (the duplicate check) still reaches it.
+    test('failed STAYS in the bare read; sent is named there and reached by name or by a text search', () => {
+      const two = [e('s1', 'sent'), e('f1', 'failed')];
+      const bare = formatQueueForBeing(two);
+      expect(bare).toContain('[f1]');
+      expect(bare).not.toContain('[s1]');
+      expect(bare).toContain("1 sent in the record, not shown (status:'sent' reads them");
+      expect(formatQueueForBeing(two, { q: 'copy s1' })).toContain('[s1]');
+      expect(formatQueueForBeing(two, { status: 'live' })).toContain('[s1]');
     });
 
     test('a queue of ONLY dead copy reads as nothing-live, never as broken', () => {
       const out = formatQueueForBeing([e('w1', 'withdrawn'), e('r1', 'rejected')]);
-      expect(out).toContain('Nothing live');
+      expect(out).toContain('Nothing open');
       expect(out).toContain('2 withdrawn/declined');
       expect(out).not.toContain('[w1]');
     });

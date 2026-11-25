@@ -23,7 +23,7 @@ import './Waiting.css';
 // impure — the same yes the card's own APPROVE gives (QueueEntry.jsx): a reply
 // IS its send, carrying the copy shown; its failed send is said here.
 const approve = async (item) => {
-  if (item.kind !== 'reply') return approveQueuePost(item.where.entryId);
+  if (item.kind !== 'reply') return approveQueuePost(item.where.entryId, { textSeen: item.text });
   const res = await approveQueuePost(item.where.entryId, { textSeen: item.text });
   if (res?.outcome && !res.outcome.ok) throw new Error(res.outcome.detail || 'the send did not land');
   return res;

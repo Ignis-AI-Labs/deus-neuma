@@ -171,9 +171,11 @@ export const enqueueWake = async (wallet, signal) => {
     // A review cadence still waiting (behind quiet hours, a cap, a restart) is superseded by the next
     // window's: one review looks over the house as it stands, never a stack of stale ones
     // (2026-10-18: four overnight windows woke the Optio as one wake carrying five reviews).
-    if (item.reason === 'cadence') {
+    // An LP portfolio round (umbrae-lp/lp-watch.js) is superseded the same way.
+    const round = (i) => i.reason === 'lp' && i.detail?.event === 'round';
+    if (item.reason === 'cadence' || round(item)) {
       const inWake = new Set(Object.values(state.running).flatMap((r) => r.itemIds ?? []));
-      const stale = state.items.filter((i) => i.seat === item.seat && i.reason === 'cadence' && !inWake.has(i.id));
+      const stale = state.items.filter((i) => i.seat === item.seat && (item.reason === 'cadence' ? i.reason === 'cadence' : round(i)) && !inWake.has(i.id));
       state.items = state.items.filter((i) => !stale.includes(i));
       state.recentKeys = [...state.recentKeys, ...stale.map(wakeKey)].slice(-RECENT_KEYS_MAX);
     }

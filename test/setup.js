@@ -39,6 +39,9 @@ process.env.DNA_ENCRYPTION_KEY = 'test-encryption-key-32-characters!';
 process.env.SUPABASE_URL = '';
 process.env.SUPABASE_SERVICE_KEY = '';
 process.env.PORT = String(10000 + Math.floor(Math.random() * 50000));
+// No public-node fallback in tests (backend/services/chain/public-floor.js): a
+// failed Base read stays a failed read, and no suite reaches mainnet.base.org.
+process.env.BASE_PUBLIC_RPC_URL = '';
 
 // QUIET BY DEFAULT — one place, instead of 640 spies.
 //

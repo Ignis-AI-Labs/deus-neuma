@@ -10,6 +10,7 @@ import { requestSettingsFocus } from '../settings-focus.js';
 import { requestCardLanding } from '../card-landing.js';
 import { requestBrandSection } from '../brandkits/brand-landing.js';
 import { jumpTo, revealCard } from '../waiting/waiting-jump.js';
+import { requestPositionPlace } from '../../windowing/position-tiles.js';
 import { doorPlan } from './door-plan.js';
 import { openChat } from './hand-over.js';
 
@@ -33,6 +34,7 @@ export const openDoor = (door, windows) => {
     return true;
   }
   if (plan.settingsFocus) requestSettingsFocus(plan.settingsFocus);
+  if (plan.position) requestPositionPlace(plan.position.office, plan.position.tab);
   if (plan.brandSection) requestBrandSection(plan.brandSection.companyId, plan.brandSection.section);
   for (const { app, item } of plan.landings || []) requestCardLanding(app, item);
   dispatch({ type: 'OPEN', id: plan.open });

@@ -15,7 +15,7 @@ export const QueuedWordDoors = ({ holdId, onQueueNow, escTakesBack = false }) =>
       <button
         type="button"
         className="stream-queue-now"
-        title="Stop waiting — this word interjects NOW"
+        title="Stop waiting — they read this NOW and carry on with what they are doing"
         onClick={() => { uiSound('activate'); onQueueNow(holdId); }}
       >
         SEND NOW

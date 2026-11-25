@@ -98,6 +98,8 @@ export const docxXmlToText = (xml) => {
  * @param {(data: Uint8Array) => Promise<Uint8Array>|Uint8Array} inflateRaw
  * @returns {Promise<string>}
  */
+export const DOCX_XML_MAX_BYTES = 8 * 1024 * 1024;
+
 export const docxText = async (bytes, inflateRaw) => {
   const entry = zipEntry(bytes, BODY);
   if (!entry) throw new Error('This file is not a Word document (.docx) — it has no document body.');

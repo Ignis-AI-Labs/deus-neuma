@@ -1,0 +1,69 @@
+/* DevRefreshBar — CHANGES WAITING, a development run only (LINE & CYCLE). One chamfered strip at the top centre,
+ * just below where the update bar stands, so both can show at once. What waits is in the data register, REFRESH is
+ * the one primary act, and "later" is quiet text. A failed build shows its last lines under the strip. It rises over
+ * 240ms (NO_FLASH.RISE_MS is the floor). */
+
+.dev-refresh-bar {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-notification);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: calc(100% - var(--space-8));
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  background: var(--color-void);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-family: var(--font-data);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-secondary);
+  animation: dev-refresh-rise 240ms var(--ease-out) both;
+}
+
+.dev-refresh-lead { color: var(--signal); }
+
+.dev-refresh-what { font-variant-numeric: tabular-nums; }
+
+.dev-refresh-phase { color: var(--color-text-primary); }
+
+.dev-refresh-note {
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+}
+
+.dev-refresh-later {
+  background: none;
+  border: 0;
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.dev-refresh-later:hover:not(:disabled),
+.dev-refresh-later:focus-visible { color: var(--color-text-primary); }
+
+.dev-refresh-error {
+  flex-basis: 100%;
+  max-height: 160px;
+  overflow: auto;
+  margin: 0;
+  padding: var(--space-2);
+  white-space: pre-wrap;
+  letter-spacing: 0;
+  color: var(--color-error, var(--color-text-primary));
+}
+
+@keyframes dev-refresh-rise {
+  from { opacity: 0; transform: translate(-50%, -4px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-refresh-bar { animation: none; }
+}

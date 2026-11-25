@@ -1,5 +1,6 @@
 // StreamInput — the witness speaks. Chamfered control register; Enter sends,
-// Shift+Enter breaks the line, a severed link disables it (placeholder says
+// Shift+Enter breaks the line, Ctrl+Enter (Cmd+Enter) sends NOW — while a reply
+// streams it interjects instead of holding the word (Design note, 2026-11-16: […]), a severed link disables it (placeholder says
 // why). Above the field sits THE MODEL BAR (ModelBar.jsx): this being's
 // model, effort rung, and ULTRA where the vendor has one (sampling modes
 // moved to Settings › INFERENCE — the turn reads the saved one server-side).
@@ -29,8 +30,7 @@ import { ModelBar } from './ModelBar.jsx';
 import { HouseActivityChip } from './HouseActivityChip.jsx';
 import { BenchRunChip } from './BenchRunChip.jsx';
 import { DictationSetup } from './DictationSetup.jsx';
-import { useLiveVoice } from './use-live-voice.js';
-import { LiveButton, RefineButton, useRefineDraft } from './ComposerTools.jsx';
+import { RefineButton, useRefineDraft } from './ComposerTools.jsx';
 import { commandFromInput } from './commands.js';
 import { useCommandDispatch } from './use-command-dispatch.js';
 import { useCompactNote } from './use-compact-note.js';
@@ -83,7 +83,7 @@ const MicIcon = () => (
 // maxChars (optional): the host's hard send cap -- an over-long draft is
 // REFUSED IN PLACE with an honest note, never cleared and never cut (the
 // council's 4000-char silent slice cut a founding address, 2026-07-23).
-const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, onStop, onBargeIn, recall, sentHistory = [], maxChars = null, neumaId = null, canQueue = false, heldCount = 0, onEscapeInterrupt = null, onEscapeOrder = null, onEscapeRecallQueued = null, purpose = 'work', wsService = null, draftScope = null }) => {
+const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, onStop, recall, sentHistory = [], maxChars = null, neumaId = null, canQueue = false, heldCount = 0, onEscapeInterrupt = null, onEscapeOrder = null, onEscapeRecallQueued = null, wsService = null, draftScope = null, talk = null }) => {
   const fieldRef = useRef(null);
   const { value, setValue } = useStreamDraft({ wsService, neumaId, draftScope });
   useAskIntake(fieldRef, setValue);
@@ -99,32 +99,10 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
   // the chain climbs on). Typing breaks the chain.
   const escTapRef = useRef(null);
 
-  // LIVE mode — the open mic. In a declared CONVERSATION sitting (purpose =
-  // server truth via the host) the toggle arms the streaming lane: mic_open
-  // → PCM pump → server-VAD partials/finals; the final enters as an ordinary
-  // thought through the portal's own frames (no pendingLive round-trip). Any
-  // other sitting keeps the legacy path byte-identical: VAD speech-start
-  // (barge-in fires), speech-end closes the utterance, whisper transcribes,
-  // auto-sends the moment the portal is free. Typing stays available.
-  const [pendingLive, setPendingLive] = useState(null);
-  const { live, state: liveState, toggleLive } = useLiveVoice({
-    connected, // LIVE stands down when the portal drops — no hot mic on a dead socket
-    purpose,
-    wsService,
-    onSpeechStart: () => onBargeIn?.(),
-    // Consecutive utterances while a send is still settling merge into one
-    // thought — a witness thinking in phrases is one thought, not spam.
-    onUtterance: (text) => setPendingLive((prev) => (prev ? `${prev} ${text}` : text)),
-  });
-  useEffect(() => {
-    if (!pendingLive || (busy && !canQueue) || !connected) return;
-    onSend(pendingLive);
-    setPendingLive(null);
-  }, [pendingLive, busy, canQueue, connected, onSend]);
 
   const {
     mic, setup, dismissSetup, beginCapture, end, pointerHoldRef, onFieldKeyDown,
-  } = useHoldToTalk({ connected, live, setValue, fieldRef });
+  } = useHoldToTalk({ connected, setValue, fieldRef });
   const refine = useRefineDraft({ value, setValue, fieldRef, neumaId });
 
   // A message recalled for revision (EDIT on a sent message) seeds the field.
@@ -253,8 +231,8 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
       <div className="relink-inputrow">
         {/* Missing speech components — invite the install instead of a bare
             error flash; anchored above the composer. */}
-        {setup ? <DictationSetup missing={setup.missing} onDismiss={dismissSetup} /> : null}
-        {/* Everything a witness can bring in — files, a folder focus, a project.
+        {setup ? <DictationSetup missing={setup.missing} upgrade={setup.upgrade ?? null} onDismiss={dismissSetup} /> : null}
+        {/* Everything a witness can bring in — files and a folder focus.
             Lives BESIDE the chamfered box: its drop-up would be clipped inside. */}
         <AttachMenu
           disabled={!connected}
@@ -281,10 +259,6 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                 !connected ? 'Portal disconnected…'
                   : mic === 'recording' ? 'Listening…'
                   : mic === 'transcribing' ? 'Transcribing…'
-                  : liveState === 'opening' ? 'Opening the voice lane…'
-                  : liveState === 'capturing' ? 'Hearing you…'
-                  : liveState === 'transcribing' ? 'Transcribing…'
-                  : live ? 'LIVE — speak any time'
                   : 'Share your thoughts…'
               }
               value={value}
@@ -348,6 +322,10 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                     onEscapeOrder();
                   }
                   escTapRef.current = step;
+                } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  // NOW: mid-stream the word interjects (the urgent send) instead of waiting its turn.
+                  e.preventDefault();
+                  submit(Boolean(busy && canQueue && onSendUrgent));
                 } else if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   submit();
@@ -375,13 +353,15 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
               }}
             />
             {(value.trim() || refine.state !== 'idle') && <RefineButton {...refine} disabled={!value.trim() || mic === 'recording'} />}
-            <LiveButton live={live} liveState={liveState} connected={connected} purpose={purpose} toggleLive={toggleLive} />
+            {/* The ONE place voice lives (Design note, 2026-11-13: […]): the chat's TALK, beside the mic that dictates. A composer with no voice
+                sitting behind it (the council, the pocket) passes none. */}
+            {talk}
             <button
               type="button"
               className={`relink-mic is-${mic}`}
-              disabled={!connected || live}
-              aria-label={live ? 'LIVE mode owns the mic' : MIC_HINT[mic]}
-              title={live ? 'LIVE mode owns the mic' : MIC_HINT[mic]}
+              disabled={!connected}
+              aria-label={MIC_HINT[mic]}
+              title={MIC_HINT[mic]}
               onPointerDown={(e) => {
                 e.preventDefault();
                 // Capture the pointer for the hold: release anywhere ends the
@@ -409,7 +389,7 @@ const StreamInputView = ({ connected, busy, onSend, onSendUrgent, urgentTitle, o
                     onClick={() => submit(true)}
                     disabled={!connected || uploading}
                     aria-label={urgentTitle || 'Interject now'}
-                    title={urgentTitle || 'Interject now — cut the reply and take the floor'}
+                    title={urgentTitle || 'Send now (Ctrl+Enter) — they read it at once and carry on with what they are doing'}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
                       <path d="M13 2 L5 13 H11 L9.5 22 L19 9 H12.5 Z" />

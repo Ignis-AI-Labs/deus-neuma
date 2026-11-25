@@ -3,6 +3,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 import { createLogger } from './logger.js';
+import { UtilityStdioTransport } from './utility-stdio-transport.js';
 import { helperEnvironment } from './agent-terminal-environment.js';
 const log = createLogger('MCP');
 
@@ -23,39 +24,45 @@ class MCPService {
    */
   async connectToServer(name, command, args = [], env = {}) {
     log.info('Connecting to server', { server: name, command });
+    const transport = new StdioClientTransport({
+      command,
+      args,
+      // The server's own configured names over the helper essentials —
+      // never the backend's secrets (helperEnvironment).
+      env: { ...helperEnvironment(process.env, process.platform), ...env },
+    });
+    return this.connectTransport(name, transport);
+  }
 
+  /** Connect an Electron utility child through the same MCP discovery/tool path. impure. */
+  async connectUtilityToServer(name, child) {
+    log.info('Connecting to utility server', { server: name });
+    return this.connectTransport(name, new UtilityStdioTransport(child));
+  }
+
+  async connectTransport(name, transport) {
     try {
-      const transportConfig = {
-        command,
-        args,
-        // The server's own configured names over the helper essentials —
-        // never the backend's secrets (helperEnvironment).
-        env: { ...helperEnvironment(process.env, process.platform), ...env },
-      };
-      
-      const transport = new StdioClientTransport(transportConfig);
-      
       const client = new Client({
         name: `neuma-${name}`,
         version: '1.0.0',
       }, {
         capabilities: {}
       });
-      
+
       // Connect with 30-second timeout to prevent indefinite hang
       await Promise.race([
         client.connect(transport),
         new Promise((_, reject) => setTimeout(() => reject(new Error(`MCP server '${name}' connection timed out after 30s`)), 30000))
       ]);
       log.info('Connected to', { server: name });
-      
+
       // List available tools
       const tools = await client.listTools();
       log.info('Tools discovered', { server: name, count: (tools.tools || []).length });
 
       this.clients.set(name, client);
       this.activeTools.set(name, tools.tools || []);
-      
+
       return client;
     } catch (error) {
       log.error('Failed to connect', { name, error: error.message });

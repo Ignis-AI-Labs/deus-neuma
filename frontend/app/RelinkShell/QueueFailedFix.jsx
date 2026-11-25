@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { uiSound } from '../../services/ui-sound.js';
-import { approveQueuePost, retryQueuePost } from '../../services/social-channels-client.js';
+import { approveQueuePost, mediaSeenOf, retryQueuePost } from '../../services/social-channels-client.js';
 import { useWindows } from '../windowing/use-windows.js';
 import { DoorButton } from './doors/DoorButton.jsx';
 import { failedPostDoor, failedPostHandTo } from './doors/failed-post-door.js';
@@ -19,7 +19,7 @@ import { handOver } from './doors/hand-over.js';
 // TikTok post's carries the person's consent on its card, so those stop at draft and wait there.
 const tryAgain = async (entry) => {
   await retryQueuePost(entry.id);
-  if (entry.kind !== 'reply' && entry.channelId !== 'tiktok') await approveQueuePost(entry.id);
+  if (entry.kind !== 'reply' && entry.channelId !== 'tiktok') await approveQueuePost(entry.id, { textSeen: entry.text, mediaSeen: mediaSeenOf(entry) });
 };
 
 /**

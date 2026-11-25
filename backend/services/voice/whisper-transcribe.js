@@ -48,7 +48,7 @@ export const transcribeRecording = async (audio, contentType) => {
     headers: { 'Content-Type': contentType || 'application/octet-stream' },
     body: audio,
     signal: AbortSignal.timeout(DECODE_TIMEOUT_MS),
-  });
+  }, ENGINE);
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.detail || `the speech engine answered ${res.status}`);
   return { text: String(body.text ?? '').trim(), language: body.language ?? null, durationSeconds: body.durationSeconds ?? null };

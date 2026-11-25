@@ -12,7 +12,8 @@ export const heldAckAction = (channel, data) => {
   if (holdId) {
     switch (channel) {
       case 'consciousness:queued': action = { type: 'QUEUE_MARK', holdId }; break;
-      case 'consciousness:queue_taken': action = { type: 'QUEUE_CLEAR', holdId }; break;
+      // heard: the words joined the reply in flight — they are set into it where they were picked up.
+      case 'consciousness:queue_taken': action = data.heard ? { type: 'QUEUE_HEARD', holdId, text: typeof data.thought === 'string' ? data.thought : '', at: data.at ?? null } : { type: 'QUEUE_CLEAR', holdId }; break;
       case 'consciousness:queue_edited':
         if (data.ok && typeof data.thought === 'string') action = { type: 'QUEUE_EDIT', holdId, text: data.thought };
         else if (!data.ok) action = { type: 'QUEUE_CLEAR', holdId };

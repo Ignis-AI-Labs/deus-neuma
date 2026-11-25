@@ -7,6 +7,7 @@ export default Object.freeze({
   noMatch: '没有与“{{q}}”匹配的应用',
   cats: Object.freeze({
     beings: '存在',
+    company: '公司',
     work: '工作',
     create: '创作',
     reach: '传播',

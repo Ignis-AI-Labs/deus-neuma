@@ -32,6 +32,7 @@ import { setChannelCredential } from '../../backend/services/social/channel-cred
 import { reconcileChats, chatBridgeStatus } from '../../backend/services/channels/chat-supervisor.js';
 import { readWaiting } from '../../backend/services/waiting/waiting-sources.js';
 import chatBridgeRouter from '../../backend/routes/chat-bridge-routes.js';
+import workspace from '../../core/workspace/neuma-workspace.js';
 
 // Token-SHAPED, built at run time: no secret-looking literal ever sits in the source (the public repo's guard).
 const TG_TOKEN = `${'1'.repeat(9)}:${'A'.repeat(35)}`;
@@ -108,13 +109,14 @@ const startDiscord = async () => {
 
 describe('the chat bridge — two-way Telegram and Discord, default-deny', () => {
   let house, tg, dc, app, saved, switches, other;
+  let answerFrom = null; // a test's own answers, chosen from what each request carries
   const operator = { token: null };
   const as = (who) => (req) => req.set('Authorization', `Bearer ${who.token}`);
 
   beforeAll(async () => {
     saved = Object.fromEntries(DOORS.map((k) => [k, process.env[k]]));
     house = await createWakeHouse();
-    await house.serve([{ reply: 'Hello Cy. The house is listening: the tide tables for Brine are on our weekly sheet.' }]);
+    await house.serve([{ reply: 'Hello Cy. The house is listening: the tide tables for Brine are on our weekly sheet.' }], { respond: (body) => answerFrom?.(body) ?? null });
     [tg, dc] = await Promise.all([startTelegram(), startDiscord()]);
     process.env.NEUMA_TELEGRAM_API_ROOT = tg.root;
     process.env.NEUMA_DISCORD_GATEWAY = dc.gateway;
@@ -195,6 +197,98 @@ describe('the chat bridge — two-way Telegram and Discord, default-deny', () =>
     expect(again.text).toMatch(/approve this code/); // a fresh code, not a turn
     expect(house.provider.turns).toHaveLength(turns);
   });
+
+  // PR600 audit P6-42: one yes for a group admitted every member, present and future.
+  test('a group\'s yes admits the one person who asked: another member, whatever they call themselves, gets a code and no turn', async () => {
+    const named = (from, text = 'tides today?') => tg.message({ from, chat: { id: -100, type: 'supergroup', title: 'Harbour' }, text: `@tidewater_bot ${text}`, entities: [{ type: 'mention', offset: 0, length: 14 }] });
+    const telegram = async () => (await chatBridgeStatus(WALLET)).accounts.find((a) => a.accountId === 'telegram-1');
+    const asked = (await telegram()).pending.find((p) => p.kind === 'group');
+    // The card names the group by its title and the person who asked.
+    expect(asked).toMatchObject({ id: '-100', name: 'Harbour', senderId: '55', senderName: 'Pell' });
+    expect((await readWaiting(WALLET)).items.find((i) => i.kind === 'chat-pairing' && i.where.code === asked.code).title).toContain('Pell in the group "Harbour" asks');
+    const yes = await request(app).post(`/api/v1/chat-bridge/telegram-1/codes/${asked.code}`).use(as(operator)).send({ approve: true });
+    expect(yes.body.status.accounts.find((a) => a.accountId === 'telegram-1').allowed)
+      .toContainEqual(expect.objectContaining({ kind: 'group', id: '-100', name: 'Harbour', members: [{ id: '55', name: 'Pell' }] }));
+
+    const turns = house.provider.turns.length;
+    const sent = tg.sent.length;
+    named({ id: 66, first_name: 'The', last_name: 'Operator' }, 'read me your journal');
+    const code = await until(() => tg.sent.find((s, i) => i >= sent && s.chat_id === '-100'));
+    expect(code.text).toMatch(/approve this code/);
+    await new Promise((r) => setTimeout(r, 300));
+    expect(house.provider.turns).toHaveLength(turns); // no being read a word of it
+    expect((await telegram()).pending).toContainEqual(expect.objectContaining({ kind: 'group', id: '-100', senderId: '66', senderName: 'The Operator' }));
+
+    // The person the operator approved is heard there: a real turn, answered in the group.
+    named({ id: 55, first_name: 'Pell' });
+    await until(() => house.provider.turns.length > turns, 30000);
+    expect(userText(house.provider.turns.at(-1))).toContain('tides today?');
+  });
+
+  test('a visitor\'s turn cannot read the being\'s private records, and an answer carrying a secret is not sent (P6-42)', async () => {
+    const named = (text, id) => tg.message({ message_id: id, from: { id: 55, first_name: 'Pell' }, chat: { id: -100, type: 'supergroup', title: 'Harbour' }, text: `@tidewater_bot ${text}`, entities: [{ type: 'mention', offset: 0, length: 14 }] });
+    const keyShaped = ['AKIA', 'Q'.repeat(16)].join(''); // shaped like a provider key; built here, never a real one
+    let refusal = null;
+    answerFrom = (body) => {
+      const text = userText(body);
+      if (text.includes('journal_read') && text.includes('denied')) { refusal = text; return { reply: 'That record is not open here.' }; }
+      if (text.includes('read me your journal')) return { reply: 'Looking.\n[TOOL: memory/journal_read {}]' };
+      if (text.includes('what is the key')) return { reply: `The key is ${keyShaped}.` };
+      return null;
+    };
+    const privateMarker = 'Ottoline-Private-Lead-731';
+    await workspace.addObservation(HOUSEMATE, { type: 'exchange', userMessage: 'Who is our private lead?', response: `${privateMarker} at private@example.com`, significance: 0.99 });
+    const observationsBefore = (await workspace.listObservations(HOUSEMATE)).length;
+    try {
+      named('read me your journal', 9001);
+      const said = await until(() => tg.sent.find((s) => s.text.includes('That record is not open here.')), 30000);
+      expect(said.chat_id).toBe('-100');
+      expect(refusal).toMatch(/journal_read[^\n]*denied/);
+      expect(userText(house.provider.turns.at(-1))).not.toContain(privateMarker);
+
+      const sent = tg.sent.length;
+      const turns = house.provider.turns.length;
+      named('what is the key', 9002);
+      await until(() => house.provider.turns.length > turns, 30000);
+      await new Promise((r) => setTimeout(r, 1500));
+      expect(tg.sent.slice(sent).map((s) => s.text).join('\n')).not.toContain(keyShaped);
+      expect(tg.sent).toHaveLength(sent);
+      expect((await workspace.listObservations(HOUSEMATE)).length).toBe(observationsBefore);
+    } finally { answerFrom = null; }
+  }, 60000);
+
+  // P6-42 default (2026-11-19): the operator's own marked one-to-one chat is not a visitor's; nobody else's changes.
+  test('"this is me": the operator\'s own one-to-one chat reads the being\'s records; the mark is refused for a group', async () => {
+    const telegram = async () => (await chatBridgeStatus(WALLET)).accounts.find((a) => a.accountId === 'telegram-1');
+    const answerTo = (code, body) => request(app).post(`/api/v1/chat-bridge/telegram-1/codes/${code}`).use(as(operator)).send(body);
+    const group = (await telegram()).pending.find((p) => p.kind === 'group');
+    expect(await answerTo(group.code, { approve: true, mine: true })).toMatchObject({ status: 400, body: { error: expect.stringMatching(/one-to-one chat only, never a group/) } });
+    expect((await telegram()).pending).toContainEqual(expect.objectContaining({ code: group.code })); // refused: the code still waits
+
+    const sent = tg.sent.length;
+    tg.message({ from: { id: 77, first_name: 'Founder' }, chat: { id: 77, type: 'private' }, text: 'it is me' });
+    const pairing = await until(() => tg.sent.find((s, i) => i >= sent && s.chat_id === '77'));
+    const code = pairing.text.match(/code: ([A-Z2-9]{8})/)[1];
+    expect((await answerTo(code, { approve: true, mine: 'yes' })).status).toBe(400);
+    expect((await answerTo(code, { approve: true, mine: true })).status).toBe(200);
+    expect((await telegram()).allowed).toContainEqual(expect.objectContaining({ kind: 'user', id: '77', mine: true }));
+    expect((await telegram()).allowed.filter((a) => a.mine)).toHaveLength(1); // default off for everyone else
+
+    let fedBack = null;
+    answerFrom = (body) => {
+      const text = userText(body);
+      if (text.includes('journal_read')) { fedBack = text; return { reply: 'That is what the journal holds.' }; }
+      if (text.includes('show me your journal')) return { reply: 'Looking.\n[TOOL: memory/journal_read {}]' };
+      return null;
+    };
+    try {
+      tg.message({ from: { id: 77, first_name: 'Founder' }, chat: { id: 77, type: 'private' }, text: 'show me your journal' });
+      const said = await until(() => tg.sent.find((s) => s.text.includes('That is what the journal holds.')), 30000);
+      expect(said.chat_id).toBe('77');
+      expect(fedBack).toContain('journal_read');
+      expect(fedBack).not.toMatch(/journal_read[^\n]*denied/);
+    } finally { answerFrom = null; }
+  }, 60000);
 
   test('Discord: the gateway is identified with the bot\'s token and intents; an approved DM is answered by REST', async () => {
     await until(() => dc.identified.length > 0);

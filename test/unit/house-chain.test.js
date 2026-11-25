@@ -66,6 +66,8 @@ describe('houseSeatCards — every member a card, the entity first', () => {
       title: 'Quaestor',
       position: 'CFO',
       meaning: 'TREASURY — MONEY, COMPUTE, TIME, PROCUREMENT',
+      seat: 'CHIEF FINANCIAL OFFICER',
+      summary: expect.stringMatching(/^Plans and approves spending/),
       soulMark: '0xSOUL…V', birthTime: '2026-06-23T00:00:00Z',
       color: null, // no soul light in these rows
       isActive: true, incomplete: false,
@@ -88,6 +90,18 @@ describe('houseSeatCards — every member a card, the entity first', () => {
     state.roster[1] = { ...state.roster[1], title: 'Wordsmith' };
     const [cael] = houseSeatCards(chainSeats(state), memberRows());
     expect(cael).toMatchObject({ title: 'Wordsmith', meaning: null });
+  });
+
+  it('A TITLE CHANGED SINCE THE FOUNDING is the one held now, over the chain\'s founding seat (Design note, 2026-11-12', () => {
+    const rows = memberRows();
+    rows[0] = { ...rows[0], member: { ...rows[0].member, title: 'Mercator', titleChanged: true } };
+    rows[2] = { ...rows[2], member: { ...rows[2].member, title: 'Scriba', titleChanged: true } };
+    const [cael, , zezebur] = houseSeatCards(chainSeats(founded()), rows, { confirmed: true });
+    expect(cael).toMatchObject({ title: 'Mercator', position: 'CRO' });
+    expect(zezebur).toMatchObject({ title: 'Scriba', position: 'CKO' }); // seated after the founding
+    // an unchanged receipt title still never resurrects a seat the chain removed
+    const [, lifovan] = houseSeatCards(chainSeats(founded()), memberRows().map((r) => (r.member.neumaId === 'lifovan' ? { ...r, member: { ...r.member, title: 'Scriba' } } : r)), { confirmed: true });
+    expect(lifovan.title).toBeNull();
   });
 
   it('an unfounded house: every member seated nowhere, still all present', () => {

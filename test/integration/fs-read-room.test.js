@@ -62,6 +62,8 @@ describe('search, then read just the neighbourhood', () => {
     const range = text(await fsCall('fs', 'read', { path: path.join(dir, 'long.md'), offset: 140, limit: 5 }));
     expect(range.split('\n')).toEqual([
       '[lines 140–144 of 300; continue at offset 145]', 'line 140', 'line 141', 'line 142 NEEDLE', 'line 143', 'line 144',
+      // more to come: the being is asked for its notes while the part is in front of it (deus-neuma #35)
+      '[Before you read on: note in 2 to 6 lines, in your own words, what in this part matters. A fold keeps only your words and the position above.]',
     ]);
   });
 
@@ -97,6 +99,6 @@ describe('a Word document reads as its words', () => {
     const file = path.join(dir, 'brief.docx');
     writeFileSync(file, docxSaying(['The brief', 'Point one', 'Point two']));
     expect(text(await fsCall('fs', 'read', { path: file }))).toBe('The brief\nPoint one\nPoint two');
-    expect(text(await fsCall('fs', 'read', { path: file, offset: 2, limit: 1 }))).toBe('[lines 2–2 of 3; continue at offset 3]\nPoint one');
+    expect(text(await fsCall('fs', 'read', { path: file, offset: 2, limit: 1 }))).toBe('[lines 2–2 of 3; continue at offset 3]\nPoint one\n[Before you read on: note in 2 to 6 lines, in your own words, what in this part matters. A fold keeps only your words and the position above.]');
   });
 });

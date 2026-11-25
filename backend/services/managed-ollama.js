@@ -11,7 +11,8 @@
 //   verify   → the model answers a real message (it is loaded, and it speaks)
 //   adopt    → the platform's mind becomes that server and model, persisted (provider-choice.js)
 // A step that fails is tried again by the job itself before a person is told (one sentence, one act).
-// An Ollama already on the machine is used as it is when it is new enough: started if it is
+// An Ollama already on the machine is used as it is when it is new enough and this account (or the
+// system) runs it, never one another account runs (ollama-server-state.js): started if it is
 // installed but not running, never downloaded twice. A server the setup started is started again at
 // every boot (startManagedAtBoot) and stopped with the backend.
 //
@@ -27,7 +28,8 @@ import path from 'node:path';
 import os from 'node:os';
 import { spawn, spawnSync } from 'node:child_process';
 import { getDataRoot } from './data-root.js';
-import { readManagedRecord, servedOllamaWindow, writeManagedRecord } from './managed-ollama-record.js';
+import { chosenModelHome } from './model-home.js';
+import { readManagedRecord, servedKvCache, servedOllamaWindow, writeManagedRecord } from './managed-ollama-record.js';
 import { obtainArchive, installArchive } from './managed-ollama-download.js';
 import { isFinal, plainFailure, setupFailure } from './managed-ollama-errors.js';
 import { createLogger } from './logger.js';
@@ -38,9 +40,11 @@ import { sameEndpoint } from './provider-discovery.js';
 import { currentDriverGuard, fitManagedWindow, saveGpuAnyway } from './managed-ollama-gpu.js';
 import { _resetCapsCache } from './llm-runtime-cache.js';
 import {
-  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, setupDoneLine, versionAtLeast,
+  MIN_OLLAMA_VERSION, OLLAMA_VERSION, installPlan, managedEndpoints, managedServeEnv, ollamaAssetFor, pullProgress, setupDoneLine,
 } from './managed-ollama-plan.js';
+import { ollamaUp, serverState, usableServer as usable } from './ollama-server-state.js';
 import { probeEnvironment } from './agent-terminal-environment.js';
+import { verifyModelRef } from './managed-ollama-ref.js';
 
 export { obtainArchive } from './managed-ollama-download.js';
 
@@ -56,14 +60,18 @@ const endpoints = () => managedEndpoints(process.env.NEUMA_OLLAMA_ENDPOINT);
 
 // impure — read at call time (packaged vs dev data roots)
 const root = () => path.join(getDataRoot(), 'model-server');
-// Where the server and the models are kept: the folder the person chose in the installer (kept in
-// the record), else beside the record. Models are large, so this is the person's choice.
+// Where the server and the models are kept: the folder this job was given, else the folder the
+// setup put them in (the record), else beside the record. Models are large, so this is the
+// person's choice. A NEW setup goes where the person chose (model-home.js: the door's CHANGE, or
+// the Windows installer's folder), even when an older setup lives elsewhere; a server already set
+// up keeps running from its own folder until then.
 let chosenHome = null;
 const serverHome = () => chosenHome || readManagedRecord()?.home || root();
+const setupHome = () => chosenHome || chosenModelHome() || readManagedRecord()?.home || root();
 const modelsDir = () => path.join(serverHome(), 'models');
-const managedBin = () => {
+const managedBin = (home = serverHome()) => {
   const asset = ollamaAssetFor(process.platform, process.arch);
-  return asset ? path.join(serverHome(), 'ollama', asset.bin) : null;
+  return asset ? path.join(home, 'ollama', asset.bin) : null;
 };
 
 /** The record of what the platform set up, or null. impure */
@@ -75,6 +83,8 @@ export const findSystemOllama = () => {
   if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
     candidates.push(path.join(process.env.LOCALAPPDATA, 'Programs', 'Ollama', 'ollama.exe'));
   }
+  // an app opened from the Finder gets a bare PATH: Homebrew's and the Ollama app's own are named
+  if (process.platform === 'darwin') candidates.push('/opt/homebrew/bin/ollama', '/usr/local/bin/ollama', '/Applications/Ollama.app/Contents/Resources/ollama');
   for (const bin of candidates) {
     const r = spawnSync(bin, ['--version'], { encoding: 'utf8', timeout: 5000, windowsHide: true, env: probeEnvironment() });
     if (r.status === 0) return { bin, version: (`${r.stdout}${r.stderr}`.match(/(\d+\.\d+\.\d+)/) || [])[1] || null };
@@ -82,25 +92,9 @@ export const findSystemOllama = () => {
   return null;
 };
 
-/** What answers at an Ollama endpoint: up, its version, the models it holds. impure */
-export const serverState = async (endpoint = endpoints().usual) => {
-  try {
-    const v = await fetch(`${endpoint}/api/version`, { signal: AbortSignal.timeout(2000) });
-    if (!v.ok) return { up: false, version: null, models: [] };
-    const { version = null } = await v.json().catch(() => ({}));
-    const t = await fetch(`${endpoint}/api/tags`, { signal: AbortSignal.timeout(3000) }).catch(() => null);
-    const models = t?.ok ? ((await t.json().catch(() => ({}))).models || []).map((m) => m.name) : [];
-    return { up: true, version, models };
-  } catch { return { up: false, version: null, models: [] }; }
-};
-
-/** Is an Ollama answering at this endpoint? impure */
-export const ollamaUp = async (endpoint = endpoints().usual) => (await serverState(endpoint)).up;
-const usable = (state) => state.up && versionAtLeast(state.version, MIN_OLLAMA_VERSION);
-
-/** Free bytes on the disk that holds the server's home. impure */
+/** Free bytes on the disk the next setup goes into. impure */
 const freeBytes = async () => {
-  let dir = serverHome();
+  let dir = setupHome();
   while (!fs.existsSync(dir) && path.dirname(dir) !== dir) dir = path.dirname(dir);
   try { const s = await fsp.statfs(dir); return s.bavail * s.bsize; } catch { return null; }
 };
@@ -110,7 +104,7 @@ export const currentPlan = async ({ verify = true } = {}) => {
   const setup = await getSetupStatus();
   const record = readRecord();
   const own = record?.managed && record.endpoint ? { endpoint: record.endpoint, ...(await serverState(record.endpoint)) } : null;
-  const bin = managedBin();
+  const bin = managedBin(setupHome());
   return installPlan({
     platform: process.platform,
     arch: process.arch,
@@ -152,7 +146,8 @@ export const cancelJob = () => {
  */
 export const startJob = async ({ plan: given, home, loadModel = true } = {}) => {
   if (job.state === 'running') return job;
-  if (home) chosenHome = path.resolve(home);
+  const target = home || chosenModelHome();
+  if (target) chosenHome = path.resolve(target);
   abort = new AbortController();
   const { signal } = abort;
   update({ state: 'running', plan: null, step: 'check', completed: 0, total: 0, error: null, detail: null, line: 'Reading what this computer needs' });
@@ -197,10 +192,11 @@ const runJob = async (given, signal, loadModel) => {
  * Fitted before the load, so the card's free memory is the truth. impure
  */
 const loadAndAnswer = async (plan, signal, { bin, endpoint, started, guard, startedWindow }) => {
-  const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold });
-  await keepWindow(fit.window);
+  const fit = await fitManagedWindow(endpoint, plan.model.ref, { onGpu: !guard.hold, ownServer: Boolean(plan.managed) });
+  const startedKv = servedKvCache();
+  await keepWindow(fit.window, fit.kvCache);
   let at = endpoint;
-  if (started && fit.window !== startedWindow) at = await restartServer(bin, plan.managed, endpoint, { window: fit.window, holdGpu: guard.hold });
+  if (started && (fit.window !== startedWindow || (fit.kvCache || startedKv) !== startedKv)) at = await restartServer(bin, plan.managed, endpoint, { window: fit.window, holdGpu: guard.hold });
   update({ step: 'verify', completed: 0, total: 0, line: `Checking that ${plan.model.name} answers` });
   await modelAnswers(at, plan.model.ref, signal, fit.window);
   return Object.freeze({ fit, endpoint: at });
@@ -226,12 +222,15 @@ const run = async (plan, signal, loadModel) => {
   const record = { managed, bin, endpoint, ...(managed ? { home: serverHome(), modelsDir: modelsDir() } : {}) };
   if (managed) await writeManagedRecord({ ...readRecord(), ...record });
   const state = await serverState(endpoint);
+  // never another account's program standing where the model server should be (PR600 audit P6-153)
+  if (state.foreign) throw setupFailure('SERVER_FOREIGN', `what answers at ${endpoint} is run by another account on this computer (${state.ownerUid ?? 'its account could not be read'})`);
   if (!usable(state)) {
     throw setupFailure('SERVER_OLD', `the model server answering at ${endpoint} is Ollama ${state.version || '(unknown)'}, older than ${MIN_OLLAMA_VERSION}`);
   }
   // what the server holds now, never what the plan saw: a models folder removed since is pulled again
   const has = state.models.some((m) => m.toLowerCase() === plan.model.ref.toLowerCase());
   if (!has) await pullModel(plan.model.ref, signal, endpoint, plan.model.name);
+  await verifyModelRef(plan.model, endpoint, signal);
   const loaded = loadModel ? await loadAndAnswer(plan, signal, { bin, endpoint, started, guard, startedWindow }) : null;
   if (loaded) endpoint = loaded.endpoint;
   update({ step: 'adopt', line: 'Making it the platform\'s model server' });
@@ -297,7 +296,7 @@ const startServer = async (bin, managed, wanted = endpoints().usual, { window = 
   await fsp.mkdir(serverHome(), { recursive: true });
   const logFile = path.join(serverHome(), 'ollama.log');
   const out = fs.openSync(logFile, 'a');
-  const env = { ...probeEnvironment(), OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, holdGpu, env: process.env }) };
+  const env = { ...probeEnvironment(), OLLAMA_HOST: endpoint.replace(/^https?:\/\//, ''), ...managedServeEnv({ window, kvCache: servedKvCache(), holdGpu, env: process.env }) };
   if (managed) {
     env.OLLAMA_MODELS = modelsDir();
     await fsp.mkdir(env.OLLAMA_MODELS, { recursive: true });
@@ -322,9 +321,9 @@ const startServer = async (bin, managed, wanted = endpoints().usual, { window = 
  * old one, or the next chat would name the old window and reload the model at it (seen in the
  * 2026-10-23 proof run: refitted to 20,480, the next chat loaded at 32,768). impure
  */
-const keepWindow = async (window) => {
+const keepWindow = async (window, kvCache) => {
   const was = servedOllamaWindow();
-  await writeManagedRecord({ ...readRecord(), window });
+  await writeManagedRecord({ ...readRecord(), window, ...(kvCache ? { kvCache } : {}) });
   if (window !== was) _resetCapsCache();
 };
 
@@ -450,7 +449,7 @@ export const startManagedAtBoot = async () => {
     }
     // Fitted at every start, before the model loads: the card's free memory is today's, not the setup's
     if (started && hasModel) {
-      const fit = await fitManagedWindow(endpoint, record.model, { onGpu: !guard.hold });
+      const fit = await fitManagedWindow(endpoint, record.model, { onGpu: !guard.hold, ownServer: true });
       await keepWindow(fit.window);
       if (fit.window !== window) endpoint = await restartServer(bin, managed, endpoint, { window: fit.window, holdGpu: guard.hold });
       log.info('model window fitted to the graphics card', { window: fit.window, onGpu: fit.onGpu, line: fit.line });
@@ -481,5 +480,8 @@ export const chooseGpuAnyway = async (useGpuAnyway, wallet = null) => {
   return currentDriverGuard();
 };
 
-/** The home this module installs into, for the screen's honesty line. impure */
-export const installHome = () => serverHome().replace(os.homedir(), '~');
+/** The folder the next setup installs into, as the screen shows it. impure */
+export const installHome = () => setupHome().replace(os.homedir(), '~');
+
+/** The same folder, whole, for the folder dialog to open at. impure */
+export const installHomePath = () => setupHome();

@@ -59,6 +59,11 @@ export const kvBytesPerToken = (info) => {
   return Math.ceil(layers / interval) * kvHeads * (keyLen + valueLen) * 2;
 };
 
+/** q8_0 keeps 32 values in 34 bytes where f16 takes 64: the KV the platform's own Ollama holds. */
+export const Q8_KV_SCALE = 34 / 64;
+/** q4_0 keeps 32 values in 18 bytes: half the 8-bit cache again (576 MiB against 1,088 at 32K, #24). */
+export const Q4_KV_SCALE = 18 / 64;
+
 /** GPU memory a model needs at a window: weights + KV + the runtime around them. Pure. */
 export const gpuBytesAt = (window, { weightsBytes, kvPerToken }) =>
   weightsBytes + window * (kvPerToken ?? UNKNOWN_KV_PER_TOKEN) + RUNTIME_BASE + window * RUNTIME_PER_TOKEN;
@@ -103,4 +108,24 @@ export const fitOllamaWindow = ({ roomBytes, weightsBytes, kvPerToken }) => {
   const needBytes = gpuBytesAt(OLLAMA_WINDOW_FLOOR, model);
   return Object.freeze({ window: OLLAMA_WINDOW_FLOOR, onGpu: false, needBytes, roomBytes,
     line: `The graphics card can spare ${gib(roomBytes)} GB and the model needs about ${gib(needBytes)} GB to hold a being's whole opening, so part of it runs on the processor. Replies are slower; nothing the being says is cut.` });
+};
+
+/**
+ * The window AND the KV cache for the platform's own Ollama. The 8-bit cache, unless it cannot keep
+ * the whole 32,768-token window on the card: then the 4-bit one, when that holds more of the window
+ * or keeps the model wholly on the card (Design note, 2026-11-15, on deus-neuma #24: a 12 GB RTX 5070 held
+ * the T4 at 20,480 with the 8-bit cache, and at 32,768 with the 4-bit one at about 45 tok/s). Image
+ * input stays: the projector is never dropped to make room. Pure.
+ * @param {{roomBytes: number|null, weightsBytes: number, kvPerToken: number|null}} input kvPerToken: f16
+ * @returns {Readonly<{window: number, onGpu: boolean|null, needBytes: number, roomBytes: number|null, line: string, kvCache: 'q8_0'|'q4_0'}>}
+ */
+export const fitOwnServer = ({ roomBytes, weightsBytes, kvPerToken }) => {
+  const at = (scale) => fitOllamaWindow({ roomBytes, weightsBytes, kvPerToken: kvPerToken ? Math.ceil(kvPerToken * scale) : kvPerToken });
+  const q8 = at(Q8_KV_SCALE);
+  if (!kvPerToken || (q8.onGpu !== false && q8.window >= OLLAMA_SERVED_CONTEXT)) return Object.freeze({ ...q8, kvCache: 'q8_0' });
+  const q4 = at(Q4_KV_SCALE);
+  const better = (q4.onGpu === true && q8.onGpu !== true) || (q4.onGpu === q8.onGpu && q4.window > q8.window);
+  return better
+    ? Object.freeze({ ...q4, kvCache: 'q4_0', line: `${q4.line} Its memory of the conversation is kept at 4 bits so the window stays this wide.` })
+    : Object.freeze({ ...q8, kvCache: 'q8_0' });
 };

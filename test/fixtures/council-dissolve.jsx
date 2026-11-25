@@ -16,6 +16,7 @@ function Fixture() {
   return <>
     <button disabled={!connected} onClick={() => council.openCouncil(['confirmation-a', 'confirmation-b'])}>Open idle council</button>
     <output id="council-id">{council.state.councilId || 'closed'}</output>
+    <output id="council-view">{council.room ? 'council' : 'one-on-one'}</output>
     {council.state.councilId && <CouncilDissolve key={council.state.councilId} close={council.close}
       connected={connected} error={council.state.error} />}
     {council.state.error && <p role="alert">{council.state.error.message}</p>}

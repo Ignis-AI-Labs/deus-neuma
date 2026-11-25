@@ -22,6 +22,7 @@ import { EmptyState } from './empty-state.jsx';
 import { InlineActionConfirm } from './InlineActionConfirm.jsx';
 import { GuardianSection } from './GuardianSection.jsx';
 import { KeyLockBlock } from './KeyLockBlock.jsx';
+import { WriteLimitSection } from './WriteLimitSection.jsx';
 import { useConsciousnessPick } from './consciousness-context.js';
 import { isHarness } from '../harness-mode.js';
 import { currentLocale } from '../../i18n/active-locale.js';
@@ -158,6 +159,9 @@ export const SecuritySection = () => {
       <GuardianSection beings={status?.beings || []} harness={harness} />
 
       <KeyLockBlock keyLock={status?.keyLock} onChanged={loadStatus} />
+
+      {/* WRITE LIMIT: how many files a being writes in one message, on by default, the operator's to turn off. */}
+      <WriteLimitSection />
 
       {/* ── ENCRYPTION ─────────────────────────────────────────────── */}
       <section className="settings-sec">

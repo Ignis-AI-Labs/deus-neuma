@@ -143,3 +143,37 @@ export const runScan = async () =>
 // impure
 export const getPosture = async () =>
   csoCall('GET', '/posture', { errorPrefix: 'Could not read the posture' });
+
+/**
+ * The decoy watch: whether it is on, how it sees, each decoy's state, and
+ * every program it froze.
+ * @returns {Promise<{supported:boolean, enabled:boolean, mode:string, decoys:Array, frozen:Array, lastIncident:?object}>}
+ */
+// impure
+export const getDecoyWatch = async () =>
+  csoCall('GET', '/tripwire', { errorPrefix: 'Could not read the decoy watch' });
+
+/**
+ * Turn the decoy watch on (plants the decoys) or off (removes them). The
+ * install owner's call, at the desk.
+ * @param {boolean} enabled
+ */
+// impure
+export const setDecoyWatch = async (enabled) =>
+  csoCall('PUT', '/tripwire', { body: { enabled }, errorPrefix: 'Could not switch the decoy watch' });
+
+/**
+ * Let a program the decoy watch froze run again.
+ * @param {number} pid
+ */
+// impure
+export const releaseFrozenProgram = async (pid) =>
+  csoCall('POST', '/tripwire/release', { body: { pid }, errorPrefix: 'Could not release that program' });
+
+/**
+ * Report that a copied address was replaced on the clipboard.
+ * @param {{copied: string, found: string}} swap
+ */
+// impure
+export const reportClipboardSwap = async (swap) =>
+  csoCall('POST', '/tripwire/clipboard', { body: swap, errorPrefix: 'Could not file the swap' });

@@ -30,7 +30,7 @@ import {
   resolvePolicy, checkToolAccess, applyToolMode, addAllowedTool, removeAllowedTool, GLOBAL_DEFAULTS,
 } from './tool-policy.js';
 import { requestToolApproval } from './tool-approval.js';
-import { applyProtocolGuard, holdForWake } from './protocol-guard.js';
+import { applyProtocolGuard, holdForWake, canAlwaysAllow } from './protocol-guard.js';
 import { landsInOpenFolder } from './open-folder-autonomy.js';
 import { focusGroundOf } from './focus-ground.js';
 import { capturePolicyGrant } from './policy-grant-context.js';
@@ -152,6 +152,8 @@ export const grantAlwaysAllow = async (connection, serverName, toolName, origin 
  * @param {boolean} [opts.observeExempt] - Pure observation a seat keeps open in observe mode
  * @param {Function} [opts.emit] - (event) => void — the seat's tool-event sink
  * @param {AbortSignal} [opts.signal] - Turn signal (default connection.activeTurn?.signal)
+ * @param {boolean} [opts.ownWork] - The act only revises or pulls the being's OWN unsent
+ *   work: no card is raised for it (Design note, 2026-11-12; a denial or a hold still stands
  * @returns {Promise<{ok: true} | {ok: false, result: Object}>}
  */
 export const gateAct = async (connection, opts) => {
@@ -178,7 +180,8 @@ export const gateAct = async (connection, opts) => {
   const explicit = resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null)[`${server}/${tool}`] === 'allowed'
     || landsInOpenFolder({ server, tool, args, ground: focusGroundOf(connection) });
   const access = observeExempt ? baseAccess
-    : holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, tool), mode, server, tool, explicit), server, tool);
+    : holdForWake(connection, applyProtocolGuard(applyToolMode(baseAccess, mode, tool), mode, server, tool, explicit,
+      connection.sandboxEnabled === false), server, tool);
 
   if (access === 'denied') {
     // An observe-mode hold reads differently from a policy denial — the
@@ -189,12 +192,12 @@ export const gateAct = async (connection, opts) => {
     return { ok: false, result: { tool: toolLabel, status: 'denied', error: result.error } };
   }
 
-  if (access === 'approval_required') {
+  if (access === 'approval_required' && !opts.ownWork) {
     const decision = await requestToolApproval(connection, {
       tool: toolLabel, args: cardArgs ?? args, signal,
     });
     try { origin.beforeCommit(); } catch { return interrupted(); }
-    if (decision === 'always') {
+    if (decision === 'always' && canAlwaysAllow(server, tool)) {
       try { await grantAlwaysAllow(connection, server, tool, origin); }
       catch { return interrupted(); }
     }

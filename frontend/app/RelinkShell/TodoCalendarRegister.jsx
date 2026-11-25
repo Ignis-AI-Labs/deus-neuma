@@ -7,12 +7,14 @@ import { useState } from 'react';
 import { apiCall, authHeadersOrNull } from '../../utils/http.js';
 import { uiSound } from '../../services/ui-sound.js';
 import { HouseCalendar } from './house-calendar/HouseCalendar.jsx';
+import { YourCalendars } from './house-calendar/YourCalendars.jsx';
 
 /** @param {{onOpenList?: (laneId: string) => void}} props — opens a person's list in the LISTS register */
 export const TodoCalendarRegister = ({ onOpenList = null }) => {
   const [link, setLink] = useState(''); // the minted subscribe URL, shown once
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [readSeq, setReadSeq] = useState(0); // a calendar was added or removed: the house calendar reads again
 
   // impure — mint (or rotate) the ICS subscribe link. One live token per
   // wallet: minting again kills the old link, which is the whole revocation.
@@ -46,6 +48,8 @@ export const TodoCalendarRegister = ({ onOpenList = null }) => {
   // never a line beneath it that the calendar can overflow onto
   const subscribe = (
     <div className="hcal-ics">
+      {/* the way IN: calendars kept elsewhere, read into this one (a booked call among them) */}
+      <YourCalendars onChanged={() => setReadSeq((n) => n + 1)} />
       {link ? (
         <>
           <span className="hcal-ics-note">SUBSCRIBE URL — PASTE INTO YOUR CALENDAR APP. MINTING A NEW ONE KILLS THIS:</span>
@@ -59,5 +63,5 @@ export const TodoCalendarRegister = ({ onOpenList = null }) => {
     </div>
   );
 
-  return <HouseCalendar onOpenList={onOpenList} foot={subscribe} />;
+  return <HouseCalendar key={readSeq} onOpenList={onOpenList} foot={subscribe} />;
 };

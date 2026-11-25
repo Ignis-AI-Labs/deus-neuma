@@ -9,6 +9,7 @@ import {
   HOLD_ID_PATTERN, handleHeldQueueOp, queueThought,
 } from '../services/held-thoughts.js';
 import { neumaWorkspace, normalizeSpace } from '../../core/index.js';
+import { canRide } from '../services/queued-action-handoff.js';
 import { resolveToolApproval } from '../services/tool-approval.js';
 import { cancelIntentSweeps } from '../services/intents/intent-context.js';
 import { resolveOperatorAsk } from '../services/operator-ask.js';
@@ -21,11 +22,11 @@ import { normalizePurpose } from '../../core/voice/purpose.js';
 import { handleVoiceFrame } from '../services/portal-voice-handlers.js';
 import { abortAudition } from '../services/voice/voice-audition.js';
 import { checkWsRateLimit } from '../services/rate-limiter.js';
-import { markNotificationsRead } from '../services/notification-store.js';
+import { markNotificationsRead, markNotificationsThrough } from '../services/notification-store.js';
 import { isValidId } from '../../core/runtime/notification-record.js';
 import { portalConnections } from './portal-connections.js';
 import { sendToWallet } from './portal-send.js';
-import { settleActiveTurn, runTurnAndDrain, updateToolWorkspace } from './portal-context.js';
+import { settleActiveTurn, runTurnAndDrain, updateToolWorkspace, drainHeldThoughts, afterCompaction } from './portal-context.js';
 import { portalResume, portalNewSession, companionManifest } from './portal-bind-handlers.js';
 import { handleCompactRequest } from '../services/portal-compact.js';
 import {
@@ -37,6 +38,8 @@ import {
   houseFoundPreflight, houseFoundSign, houseFoundConfirm,
 } from './portal-seal-handlers.js';
 import { birthLocalSealOffer, birthLocalSealSign } from './portal-local-seal-handlers.js';
+import { continueCutTurn } from './portal-turn-adopt.js';
+import { stopTakenTurn } from '../services/turn-keep.js';
 import { houseFoundLocalPreflight, houseFoundLocalSign } from './portal-house-local-handlers.js';
 import {
   councilOpen, councilSpeak, councilResumeFrame, councilListFrame,
@@ -61,23 +64,48 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         }));
         break;
       }
-      // The turn carries its project context as the episodic space — a project
-      // IS a space (kind: 'project'). Sent only by a project-aware client; when
-      // absent the space set at manifest/resume is left untouched (back-compat
-      // for older clients that never speak of projects).
+      // The turn may carry an episodic memory space; when absent the space set
+      // at manifest/resume is left untouched. (The desk sent a project space
+      // until Projects was removed, 2026-11-10; it sends none now.)
       if (message.space !== undefined) connection.space = normalizeSpace(message.space);
-      updateToolWorkspace(connection, message.toolWorkspace);
+      await updateToolWorkspace(connection, message.toolWorkspace);
       // The desk's handle for this word while held — invalid shapes drop.
       if (!HOLD_ID_PATTERN.test(String(message.holdId ?? ''))) delete message.holdId;
       // MID-STREAM SPEECH (ruling, 2026-07-26) — the council's two ways, in the
       // one-on-one: 'now' INTERJECTS (cut the reply, take the floor),
       // anything else HOLDS until the next completed action. The old flat refusal
       // made watching a being work read-only: destroy the turn, or wait.
+      if (connection.compacting && !connection.turnPromise) {
+        // EVERYTHING WAITS BEHIND A COMPACTION (Design note, 2026-11-19: it is summing up the very conversation this
+        // word would be added to, so the word is held — even a NOW — and goes the moment it finishes.
+        queueThought(connection, message);
+        ws.send(JSON.stringify({
+          type: 'consciousness:queued',
+          held: connection.pendingThoughts.length,
+          ...(message.holdId ? { holdId: message.holdId } : {}),
+          message: 'Held — it goes as soon as the compaction finishes.',
+        }));
+        afterCompaction(connection);
+        break;
+      }
       if (connection.turnPromise) {
+        if (message.urgency === 'now' && canRide(message)) {
+          // SENT NOW IS HEARD NOW, AND NOTHING IS LOST (Design note, 2026-11-21: […]): plain words join the turn in flight at once — the round is cut
+          // wherever it is, what it had said is kept, and it runs on with the words (heard-mid-thought.js). The turn
+          // itself is never cut. Between rounds (an action running) they join at that action's end.
+          queueThought(connection, message, { now: true });
+          ws.send(JSON.stringify({
+            type: 'consciousness:queued',
+            held: connection.pendingThoughts.length,
+            ...(message.holdId ? { holdId: message.holdId } : {}),
+            message: 'Sent — it joins what they are doing now.',
+          }));
+          break;
+        }
         if (message.urgency === 'now') {
-          // Cut the in-flight turn and wait for it to actually settle, so the
-          // interjection never races the reply it replaced (settleActiveTurn
-          // is the same helper navigation uses — one settling law).
+          // Words with something attached (an image, a file) cannot ride as a note: they take the floor. The
+          // in-flight turn is cut and settles first, so the interjection never races the reply it replaced
+          // (settleActiveTurn is the same helper navigation uses — one settling law).
           await settleActiveTurn(connection);
         } else {
           queueThought(connection, message);
@@ -128,14 +156,14 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         break;
       }
       if (message.space !== undefined) connection.space = normalizeSpace(message.space);
-      updateToolWorkspace(connection, message.toolWorkspace);
+      await updateToolWorkspace(connection, message.toolWorkspace);
       // Attachments ride along only so the turn can refuse them out loud — a
       // retry answers the recorded point and never silently drops new ones.
       const retryMessage = {
         type: message.type, retry, preset: message.preset,
         ...(Array.isArray(message.attachments) && message.attachments.length ? { attachments: message.attachments } : {}),
       };
-      if (connection.turnPromise) {
+      if (connection.turnPromise || connection.compacting) {
         // The same held-words semantics as a thought — the take goes the
         // next completed action in the in-flight turn (interjection is for speech,
         // not versioning).
@@ -158,6 +186,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
     case 'consciousness:queue_pull':
       await handleHeldQueueOp(connection, ws, message, {
         rateLimited: () => checkWsRateLimit(connection),
+        canRide,
         settle: () => settleActiveTurn(connection),
         run: (taken) => runTurnAndDrain(connection, taken),
       });
@@ -176,7 +205,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       if (turnId && takeIndex && laneId && connection.sessionId) {
         try {
           await neumaWorkspace.appendBranchView(laneId, connection.sessionId, { [turnId]: takeIndex });
-          ws.send(JSON.stringify({ type: 'consciousness:take_view', turnId, takeIndex }));
+          ws.send(JSON.stringify({ type: 'consciousness:take_view', turnId, takeIndex, sessionId: connection.sessionId }));
         } catch (err) {
           log.warn('branch-view marker not written', { neumaId: laneId, err: err?.message });
         }
@@ -193,7 +222,13 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       cancelIntentSweeps(connection);
       abortAudition(connection);
       if (connection.activeTurn) connection.activeTurn.abort();
-      else if (connection.turnPromise) { connection.interruptRequested = true; connection.lineWait?.abort(); }
+      // A turn this desk took over from a closed one is cut where it runs (portal-turn-adopt.js).
+      else if (!stopTakenTurn(connection) && connection.turnPromise) { connection.interruptRequested = true; connection.lineWait?.abort(); }
+      break;
+
+    // CONTINUE on a take the app's close cut short — the being picks it up where it stopped.
+    case 'consciousness:continue':
+      await continueCutTurn(connection, message);
       break;
 
     case 'tool:approval_response':
@@ -253,9 +288,31 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       ws.send(JSON.stringify({ type: 'tool:mode', mode: connection.toolMode }));
       break;
 
+    case 'clone:resume': {
+      // The operator's RESUME on a stopped shadow clone (shadow-clone.js): it carries on in its own sitting.
+      const { resumeShadowClones } = await import('../services/shadow-clone.js');
+      const splitId = String(message.splitId ?? '').slice(0, 80);
+      const out = await resumeShadowClones(connection, { splitId, clones: Array.isArray(message.clones) ? message.clones : null });
+      if (!out.ok) ws.send(JSON.stringify({ type: 'clone:resume', splitId, state: 'refused', reason: out.error }));
+      break;
+    }
+
+    case 'clone:stop': {
+      // The operator's STOP on a shadow clone, or on all of a split's (shadow-clone.js): each ends now, its sitting kept.
+      const { stopShadowClones } = await import('../services/shadow-clone.js');
+      const splitId = String(message.splitId ?? '').slice(0, 80);
+      const out = stopShadowClones({ laneId: connection.companion?.neumaId ?? null, splitId, clones: Array.isArray(message.clones) ? message.clones : null });
+      ws.send(JSON.stringify(out.ok
+        ? { type: 'clone:stop', splitId, state: 'stopping', clones: out.stopping }
+        : { type: 'clone:stop', splitId, state: 'not-running', reason: out.error }));
+      break;
+    }
+
     case 'session:compact':
       // The operator's /compact — the boundary's own torch-passing, on their word.
       await handleCompactRequest(connection);
+      // What was said while it ran goes now, in order.
+      await drainHeldThoughts(connection);
       break;
 
     case 'session:purpose':
@@ -290,12 +347,21 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       // the record contract's charset before it reaches the store. A batched
       // array rather than one frame per card, because the inbound rate limit is
       // 30 frames/60s and clearing a full tray card-by-card would trip it.
-      const ids = (Array.isArray(message.ids) ? message.ids : [message.id])
-        .filter((id) => isValidId(id));
-      if (ids.length === 0) break;
       // `dismiss` takes the cards out of the tray too (the × and CLEAR), on
       // every desk and after a reload; the records stay in the file.
       const dismiss = message.dismiss === true;
+      // MARK ALL READ and CLEAR name no ids: `through` covers every card up to the newest one the
+      // operator was shown, the ones older than the tray's window included. Never past now.
+      if (Number.isFinite(message.through) && message.through > 0) {
+        const through = Math.min(Math.floor(message.through), Date.now());
+        markNotificationsThrough(connection.walletAddress, through, Date.now(), { dismiss })
+          .then(() => sendToWallet(connection.walletAddress, { type: dismiss ? 'notification:dismissed' : 'notification:read', through }))
+          .catch((error) => log.error('Notification through-marking failed', { error: error.message }));
+        break;
+      }
+      const ids = (Array.isArray(message.ids) ? message.ids : [message.id])
+        .filter((id) => isValidId(id));
+      if (ids.length === 0) break;
       markNotificationsRead(connection.walletAddress, ids, Date.now(), { dismiss })
         .then(() => {
           sendToWallet(connection.walletAddress, { type: dismiss ? 'notification:dismissed' : 'notification:read', ids });

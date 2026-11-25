@@ -5,13 +5,7 @@
  * attempted — plus the grant plumbing that lands an operator's yes at every
  * layer that can block it.
  *
- * Extracted VERBATIM from portal-stream.js (size-law breakdown 2026-08-26,
- * docs/work/size-law-breakdown.md Part 1 step 9 / #278). Loop module — it
- * imports the dispatch fan and shared leaves DIRECTLY, never portal-stream
- * (direction law: leaf ← family ← catalog ← dispatch ← loop ← orchestrator).
- * portal-stream re-exports `recordWorkAgainstFocus` (witness-tools.js runs
- * the same flow from its own lane) and keeps the old private names alive for
- * its orchestrator call sites and the `__test` barrel.
+ * Loop module: it imports shared leaves directly, never portal-stream.
  *
  * The per-call gate inside `processToolCalls` (policy → rogue-args → scope
  * gaps → sandbox pre-check → the ONE card → execution → work record → CCR
@@ -34,12 +28,12 @@ import { landsInOpenFolder } from './open-folder-autonomy.js';
 import { requestToolApproval } from './tool-approval.js';
 import { checkToolArgs } from './rogue-detector.js';
 import { requestablePattern, sensitiveGrantCovers } from './sensitive-grants.js';
-import { createSandboxedCallTool, findUngrantedReadPaths, findUngrantedWritePaths, normalizeToolArgs, resolveGrantDir, writeGrantScope, isWithinRoots, isWriteOperation, collectPathArgs, checkPathAccess, logToolCall } from './tool-sandbox.js';
+import { createSandboxedCallTool, findUngrantedReadPaths, findUngrantedWritePaths, normalizeToolArgs, resolveGrantDir, isWriteOperation, collectPathArgs, checkPathAccess, logToolCall } from './tool-sandbox.js';
 import { withFsPrimitives, withFsRouting, fsPolicyTarget, fsRetiredHint } from './fs-primitives.js';
 import { focusGroundOf, focusGroundRoots, ensureFocusGroundReachable } from './focus-ground.js';
 import { resolveCeremonyScratchDir, ceremonyWriteRoots } from '../../core/birth/ceremony-write.js';
 import { sweepIntents } from './intents/intent-sweep.js';
-import { recordBenchmarkToolCall } from './benchmark-tool-trail.js';
+import { benchmarkTrailMark, recordBenchmarkToolCall, settleBenchmarkToolTrail } from './benchmark-tool-trail.js';
 import { extractMCPContent } from '../routes/mcp-routes.js';
 import { safeChatId } from '../../core/tasks/task-chat.js';
 import { recordWork, artifactFor } from '../../core/tasks/task-work.js';
@@ -47,14 +41,13 @@ import {
   toolFormatters,
   toolSummary as _toolSummary, toolFailureSummary as _toolFailureSummary,
   toolActivitySummary as _toolActivitySummary, sendToolEvent as _sendToolEvent,
-  chipDetail as _chipDetail,
+  chipDetail as _chipDetail, sendResultDetail,
 } from './portal-tools/tool-events.js';
 import { dispatchPlatformTool } from './portal-tool-dispatch.js';
 import {
   hydratePathGrants as _hydratePathGrants,
   grantReadScope as _grantReadScope,
   grantApprovedScope as _grantApprovedScope,
-  activeProjectFolders as _activeProjectFolders,
 } from './portal-tool-grants.js';
 import {
   persistOverCapResult as _persistOverCapResult,
@@ -63,7 +56,7 @@ import {
 import { createTurnToolEpochs, heldCallResult, recordCallOutcome, recordIntentReceipts } from './portal-tool-epochs.js';
 import { heldRepeatResult } from './witness-tool-epochs.js';
 import { unwrapCalls, unknownToolHint } from './tool-hud.js';
-import { refusedBeforeDispatch } from './turn-catalog-gate.js';
+import { admitCall } from './turn-catalog-gate.js';
 import { beginTurnOperation, finishTurnOperation, checkpointTurnEpoch } from './turn-operation-checkpoint.js';
 import { scopeRecoveryCall } from './coding-recovery-repeat.js';
 import { toolRepeatEvent } from './tool-repeat-event.js';
@@ -71,6 +64,8 @@ import { withBenchmarkGroundMirror } from './benchmark-exec-bridge.js';
 import { noteWorkingSetCall } from './sitting-disclosure.js';
 import { fitRead } from './read-room.js';
 import { tripMandateForLane } from './marketing/mandate/mandate-tripwire.js';
+import { refreshPortalScopeStanding } from './portal-install-standing.js';
+import { autoReadGrantAllowed } from './portal-auto-read-scope.js';
 
 const log = createLogger('Portal');
 
@@ -161,7 +156,7 @@ export const recordWorkAgainstFocus = async (connection, toolName, args) => {
 
 // Pure — the ACTS a round attempted: the substrate's native calls when it made
 // them, the parsed text otherwise — the loop and its protocol reminder can never disagree.
-const _roundActs = (nativeToolCalls, response) => unwrapCalls(nativeToolCalls.length > 0 ? nativeToolCalls : parseToolCalls(response)); // system/call → the tool it names (tool-hud.js)
+const _roundActs = (nativeToolCalls, response) => unwrapCalls(nativeToolCalls.length > 0 ? nativeToolCalls : parseToolCalls(response, { told: true })); // system/call → the tool it names (tool-hud.js); unreadable args are told
 
 // Executes every tool call in a completed response and returns the outcomes so
 // the caller can hand them back to the consciousness for a follow-up round —
@@ -175,10 +170,12 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
   // substrates, or a native call that the model chose to phrase as text).
   const matches = _roundActs(nativeToolCalls, response);
   const results = [];
+  const trailMark = benchmarkTrailMark(connection); // this batch settles only the trail entries it opens
   turnEpochs ||= createTurnToolEpochs();
 
   // Resolve tool policy for this neuma
   const neumaPolicy = await readExecutionToolPolicy(companion?.neumaId);
+  await refreshPortalScopeStanding(connection);
   // Read-scope grants the operator made in past sessions take effect here.
   await _hydratePathGrants(connection, neumaPolicy);
   // ...and the folder standing open in the Explorer is declared to the
@@ -199,9 +196,9 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
     // Substrate dialect repair: a smashed "<server>_<tool>" name routes to the
     // real tool instead of reading as unavailable. The list is BEING-FACING:
     // the seven fs primitives stand where the 16 organ spellings used to.
-    const match = noteWorkingSetCall(connection, recordBenchmarkToolCall(connection, await scopeRecoveryCall(_unsmashToolName(rawMatch, withFsPrimitives(mcpService.getToolsContext()?.available_tools || [])), connection)));
+    const { match, refused } = admitCall(connection, noteWorkingSetCall(connection, recordBenchmarkToolCall(connection, await scopeRecoveryCall(_unsmashToolName(rawMatch, withFsPrimitives(mcpService.getToolsContext()?.available_tools || [])), connection))));
     const { toolName, args } = match;
-    const refused = refusedBeforeDispatch(connection, match); if (refused) { results.push(refused); continue; } // unreadable args, a nested door, a tool never offered
+    if (refused) { results.push(refused); continue; } // unreadable args, a nested door, a tool never offered, arguments that do not fit its schema
     // Repeats retain their prior verdict; recovery is scoped to observed shell state.
     const epoch = turnEpochs.epoch;
     const resultIndex = results.length;
@@ -220,7 +217,8 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         ws, connection, companion, policy: neumaPolicy, toolMode, args,
       });
       if (platformResult) {
-        await _persistOverCapResult(connection, platformResult); // a long web page or catalog stays retrievable, never a dead cut
+        const ref = await _persistOverCapResult(connection, platformResult); // a long web page or catalog stays retrievable, never a dead cut
+        sendResultDetail(ws, platformResult, ref); // every act opens to what it returned (tool-events.js)
         results.push(platformResult);
         continue;
       }
@@ -316,15 +314,9 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         ];
         const gaps = findUngrantedWritePaths(normArgs, writeRoots);
         if (gaps.length > 0) {
-          // Least privilege stays: when the gap lands inside an ACTIVE
-          // project's folders, grant the most specific project folder;
-          // otherwise grant the target's own directory — the operator's
-          // yes/no is the governor, not the project registry.
-          const projectFolders = await _activeProjectFolders(connection);
-          const projectScoped = writeGrantScope(gaps, projectFolders);
-          const bare = gaps.filter((g) => !isWithinRoots(g, projectFolders));
-          const bareDirs = await Promise.all(bare.map((g) => resolveGrantDir(toolName, g)));
-          writeScopeDirs = [...new Set([...projectScoped, ...bareDirs])];
+          // Least privilege: grant the target's own directory — the operator's
+          // yes/no is the governor.
+          writeScopeDirs = [...new Set(await Promise.all(gaps.map((g) => resolveGrantDir(toolName, g))))];
         }
       }
 
@@ -349,11 +341,17 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
         continue;
       }
 
-      // auto is the standing yes for READ scope — grant for the session, said
-      // on the desk. A write-scope grant CREATES new write reach into the
-      // operator's own files, so it ALWAYS prompts, even in auto: auto governs
-      // acting on reach already held, not the acquisition of new capability.
-      if (readScopeDirs.length > 0 && toolMode === 'auto') {
+      if ((readScopeDirs.length > 0 || writeScopeDirs.length > 0) && connection._scopeGrantsAllowed === false) {
+        const refusal = 'Filesystem scope is the install owner\'s or a co-owner\'s to grant; a guest house stays in its own ground.';
+        await logToolCall(neumaWorkspace, companion?.neumaId, serverName, toolName, args, 'denied', refusal);
+        results.push({ tool: toolLabel, status: 'denied', error: refusal });
+        _sendToolEvent(ws, companion, { tool: toolLabel, status: 'denied', summary: `${toolName} — ${refusal}` });
+        continue;
+      }
+
+      // AUTO grants READ scope only inside the lane or the operator's OPEN FOLDER.
+      // Every other new root asks explicitly (PR20 M-16); write scope always asks.
+      if (readScopeDirs.length > 0 && toolMode === 'auto' && autoReadGrantAllowed(connection, readScopeDirs)) {
         await _grantReadScope(connection, readScopeDirs, false, grantOrigin);
         _sendToolEvent(ws, companion, {
           tool: toolLabel, status: 'ok',
@@ -474,6 +472,7 @@ const processToolCalls = async (ws, response, connection, nativeToolCalls = [], 
 
   // An interrupted slot must never be filled by an independent intent receipt.
   while (results.length < matches.length) results.push(heldRepeatResult(matches[results.length]));
+  settleBenchmarkToolTrail(connection, results, trailMark);
 
   // Filed intents settle in the same round. Serialized; observe mode holds.
   const receipts = await sweepIntents(connection, {

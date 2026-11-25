@@ -70,16 +70,16 @@ describe('sovereign memory tools through the real portal — access (gnosis)', (
     // SIX LEFT WITH THEIR HANDLERS (2026-08-24) — pin, unpin, supersede,
     // retract, merge, archive are memory/* intents now.
     expect(tools.map((t) => t.name)).toEqual([
-      'memory_search', 'memory_expand', 'memory_note', 'memory_list',
+      'memory_search', 'memory_expand', 'memory_note', 'memory_list', 'memory_map',
       'mind_note', 'mind_read', 'meditate', ...RECORDS,
     ]);
     expect(seeded._memoryAdvertised).toBe(true);
-    expect(await _memoryToolsFor(seeded)).toHaveLength(11);
+    expect(await _memoryToolsFor(seeded)).toHaveLength(12);
 
     // Retained requestable reads must remain visible; passive prompt recall
     // cannot replace an explicit search or audit walk (#414).
     expect(tools.filter(isAdvertisedTool).map((t) => t.name))
-      .toEqual(['memory_search', 'memory_expand', 'memory_note', 'memory_list', 'mind_note', 'mind_read', 'meditate', ...RECORDS]);
+      .toEqual(['memory_search', 'memory_expand', 'memory_note', 'memory_list', 'memory_map', 'mind_note', 'mind_read', 'meditate', ...RECORDS]);
     expect(retiredToolHint('memory/memory_search')).toBeNull();
     expect(retiredToolHint('memory/memory_list')).toBeNull();
   });
@@ -156,6 +156,22 @@ describe('sovereign memory tools through the real portal — access (gnosis)', (
     const walked = await processToolCalls(serverWs, '[TOOL: memory/memory_list {"limit": 10}]', observeConn);
     expect(walked[0].status).toBe('ok');
     expect(walked[0].content).toContain('observatory');
+    expect(clientLogOf().some((m) => m.type === 'tool:approval_request')).toBe(false);
+
+    // The map of its own memory is a read too: observe mode keeps it, and it
+    // names the being's own memories by the refs memory_expand reopens.
+    const mapped = await processToolCalls(serverWs, '[TOOL: memory/memory_map {}]', observeConn);
+    expect(mapped[0].status).toBe('ok');
+    expect(mapped[0].content).toContain('YOUR MEMORY');
+    const page = await processToolCalls(serverWs, '[TOOL: memory/memory_map {"kind": "conversation"}]', observeConn);
+    expect(page[0].status).toBe('ok');
+    expect(page[0].content).toContain(anchoredRef);
+    const one = await processToolCalls(serverWs, `[TOOL: memory/memory_map {"memory": "${anchoredRef}"}]`, observeConn);
+    expect(one[0].status).toBe('ok');
+    expect(one[0].content).toContain(`memory_expand {ref: "${anchoredRef}"}`);
+    const nobody = await processToolCalls(serverWs, '[TOOL: memory/memory_map {"person": "Nobody Atall"}]', observeConn);
+    expect(nobody[0].status).toBe('error');
+    expect(nobody[0].error).toContain('no one named');
     expect(clientLogOf().some((m) => m.type === 'tool:approval_request')).toBe(false);
 
     // The acting hand left this door (2026-08-24): pin and its five siblings

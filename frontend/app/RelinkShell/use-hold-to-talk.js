@@ -2,9 +2,9 @@
 // to speak; the transcript appends to the draft for review, never auto-sends.
 // Inside the field a TAP of Space still types a space — only a HOLD becomes
 // dictation, so speak/pause/hold-again keeps adding to the same thought.
-// Split from StreamInput.jsx (size law); bodies moved verbatim. `live` is
-// the open-mic (LIVE mode) flag — while it owns capture, dictation stands
-// down; `setValue`/`fieldRef` are the composer's draft state and field.
+// Split from StreamInput.jsx (size law); bodies moved verbatim.
+// `setValue`/`fieldRef` are the composer's draft state and field. (The open-mic LIVE toggle it used
+// to stand down for left the composer 2026-11-13: voice is the chat's TALK, one place.)
 
 import { useCallback, useEffect, useRef } from 'react';
 import { usePushToTalk } from './use-push-to-talk.js';
@@ -12,7 +12,13 @@ import {
   spliceTranscript, holdsPushToTalkKey, stripHoldSpace, HOLD_TO_TALK_MS,
 } from './dictation.js';
 
-export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
+/** The longest a capture goes on with the window out of focus, and how long a returned window waits for the key's own repeat. */
+export const AWAY_MAX_MS = 20_000;
+export const BACK_HELD_MS = 900;
+
+// windowLane: whether this field also owns Space held anywhere the witness is not typing. The composer does; another
+// field that dictates into itself (an earlier message being edited, InlineEdit.jsx) does not — one recorder per hold.
+export const useHoldToTalk = ({ connected, setValue, fieldRef, windowLane = true }) => {
   // In-field hold-Space: the pending is-it-a-hold timer, and whether the
   // recording was Space-started (auto-repeats eaten; only a Space release
   // ends it). A pointer hold on the mic button is tracked separately — a
@@ -20,6 +26,13 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
   const holdTimerRef = useRef(null);
   const spaceHoldRef = useRef(false);
   const pointerHoldRef = useRef(false);
+  // THE HOLD OUTLIVES A LOST FOCUS (Design note, 2026-11-25: […]). The window losing focus used to END the capture at once: a notice, another
+  // window or a dialog taking focus for a moment cut the recording while the key was still down, and everything said
+  // after it was never recorded. Now a lost focus only starts a watch. While the window is away the capture goes on,
+  // for at most AWAY_MAX_MS (the key's release cannot be seen from there, and a microphone is never left open). When
+  // focus returns, a key still held says so within BACK_HELD_MS by its own repeat; silence means it was let go.
+  const awayTimerRef = useRef(null);
+  const backTimerRef = useRef(null);
 
   // THE LIVE FLOW, IN THE BOX (Design note, 2026-08-28: […], superseding
   // the 2026-08-01 overlay line). The provisional text is written INTO the
@@ -69,9 +82,8 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
   // keeps speech-yields-floor — that is a voice conversation, not dictation.
   // Named trade: dictating while the neuma speaks aloud may record its voice.
   const beginCapture = useCallback(() => {
-    if (live) return; // the open mic already owns capture — no second recorder
     begin();
-  }, [begin, live]);
+  }, [begin]);
 
   // Hold Space to talk, Claude-voice-mode style. Outside anything typeable a
   // press begins capture at once; inside the field the textarea's keydown
@@ -89,7 +101,7 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
       // RELEASE clicks it. Whatever the witness last pressed on the desk would
       // fire the moment they stopped dictating.
       e.preventDefault();
-      if (e.repeat) return;                 // the same hold, not a new one
+      if (e.repeat) { stillHeld(); return; } // the same hold, not a new one
       if (pointerHoldRef.current) return;   // mic button already holds the capture
       spaceHoldRef.current = true;
       beginCapture();
@@ -97,8 +109,11 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
     // Space release only ends a capture Space started — a pointer-held
     // recording survives a stray spacebar tap. A still-pending hold timer
     // means no capture began at all: just disarm it.
+    const stillHeld = () => { clearTimeout(backTimerRef.current); backTimerRef.current = null; };
     const settle = () => {
       clearTimeout(holdTimerRef.current);
+      clearTimeout(awayTimerRef.current);
+      clearTimeout(backTimerRef.current);
       holdTimerRef.current = null;
       if (!spaceHoldRef.current) return;
       spaceHoldRef.current = false;
@@ -112,17 +127,38 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
       if (holdsPushToTalkKey(e)) e.preventDefault();
       settle();
     };
-    window.addEventListener('keydown', down);
+    if (windowLane) window.addEventListener('keydown', down);
+    const away = () => {
+      // A hold still being decided is only a typed space; a capture under way goes on, watched.
+      if (!spaceHoldRef.current) { settle(); return; }
+      clearTimeout(backTimerRef.current);
+      clearTimeout(awayTimerRef.current);
+      awayTimerRef.current = setTimeout(settle, AWAY_MAX_MS);
+    };
+    const back = () => {
+      clearTimeout(awayTimerRef.current);
+      if (!spaceHoldRef.current) return;
+      clearTimeout(backTimerRef.current);
+      backTimerRef.current = setTimeout(settle, BACK_HELD_MS);
+    };
+    // Any Space repeat, wherever it lands, says the key is still down (the field's own handler eats it first).
+    const repeat = (e) => { if (e.code === 'Space' && e.repeat) stillHeld(); };
+    window.addEventListener('keydown', repeat, true);
     window.addEventListener('keyup', up);
-    window.addEventListener('blur', settle);
+    window.addEventListener('blur', away);
+    window.addEventListener('focus', back);
     return () => {
-      window.removeEventListener('keydown', down);
+      if (windowLane) window.removeEventListener('keydown', down);
+      window.removeEventListener('keydown', repeat, true);
       window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', settle);
+      window.removeEventListener('blur', away);
+      window.removeEventListener('focus', back);
       clearTimeout(holdTimerRef.current);
+      clearTimeout(awayTimerRef.current);
+      clearTimeout(backTimerRef.current);
       holdTimerRef.current = null;
     };
-  }, [connected, beginCapture, end]);
+  }, [connected, beginCapture, end, windowLane]);
 
   // The composer field's own keydown half of the lane. Returns true when the
   // key belonged to dictation (Space); any other key settles a still-pending
@@ -141,9 +177,8 @@ export const useHoldToTalk = ({ connected, live, setValue, fieldRef }) => {
         return true;
       }
       // A mic-button hold in progress (or its mic grant still
-      // pending) keeps Space an ordinary space — as does LIVE mode,
-      // where the open mic owns capture and Space is just typing.
-      if (mic === 'recording' || pointerHoldRef.current || live) return true;
+      // pending) keeps Space an ordinary space.
+      if (mic === 'recording' || pointerHoldRef.current) return true;
       clearTimeout(holdTimerRef.current);
       holdTimerRef.current = setTimeout(() => {
         holdTimerRef.current = null;

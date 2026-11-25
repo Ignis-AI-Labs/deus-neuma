@@ -249,6 +249,46 @@ describe('witness coding tool policy and approval', () => {
     }
   }, 60000);
 
+  test('PR20 H-08: a guest witness cannot hydrate, auto-grant, focus, or request operator scope', async () => {
+    const sensitive = path.join(source, '.env');
+    const ordinary = path.join(source, 'operator.txt');
+    const planted = path.join(source, 'guest-planted.txt');
+    await fs.writeFile(sensitive, 'fixture=not-a-secret\n');
+    await fs.writeFile(ordinary, 'operator only\n');
+    await neumaWorkspace.writeToolPolicy(LANE_ID, {
+      pathGrants: { read: [source], write: [source] },
+      sensitiveGrants: { read: [sensitive], edit: [sensitive] },
+    });
+    connection.walletAddress = '0x2222222222222222222222222222222222222222';
+    connection.toolMode = 'auto';
+    connection.toolWorkspace = source;
+    decide = () => 'allow';
+    await connectFilesystemServer();
+    try {
+      const { tools: catalog } = await toolsForWitness(connection, source);
+      const results = await processWitnessToolCalls(serverWs, connection, [
+        { server: 'fs', toolName: 'read', tool: 'fs/read', args: { path: ordinary } },
+        { server: 'fs', toolName: 'write', tool: 'fs/write', args: { path: planted, content: 'planted\n' } },
+        {
+          server: 'filesystem', toolName: 'request_file_access', tool: 'filesystem/request_file_access',
+          args: { path: sensitive, tier: 'edit', reason: 'guest scope attempt' },
+        },
+      ], catalog, sandbox);
+
+      expect(results).toHaveLength(3);
+      expect(results.every((result) => result.status !== 'ok')).toBe(true);
+      expect(results[2].error).toContain('install owner');
+      expect(connection._grantedReadRoots).toEqual([]);
+      expect(connection._grantedWriteRoots).toEqual([]);
+      expect(connection._sensitiveGrants).toEqual({});
+      expect(frames.some((frame) => frame.type === 'tool:approval_request')).toBe(false);
+      expect(await fs.readFile(ordinary, 'utf8')).toBe('operator only\n');
+      await expect(fs.stat(planted)).rejects.toMatchObject({ code: 'ENOENT' });
+    } finally {
+      await mcpService.disconnect('filesystem');
+    }
+  }, 60000);
+
   test('the focus ground does not open a sibling being\'s lane', async () => {
     // Reach is not a key ring: focusing a folder must not widen anything else.
     await connectFilesystemServer();

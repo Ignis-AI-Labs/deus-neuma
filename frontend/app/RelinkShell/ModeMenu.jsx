@@ -1,6 +1,6 @@
 // ModeMenu — the chat's standing MODE, at the composer's eye level.
 //
-// The one control for the conversation's bearing (Design note, 2026-08-26: […]). Three modes, one menu:
+// The one control for the conversation's bearing (Design note, 2026-08-26: […]). Four modes, one menu:
 //
 //   DEFAULT  free flow — gated acts raise their card per act
 //   PLAN     strictly planning — read-only; the being presents a plan, the
@@ -9,6 +9,9 @@
 //   AUTO     hands-off — the dangerous bearing; gated acts flow, but the
 //            protocol guard still pauses deletes, outward speech, spends,
 //            and shell runs on the operator's card (protocol-guard.js)
+//   RESEARCH deep research — the being reads widely (the harness counts the
+//            pages it reads and sends it back below the floor), then writes a
+//            full report with citations, saved in its workspace (research-mode.js)
 //
 // The mode belongs to the BEING, not the window (the tool:mode law): the
 // menu names whose mode it is, and the choice persists per participant. The
@@ -24,6 +27,7 @@ const MODE_COPY = Object.freeze({
   default: Object.freeze({ label: 'DEFAULT', desc: 'free flow — gated acts ask per act' }),
   plan: Object.freeze({ label: 'PLAN', desc: 'strictly planning — presents a plan for your verdict' }),
   auto: Object.freeze({ label: 'AUTO', desc: 'hands-off — protocol guard still gates the dangerous classes' }),
+  research: Object.freeze({ label: 'RESEARCH', desc: 'deep research — reads 40+ pages from 15+ sites, then a full cited report, nothing softened' }),
 });
 
 const ModeMenuView = ({ disabled }) => {

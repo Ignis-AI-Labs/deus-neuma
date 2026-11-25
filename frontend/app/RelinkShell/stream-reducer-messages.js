@@ -48,6 +48,8 @@ const historyToolSegments = (tools) =>
     findings: t.findings && t.findings.count ? t.findings : null,
     // a benchmark the chat launched — on resume its card reads how it ended
     bench: t.bench?.comparisonId ? t.bench : null,
+    // a shadow clone split — its sub-channels, each clone's report and acts (clone-split.js)
+    ...(t.split?.clones?.length ? { split: { ...t.split, clones: t.split.clones.map((c) => ({ ...c, text: '' })) } } : {}),
   }));
 
 /** Text between two acts → a speech segment, or nothing. The slice inherits the
@@ -112,8 +114,9 @@ export const toHistoryMessages = (messages, base, prefix) =>
     if (m.compacted === true) return historyCompactMessage(m, `${prefix}${base + k}`);
     const shared = {
       id: `${prefix}${base + k}`,
-      // The platform's own lines — a watch's report, a house wake's note, another chat's link, the citation law's hold — never the operator's bubble.
-      role: m.role === 'assistant' ? 'neuma' : ['watch', 'wake', 'link', 'hold'].includes(m.origin) ? m.origin : 'user',
+      // The platform's own lines — a watch's report, a house wake's note, another chat's link, the citation law's hold,
+      // CONTINUE on a cut reply, a queue change said but not made — never the operator's bubble.
+      role: m.role === 'assistant' ? 'neuma' : ['watch', 'wake', 'link', 'hold', 'resume', 'unacted'].includes(m.origin) ? m.origin : 'user',
       streaming: false,
       isHistory: true,
       at: m.at ?? null,
@@ -128,6 +131,7 @@ export const toHistoryMessages = (messages, base, prefix) =>
         at: t.at ?? null,
         meta: t.affect ? { affect: t.affect } : null,
         segments: historySegments(t.content, t.tools, undefined, t.thoughts),
+        ...(t.cutOff ? { cutOff: t.cutOff } : {}), // the app's close cut this take (turn-keep.js): CONTINUE is offered
       }));
       const viewed = takes[m.takeIndex - 1] || takes[takes.length - 1];
       return {
@@ -162,7 +166,7 @@ export const withDisplayedAsk = (message, text) => ({
 
 export const pushMessage = (state, role, text, images, at, holdId = null, docs = []) => ({
   ...state,
-  thinking: role === 'user' || role === 'watch' || role === 'link' || role === 'hold', // a watch's report, a chat link and a held answer open a turn too
+  thinking: role === 'user' || role === 'watch' || role === 'link' || role === 'hold' || role === 'resume' || role === 'unacted', // a watch's report, a chat link, a held answer, CONTINUE and NOT DONE open a turn too
   seq: state.seq + 1,
   messages: [
     ...state.messages,

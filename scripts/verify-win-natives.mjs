@@ -29,7 +29,8 @@ import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 
 const ROOT = resolve(process.argv[2] ?? join(import.meta.dirname, '..', 'release', 'win-unpacked'));
-const MODULES = join(ROOT, 'resources', 'app', 'node_modules');
+// Packed as an archive, the native modules stand beside it in app.asar.unpacked; unpacked, under app.
+const MODULES = [join(ROOT, 'resources', 'app.asar.unpacked', 'node_modules'), join(ROOT, 'resources', 'app', 'node_modules')].find((dir) => existsSync(dir)) ?? join(ROOT, 'resources', 'app', 'node_modules');
 
 const fail = (msg) => { process.stderr.write(`verify-win-natives: ${msg}\n`); process.exit(1); };
 

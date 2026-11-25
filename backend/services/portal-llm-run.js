@@ -180,7 +180,7 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
   let attemptHadContent = false;
   let attemptSaid = '';
   const guardedOnContent = (content) => {
-    if (content) attemptHadContent = true;
+    if (content) { attemptHadContent = true; roundOpts?.onSpoke?.(); } // a round that has spoken is cut only for words sent NOW (heard-mid-thought.js)
     attemptSaid += content || '';
     loopGuard.push(content);
     onContent(content);
@@ -213,7 +213,7 @@ const _runLLMStream = async (ws, messages, companionName, voiceDNA, preset, nati
       opts.signal = passSignal;
       consume.signal = passSignal;
       try {
-        const streamResult = await createStreamRequest(noThink ? governor.reaskMessages(messages) : messages, opts);
+        const streamResult = await createStreamRequest(noThink ? governor.reaskMessages(messages, { tools: (opts.tools?.length ?? 0) > 0 }) : messages, opts);
         log.info('round stream opened', { companion: companionName, tools: nativeTools.length, noThink });
         const streamed = nativeTools.length > 0
           ? await consumeStreamWithTools(streamResult, guardedOnContent, consume)

@@ -11,7 +11,7 @@
 // layout.
 //
 // The media is loaded BY THE BROWSER — plain `<img src>` and `<video src>`
-// pointed at /file, with the session token in the query. It is a gallery; the
+// pointed at /file, with a short-lived exact-item ticket in the query. It is a gallery; the
 // engine that has spent thirty years learning to load, decode, cache and evict
 // images should be the one doing it. What was here before fetched every tile by
 // hand into an object URL and hung two IntersectionObservers off each one to
@@ -22,7 +22,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
-import { getItems, getRoots, addRoot, removeRoot, fileSrc } from '../../../services/gallery-client.js';
+import { getItems, getRoots, addRoot, removeRoot } from '../../../services/gallery-client.js';
+import { useDeskTicketUrl } from '../use-desk-ticket-url.js';
 import {
   applyView, groupByDay, readableBytes, itemKey, neighborOf, positionOf, KINDS, SORTS,
 } from './gallery-view.js';
@@ -54,18 +55,20 @@ const PlayIcon = () => (
 // engine evict decoded bitmaps under memory pressure. There is no thumbnail
 // endpoint, so a tile is the FULL-SIZE file — which is why the cache headers on
 // /file matter as much as the laziness does.
-const Tile = ({ item, path, onOpen }) => (
+const Tile = ({ item, path, onOpen }) => {
+  const src = useDeskTicketUrl('/api/v1/gallery/file', { rootId: item.rootId, rel: item.rel });
+  return (
   <button
     type="button"
     className="gallery-tile"
     onClick={() => onOpen(item)}
     title={item.name}
-    {...mediaMenuDoor({ kind: item.kind, src: fileSrc(item), path, name: item.name, mime: item.mime, inGallery: true })}
+    {...mediaMenuDoor({ kind: item.kind, src, path, name: item.name, mime: item.mime, inGallery: true })}
   >
     {item.kind === 'image' ? (
       <img
         className="gallery-tile-img"
-        src={fileSrc(item)}
+        src={src || undefined}
         alt={item.name}
         loading="lazy"
         decoding="async"
@@ -80,7 +83,8 @@ const Tile = ({ item, path, onOpen }) => (
     <span className="gallery-tile-name label-data">{item.name}</span>
     <span className="gallery-tile-meta label-data">{readableBytes(item.bytes)}</span>
   </button>
-);
+  );
+};
 
 const GalleryBody = () => {
   const [items, setItems] = useState([]);

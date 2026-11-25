@@ -161,24 +161,3 @@ export const ramParts = (ram) => {
     part('free', 'AVAILABLE', ram.totalMB - ram.usedMB, 'empty'),
   ];
 };
-
-/**
- * pure — VRAM as its holders: the three largest processes by name, the rest
- * folded, what no listed process accounts for (driver, display), and free.
- */
-export const vramParts = (gpu, processes = []) => {
-  if (!Number.isFinite(gpu?.totalMB) || !Number.isFinite(gpu?.usedMB)) return [];
-  const procs = [...processes].sort((a, b) => b.memMB - a.memMB);
-  // A process exec'd from a descriptor (/proc/self/fd/3) reaches the driver
-  // named only by its fd number — say its PID instead of a bare "3".
-  const nameOf = (p) => (/^\d*$/.test(String(p.name ?? '')) ? `PID ${p.pid}` : String(p.name).toUpperCase());
-  const top = procs.slice(0, 3).map((p, i) => part(`pid-${p.pid}`, nameOf(p), p.memMB, i === 0 ? 'live' : 'dim'));
-  const rest = procs.slice(3).reduce((a, p) => a + p.memMB, 0);
-  const listed = procs.reduce((a, p) => a + p.memMB, 0);
-  return [
-    ...top,
-    ...(rest > 0 ? [part('rest', `${procs.length - 3} MORE`, rest, 'dim')] : []),
-    ...(gpu.usedMB - listed > 0 ? [part('unlisted', 'UNLISTED', gpu.usedMB - listed, 'muted')] : []),
-    part('free', 'FREE', gpu.totalMB - gpu.usedMB, 'empty'),
-  ];
-};

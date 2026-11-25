@@ -16,10 +16,12 @@ import { expirePendingPlans } from '../services/team-plan.js';
 import { neumaWorkspace, isValidTimeZone } from '../../core/index.js';
 import { turnPointCount } from '../../core/workspace/branch-view.js';
 import { resolveFocusPath } from '../services/user-files.js';
+import { refreshPortalScopeStanding } from '../services/portal-install-standing.js';
 import { clearSessionRuntime } from './portal-connections.js';
 import { markTurnAsked } from '../services/turn-timing-probe.js';
 import { lineTurn } from '../services/turn-line.js';
 import { takePlatformFollowUp } from '../services/platform-follow-up.js';
+import { cutTakenTurn } from '../services/turn-keep.js';
 
 const log = createLogger('Portal');
 
@@ -41,8 +43,11 @@ export const settleActiveTurn = async (connection) => {
   // first and drains them after it.
   connection.drainEpoch = (connection.drainEpoch || 0) + 1;
   if (!connection.turnPromise) return;
-  if (connection.activeTurn) connection.activeTurn.abort();
-  else { connection.interruptRequested = true; connection.lineWait?.abort(); }
+  // A turn this desk took over from a closed one is cut where it runs (portal-turn-adopt.js).
+  if (!cutTakenTurn(connection)) {
+    if (connection.activeTurn) connection.activeTurn.abort();
+    else { connection.interruptRequested = true; connection.lineWait?.abort(); }
+  }
   // Abort-aware gates settle synchronously from the signal. These explicit
   // expirations are the fail-closed safety net for any gate that lost or never
   // received that signal; navigation must never wait out a 10-minute card.
@@ -82,20 +87,49 @@ export const runTurnAndDrain = async (connection, first) => {
         connection.interruptRequested = false;
       }
     }
+    // EVERYTHING WAITS BEHIND A COMPACTION (Design note, 2026-11-19: […]): one that began as this turn closed (the context boundary's) holds what
+    // waits; it goes when the compaction settles (drainHeldThoughts), in order.
+    if (connection.compacting && (connection.drainEpoch || 0) === epoch) { afterCompaction(connection); return; }
     // A turn the platform owes (a held legal answer) is taken now, before the
     // operator's held words — and dropped if a settle ended this drain.
     const owed = takePlatformFollowUp(connection);
     // A settle while this turn ran (navigation, an interjection) ended this drain.
     if ((connection.drainEpoch || 0) !== epoch) return;
-    if (owed) {
-      connection.ws?.send(JSON.stringify(owed.frame));
-      connection._turnOrigin = owed.origin;
-      next = { thought: owed.thought };
-      continue;
-    }
-    next = connection.pendingThoughts?.shift() || null;
-    announceTakenThought(connection, next);
+    next = nextHeld(connection, owed);
   }
+};
+
+// impure — the next thing to run: a turn the platform owes first, then the operator's held words in order.
+const nextHeld = (connection, owed) => {
+  if (owed) {
+    connection.ws?.send(JSON.stringify(owed.frame));
+    connection._turnOrigin = owed.origin;
+    return { thought: owed.thought };
+  }
+  const next = connection.pendingThoughts?.shift() || null;
+  announceTakenThought(connection, next);
+  return next;
+};
+
+// The compactions whose end already has a drain waiting on it (one each is enough; more would be harmless).
+const drainsAwaited = new WeakSet();
+
+/** impure — when the compaction running on this connection settles, deliver what waited behind it. */
+export const afterCompaction = (connection) => {
+  const running = connection?.compaction;
+  if (!running || drainsAwaited.has(running)) return;
+  drainsAwaited.add(running);
+  Promise.resolve(running).catch(() => {}).then(() => drainHeldThoughts(connection)).catch((err) => log.warn('held words after a compaction did not run', { error: err?.message }));
+};
+
+/**
+ * impure — deliver what waited behind a compaction: the same drain as after a turn, once nothing runs.
+ * Called when a compaction settles (the operator's /compact, the context boundary's).
+ */
+export const drainHeldThoughts = async (connection) => {
+  if (!connection || connection.turnPromise || connection.compacting) return;
+  const next = nextHeld(connection, takePlatformFollowUp(connection));
+  if (next) await runTurnAndDrain(connection, next);
 };
 
 // impure — bind the connection's session-scoped counters to disk truth.
@@ -122,9 +156,10 @@ export const hydrateSessionRuntime = async (connection, neumaId, sessionId, entr
 
 // impure — a client focus is only a source hint for a disposable coding copy.
 // Invalid/closed paths clear the hint; they never degrade to process.cwd here.
-export const updateToolWorkspace = (connection, rawPath) => {
+export const updateToolWorkspace = async (connection, rawPath) => {
   if (rawPath === undefined) return;
-  connection.toolWorkspace = resolveFocusPath(rawPath);
+  const scopeGrantsAllowed = await refreshPortalScopeStanding(connection);
+  connection.toolWorkspace = resolveFocusPath(rawPath, scopeGrantsAllowed);
 };
 
 // The desk's IANA zone (2026-09-25 — every clock a being reads renders on the

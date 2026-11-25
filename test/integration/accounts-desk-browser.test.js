@@ -115,21 +115,39 @@ const pick = async (page, label, option) => {
 };
 
 describe('Settings → API → Channel keys, the account strip and the chips', () => {
-  it('shows the app once and each account with its company and its own proof; nothing is echoed', async () => {
+  it('shows each account with its company, its own proof and its own developer app; nothing is echoed', async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(`http://127.0.0.1:${server.address().port}/?open=x`);
     await page.locator('.account-row[data-account="x-2"]').waitFor({ timeout: 60000 });
     const keys = page.locator('#keys');
-    expect(await keys.getByText('SAVE APP').count()).toBe(1);
     expect(await keys.locator('.account-row').count()).toBe(2);
     await expect.poll(() => keys.locator('.account-row[data-account="x-2"] .flight-line').textContent(), { timeout: 15000 }).toContain('@sub_voice');
     expect(await keys.locator('.account-row[data-account="x-1"] .flight-line').textContent()).toContain('@core_voice');
     expect(await keys.locator('.account-row[data-account="x-1"] .lc-sel-value').textContent()).toBe('Ignis AI Labs');
-    // The account rows ask for the ACCOUNT's keys only; the app's are asked once.
-    expect(await keys.locator('.account-row input[aria-label="API Key"]').count()).toBe(0);
-    expect(await keys.locator('.account-app input[aria-label="API Key"]').count()).toBe(1);
+    // EVERY ACCOUNT ITS OWN APP (Design note, 2026-11-11: the first account shows its app's keys; an added
+    // one rides it until it is given its own, and its own app's keys are asked on its own row.
+    expect(await keys.getByText('SAVE APP').count()).toBe(0);
+    expect(await keys.locator('.account-row[data-account="x-1"] input[aria-label="Consumer Key (API Key)"]').count()).toBe(1);
+    const x2 = keys.locator('.account-row[data-account="x-2"]');
+    expect(await x2.textContent()).toContain("uses x-1's app");
+    expect(await x2.locator('input[aria-label="Consumer Key (API Key)"]').count()).toBe(0);
+    await x2.getByRole('button', { name: 'THIS ACCOUNT HAS ITS OWN APP' }).click();
+    // the shared app's keys never read as this account's: its own fields start empty
+    expect(await x2.locator('input[aria-label="Consumer Key (API Key)"]').getAttribute('placeholder')).toBe('Consumer Key (API Key)');
+    await x2.locator('input[aria-label="Consumer Key (API Key)"]').fill('Zx9Qa7Lm2Np4Rt6Vb8Wc1Ed3');
+    await x2.locator('input[aria-label="Consumer Key Secret"]').fill('Kp3Tr5Yw7Uq9Io2As4Df6Gh8Jk1Lz3Xc5Vb7Nm9Qw2Er4');
+    await x2.getByRole('button', { name: 'SAVE KEYS' }).click();
+    await expect.poll(() => x2.locator('.account-app-line .settings-v').textContent(), { timeout: 15000 }).toBe("this account's own app");
+    expect(await page.content()).not.toMatch(/Zx9Qa7Lm2Np4|Kp3Tr5Yw7Uq9/);
+    // How to get X's keys sits folded above the accounts: one line, the steps one press away.
+    const setup = keys.locator('details.account-setup');
+    expect(await setup.locator('summary').textContent()).toContain('its own developer app');
+    expect(await setup.locator('li').first().isVisible()).toBe(false);
+    await setup.locator('summary').click();
+    expect(await setup.locator('li').count()).toBe(5);
+    expect(await setup.textContent()).toContain('Read and write');
     expect(await page.content()).not.toMatch(/ph-x-|ph-tt-/);
 
     // The strip: grouped by company, the holder per account, a witness never offered.

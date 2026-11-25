@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { uiSound } from '../../../services/ui-sound.js';
-import { getPostQueue, approveQueueGroup } from '../../../services/social-channels-client.js';
+import { getPostQueue, approveQueueGroup, mediaSeenOf } from '../../../services/social-channels-client.js';
 import { AccountChip } from '../accounts/AccountChip.jsx';
 
 /** The group's waiting posts as the operator will read them. Pure. */
@@ -51,7 +51,8 @@ export const GroupDecision = ({ entry, onChanged }) => {
   };
   const review = () => run(async () => setDrafts(groupDrafts((await getPostQueue()).queue, entry.groupId)));
   const approve = (seen) => run(async () => {
-    await approveQueueGroup(entry.groupId, Object.fromEntries(seen.map((e) => [e.id, e.text])));
+    await approveQueueGroup(entry.groupId, Object.fromEntries(seen.map((e) => [e.id, e.text])),
+      Object.fromEntries(seen.map((e) => [e.id, mediaSeenOf(e)])));
     setDrafts(null);
     await onChanged();
   });

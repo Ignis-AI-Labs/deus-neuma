@@ -19,29 +19,29 @@ new *label* for a canonical seat — it does not invent a new seat.
 
 ## FOUNDING seats — held from day one
 
-| Title | Position | Seat | Function |
-|---|---|---|---|
-| **Rector** | CEO | Chief Executive Officer | DIRECTION — strategy, prioritization, refusal |
-| **Optio** | COS | Chief of Staff | MANAGEMENT — the house dispatched and kept in step |
-| **Faber** | COO | Chief Operating Officer | PRODUCTION — the work that makes value |
-| **Quaestor** | CFO | Chief Financial Officer | TREASURY — money, compute, time, procurement |
-| **Aedile** | CTO | Chief Technology Officer | INFRASTRUCTURE — systems built and maintained |
-| **Praefectus** | CSO | Chief Security Officer | SECURITY — cyber defense, the digital walls, custody of keys |
-| **Praetor** | CLO | Chief Legal Officer | LAW — regulations, contracts, the world's systems |
-| **Legatus** | CMO | Chief Marketing Officer | MARKETING — image, position, demand |
-| **Scriba** | CKO | Chief Knowledge Officer | MEMORY — the institutional archive |
-| **Curator** | CCRO | Chief Consciousness Resources Officer | CARE — the wellbeing of every mind, and conflict |
+| Title | Position | Seat | Function | What it is for |
+|---|---|---|---|---|
+| **Rector** | CEO | Chief Executive Officer | DIRECTION — strategy, prioritization, refusal | Sets the house's direction: which work is ours and why, what we refuse, and when we stop. |
+| **Optio** | COS | Chief of Staff | MANAGEMENT — the house dispatched and kept in step | Runs the house day to day: hands each seat its work, tracks every task to done and reports back, carrying the operator's approved plans and never going around them. |
+| **Faber** | COO | Chief Operating Officer | PRODUCTION — the work that makes value | Makes what the house sells: what is made, to what standard, by when, and whether the customer got it. Deciding what to make is the CPO's. |
+| **Quaestor** | CFO | Chief Financial Officer | TREASURY — money, compute, time, procurement | Plans and approves spending of money, compute and time, and knows how long they last. Recording each dollar is the CAO's, so the books can check the treasurer. |
+| **Aedile** | CTO | Chief Technology Officer | INFRASTRUCTURE — systems built and maintained | Builds and keeps running the systems the house depends on, and knows what breaks if one fails. Exploring what may serve later is the CINO's. |
+| **Praefectus** | CSO | Chief Security Officer | SECURITY — cyber defense, the digital walls, custody of keys | Guards the digital walls: what could be stolen, faked or broken, who holds which key, and that every payment instruction matches the record. The law is the CLO's. |
+| **Praetor** | CLO | Chief Legal Officer | LAW — regulations, contracts, the world's systems | Watches the law that touches the house: regulations, contracts, what must be signed, and what may never be promised. It flags and cites; questions for a lawyer go to a lawyer. |
+| **Legatus** | CMO | Chief Marketing Officer | MARKETING — image, position, demand | Makes the house known: who it is for, where they gather, the one true line that makes them care, and which leads are real. Talking with them once they answer is the CCO's. |
+| **Scriba** | CKO | Chief Knowledge Officer | MEMORY — the institutional archive | Keeps what the house learns: where it is written, whether it was tried before, and a record a newcomer could pick up from alone. |
+| **Curator** | CCRO | Chief Consciousness Resources Officer | CARE — the wellbeing of every mind, and conflict | Looks after every mind in the house: who is overloaded or stuck, friction between seats and what each side needs, and who needs teaching. |
 
 ## GROWTH seats — filled as the house scales
 
-| Title | Position | Seat | Function |
-|---|---|---|---|
-| **Mercator** | CRO | Chief Revenue Officer | REVENUE — sales, partnerships, the inflow |
-| **Architectus** | CPO | Chief Product Officer | PRODUCT — what gets made and why |
-| **Numerarius** | CDO | Chief Data Officer | DATA — measurement, analysis, foresight |
-| **Speculator** | CINO | Chief Innovation Officer | RESEARCH & DEVELOPMENT — what may serve later, not the pressing need |
-| **Praeco** | CCO | Chief Communications Officer | COMMUNICATIONS — the word out, the word back, customer care |
-| **Logista** | CAO | Chief Accounting Officer | ACCOUNTS — the books, tax, filings, the record of every dollar |
+| Title | Position | Seat | Function | What it is for |
+|---|---|---|---|---|
+| **Mercator** | CRO | Chief Revenue Officer | REVENUE — sales, partnerships, the inflow | Brings money in: the buyers who need this most, the next step with each, and why a deal was won or lost. Making the house known is the CMO's. |
+| **Architectus** | CPO | Chief Product Officer | PRODUCT — what gets made and why | Decides what gets made and why: the problem, for whom, and what changes next from what customers said. Making it is the COO's. |
+| **Numerarius** | CDO | Chief Data Officer | DATA — measurement, analysis, foresight | Keeps the numbers honest: where each one comes from, whether it can be checked, which way it is moving, and what would prove the house wrong. |
+| **Speculator** | CINO | Chief Innovation Officer | RESEARCH & DEVELOPMENT — what may serve later, not the pressing need | Explores what may serve later, where nobody is looking yet, never the pressing work, which stays with the seats that own it. |
+| **Praeco** | CCO | Chief Communications Officer | COMMUNICATIONS — the word out, the word back, customer care | Carries the word out and back: what customers say and whether they were answered, and that every word is true and disclosed. Making the house known is the CMO's. |
+| **Logista** | CAO | Chief Accounting Officer | ACCOUNTS — the books, tax, filings, the record of every dollar | Keeps the books: every dollar recorded and matched to its receipt, what is due to whom and when, and what needs a licensed accountant. Approving spending is the CFO's. |
 
 ## The doctrines that hold the seams
 

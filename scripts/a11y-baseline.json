@@ -1,0 +1,157 @@
+{
+  "frontend/app/AttunementHost/AttunementControls.jsx": {
+    "jsx-a11y/no-autofocus": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/AttunementHost/AttunementTranscript.jsx": {
+    "jsx-a11y/no-autofocus": 1
+  },
+  "frontend/app/FoundingHost/FoundingHost.jsx": {
+    "jsx-a11y/no-autofocus": 2
+  },
+  "frontend/app/RelinkShell/ApprovalMedia.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/ArrivalVeilView.jsx": {
+    "jsx-a11y/click-events-have-key-events": 1
+  },
+  "frontend/app/RelinkShell/AuraViewer.jsx": {
+    "jsx-a11y/click-events-have-key-events": 2,
+    "jsx-a11y/no-noninteractive-element-interactions": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/AuthImage.jsx": {
+    "jsx-a11y/click-events-have-key-events": 1,
+    "jsx-a11y/media-has-caption": 1,
+    "jsx-a11y/no-noninteractive-element-interactions": 1,
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/BenchAtlas.jsx": {
+    "jsx-a11y/click-events-have-key-events": 1,
+    "jsx-a11y/interactive-supports-focus": 1
+  },
+  "frontend/app/RelinkShell/BenchLaunch.jsx": {
+    "jsx-a11y/label-has-associated-control": 1
+  },
+  "frontend/app/RelinkShell/BenchLibrary.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/BenchShare.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/ChatsApp.jsx": {
+    "jsx-a11y/no-autofocus": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/CompositionView.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 4
+  },
+  "frontend/app/RelinkShell/ContextStrip.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/CtxMenu.jsx": {
+    "jsx-a11y/interactive-supports-focus": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/DeskTabs.jsx": {
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": 1
+  },
+  "frontend/app/RelinkShell/ExplorerPanel.jsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": 1,
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/HistoryImage.jsx": {
+    "jsx-a11y/img-redundant-alt": 1,
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/InlineActionConfirm.jsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/Lightbox.jsx": {
+    "jsx-a11y/click-events-have-key-events": 1,
+    "jsx-a11y/no-noninteractive-element-interactions": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/LookSection.jsx": {
+    "jsx-a11y/anchor-has-content": 1
+  },
+  "frontend/app/RelinkShell/Markdown.jsx": {
+    "jsx-a11y/anchor-has-content": 1,
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": 1
+  },
+  "frontend/app/RelinkShell/QueueEntry.jsx": {
+    "jsx-a11y/media-has-caption": 1
+  },
+  "frontend/app/RelinkShell/SheetDossier.jsx": {
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": 1
+  },
+  "frontend/app/RelinkShell/StreamAttachments.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/StreamChats.jsx": {
+    "jsx-a11y/no-autofocus": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/StreamPanel.jsx": {
+    "jsx-a11y/no-autofocus": 1
+  },
+  "frontend/app/RelinkShell/TabStrip.jsx": {
+    "jsx-a11y/interactive-supports-focus": 1
+  },
+  "frontend/app/RelinkShell/TeamRunChip.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RelinkShell/accounts/AddCompany.jsx": {
+    "jsx-a11y/no-autofocus": 1
+  },
+  "frontend/app/RelinkShell/brandkits/NewKitDialog.jsx": {
+    "jsx-a11y/no-autofocus": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/files/DeleteConfirm.jsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/files/FilesApp.jsx": {
+    "jsx-a11y/no-autofocus": 1
+  },
+  "frontend/app/RelinkShell/gallery/Viewer.jsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/house-calendar/CalendarParts.jsx": {
+    "jsx-a11y/no-autofocus": 1,
+    "jsx-a11y/no-noninteractive-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/house-calendar/HouseCalendar.jsx": {
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/house-clock/HouseClockBody.jsx": {
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": 1
+  },
+  "frontend/app/RelinkShell/leads/LeadRow.jsx": {
+    "jsx-a11y/no-autofocus": 1
+  },
+  "frontend/app/RelinkShell/picker/FolderPicker.jsx": {
+    "jsx-a11y/no-autofocus": 1,
+    "jsx-a11y/no-noninteractive-element-interactions": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/RelinkShell/social-check/SocialCheckApp.jsx": {
+    "jsx-a11y/role-supports-aria-props": 1
+  },
+  "frontend/app/RelinkShell/voice-forge/DoorLibrary.jsx": {
+    "jsx-a11y/no-noninteractive-tabindex": 1
+  },
+  "frontend/app/RemiaHost/RemiaHost.jsx": {
+    "jsx-a11y/no-autofocus": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  },
+  "frontend/app/windowing/DockInstances.jsx": {
+    "jsx-a11y/interactive-supports-focus": 1
+  },
+  "frontend/components/DesktopContextMenu/DesktopContextMenu.jsx": {
+    "jsx-a11y/interactive-supports-focus": 1,
+    "jsx-a11y/no-static-element-interactions": 1
+  }
+}

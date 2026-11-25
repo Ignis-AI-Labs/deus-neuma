@@ -27,7 +27,7 @@ const readCustomPresets = async (wallet) => {
   }
 };
 
-// impure — atomic temp+rename (user-projects pattern).
+// impure — atomic temp+rename.
 const writeCustomPresets = async (wallet, presets) => {
   const file = presetsFile(wallet);
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -36,7 +36,7 @@ const writeCustomPresets = async (wallet, presets) => {
   await fs.rename(tmp, file);
 };
 
-// impure — per-wallet mutation queue (user-projects pattern): every op below
+// impure — per-wallet mutation queue: every op below
 // is read-modify-write on ONE json file.
 const storeQueues = new Map();
 const withStoreQueue = (wallet, task) => {

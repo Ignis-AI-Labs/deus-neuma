@@ -1,0 +1,77 @@
+/* HouseRail — the whole house down the left of MARKETING (house-tree.js).
+   LINE & CYCLE: one thin line per level, the place you stand lit in signal,
+   UNSORTED in the warning register. Every label meets the 13px floor;
+   colour changes rise over ≥160ms (no-flash.js). */
+
+.mkt-split { display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
+.mkt-main { flex: 1 1 auto; min-width: 0; container-type: inline-size; display: flex; flex-direction: column; gap: var(--space-3); }
+
+.mkt-rail {
+  flex: 0 0 236px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: var(--space-2) 0;
+  border-right: var(--border-width-thin) solid var(--color-border-primary);
+  position: sticky;
+  top: 0;
+  max-height: 100%;
+  overflow-y: auto;
+}
+.mkt-rail-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-left: calc(var(--depth, 0) * 14px);
+  border-left: 2px solid transparent;
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+.mkt-rail-row.is-here { border-left-color: var(--signal); background: var(--signal-faint); }
+.mkt-rail-go {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: 0;
+  padding: 4px var(--space-2);
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-align: left;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 200ms ease;
+}
+.mkt-rail-go:hover { color: var(--color-text-primary); }
+.mkt-rail-row.is-here .mkt-rail-go { color: var(--color-text-primary); }
+.mkt-rail-row.is-house .mkt-rail-go,
+.mkt-rail-row.is-company .mkt-rail-go { letter-spacing: 0.1em; }
+.mkt-rail-row.is-house .mkt-rail-go { color: var(--color-text-primary); text-transform: uppercase; }
+.mkt-rail-row.is-account .mkt-rail-go { color: var(--color-text-tertiary); }
+.mkt-rail-go.is-label { cursor: default; color: var(--alert); letter-spacing: 0.12em; }
+/* A campaign: its diamond in signal while active, quiet once paused or ended. */
+.mkt-rail-glyph { font-size: 13px; color: var(--color-text-disabled); }
+.mkt-rail-glyph.is-active { color: var(--signal); }
+.mkt-rail-row.is-campaign .mkt-rail-go { color: var(--color-text-secondary); }
+.mkt-rail-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mkt-rail-more {
+  flex: 0 0 auto;
+  background: none;
+  border: 0;
+  padding: 2px var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-disabled);
+  cursor: pointer;
+  transition: color 200ms ease;
+}
+.mkt-rail-row:hover .mkt-rail-more,
+.mkt-rail-more:focus-visible { color: var(--color-text-secondary); }
+.mkt-rail-more:hover { color: var(--signal); }
+.mkt-rail-err { padding: var(--space-2); font-size: 13px; }
+
+/* A narrow window keeps its room for the level itself; the path still says where you are. */
+@container (max-width: 760px) {
+  .mkt-rail { display: none; }
+}

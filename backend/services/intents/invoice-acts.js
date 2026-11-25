@@ -16,9 +16,9 @@
  */
 import { cfoDesignation } from '../treasury/cfo-designation.js';
 import { readDeals } from '../revenue/deal-store.js';
-import { readCompany } from '../company-line/company-store.js';
+import { companyOfHouse } from '../revenue/deal-company.js';
 import { makeInvoice } from '../invoices/invoice-shape.js';
-import { issueInvoice, recordPaid, readPayTo } from '../invoices/invoice-store.js';
+import { issueInvoice, recordPaid, readPayTo, cardKey } from '../invoices/invoice-store.js';
 
 const invalid = (reason) => ({ ok: false, status: 'invalid', reason });
 const seatRefusal = async (connection) => ((await cfoDesignation.holds(connection.walletAddress, connection.companion?.neumaId))
@@ -37,14 +37,16 @@ export const invoiceIssueIntent = Object.freeze({
     const wallet = connection.walletAddress;
     const deal = (await readDeals(wallet)).deals.find((d) => d.id === String(payload?.deal ?? '').trim()) ?? null;
     if (!deal) return invalid(`"${payload?.deal ?? ''}" is not a deal of this house — your QUAESTOR OFFICE briefing names each won deal by its [id]`);
-    const [company, payTo] = await Promise.all([readCompany(wallet, deal.companyId).catch(() => null), readPayTo(wallet)]);
+    const [company, payTo, key] = await Promise.all([companyOfHouse(wallet, deal.companyId), readPayTo(wallet), cardKey(wallet)]);
+    // Only what a being may say is taken from its filing: the lines, the due date, the note. How it is paid is the operator's.
+    const said = { lines: payload?.lines, due: payload?.due, note: payload?.note };
     try {
       // a dry judgment against an empty bill: the real one is re-judged under the store's chain
-      makeInvoice({ ...payload, deal, company, payTo, number: 'INV-0000', billed: 0, by: connection.companion.neumaId, now: new Date().toISOString() });
+      makeInvoice({ ...said, deal, company, payTo, cardReady: Boolean(key), number: 'INV-0000', billed: 0, by: connection.companion.neumaId, now: new Date().toISOString() });
     } catch (error) {
       return invalid(error.message);
     }
-    return { ok: true, value: { deal, company, payTo, lines: payload.lines, due: payload.due, note: payload.note } };
+    return { ok: true, value: { deal, company, payTo, cardReady: Boolean(key), ...said } };
   },
   summarize: (payload) => `invoice deal ${payload?.deal ?? '?'} (${Array.isArray(payload?.lines) ? payload.lines.length : 0} line(s), due ${payload?.due ?? '?'})`,
   execute: async (value, { connection }) => {
@@ -53,7 +55,7 @@ export const invoiceIssueIntent = Object.freeze({
     }));
     if (!issued.ok) return { ok: false, reason: issued.reason };
     const v = issued.invoice;
-    return { ok: true, detail: `Issued ${v.number} [${v.id}] to ${v.buyer}: ${v.total} ${v.currency}, due ${v.due}, payable at the operator's address. The Mercator delivers it: delivery/publish {deal: "${v.dealId}", invoice: "${v.id}"}, then the link by the house mailbox.` };
+    return { ok: true, detail: `Issued ${v.number} [${v.id}] to ${v.buyer}: ${v.total} ${v.currency}, due ${v.due}, payable ${[v.card?.url ? 'by card (the house made its Stripe link)' : v.byCard ? `by card (its link is not made yet: ${issued.cardProblem ?? 'Stripe did not answer'})` : null, v.payTo ? 'in crypto at the operator\'s address' : null].filter(Boolean).join(' or ')}. The Mercator delivers it: delivery/publish {deal: "${v.dealId}", invoice: "${v.id}"}, then the link by the house mailbox.` };
   },
 });
 

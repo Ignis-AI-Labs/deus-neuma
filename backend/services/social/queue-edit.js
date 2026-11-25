@@ -60,11 +60,14 @@ const mediaEqual = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || [])
  * applies exactly what this returns and the being-tools preview the same
  * object on the operator's chip — one source for the approval law.
  *
- * THE LAW (decided in #208, deliberately not configurable): new words or new
- * images on an APPROVED post reset it to draft — the operator approved
- * different copy, so the decision renews. A schedule-only change preserves
- * the approval: the words didn't move, only the slot. campaignId/pillar are
- * bookkeeping, not the approved words, so they never reset.
+ * THE LAW (decided in #208, restored 2026-11-19): new words or new images on
+ * an APPROVED post reset it to draft — the operator approved different copy,
+ * so the decision renews. A schedule-only change preserves the approval: the
+ * words and the sealed image bytes (approval-seal.js) did not move, only the
+ * slot. campaignId/pillar are bookkeeping and never reset. Audit P6-100 is
+ * answered at the being's door instead: an edit that leaves a post APPROVED
+ * always raises the operator's card, even on the being's own post
+ * (queue-edit-handlers.js).
  *
  * @param {object|null|undefined} entry the queued entry as stored
  * @param {object} rawPatch the requested changes

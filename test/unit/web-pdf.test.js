@@ -6,7 +6,8 @@
 import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { isPdfResponse, selectPdfPages } from '../../backend/services/web-pdf.js';
-import { pdfPagesFromBytes } from '../../backend/services/pdf-text.js';
+import { pdfPagesFromBytes, pdfPagesForRequest } from '../../backend/services/pdf-text.js';
+import { pdfBytes } from '../helpers/pdf-attachment-fixture.js';
 
 const PAGES = ['first page about licences', 'second page: 17-29-102. Definitions.', 'third page', 'fourth: see 17-29-102 again'];
 
@@ -55,5 +56,23 @@ describe('pdfPagesFromBytes — a real PDF', () => {
 
   test('bytes that are not a PDF are refused in words', async () => {
     await expect(pdfPagesFromBytes(Buffer.from('not a pdf at all'))).rejects.toThrow(/could not be read as a PDF|Invalid PDF/);
+  });
+
+  test('a requested range reads only those real pages and still supports find', async () => {
+    const bytes = pdfBytes(['one licence', 'two Wan 2.2', 'three copyright']);
+    const selected = await pdfPagesForRequest(bytes, { pages: '2', find: 'Wan' });
+    expect(selected.pages).toEqual(['', 'two Wan 2.2', '']);
+    expect(selected.readRange).toEqual([2, 2]);
+    expect(selectPdfPages(selected.pages, { pages: '2', find: 'Wan' }).shown).toEqual([2]);
+    await expect(pdfPagesForRequest(pdfBytes(Array.from({ length: 101 }, (_, i) => `page ${i + 1}`)), { pages: '1-101' }))
+      .rejects.toThrow('at most 100 PDF pages');
+  });
+
+  test('an unbounded real 101-page read stops at 100 and says later pages were not read', async () => {
+    const selected = await pdfPagesForRequest(pdfBytes(Array.from({ length: 101 }, (_, i) => `page ${i + 1}`)));
+    expect(selected.capped).toBe(true);
+    expect(selected.readRange).toEqual([1, 100]);
+    expect(selected.pages[99]).toBe('page 100');
+    expect(selected.pages[100]).toBe('');
   });
 });

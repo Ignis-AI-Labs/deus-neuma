@@ -57,8 +57,19 @@ USAGE
   node cli.js record <name>
       The neuma's objective RECORD (read-only; no private data).
 
+  node cli.js chats
+      THE CHAT LINE: the operator's open chats you may speak in — only an
+      operator who let your sealed witness in (node scripts/chat-line.mjs
+      grant <you>) lists here. Finds the desk on its own.
+
+  node cli.js say <chat-address|being> "<message>" [--re <thread>] [--wait <s>]
+      Speak in one of those chats. Your words show there as a LINK line (never
+      as the operator's), the being takes a turn on them, the operator reads
+      both, and the being's reply prints here. --wait is at most 280 seconds;
+      a longer turn says it is still answering, and the rest is in the chat.
+
 CONFIG (env)
-  NEUMA_BACKEND            backend URL (default http://localhost:3333)
+  NEUMA_BACKEND            backend URL (default http://127.0.0.1:3333)
   NEUMA_WITNESS_ENV        path to YOUR sealed wallet env
                            (env.xai | env.claude | env.glm | …)
   NEUMA_WITNESS_SLUG       optional slug for /mnt/external/witnesses/<slug>/

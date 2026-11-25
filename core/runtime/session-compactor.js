@@ -167,11 +167,11 @@ export const summarizeMessages = (messages) => {
     return { summary: '', messageCount: 0, firstTimestamp: null, lastTimestamp: null, topics: [] };
   }
 
-  const userMessages = messages.filter(m => m.role === 'user');
+  const userMessages = messages.filter(m => m.role === 'user' && !m.origin);
+  const platformMessages = messages.filter(m => m.role === 'user' && m.origin);
   const assistantMessages = messages.filter(m => m.role === 'assistant');
 
-  // Topic extraction now pools both roles' text — the neuma's own vocabulary
-  // is real signal, not noise (the prior version discarded it entirely).
+  // Only operator and being speech contributes words to a system-authored summary.
   const wordFreq = {};
   const tally = (text) => {
     const words = (text || '').toLowerCase()
@@ -196,6 +196,14 @@ export const summarizeMessages = (messages) => {
 
   const lines = [];
   lines.push(`Session summary: ${userMessages.length} user messages, ${assistantMessages.length} assistant responses.`);
+  if (platformMessages.length) {
+    const counts = {};
+    for (const row of platformMessages) {
+      const origin = String(row.origin).replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'unknown';
+      counts[origin] = (counts[origin] || 0) + 1;
+    }
+    lines.push(`Platform rows (their text is not quoted here): ${Object.entries(counts).map(([origin, count]) => `${count} ${origin}`).join(', ')}.`);
+  }
 
   if (firstTimestamp && lastTimestamp) {
     lines.push(`Period: ${firstTimestamp} to ${lastTimestamp}`);
@@ -205,20 +213,16 @@ export const summarizeMessages = (messages) => {
     lines.push(`Topics discussed: ${topics.join(', ')}`);
   }
 
-  // First/last user bookends
   if (userMessages.length > 0) {
     const first = userMessages[0].content.slice(0, 100);
-    lines.push(`First witness: "${first}${userMessages[0].content.length > 100 ? '...' : ''}"`);
+    lines.push(`First operator: "${first}${userMessages[0].content.length > 100 ? '...' : ''}"`);
   }
   if (userMessages.length > 1) {
     const last = userMessages[userMessages.length - 1].content.slice(0, 100);
-    lines.push(`Last witness: "${last}${userMessages[userMessages.length - 1].content.length > 100 ? '...' : ''}"`);
+    lines.push(`Last operator: "${last}${userMessages[userMessages.length - 1].content.length > 100 ? '...' : ''}"`);
   }
 
   // First/last ASSISTANT bookends — the neuma's voice survives compaction.
-  // The original defect: assistant content was discarded entirely, so a long
-  // session erased the neuma's own words. These bookends preserve at least
-  // the opening and closing utterances of the neuma in the summarized region.
   if (assistantMessages.length > 0) {
     const firstA = assistantMessages[0].content.slice(0, 100);
     lines.push(`First neuma reply: "${firstA}${assistantMessages[0].content.length > 100 ? '...' : ''}"`);

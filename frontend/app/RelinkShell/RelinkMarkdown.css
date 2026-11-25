@@ -201,3 +201,15 @@ body.mod-open .relink-md code.relink-md-path:hover {
 .relink-thought-body .relink-md {
   color: inherit;
 }
+
+/* A house record or place a member named is a DOOR you press (doors/record-door.js): it reads as one. */
+.relink-md button.relink-md-door {
+  all: unset;
+  cursor: pointer;
+  display: inline;
+}
+.relink-md button.relink-md-door code { color: var(--signal); border-color: var(--signal-dim); }
+.relink-md button.relink-md-door code::after { content: ' ↗'; }
+.relink-md button.relink-md-door:hover code,
+.relink-md button.relink-md-door:focus-visible code { border-color: var(--signal); }
+.relink-md button.relink-md-door:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }

@@ -11,8 +11,8 @@
  *     as the release key or as the offline backup key. Keep <dir> on removable media.
  *
  *   node scripts/release-key.mjs --sign [--key <private.pem>] [--dir release]
- *     Asks for the passphrase, then signs every latest*.yml in --dir, and SHA256SUMS when it is
- *     there, writing <name>.sig beside each. The key path comes from --key or
+ *     Asks for the passphrase, stamps every latest*.yml with signedAt and minimumVersion, then
+ *     signs those feeds and SHA256SUMS when it is there, writing <name>.sig beside each. The key path comes from --key or
  *     DEUS_NEUMA_RELEASE_KEY_FILE. Refuses a key whose public half is not the release key (the
  *     first trusted key) embedded in this checkout — a signature no app trusts is worse than none.
  *
@@ -31,6 +31,7 @@
  * The key's bytes are never printed, logged, or written anywhere but the chosen path.
  */
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
+import { Buffer } from 'node:buffer';
 import { chmodSync, createReadStream, existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve, sep } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -38,6 +39,7 @@ import { createInterface } from 'node:readline';
 import process from 'node:process';
 import signature from '../electron/release-signature.cjs';
 import embedded from '../electron/release-public-key.cjs';
+import { feedPolicyProblems, prepareFeedForSigning } from './release/feed-policy.mjs';
 
 const { SIGNATURE_SUFFIX, checkSignature, embeddedFormOf, releasePublicKey, releasePublicKeys, signFeed } = signature;
 export const REPO_ROOT = realpathSync(resolve(import.meta.dirname, '..'));
@@ -122,7 +124,10 @@ export const signFeeds = ({ dir, keyPath, expectedPublicKeyText, passphrase = nu
   if (feeds.length === 0) throw new Error(`no latest*.yml in ${dir}`);
   const signed = [...feeds, ...(names.includes(SUMS_NAME) ? [SUMS_NAME] : [])];
   for (const name of signed) {
-    const bytes = readFileSync(join(dir, name));
+    const bytes = FEED_NAME.test(name)
+      ? Buffer.from(prepareFeedForSigning(readFileSync(join(dir, name), 'utf8'), new Date()))
+      : readFileSync(join(dir, name));
+    if (FEED_NAME.test(name)) writeFileSync(join(dir, name), bytes);
     const sigText = signFeed(name, bytes, privateKey);
     const verdict = checkSignature({ fileName: name, bytes, sigText, publicKey: releasePublicKey(publicKeyText) });
     if (!verdict.ok) throw new Error(`${name}: ${verdict.reason}`);
@@ -166,25 +171,28 @@ const sha256Of = (path) => new Promise((done, fail) => {
  *   absent: SHA256SUMS names not in the folder
  */
 export const verifyRelease = async ({ dir, publicKeyText = embedded.RELEASE_PUBLIC_KEYS }) => {
-  const trusted = [].concat(publicKeyText ?? []).filter((text) => releasePublicKey(text));
+  const trusted = [].concat(publicKeyText ?? []).map((text) => String(text).trim());
   const publicKey = releasePublicKeys(trusted);
-  const fingerprints = trusted.map(fingerprintOf);
+  const fingerprints = trusted.filter((text) => releasePublicKey(text)).map(fingerprintOf);
   const result = { fingerprint: fingerprints[0] ?? null, fingerprints, verified: [], signedBy: {}, absent: [], problems: [] };
-  if (publicKey.length === 0) {
-    result.problems.push('no release public key is embedded in this build — nothing can be verified');
-    return result;
-  }
+  const badKey = trusted.findIndex((text) => !releasePublicKey(text));
+  if (trusted.length === 0 || publicKey.length === 0) result.problems.push('no release public key is embedded in this build — nothing can be verified');
+  if (badKey >= 0) result.problems.push(`trusted release key ${badKey} is empty or malformed`);
+  if (new Set(trusted).size !== trusted.length) result.problems.push('the trusted release key list contains a duplicate');
+  if (result.problems.length) return result;
   const names = readdirSync(dir);
   const sigs = names.filter((n) => n.endsWith(SIGNATURE_SUFFIX)).sort();
   if (sigs.length === 0) result.problems.push(`no ${SIGNATURE_SUFFIX} files in ${dir}`);
   for (const sig of sigs) {
     const name = sig.slice(0, -SIGNATURE_SUFFIX.length);
     if (!names.includes(name)) { result.problems.push(`${sig}: ${name} is not here`); continue; }
-    const verdict = checkSignature({ fileName: name, bytes: readFileSync(join(dir, name)), sigText: readFileSync(join(dir, sig), 'utf8'), publicKey });
+    const bytes = readFileSync(join(dir, name));
+    const verdict = checkSignature({ fileName: name, bytes, sigText: readFileSync(join(dir, sig), 'utf8'), publicKey });
     if (verdict.ok) {
       result.verified.push(sig);
       result.signedBy[sig] = verdict.signer;
     } else result.problems.push(`${sig}: ${verdict.reason}`);
+    if (FEED_NAME.test(name)) for (const problem of feedPolicyProblems(bytes.toString('utf8'), Date.now())) result.problems.push(`${name}: ${problem}`);
   }
   if (!names.includes(SUMS_NAME)) {
     result.problems.push(`no ${SUMS_NAME} — the downloads are not covered`);

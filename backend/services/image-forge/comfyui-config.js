@@ -46,6 +46,7 @@ export const resolveComfyConfig = (env) => {
     host,
     port,
     installDir,
+    dataDir: dataRoot,
     python: installDir ? path.join(installDir, '.venv', 'bin', 'python') : '',
     mainPy: installDir ? path.join(installDir, 'main.py') : '',
     modelsDir: env.COMFYUI_MODELS_DIR || '',

@@ -3,6 +3,7 @@ import fs from 'fs/promises';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { createVisionSettings } from '../../backend/services/vision-settings.js';
 
+// FOUNDER'S RULING (2026-11-03, reaffirmed 2026-11-17): image sharing is ON by default. Never rewrite these to default-off.
 describe('vision settings — default on, persisted off, launch kill-switch', () => {
   let root;
   let path;

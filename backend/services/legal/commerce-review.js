@@ -21,6 +21,10 @@ import { readRaise } from '../raise/raise-store.js';
 import { readReceipts } from '../money-in/money-in-store.js';
 import { replyCandidatesOf } from '../social/reply-candidates.js';
 import { refreshSanctions, readSanctions, screen } from './sanctions-list.js';
+import { readNeverList } from './never-list.js';
+import { neverSign } from '../sales/never-countries.js';
+import { readProspects } from '../sales/sales-store.js';
+import { leadLedgerFor } from '../leads/lead-ledger.js';
 
 const WEEK_MS = 7 * 86_400_000;
 const REFUND = /\b(refund|refunded|money back|chargeback|charged (me )?twice)\b/i;
@@ -33,7 +37,7 @@ const lower = (a) => String(a ?? '').toLowerCase();
  *   receipts: object[], replies: object[], payTo: ?object, sanctions: ?{list: object[], fetchedAt: string}, nowMs: number,
  *   unscreened?: ?string}} record - unscreened: why there is no list (the connection off, or the fetch's failure)
  */
-export const commerceFindings = ({ companies, deals, invoices, raises, receipts, replies, payTo, sanctions, nowMs, unscreened = null }) => {
+export const commerceFindings = ({ companies, deals, invoices, raises, receipts, replies, payTo, sanctions, nowMs, unscreened = null, never = null, leads = [] }) => {
   const name = (id) => companies.find((c) => c.id === id)?.name ?? id;
   const won = deals.filter((d) => d.stage === 'won');
   const terms = [...new Set(won.map((d) => d.companyId))].map((id) => ({
@@ -80,7 +84,22 @@ export const commerceFindings = ({ companies, deals, invoices, raises, receipts,
       title: `Possible sanctions match: ${hit.name} (${hit.kind}) — listed as ${hit.listed.name}${hit.listed.program ? `, ${hit.listed.program}` : ''}`,
       summary: `The name matches entry ${hit.listed.id} on the public sanctions list (as read ${sanctions.fetchedAt.slice(0, 10)}). A name is not a person: confirm who this is before the house invoices, delivers or closes — and do neither until it is cleared. Counsel question 7.`,
     }));
-  return [...terms, ...tax, ...inflow, ...refunds, ...sanctionMatters];
+  // THE NEVER-LIST, kept in step with the sales office (never-list.js): a house whose list nobody reviewed, and any
+  // lead that stands in a listed place — the sales office reads the same record, so one here slipped past a sign.
+  const neverMatters = !never ? [] : [
+    // Owed once the house has leads at all: a house that sells to nobody yet is not asked.
+    ...(never.reviewed || !leads.length ? [] : [{
+      ...base, externalId: 'never-list-unreviewed', severity: 'medium',
+      title: 'The house has no never-list of its own: only the baseline stands',
+      summary: `The sales office writes to nobody in ${never.countries.map((c) => c.name).join(', ')} — the places under comprehensive United States sanctions, a floor for a house that has said nothing yet. Work out the list for the country your operator is in and the law that reaches them, and propose it: legal/never-list {home, countries: [{code, why, source}]}. Counsel question 7.`,
+    }]),
+    ...leads.flatMap((l) => { const sign = neverSign({ country: l.country, domain: l.domain, emails: [l.email] }, never.codes); return sign ? [{
+      ...base, externalId: `never-lead:${l.id}`, severity: 'critical',
+      title: `A lead stands in a place on the never-list: ${l.name} (${sign.name})`,
+      summary: `${l.name} <${l.email}>: ${sign.why}. No first email is written to it (the sales office reads the same list), but it is on the lead ledger: confirm where it is, and close it or correct its record.`,
+    }] : []; }),
+  ];
+  return [...terms, ...tax, ...inflow, ...refunds, ...sanctionMatters, ...neverMatters];
 };
 
 /**
@@ -98,5 +117,9 @@ export const reviewCommerce = async (wallet, nowMs = Date.now()) => {
     Promise.all(companies.map(async (company) => ({ company, state: await readRaise(wallet, company.id).catch(() => null) }))),
   ]);
   const unscreened = refreshed.off ? 'off' : (!sanctions ? refreshed.error ?? 'no copy kept' : null);
-  return { matters: commerceFindings({ companies, deals, invoices, raises, receipts, replies, payTo, sanctions, nowMs, unscreened }), sanctions: refreshed };
+  // The sales office's open leads, each with the company it came from: read against the never-list.
+  const [never, prospects, ledger] = await Promise.all([readNeverList(wallet).catch(() => null), readProspects(wallet).catch(() => []), leadLedgerFor(wallet).then((l) => l.load()).catch(() => [])]);
+  const companyOf = new Map(prospects.filter((p) => p.leadId).map((p) => [p.leadId, p]));
+  const leads = ledger.filter((l) => !['closed', 'lost'].includes(l.status) && String(l.contact).includes('@')).map((l) => ({ id: l.id, name: l.name, email: String(l.contact).toLowerCase(), country: companyOf.get(l.id)?.country ?? null, domain: companyOf.get(l.id)?.domain ?? '' }));
+  return { matters: commerceFindings({ companies, deals, invoices, raises, receipts, replies, payTo, sanctions, nowMs, unscreened, never, leads }), sanctions: refreshed };
 };

@@ -31,7 +31,8 @@ import fs from 'fs/promises';
 import path from 'path';
 import { inflateRawSync } from 'zlib';
 import { pdfRead, pdfText } from './pdf-text.js';
-import { docxText } from '../../core/documents/docx-text.js';
+import { NAME_SEARCH_EXCLUDES, searchNames } from './fs-name-search.js';
+import { docxText, DOCX_XML_MAX_BYTES } from '../../core/documents/docx-text.js';
 import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
 import {
@@ -44,6 +45,7 @@ import { checkPathAccess } from './sandbox-path-policy.js';
 import { otherHouseInWalk, readablePath } from './fs-read-clearance.js';
 // copy and move live apart: validated, and a move works across disks (fs-copy-move-clarity)
 import { copyFile, moveFile } from './native-fs-transfer.js';
+import { openLineRegex } from './line-regex.js';
 
 // The organ matches directory_tree excludes with the SAME minimatch the
 // package's own search path uses — resolved from the package's dependency
@@ -59,24 +61,6 @@ const said = (text) => ({ content: [{ type: 'text', text }], structuredContent: 
 
 /** MCP-shaped refusal, as the SDK surfaces a handler throw — pure. */
 const refused = (message) => ({ content: [{ type: 'text', text: message }], isError: true });
-
-/**
- * The package matcher compares the FULL relative path. `*.js` therefore
- * misses `src/a.js`, and a bare name misses everything not at the root.
- * A pattern with no slash becomes a name search at any depth.
- * Pure.
- * @param {unknown} pattern
- * @returns {string}
- */
-export const nameSearchGlob = (pattern) => {
-  const raw = typeof pattern === 'string' ? pattern.trim() : '';
-  if (!raw) return '**/*';
-  if (raw.includes('/') || raw.includes('\\')) return raw;
-  if (raw.startsWith('**')) return raw;
-  if (['*', '?', '['].some(token => raw.includes(token))) return `**/${raw}`;
-  return `**/*${raw}*`;
-};
-
 
 // --- Handlers (one per catalog entry, mirroring dist/index.js) ---------------
 
@@ -115,7 +99,8 @@ const readTextFile = async (args) => {
   if (isSightablePath(validPath)) return readMediaFile({ path: validPath });
   // A PDF or a Word document reads as its words (pdf-text.js, docx-text.js), never as decoded bytes; a PDF's scanned pages go to the eye.
   const asWords = /\.pdf$/i.test(validPath) ? pdfText
-    : /\.docx$/i.test(validPath) ? async (p) => docxText(await fs.readFile(p), inflateRawSync) : null;
+    : /\.docx$/i.test(validPath) ? async (p) => docxText(await fs.readFile(p),
+      (data) => inflateRawSync(data, { maxOutputLength: DOCX_XML_MAX_BYTES })) : null;
   if (Number.isInteger(args.offset) || Number.isInteger(args.limit)) {
     return said(lineRange(asWords ? await asWords(validPath) : await readFileContent(validPath), args));
   }
@@ -133,7 +118,10 @@ const lineRange = (text, { offset, limit }) => {
   const from = Math.min(Math.max(1, Number.isInteger(offset) ? offset : 1), lines.length);
   const to = Number.isInteger(limit) && limit > 0 ? Math.min(lines.length, from + limit - 1) : lines.length;
   const more = to < lines.length ? `; continue at offset ${to + 1}` : '; end of file';
-  return `[lines ${from}–${to} of ${lines.length}${more}]\n${lines.slice(from - 1, to).join('\n')}`;
+  // only the being's own words survive a fold, so it is asked for them while the part is in front
+  // of it (deus-neuma #35: the ask worked at the end of the result, not in a digest read later)
+  const note = to < lines.length ? '\n[Before you read on: note in 2 to 6 lines, in your own words, what in this part matters. A fold keeps only your words and the position above.]' : '';
+  return `[lines ${from}–${to} of ${lines.length}${more}]\n${lines.slice(from - 1, to).join('\n')}${note}`;
 };
 
 const readMediaFile = async (args) => {
@@ -255,61 +243,54 @@ const directoryTree = async (args) => {
 };
 
 
-// search_files bounds — the name walk once had NONE: every entry re-crossed
-// the wall one at a time, node_modules and .git included, every hit returned.
-// A being's […] ran 37s over this repo
-// alone and minutes over a home folder — the turn sat on […] (live 2026-09-25). Same cut law as content search: every cut is
-// reported, never silent; an explicit excludePatterns (even []) replaces the
-// default excludes.
-const NAME_SEARCH = Object.freeze({ MAX_ENTRIES: 50000, MAX_RESULTS: 200 });
-
-// impure (owner reads) — the sandbox judged only a search's root; a walk judges every entry, as named
-// and as resolved, by the same deny law and the other-house wall, so a secret or another house's data is
-// never read or listed. node_modules is denied as noise, not secret: excludePatterns opens it.
+// impure (owner reads) — the sandbox judged only a search's root; a walk judges every folder it enters
+// and every name it lists, by the same deny law and the other-house wall, so a secret or another
+// house's data is never read or listed. node_modules is denied as noise, not secret: excludePatterns
+// opens it.
 const withheldByPolicy = (...paths) => paths.some((p) => {
   const verdict = checkPathAccess(p);
   return (!verdict.allowed && verdict.deniedPattern !== 'node_modules/') || otherHouseInWalk(p);
 });
 const withheldNote = (n) => `[${n} path(s) withheld by the secret-path policy — never read or listed]`;
 
+// A name search walks every root it is given at once (fs-name-search.js): `paths` is every folder the
+// being may read (the sandbox fills it when no folder is named), `path` one folder. A root inside
+// another is walked once; one the wall refuses is said, never silently dropped.
 const searchFiles = async (args) => {
-  const rootPath = await validatePath(args.path, getNativeFilesystemRoots());
-  const pattern = nameSearchGlob(args.pattern);
-  const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : CONTENT_SEARCH_EXCLUDES;
-  const results = [];
-  let walked = 0;
-  let withheld = 0;
-  let stopped = null;
-  const walk = async (dir) => {
-    const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
-    for (const entry of entries) {
-      if (stopped) return;
-      if (walked >= NAME_SEARCH.MAX_ENTRIES) { stopped = 'entries'; return; }
-      walked += 1;
-      const fullPath = path.join(dir, entry.name);
-      const relativePath = path.relative(rootPath, fullPath);
-      if (isExcluded(relativePath, excludePatterns)) continue;
-      let validPath;
-      try { validPath = await validatePath(fullPath, getNativeFilesystemRoots()); } catch { continue; }
-      if (withheldByPolicy(...new Set([fullPath, validPath]))) { withheld += 1; continue; }
-      if (minimatch(relativePath, pattern, { dot: true })) {
-        results.push(fullPath);
-        if (results.length >= NAME_SEARCH.MAX_RESULTS) { stopped = 'results'; return; }
-      }
-      if (entry.isDirectory()) await walk(validPath);
+  const asked = Array.isArray(args.paths) && args.paths.length > 0 ? args.paths : [args.path];
+  const roots = [];
+  const refusedRoots = [];
+  for (const p of asked) {
+    try { roots.push(await validatePath(p, getNativeFilesystemRoots())); } catch (err) {
+      if (asked.length === 1) throw err;
+      refusedRoots.push(p);
     }
-  };
-  await walk(rootPath);
-  const notes = [];
-  if (stopped === 'results') notes.push(`[stopped at ${NAME_SEARCH.MAX_RESULTS} matches — narrow the pattern or the path]`);
-  if (stopped === 'entries') notes.push(`[stopped after walking ${NAME_SEARCH.MAX_ENTRIES} entries — search a narrower directory]`);
-  if (withheld > 0) notes.push(withheldNote(withheld));
-  if (excludePatterns.length > 0) {
-    notes.push(`[excluded from this walk: ${excludePatterns.join(', ')} — pass excludePatterns: [] to search them]`);
   }
-  const body = results.length > 0
-    ? results.join('\n')
-    : `No files matching ${JSON.stringify(args.pattern)} under ${rootPath} (searched as ${JSON.stringify(pattern)}). This is a name search, not grep — use fs/search with content: true for text inside files.`;
+  const inside = (a, b) => a !== b && a.startsWith(b.endsWith(path.sep) ? b : b + path.sep);
+  const walkRoots = [...new Set(roots)].filter((r, _i, all) => !all.some((o) => inside(r, o)));
+  const started = Date.now();
+  const r = await searchNames({
+    roots: walkRoots, pattern: args.pattern, excludePatterns: Array.isArray(args.excludePatterns) ? args.excludePatterns : null, hidden: args.hidden === true,
+    withheld: (p) => withheldByPolicy(p),
+    clearLink: async (p) => {
+      try { const real = await validatePath(p, getNativeFilesystemRoots()); return withheldByPolicy(real) ? null : real; } catch { return null; }
+    },
+  });
+  const seconds = ((Date.now() - started) / 1000).toFixed(1);
+  const where = walkRoots.length === 1 ? walkRoots[0] : `${walkRoots.length} folders (${walkRoots.join(', ')})`;
+  const notes = [`[searched ${where}: ${r.walked.toLocaleString('en-US')} entries in ${seconds}s, best match first]`];
+  if (r.more > 0) notes.push(`[${r.more} more matches not shown — narrow the pattern or name a folder]`);
+  if (r.stopped === 'time') notes.push(`[stopped at the time limit; not finished under: ${r.unfinished.join(', ')} — name a folder to search it fully]`);
+  if (r.stopped === 'entries') notes.push(`[stopped after ${r.walked.toLocaleString('en-US')} entries; not finished under: ${r.unfinished.join(', ')} — name a folder]`);
+  if (r.stopped === 'results') notes.push('[stopped at 2,000 matches — narrow the pattern]');
+  if (r.hiddenSkipped > 0) notes.push(`[${r.hiddenSkipped} folder(s) whose names start with a dot were not searched — pass "hidden": true to search them]`);
+  if (r.withheld > 0) notes.push(withheldNote(r.withheld));
+  if (refusedRoots.length > 0) notes.push(`[not searched, outside what you may read: ${refusedRoots.join(', ')}]`);
+  const excludes = Array.isArray(args.excludePatterns) ? args.excludePatterns : NAME_SEARCH_EXCLUDES;
+  if (excludes.length > 0) notes.push(`[skipped: ${excludes.join(', ')} folders — pass excludePatterns: [] to search them]`);
+  const body = r.results.length > 0
+    ? r.results.join('\n')
+    : `No file or folder named like ${JSON.stringify(args.pattern)}. This is a NAME search: use fs/search with content: true for text inside files. A drive or folder you have not been given is not searched — ask your operator for it with request_file_access.`;
   return said([body, ...notes].join('\n'));
 };
 
@@ -328,18 +309,23 @@ const CONTENT_SEARCH = Object.freeze({
 // excludePatterns (even []) replaces this default entirely.
 const CONTENT_SEARCH_EXCLUDES = Object.freeze(['node_modules', '.git']);
 
-// pure — one line-matcher from the pattern args; an invalid regex throws here
-// and surfaces as the tool's isError result.
+// One line-matcher from the pattern args: `find(text, lines, limit)` resolves the numbers of the first
+// `limit` matching lines. An invalid regex throws here and surfaces as the tool's isError result. A
+// regex is the caller's own program, so it runs off this thread and is stopped when it will not end
+// (line-regex.js); a plain needle is matched here.
 const buildLineMatcher = ({ pattern, regex, ignoreCase }) => {
   if (regex) {
-    const re = new RegExp(pattern, ignoreCase ? 'i' : '');
-    return (line) => re.test(line);
+    const guarded = openLineRegex(pattern, ignoreCase ? 'i' : '');
+    return { find: (text, _lines, limit) => guarded.matchingLines(text, limit), close: guarded.close };
   }
-  if (ignoreCase) {
-    const needle = pattern.toLowerCase();
-    return (line) => line.toLowerCase().includes(needle);
-  }
-  return (line) => line.includes(pattern);
+  const needle = ignoreCase ? pattern.toLowerCase() : pattern;
+  const has = ignoreCase ? (line) => line.toLowerCase().includes(needle) : (line) => line.includes(needle);
+  const find = async (_text, lines, limit) => {
+    const found = [];
+    for (let i = 0; i < lines.length && found.length < limit; i += 1) if (has(lines[i])) found.push(i);
+    return found;
+  };
+  return { find, close: async () => {} };
 };
 
 const searchContent = async (args) => {
@@ -347,7 +333,7 @@ const searchContent = async (args) => {
     throw new Error('pattern must be a non-empty string');
   }
   const rootPath = await validatePath(args.path, getNativeFilesystemRoots());
-  const matches = buildLineMatcher(args);
+  const matcher = buildLineMatcher(args);
   const excludePatterns = Array.isArray(args.excludePatterns) ? args.excludePatterns : CONTENT_SEARCH_EXCLUDES;
   const maxResults = Math.min(Math.max(1, Math.trunc(args.maxResults) || CONTENT_SEARCH.DEFAULT_MAX_RESULTS), CONTENT_SEARCH.RESULT_CEILING);
   const hits = [];
@@ -362,9 +348,9 @@ const searchContent = async (args) => {
     if (stats.size > CONTENT_SEARCH.MAX_FILE_BYTES) { oversize += 1; return; }
     const buffer = await fs.readFile(filePath).catch(() => null);
     if (!buffer || buffer.subarray(0, CONTENT_SEARCH.BINARY_SNIFF_BYTES).includes(0)) return;
-    const lines = buffer.toString('utf-8').split(/\r?\n/);
-    for (let i = 0; i < lines.length; i += 1) {
-      if (!matches(lines[i])) continue;
+    const text = buffer.toString('utf-8');
+    const lines = text.split(/\r?\n/);
+    for (const i of await matcher.find(text, lines, maxResults - hits.length)) {
       const line = lines[i].length > CONTENT_SEARCH.MAX_LINE_CHARS
         ? `${lines[i].slice(0, CONTENT_SEARCH.MAX_LINE_CHARS)}…` : lines[i];
       hits.push(`${filePath}:${i + 1}: ${line}`);
@@ -395,7 +381,7 @@ const searchContent = async (args) => {
       await scanFile(validPath);
     }
   };
-  await walk(rootPath);
+  try { await walk(rootPath); } finally { await matcher.close(); }
 
   const notes = [];
   if (stopped === 'results') notes.push(`[stopped at ${maxResults} matching lines — narrow the pattern or raise maxResults]`);

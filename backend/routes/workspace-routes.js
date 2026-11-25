@@ -17,6 +17,7 @@ import { activePins } from '../../core/memory/pin-ledger.js';
 import { buildNeumaRecord } from '../../core/runtime/neuma-record.js';
 import { takeCounts } from '../../core/workspace/branch-view.js';
 import { slimForDisplay } from '../../core/workspace/session-display.js';
+import { presentSessionRows } from '../services/session-origin.js';
 import { readSkies } from '../../core/cosmos/skies-record.js';
 import { getSubstrateProfile } from '../services/substrate-detector.js';
 import { requireAuth } from '../services/auth.js';
@@ -29,6 +30,11 @@ import { createLogger } from '../services/logger.js';
 import { assertPatchAllowed } from '../../core/identity/dna-protected.js';
 import { canonicalJson } from '../../core/shared/plain-data-canonical.js';
 import { stageOperatorChange, stagedReply, stageRefusalStatus } from '../services/sovereignty/operator-change.js';
+import { readThreads } from '../services/chat-threads.js';
+import { settleCutTurn } from '../services/turn-keep.js';
+import { splitsAsTheyStand } from '../services/clone-splits.js';
+import { isSplitLive } from '../services/shadow-clone.js';
+import { addChatProcessRoutes } from './chat-process-routes.js';
 
 const log = createLogger('Workspace');
 
@@ -36,6 +42,9 @@ const router = Router();
 
 // All workspace routes require authentication
 router.use(requireAuth);
+
+// What the chats left running, and STOP (chat-process-routes.js) — before the /:id routes, so it is never a lane id.
+addChatProcessRoutes(router);
 
 const requireOwnership = async (req, res, next) => {
   const neumaId = req.params.id;
@@ -223,9 +232,26 @@ router.get('/:id/sessions', async (req, res) => {
   }
 });
 
+// Which chats are sub-chats, and of which chat (chat-threads.js): the chat list files each under its parent.
+router.get('/:id/session-threads', async (req, res) => {
+  try {
+    res.json({ threads: await readThreads(req.params.id) });
+  } catch (error) {
+    log.error('Session threads', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the chat threads' });
+  }
+});
+
 router.get('/:id/sessions/:sessionId', async (req, res) => {
   try {
-    const messages = await workspace.readSession(req.params.id, req.params.sessionId);
+    // A turn a quit or a crash cut in this chat lands first, as the take it was (turn-keep.js).
+    await settleCutTurn(req.params.id, req.params.sessionId)
+      .catch((err) => log.warn('a cut turn could not be landed before the read', { error: err.message }));
+    // Each shadow clone split in the chat as it stands now — reported, still at work, or stopped and resumable — not
+    // as its chip was written when it began (clone-splits.js).
+    const messages = await splitsAsTheyStand(req.params.id, presentSessionRows(await workspace.readSession(req.params.id, req.params.sessionId), {
+      neumaId: req.params.id, sessionId: req.params.sessionId,
+    }), isSplitLive);
     // THE TAKES: the response carries the full append-only record (superseded
     // takes included — the desk needs every take locally to switch views
     // without a refetch) plus the per-point take counts. The FOLD to the
@@ -245,7 +271,9 @@ router.get('/:id/sessions/:sessionId', async (req, res) => {
 router.get('/:id/sessions/:sessionId/turns/:turnId', async (req, res) => {
   if (!/^[a-zA-Z0-9_-]{1,80}$/.test(req.params.turnId)) return res.status(400).json({ error: 'bad turnId' });
   try {
-    const messages = await workspace.readSession(req.params.id, req.params.sessionId);
+    const messages = presentSessionRows(await workspace.readSession(req.params.id, req.params.sessionId), {
+      neumaId: req.params.id, sessionId: req.params.sessionId,
+    });
     res.json({ rows: messages.filter((m) => m?.turnId === req.params.turnId) });
   } catch (error) {
     log.error('Session turn read', { error: error.message });

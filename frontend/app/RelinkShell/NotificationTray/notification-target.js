@@ -86,7 +86,8 @@ export const notificationTarget = (record) => {
     // card about something filed for them — an ask, the Optio's packet — opens
     // on the ASKS tab, where it is answered.
     case KIND.houseWake: {
-      const tab = ref.askId || ref.packetAt ? 'asks' : null;
+      // a member's change to the charter (house/charter) opens on the CHARTER tab, where every version is kept
+      const tab = ref.askId || ref.packetAt ? 'asks' : ref.charterVersion ? 'charter' : null;
       if (!ref.wakeId && !tab) return { appId: 'houseclock', payload: null };
       return {
         appId: 'houseclock',
@@ -122,6 +123,13 @@ export const notificationTarget = (record) => {
           ? { sessionId: ref.sessionId, neumaId: record.actor?.id ?? null }
           : null,
       };
+
+    // A house member's LP wallet: the WALLET window, where its LIQUIDITY
+    // layer holds the positions and the APPROVE / DECLINE.
+    case KIND.lpReport:
+    case KIND.lpWaiting:
+    case KIND.lpReward:
+      return { appId: 'wallet', payload: null };
 
     // Nothing to open — the reload card's click IS its action, and routing it
     // somewhere would be a lie about what the click does.

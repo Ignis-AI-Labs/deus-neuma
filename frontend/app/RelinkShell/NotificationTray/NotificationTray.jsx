@@ -18,7 +18,9 @@
 // dangerouslySetInnerHTML in this file and none anywhere in frontend/ — a
 // notification title is model-adjacent text and must never be parsed as markup.
 
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { createPortal } from 'react-dom';
+import { readNoticeSlot, subscribeNoticeSlot } from '../../windowing/notice-slot.js';
 import './NotificationTray.css';
 import { useWindows } from '../../windowing/use-windows.js';
 import { appIdOf } from '../../windowing/window-manager-reducer.js';
@@ -35,6 +37,7 @@ import { bellMandate } from '../mandate/mandate-view.js';
 import { useTrayWaiting } from './use-tray-waiting.js';
 import { MandateMark, WaitingMark, WaitingSection, WaitingToast } from './TrayWaiting.jsx';
 import { OsNoticeToggle } from './OsNoticeToggle.jsx';
+import { ActiveList, ActiveMark, useActiveWork } from './TrayActive.jsx';
 
 /** How long a toast stays up before it retires into the panel. */
 const TOAST_MS = 6000;
@@ -77,6 +80,10 @@ const kindLabel = (kind) => {
     case KIND.benchDone: return 'BENCHMARK DONE';
     case KIND.awaitingAnswer: return 'AWAITS YOUR ANSWER';
     case KIND.houseWake: return '«NOTICE» HOUSE WAKE';
+    case KIND.lpReport: return 'LIQUIDITY REPORT';
+    case KIND.lpWaiting: return 'DEPOSIT AWAITS YOU';
+    case KIND.lpReward: return 'A REWARD WAS EARNED';
+    case KIND.meeting: return 'ON YOUR CALENDAR';
     default: return 'NOTICE';
   }
 };
@@ -165,6 +172,9 @@ const NotificationTrayView = () => {
   const notifications = useNotifications();
   const windows = useWindows();
   const [open, setOpen] = useState(false);
+  // The panel's two tabs: what happened (NOTIFICATIONS) and what is running now (ACTIVE).
+  const [tab, setTab] = useState('news');
+  const work = useActiveWork();
   const [toasts, setToasts] = useState([]);
   const [arriving, setArriving] = useState(() => new Set());
   const graceTimers = useRef(new Set());
@@ -279,6 +289,10 @@ const NotificationTrayView = () => {
     setToasts((prev) => prev.filter((t) => t.id !== record.id));
   }, [notifications]);
 
+  // The marks sit in the taskbar, right of its clock, when there is one (notice-slot.js); else in the tray's own corner.
+  const slot = useSyncExternalStore(subscribeNoticeSlot, readNoticeSlot, () => null);
+  const inBar = (row) => (slot ? createPortal(row, slot) : row);
+
   // Nothing to say and nothing said yet — stay out of the way entirely.
   if (!notifications) return null;
 
@@ -305,6 +319,12 @@ const NotificationTrayView = () => {
       {open ? (
         <div className="ntray-panel">
           <WaitingSection account={owed.shown} line={owed.line} error={owed.error} now={owed.now} onJump={jump} />
+          <div className="ntray-tabs" role="tablist" aria-label="the tray">
+            <button type="button" role="tab" aria-selected={tab === 'news'} className={`ntray-tab${tab === 'news' ? ' is-on' : ''}`} onClick={() => setTab('news')}>NOTIFICATIONS{unread ? ` · ${unread}` : ''}</button>
+            <button type="button" role="tab" aria-selected={tab === 'active'} className={`ntray-tab${tab === 'active' ? ' is-on' : ''}`} data-tray-tab="active" onClick={() => setTab('active')}>ACTIVE{work.active.length ? ` · ${work.active.length}` : ''}</button>
+          </div>
+          {tab === 'active' ? <div className="ntray-panel-list"><ActiveList work={work} onOpen={(a) => { windows?.dispatch?.({ type: 'OPEN', id: a.open?.appId ?? 'positions' }); setOpen(false); }} /></div> : null}
+          {tab === 'news' ? (<>
           <div className="ntray-panel-head">
             <span className="ntray-panel-title">NOTIFICATIONS</span>
             <button
@@ -339,11 +359,14 @@ const NotificationTrayView = () => {
               />
             ))}
           </div>
+          </>) : null}
           <OsNoticeToggle />
         </div>
       ) : null}
 
-      <div className="ntray-bell-row">
+      {inBar(
+      <div className={`ntray-bell-row${slot ? ' is-in-bar' : ''}`}>
+        <ActiveMark count={work.active.length} onOpen={() => { setTab('active'); setOpen(true); }} />
         <MandateMark mandate={mandate} />
         <button
           type="button"
@@ -358,7 +381,8 @@ const NotificationTrayView = () => {
           <BellGlyph />
           {unread > 0 ? <span className="ntray-bell-count">{unread > 99 ? '99+' : unread}</span> : null}
         </button>
-      </div>
+      </div>,
+      )}
     </div>
   );
 };

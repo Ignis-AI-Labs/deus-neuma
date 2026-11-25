@@ -94,6 +94,12 @@ export const deriveLookVars = ({
     '--line': rgba(edge, 0.18),
     '--line-hover': rgba(edge, 0.4),
     '--grid': rgba(edge, 0.02),
+    // the surface ladder: fills from the ink (a claimed LINE is a mid-tone, too dark to lift a card), the heavier line from the edge
+    '--line-strong': rgba(edge, 0.38),
+    '--surface-sunk': rgba(ground, 0.6),
+    '--surface-raised': rgba(ink, 0.06),
+    '--surface-band': rgba(ink, 0.11),
+    '--surface-stripe': rgba(ink, 0.035),
     '--color-border-primary': rgba(edge, 0.2),
     '--color-border-hover': rgba(edge, 0.4),
     '--color-border-focus': rgba(edge, 0.6),

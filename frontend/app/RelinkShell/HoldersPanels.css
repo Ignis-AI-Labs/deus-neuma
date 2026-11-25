@@ -1,0 +1,28 @@
+/* WHO HOLDS THE MACHINE · IMAGE ENGINE — the SUBSTRATE window (design-language.md § SHEET, § SURFACES). */
+.hold-wrap { display: contents; }
+.hold-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); container-type: inline-size; }
+.hold-col { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.hold-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2); margin: 0; padding-bottom: var(--space-1); border-bottom: 1px solid var(--line-strong); color: var(--color-text-secondary); font-size: 13px; letter-spacing: 0.14em; }
+.hold-h b { color: var(--color-text-primary); font-weight: 600; letter-spacing: 0.06em; }
+.hold-note { margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
+.hold .sheet-table th, .hold .sheet-table td { max-width: 22rem; }
+.hold .sheet-table tbody th { font-weight: 400; white-space: normal; overflow-wrap: anywhere; }
+/* Every core: a cell whose fill is its load, its number under it. */
+.hold-cores { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(26px, 1fr)); gap: 3px; }
+.hold-core { position: relative; height: 44px; display: flex; flex-direction: column; justify-content: flex-end; background: var(--surface-sunk); border: 1px solid var(--line); }
+.hold-core i { display: block; background: var(--color-text-tertiary); }
+.hold-core.is-some i { background: var(--color-text-secondary); }
+.hold-core.is-busy i { background: var(--signal-dim); }
+.hold-core.is-full i { background: var(--signal); }
+.hold-core.is-full { border-color: var(--signal-dim); }
+.hold-core-n { position: absolute; inset: 2px 0 auto 0; text-align: center; font-size: 13px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; pointer-events: none; }
+.hold-core.is-full .hold-core-n, .hold-core.is-busy .hold-core-n { color: var(--color-text-primary); }
+.hold-tools { display: inline-flex; gap: var(--space-2); margin-left: auto; }
+.hold-facts { margin: 0 0 var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+.hold-facts > div { display: flex; flex-direction: column; gap: 2px; }
+.hold-facts dt { color: var(--color-text-tertiary); font-size: 13px; letter-spacing: 0.12em; }
+.hold-facts dd { margin: 0; color: var(--color-text-primary); font-size: 15px; }
+.hold .sub-panel-aside .is-on { color: var(--signal); }
+.hold .sub-panel-aside .is-alert { color: var(--alert); }
+.hold h4.hold-h { margin-top: var(--space-2); margin-bottom: var(--space-2); }
+@container (max-width: 900px) { .hold-cols { grid-template-columns: minmax(0, 1fr); } }

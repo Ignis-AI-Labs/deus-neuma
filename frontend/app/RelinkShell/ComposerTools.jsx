@@ -1,4 +1,4 @@
-// ComposerTools.jsx — the composer's LIVE toggle and its REFINE action.
+// ComposerTools.jsx — the composer's TALK (the chat's voice sitting) and its REFINE action.
 //
 // REFINE (Design note, 2026-10-10: […]): one press shapes the draft — punctuation, sentences, paragraphs,
 // […]/[…] gone — on this machine's own model, every other word kept
@@ -6,37 +6,50 @@
 // never silently rewrites the operator. The draft it replaced stays one press
 // away (UNDO) until the operator edits the refined text.
 //
-// LIVE moved here from StreamInput.jsx (size law); its body is unchanged.
+// The LIVE toggle that sat here left 2026-11-13 (Founder: one place for voice, the chat's TALK beside
+// the mic; ChatApp.jsx).
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiCall } from '../../utils/http.js';
-import { setLiveArmed } from './voice-purpose-state.js';
+import { useTranslation } from 'react-i18next';
 import { uiSound } from '../../services/ui-sound.js';
+import { useConsciousnessPick } from './consciousness-context.js';
+import { talkToggleModel } from './VoiceSitting/voice-sitting-model.js';
 
 const REFINE_NOTE_MS = 3500;
 
-export const LiveButton = ({ live, liveState, connected, purpose, toggleLive }) => (
-  <button
-    type="button"
-    className={`relink-live${live ? ` is-on is-${liveState}` : ''}`}
-    disabled={!connected}
-    aria-pressed={live}
-    aria-label={live ? 'LIVE — mic is open, click to go quiet' : 'Go LIVE — open the mic and speak any time'}
-    title={live ? 'LIVE — mic is open, click to go quiet' : 'Go LIVE — open the mic and speak any time'}
-    onClick={() => {
-      uiSound('toggle');
-      // In a declared CONVERSATION sitting the LIVE button arms the
-      // SITTING — the module the VoiceSitting shell and the mic
-      // bridge read (the mic itself runs in the bridge, never in a
-      // composer the shell replaces). Everywhere else the toggle
-      // owns the mic directly, exactly as before.
-      if (purpose === 'conversation') { setLiveArmed(true); return; }
-      toggleLive();
-    }}
-  >
-    LIVE
-  </button>
-);
+// THE TALK (Design note, 2026-08-01: […]).
+//
+// One button, one gesture. Work is not a mode you select — it is the desk as
+// it stands. TALK opens the sitting (purpose conversation, VOX on, LIVE armed,
+// the composer steps aside); EXIT or Escape puts the desk back. The backend's
+// purpose law is untouched: this is still just which of the two purposes gets
+// declared.
+//
+// ONE PLACE (Design note, 2026-11-13: […]): TALK sits in the composer beside the mic that dictates.
+// It was a header toggle, with the composer's own LIVE open-mic beside the
+// chat — two voice buttons that did nearly the same thing. LIVE is gone; the
+// header has no voice button.
+export const TalkButton = () => {
+  const { voiceSittingActive, enterVoiceSitting, exitVoiceSitting } = useConsciousnessPick('voiceSittingActive', 'enterVoiceSitting', 'exitVoiceSitting');
+  const { t } = useTranslation('desk');
+  const model = talkToggleModel(voiceSittingActive);
+  return (
+    <button
+      type="button"
+      className={`relink-talk${model.live ? ' is-on' : ''}`}
+      aria-pressed={model.live}
+      title={t(`stream.${model.titleKey}`)}
+      onClick={() => {
+        uiSound('toggle');
+        if (model.live) exitVoiceSitting(); else enterVoiceSitting();
+      }}
+    >
+      {t(`stream.${model.labelKey}`)}
+    </button>
+  );
+};
+
 
 /**
  * The REFINE action over the composer draft.

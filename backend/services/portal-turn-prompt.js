@@ -33,7 +33,6 @@ import { assemblePromptSections, stablePromptSplit } from '../../core/index.js';
 // the marker itself lives with the builder that consumes it and is re-exported
 // so portal-stream's import surface stays one module.
 export { systemMessageWithCacheSplit, anchorVolatileAtTurn, composeLocalWireAhead } from './llm-request-builders.js';
-export { wireContextSections } from './turn-context-carry.js';
 import { expressionSectionFor } from './expression-prompt.js';
 import { voiceSittingSection } from '../../core/voice/purpose.js';
 import { speechBriefingSection } from './speech-consent.js';
@@ -42,6 +41,7 @@ import { formatSubstrateForPrompt } from './substrate-detector.js';
 import { loadHouseWorkspace } from './house-workspace.js';
 import { postKnock } from './house-post.js';
 import { planModeSection } from './plan-mode.js';
+import { researchModeSection } from './research-mode.js';
 import { gatewaySection } from './sovereignty/gateway-handlers.js';
 import { operatorChangeNotice, markOperatorChangesTold } from './sovereignty/operator-change.js';
 import { activeAmendments } from './sovereignty/amendment-store.js';
@@ -58,13 +58,13 @@ import { cosBriefingSection } from './staff/cos-briefing.js';
 import { companyLineBriefing } from './company-line/company-briefing.js';
 import { mercatorBriefingSection } from './revenue/revenue-briefing.js';
 import { logistaBriefingSection } from './accounts/accounts-briefing.js';
+import { positionSection } from './positions/position-board.js';
 import { cfoBriefingSection } from './treasury/treasury-briefing.js';
 import { spendNewsFor } from './treasury/spend-news.js';
 import { markSpendsTold } from './treasury/spend-records.js';
 import { recordSectionDrift } from './section-drift.js';
 import {
   sectorSectionFor,
-  projectFilesSection as _projectFilesSection,
   houseSeatSection as _houseSeatSection,
   cmoBriefingSection as _cmoBriefingSection,
   replyCandidatesSection as _replyCandidatesSection,
@@ -140,7 +140,8 @@ export const assembleTurnPrompt = async ({
     // platform-only benchmark sitting and a harness lane's sitting both get
     // the platform's sections only — no identity layer, no house lines.
     const platformOnly = connection._benchmarkControls?.platformOnly === true || isHarnessSitting(connection);
-    const houseSeat = await _houseSeatSection(connection);
+    const visitor = connection.toolMode === 'visitor';
+    const houseSeat = visitor ? '' : await _houseSeatSection(connection);
     // Standing law the being authored (sovereignty gateway) — stable group,
     // '' for every being without amendments. Fail-soft: a broken chain must
     // not silence the being; the store already refused to read it as law.
@@ -185,7 +186,7 @@ export const assembleTurnPrompt = async ({
       // memoryContext value stays as the fallback it always was. Fail-soft:
       // an unreadable profile costs the name this turn, never the turn.
       session: {
-        witnessName: (connection.walletAddress
+        witnessName: visitor ? '' : (connection.walletAddress
           ? await getOperatorName(connection.walletAddress).catch(() => '') : '')
           || memories.userName,
         speaker,
@@ -228,7 +229,9 @@ export const assembleTurnPrompt = async ({
       // the being's usual tools — named in the HUD by signature, frozen for the chat (tool-hud.js)
       usualTools: connection._turnUsualTools || [],
       // A benchmark sitting states its conditions up front: closed-book or open-book (test-conditions.js).
-      testConditions: [testConditionsFor(connection), callerRulesFor(connection)].filter(Boolean).join('\n\n'),
+      testConditions: testConditionsFor(connection),
+      // The sender's standing rules ride beside the closing, never buried in TOOLS (prompt-assembler.js).
+      sittingRules: callerRulesFor(connection),
       // The lane's standing context rides the STABLE group (#282), read above
       // because this assembler is pure — none of the four moves within a sitting.
       groundProtocol,
@@ -240,62 +243,41 @@ export const assembleTurnPrompt = async ({
       intents: await intentSectionFor(connection, { searchable: lazyToolSchemas }),
       // THE HARNESS ARM mounts no silo: no identity is read for a platform-only sitting.
       identityDriver: platformOnly ? null : await mountForTurn(connection, companion?.neumaId, route || getConfig()),
+      // A channel visitor gets identity and public tool guidance only. Every
+      // private record, office, task, vessel, memory and ground section stays out.
+      ...(visitor ? {
+        memories: { userName: '' }, skills: null, benchmark: null, taskLedger: null, assignedPlan: null, planRecord: null,
+        witnessPlan: null, vitals: null, taste: null, focusGround: null, zone: null, testConditions: null,
+        sittingRules: null, groundProtocol: '', houseSeat: '', sectors: '', amendments: '', intents: '',
+      } : {}),
     });
-    // A project's shared files ride as an extra section when the chat belongs
-    // to a project — appended (not folded into core's assembler) so its tokens
-    // are counted honestly in BOTH composition emissions below.
-    const projectFilesSection = await _projectFilesSection(connection);
-    // The CMO's office briefing rides beside it — a string section ('' for
+    // The CMO's office briefing rides as an extra section — a string ('' for
     // every other lane), wrapped in the section shape the assembler joins.
-    const cmoBriefing = await _cmoBriefingSection(connection);
+    const cmoBriefing = visitor ? '' : await _cmoBriefingSection(connection);
     // The CSO's watch briefing rides the same law — '' (prompt
     // byte-identical) for every lane but the seated guardian's.
-    const csoBriefing = await csoBriefingSection(connection);
-    // The Praetor's legal-watch briefing rides the same law — '' for every
-    // lane but the seated CLO's.
-    const cloBriefing = await cloBriefingSection(connection);
-    // The Optio's office briefing rides the same law — '' (prompt
-    // byte-identical) for every lane but the seated chief of staff's.
-    const cosBriefing = await cosBriefingSection(connection);
-    // The Quaestor's office rides the same law — '' for every lane but the seated CFO's.
-    const cfoBriefing = await cfoBriefingSection(connection);
-    // The company line rides the same law — '' for every house founding no company.
-    const companyLine = await companyLineBriefing(connection);
-    // The Mercator's office — '' for every lane but the seated sales seat's.
-    const croBriefing = await mercatorBriefingSection(connection);
-    // The Logista's books — '' for every lane but the seated Logista's.
-    const caoBriefing = await logistaBriefingSection(connection);
+    const csoBriefing = visitor ? '' : await csoBriefingSection(connection);
+    const cloBriefing = visitor ? '' : await cloBriefingSection(connection);
+    const cosBriefing = visitor ? '' : await cosBriefingSection(connection);
+    const cfoBriefing = visitor ? '' : await cfoBriefingSection(connection);
+    const companyLine = visitor ? '' : await companyLineBriefing(connection);
+    const croBriefing = visitor ? '' : await mercatorBriefingSection(connection);
+    const caoBriefing = visitor ? '' : await logistaBriefingSection(connection);
+    const positionMap = visitor ? '' : await positionSection(connection);
     // What became of the being's own spend requests (#586), told once — never on a harness or benchmark sitting.
-    const walletNews = companion?.neumaId && !platformOnly && !connection._benchmarkControls
+    const walletNews = !visitor && companion?.neumaId && !platformOnly && !connection._benchmarkControls
       ? await spendNewsFor(companion.neumaId) : { text: '', ids: [] };
-    // The reply lane's knock rides beside it — binding-gated to the X
-    // holder, '' (prompt byte-identical) for every other lane.
-    const replyKnock = await _replyCandidatesSection(connection);
-    // THE VOICE SITTING signal (SPEECH SYSTEM B-11): when the operator declared
-    // this sitting a conversation, the being is told to answer like SPEECH.
-    // '' (no section) for every working lane — prompts there stay
-    // byte-identical to before this section existed (the empty-string law).
-    const voiceSitting = voiceSittingSection(connection);
-    // A spoken-voice candidate waiting on the being (ONE VOICE): '' for every other lane.
-    const speechBriefing = await speechBriefingSection(connection);
-    // THE PLAN BEARING (chat modes): when the operator set this conversation
-    // to PLAN, the being is told to research and present, never act. ''
-    // (prompt byte-identical) for every other bearing — the empty-string law.
-    const planBearing = planModeSection(connection);
-    // The gateway's live posture — open proposals + fresh verdicts, VOLATILE
-    // (a verdict moves its bytes), '' for every lane with nothing standing.
-    // An operator's staged change to this being's DNA or soul is put to it here,
-    // every turn until it answers (operator-change.js) — never on a harness or benchmark sitting.
-    const operatorNotice = companion?.neumaId && !platformOnly && !connection._benchmarkControls
+    const replyKnock = visitor ? '' : await _replyCandidatesSection(connection);
+    const voiceSitting = visitor ? '' : voiceSittingSection(connection);
+    const speechBriefing = visitor ? '' : await speechBriefingSection(connection);
+    const planBearing = visitor ? '' : planModeSection(connection);
+    const researchBearing = visitor ? '' : researchModeSection(connection);
+    const operatorNotice = !visitor && companion?.neumaId && !platformOnly && !connection._benchmarkControls
       ? await operatorChangeNotice(companion.neumaId) : { text: '', ids: [] };
-    const sovereigntyKnock = [await gatewaySection(companion?.neumaId || null), operatorNotice.text]
+    const sovereigntyKnock = visitor ? '' : [await gatewaySection(companion?.neumaId || null), operatorNotice.text]
       .filter(Boolean).join('\n\n');
-    // The FEELING invitation + palette (Campaign 6) — '' for every being
-    // whose channel is off: zero bytes unless the operator flipped it.
-    const expressionInvite = await expressionSectionFor(companion?.neumaId || null);
-    // The waiting-post knock is VOLATILE (#282 follow-up, review clone):
-    // arrival/collection moves its bytes between turns — below the cache line.
-    const housePost = connection.walletAddress && companion?.neumaId
+    const expressionInvite = visitor ? '' : await expressionSectionFor(companion?.neumaId || null);
+    const housePost = !visitor && connection.walletAddress && companion?.neumaId
       ? await loadHouseWorkspace(connection.walletAddress).then(({ root }) => postKnock(root, companion.neumaId)).catch(() => '')
       : '';
     // THE SHED LADDER runs at finalize (turn-envelope.js): what the window cannot hold sheds by declared law, identity CORE never.
@@ -304,9 +286,9 @@ export const assembleTurnPrompt = async ({
     // it — never a retelling.
     let envelopeDecision = null;
     const finalized = finalizeTurnEnvelope({
-      baseSections, projectFilesSection, expressionInvite, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing,
+      baseSections, expressionInvite, positionMap, cmoBriefing, csoBriefing, cloBriefing, cosBriefing, cfoBriefing, croBriefing, caoBriefing, companyLine, voiceSitting, planBearing, researchBearing,
       sovereigntyKnock, housePost, walletNews: walletNews.text, replyKnock, contextWindow: turnCapabilities?.contextWindow, neumaId: companion?.neumaId,
-      voiceRite: companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
+      voiceRite: !visitor && companion?.neumaId && !(voiceEntries || []).length ? VOICE_RITE_OFFER : '',
       speechBriefing,
       onDecision: (decision) => { envelopeDecision = decision; },
     });

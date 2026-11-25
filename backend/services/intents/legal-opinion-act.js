@@ -13,9 +13,9 @@
  * newer and what the office made of it, and what the second reader judged,
  * row by row.
  */
-import fs from 'fs/promises';
 import path from 'path';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
+import { writeContainedFile } from '../no-follow-write.js';
 import { CITATION_SHAPE, citationRecordsProblem, draftProblem } from '../legal/citation-record.js';
 import { NOT_CHECKED } from '../legal/cite-check.js';
 import { reviewFiling } from '../legal/act-review.js';
@@ -75,6 +75,12 @@ const opinionText = ({ title, question, answer, recency, review, laneId }) => [
 const fileNameFor = (title, at) =>
   `${at.slice(0, 16).replace(':', '')}-opinion-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'untitled'}.md`;
 
+// impure — the already-reviewed opinion's exclusive, contained write.
+export const writeLegalOpinion = async ({ laneId, name, text }) => {
+  const root = neumaWorkspace.pathFor(laneId);
+  await writeContainedFile({ root, directory: path.join(root, 'legal', 'opinions'), name, body: text, exclusive: true });
+};
+
 export const legalOpinionIntent = Object.freeze({
   name: 'legal/opinion',
   policyTool: 'legal.opinion',
@@ -105,10 +111,8 @@ export const legalOpinionIntent = Object.freeze({
     }, { connection });
     if (!review.ok) return { ok: false, reason: review.reason };
     const laneId = connection.companion?.neumaId;
-    const dir = path.join(neumaWorkspace.pathFor(laneId), 'legal', 'opinions');
-    await fs.mkdir(dir, { recursive: true });
     const name = fileNameFor(value.title, review.check.checkedAt);
-    await fs.writeFile(path.join(dir, name), opinionText({ ...value, review, laneId }), { encoding: 'utf8', flag: 'wx' });
+    await writeLegalOpinion({ laneId, name, text: opinionText({ ...value, review, laneId }) });
     return {
       ok: true,
       detail: `Delivered: legal/opinions/${name}.${review.note} Tell the operator where it is; the check, the sweep and the second reading ride with it.`,

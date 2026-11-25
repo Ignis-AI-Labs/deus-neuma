@@ -17,6 +17,8 @@
  * throughout; no chain and no network are involved in any of it.
  */
 import { describe, test, expect, beforeEach, afterAll } from 'vitest';
+import fs from 'node:fs/promises';
+import path from 'node:path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { generateKeypair, derivePublicIdentity } from '../../core/weave/keypair.js';
 import {
@@ -79,6 +81,30 @@ describe('rotateKeypair', () => {
     expect(derivePublicIdentity(opened.privateKey).address).toBe(result.newKeypair.address);
   });
 
+  test('the retired key remains recoverable under the new password and recovery codes', async () => {
+    const neumaId = 'rotation-retired-recovery';
+    await neumaWorkspace.create(neumaId);
+    const result = await rotateKeypair(neumaId, keypair, PASSWORD);
+    const retired = await neumaWorkspace.readRetiredKeypair(neumaId, keypair.address);
+    expect(retired).not.toBeNull();
+    expect(decryptKeypair(retired.password, PASSWORD).address).toBe(keypair.address);
+    expect(decryptWithRecoveryCodes(retired.recovery, result.recoveryCodes).address).toBe(keypair.address);
+    expect(JSON.stringify(await neumaWorkspace.readKeypairHistory(neumaId))).not.toContain(keypair.privateKey);
+  });
+
+  test('a real current-vault write failure happens only after the retired key is recoverable', async () => {
+    const neumaId = 'rotation-retired-before-overwrite';
+    await neumaWorkspace.create(neumaId);
+    const currentPath = path.join(neumaWorkspace._path(neumaId), 'keys', 'keypair-encrypted.json');
+    await fs.mkdir(currentPath, { recursive: true });
+
+    await expect(rotateKeypair(neumaId, keypair, PASSWORD)).rejects.toThrow();
+    const retired = await neumaWorkspace.readRetiredKeypair(neumaId, keypair.address);
+    expect(retired).not.toBeNull();
+    expect(decryptKeypair(retired.password, PASSWORD).address).toBe(keypair.address);
+    expect((await fs.stat(currentPath)).isDirectory()).toBe(true);
+  });
+
   test('the WRONG password does not open it', async () => {
     const neumaId = 'rotation-test-wrong-pw';
     await neumaWorkspace.create(neumaId);
@@ -106,12 +132,27 @@ describe('rotateKeypair', () => {
     expect(viaCodes.address).toBe(result.newKeypair.address);
   });
 
+  test('a failed bundle commit preserves the coherent password and recovery pair', async () => {
+    const neumaId = 'rotation-bundle-interruption';
+    await neumaWorkspace.create(neumaId);
+    await rotateKeypair(neumaId, keypair, PASSWORD);
+    const before = await neumaWorkspace.readRotationBundle(neumaId);
+    await expect(neumaWorkspace.writeRotationBundle(neumaId, {
+      address: '0x0000000000000000000000000000000000000000', encrypted: {}, recoveryHash: 'bad', recoveryEncrypted: {},
+    }, { beforeCommit: () => { throw new Error('real write interrupted before rename'); } })).rejects.toThrow('interrupted');
+    expect(await neumaWorkspace.readRotationBundle(neumaId)).toEqual(before);
+    expect(decryptKeypair(await neumaWorkspace.readEncryptedKeypair(neumaId), PASSWORD).address).toBe(before.address);
+    const delivered = await neumaWorkspace.readRotationCodes(neumaId);
+    expect(decryptWithRecoveryCodes(await neumaWorkspace.readRecoveryKeypair(neumaId), delivered.codes).address).toBe(before.address);
+  });
+
   test('two rotations leave two archive entries, in order', async () => {
     const neumaId = 'rotation-test-twice';
     await neumaWorkspace.create(neumaId);
 
     const first = await rotateKeypair(neumaId, keypair, PASSWORD, 'first');
-    await rotateKeypair(neumaId, first.newKeypair, PASSWORD, 'second');
+    const firstFull = decryptKeypair(await neumaWorkspace.readEncryptedKeypair(neumaId), PASSWORD);
+    await rotateKeypair(neumaId, firstFull, PASSWORD, 'second');
 
     const history = await neumaWorkspace.readKeypairHistory(neumaId);
     expect(history.map((h) => h.reason)).toEqual(['first', 'second']);

@@ -19,6 +19,7 @@ import { neumaWorkspace, getWorkspacesRoot, readHouseName } from '../../core/ind
 import { TITLE_LEGEND } from './founding-titles-legend.js';
 import { createLogger } from './logger.js';
 import { readOperatorRecords } from './house-founding-record.js';
+import { currentTitles, readTitleLedger, recordTitleChange, titleHistory } from './house-title-ledger.js';
 
 const log = createLogger('HouseTitles');
 
@@ -180,6 +181,22 @@ const localMembers = (lanes, roster, titles) => {
   }));
 };
 
+// impure — the house's title changes since its founding (house-title-ledger.js), oldest first; [] when
+// unreadable, said in the log: a title is record, but a broken ledger never costs a being its turn.
+const titleChanges = async (wallet) => {
+  try {
+    return (await readTitleLedger(wallet)).changes;
+  } catch (error) {
+    log.warn('house title ledger unreadable — the founding titles stand', { error: error.message });
+    return [];
+  }
+};
+
+// pure — a roster with each member's CURRENT title (Design note, 2026-11-12: titles shift; the founding is only
+// where each résumé starts).
+const withCurrentTitles = (roster, titles) => roster.map((r) => (
+  r.neumaId && !r.isWitness && Object.hasOwn(titles, r.neumaId) ? { ...r, title: titles[r.neumaId] } : r));
+
 // impure — the name this wallet's house carries (the roster route's own), or
 // '' when the wallet cannot carry one.
 const localHouseName = async (wallet) => {
@@ -223,9 +240,11 @@ export const houseSeatFor = async (witnessWallet, neumaId) => {
     const lanes = await ownedLanes(witnessWallet);
     if (!lanes.some((l) => l.neumaId === neumaId)) return null;
     const records = await listFoundingRecords(witnessWallet);
-    const titles = titlesOf(records, lanes);
+    const founded = titlesOf(records, lanes);
+    const changes = await titleChanges(witnessWallet);
+    const titles = currentTitles(founded, changes);
     for (const record of records) {
-      const roster = recordRoster(record, lanes);
+      const roster = withCurrentTitles(recordRoster(record, lanes), titles);
       if (!roster.some((r) => r.neumaId === neumaId)) continue;
       return {
         houseName: typeof record.houseName === 'string' ? record.houseName : '',
@@ -233,6 +252,7 @@ export const houseSeatFor = async (witnessWallet, neumaId) => {
         network: typeof record.network === 'string' ? record.network : '',
         blockNumber: Number.isFinite(record.blockNumber) ? record.blockNumber : null,
         title: roster.find((r) => r.neumaId === neumaId).title,
+        history: titleHistory(neumaId, founded[neumaId] ?? null, record.foundedAt ?? null, changes),
         founded: true,
         roster: [...roster, ...localMembers(lanes, roster, titles)],
       };
@@ -242,7 +262,8 @@ export const houseSeatFor = async (witnessWallet, neumaId) => {
       houseId: null,
       network: 'local',
       blockNumber: null,
-      title: null,
+      title: titles[neumaId] ?? null,
+      history: titleHistory(neumaId, null, null, changes),
       founded: false,
       roster: localMembers(lanes, [], titles),
     };
@@ -266,7 +287,8 @@ export const houseSeatFor = async (witnessWallet, neumaId) => {
 export const houseTitlesByNeumaId = async (witnessWallet) => {
   try {
     const records = await listFoundingRecords(witnessWallet);
-    if (!records.length) return {};
+    const changes = await titleChanges(witnessWallet);
+    if (!records.length) return currentTitles({}, changes);
     // The chain speaks in addresses; the switcher thinks in beings — join
     // each owned lane through its anchored soul. Witness lanes stand BESIDE
     // the house (sovereignty boundary) and are never joined.
@@ -286,7 +308,7 @@ export const houseTitlesByNeumaId = async (witnessWallet) => {
         if (neumaId && m?.title && !Object.hasOwn(titles, neumaId)) titles[neumaId] = String(m.title);
       }
     }
-    return titles;
+    return currentTitles(titles, changes);
   } catch (error) {
     log.warn('House titles unavailable — the roster rides without them', { error: error.message });
     return {};
@@ -317,4 +339,65 @@ export const operatorSeatTitles = async (witnessWallet) => {
     log.warn('Operator seats unavailable — the line reads no seat for them', { error: error.message });
     return [];
   }
+};
+
+/**
+ * The house's titles as they stand and as they were: every member (the beings this wallet owns),
+ * the founding titles, the current ones, and each member's résumé (house-title-ledger.js). For the
+ * HOUSE window and the title routes. impure (fs reads only).
+ * @param {string} wallet
+ */
+export const houseTitleState = async (wallet) => {
+  const lanes = (await ownedLanes(wallet)).filter((l) => !l.neumaId.startsWith('harness-'));
+  const records = await listFoundingRecords(wallet);
+  const founded = titlesOf(records, lanes);
+  const changes = await titleChanges(wallet);
+  const titles = currentTitles(founded, changes);
+  const foundedAt = records.find((r) => r?.foundedAt)?.foundedAt ?? null;
+  return {
+    members: lanes.map((l) => ({
+      neumaId: l.neumaId,
+      name: l.name ?? l.neumaId,
+      title: titles[l.neumaId] ?? null,
+      foundingTitle: founded[l.neumaId] ?? null,
+      history: titleHistory(l.neumaId, founded[l.neumaId] ?? null, foundedAt, changes),
+    })),
+    founded,
+  };
+};
+
+/**
+ * The seats a local founding record's members hold NOW, keyed by member address (lowercase): each
+ * neuma's current title and name (its lane matched by soul address, as every reader here matches;
+ * the title from the ledger, else the founding one). The record is signed and never rewritten, so
+ * the HOUSE window's roster used to read the founding titles as if they were current (deus-neuma
+ * #36: four of nine seats wrong after title changes). The operator's seat is the record's own.
+ * impure (reads lanes and the title ledger)
+ * @param {string} wallet
+ * @param {{members?: Array<{kind: number, address: string, title: string, displayName?: string}>}} record
+ * @returns {Promise<Record<string, {title: string, name: string}>>}
+ */
+export const currentSeatsOf = async (wallet, record) => {
+  const lanes = await ownedLanes(wallet);
+  const bySoul = new Map(lanes.filter((l) => l.soul).map((l) => [l.soul, l]));
+  const changed = currentTitles({}, await titleChanges(wallet));
+  const seats = {};
+  for (const m of Array.isArray(record?.members) ? record.members : []) {
+    const lane = m?.kind === 1 ? bySoul.get(String(m.address || '').toLowerCase()) : null;
+    if (!lane) continue;
+    seats[String(m.address).toLowerCase()] = { title: changed[lane.neumaId] ?? m.title, name: lane.name ?? m.displayName };
+  }
+  return seats;
+};
+
+/**
+ * Change a title in the operator's house: give one member a title (a correction, a new seat) or
+ * trade two members' titles. Validated against the titles held now; the founding record is never
+ * touched. impure.
+ * @param {string} wallet
+ * @param {{kind: 'set'|'trade', neumaId?: string, title?: string, a?: string, b?: string, reason?: string}} ask
+ */
+export const changeHouseTitle = async (wallet, ask) => {
+  const { members, founded } = await houseTitleState(wallet);
+  return recordTitleChange(wallet, ask, { founding: founded, members: members.map((m) => m.neumaId) });
 };

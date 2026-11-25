@@ -14,6 +14,7 @@ import { neumaWorkspace } from '../../../core/index.js';
 import { requestSealFromWitness } from '../seal-request.js';
 import * as walletService from '../neuma-wallet.js';
 import { balanceOfAddress } from '../neuma-wallet.js';
+import { readLpView, lpViewLines } from '../umbrae-lp/lp-view.js';
 import { isWitnessLaneId, witnessWalletOfLane } from '../witness-lane.js';
 import { sendToolEvent as _sendToolEvent } from './tool-events.js';
 import { getAppConfig } from '../../config.js';
@@ -105,7 +106,7 @@ const _handleRequestSeal = async (connection, opts = {}) => {
 const WALLET_VIEW_TOOL = Object.freeze({
   name: 'wallet_view',
   server: 'wallet',
-  description: 'View your own Base wallet address, ETH balance, operator-approved recipients, autonomous threshold, signing readiness, and pending transfer requests. Read-only; this never signs or moves funds.',
+  description: 'View your own Base wallet address, ETH balance, operator-approved recipients, autonomous threshold, signing readiness, and pending transfer requests, and your LP wallet for Umbrae when you have one (address, balance, budget, positions, deposits waiting). Read-only; this never signs or moves funds.',
   inputSchema: Object.freeze({ type: 'object', properties: Object.freeze({}) }),
 });
 
@@ -126,7 +127,7 @@ const walletViewContent = (view) => {
   return [
     'Network: Base (chain 8453)',
     `Address: ${view.address || 'wallet not found'}`,
-    `ETH balance: ${view.balanceEth === null ? 'unavailable — Base RPC did not answer' : view.balanceEth}`,
+    `ETH balance: ${view.balanceEth === null ? 'unavailable — Base RPC did not answer' : view.balanceEth}${view.balanceNode === 'public' ? ' (read through Base\'s public node; the saved Base address did not answer)' : ''}`,
     `Signing key: ${view.signingReady ? 'unlocked for one action' : 'locked — your operator must unlock it before a transfer can execute'}`,
     `Autonomous threshold: ${view.autonomousThresholdEth} ETH`,
     `Approved recipients: ${recipients}`,
@@ -172,9 +173,12 @@ const _handleWalletView = async (ws, companion) => {
   try {
     // The lane decides which wallet is "yours" — never an argument, so neither
     // seat can name another being's wallet.
+    // The LP wallet, when the house member has one, sits beside the first
+    // wallet in the same view: two addresses, one read.
     const content = isWitnessLaneId(companion.neumaId)
       ? await _witnessWalletContent(companion.neumaId)
-      : walletViewContent(await walletService.getWalletView(companion.neumaId));
+      : [walletViewContent(await walletService.getWalletView(companion.neumaId)),
+        ...lpViewLines(await readLpView(companion.neumaId))].join('\n');
     _sendToolEvent(ws, companion, {
       tool: 'wallet/view', status: 'ok', summary: 'wallet view', detail: content,
     });

@@ -16,8 +16,8 @@ const base = (over = {}) => ({
 });
 
 describe('the pinned Ollama build', () => {
-  test('Linux and Windows on x64 have a pinned file with its SHA-256; nothing else does', () => {
-    for (const [p, a] of [['linux', 'x64'], ['win32', 'x64']]) {
+  test('Linux and Windows on x64, and macOS on both chips, have a pinned file with its SHA-256; nothing else does', () => {
+    for (const [p, a] of [['linux', 'x64'], ['win32', 'x64'], ['darwin', 'arm64'], ['darwin', 'x64']]) {
       const asset = ollamaAssetFor(p, a);
       expect(asset.sha256).toMatch(/^[0-9a-f]{64}$/);
       expect(asset.size).toBeGreaterThan(100e6);
@@ -25,7 +25,9 @@ describe('the pinned Ollama build', () => {
     }
     expect(ollamaAssetFor('linux', 'x64').bin).toBe('bin/ollama');
     expect(ollamaAssetFor('win32', 'x64').bin).toBe('ollama.exe');
-    expect(ollamaAssetFor('darwin', 'arm64')).toBeNull();
+    // one macOS archive serves both chips; the server sits at its root
+    expect(ollamaAssetFor('darwin', 'arm64')).toMatchObject({ name: 'ollama-darwin.tgz', format: 'tar.gz', bin: 'ollama' });
+    expect(ollamaAssetFor('darwin', 'x64').sha256).toBe(ollamaAssetFor('darwin', 'arm64').sha256);
     expect(ollamaAssetFor('linux', 'arm64')).toBeNull();
   });
 });
@@ -38,7 +40,9 @@ describe('the model Ollama pulls', () => {
     expect(ollamaModelRef(null)).toBeNull();
     expect(ollamaModelRef({ ...REC, source: '../../etc' })).toBeNull();
     expect(ollamaModelRef({ ...REC, source: 'a/b; rm -rf /' })).toBeNull();
+    expect(ollamaModelRef({ ...REC, source: 'unreviewed/repository' })).toBeNull();
     expect(ollamaModelRef({ ...REC, quant: 'Q4 K' })).toBeNull();
+    expect(installPlan(base({ recommendation: { ...REC, source: 'unreviewed/repository' } }))).toMatchObject({ supported: false, reason: /no reviewed revision and SHA-256/ });
   });
 });
 
@@ -51,6 +55,7 @@ describe('the plan for each starting point', () => {
     expect(plan.managed).toBe(true);
     expect(plan.downloadBytes).toBe(ollamaAssetFor('linux', 'x64').size + 2.8e9);
     expect(plan.enoughDisk).toBe(true);
+    expect(plan.model).toMatchObject({ revision: '391fc7d103e3942a408def3e4f51c2f85d464417', sha256: 'dec96e8cf2e11b613bb46513dec485377f9ca5a351e71712ee0e244f287c6790' });
   });
   test('Ollama installed but stopped: start and pull, no download', () => {
     const plan = installPlan(base({ system: { bin: 'ollama', version: '0.41.0' } }));
@@ -135,9 +140,15 @@ describe('the plan for each starting point', () => {
     expect(plan).toEqual({ supported: false, reason: 'Below the recommended floor.' });
   });
   test('an OS with no pinned build and no server is told to install one itself', () => {
-    const plan = installPlan(base({ platform: 'darwin', arch: 'arm64' }));
+    const plan = installPlan(base({ platform: 'linux', arch: 'arm64' }));
     expect(plan.supported).toBe(false);
-    expect(plan.reason).toMatch(/no Ollama build for darwin/);
+    expect(plan.reason).toMatch(/no Ollama build for linux on arm64/);
+  });
+  test('a Mac with no model server gets Ollama\'s own macOS build downloaded and set up for it', () => {
+    const plan = installPlan(base({ platform: 'darwin', arch: 'arm64' }));
+    expect(plan.supported).toBe(true);
+    expect(plan.server).toBe('download');
+    expect(plan.steps.map((st) => st.id)).toEqual(expect.arrayContaining(['download', 'unpack', 'start']));
   });
 });
 
@@ -150,9 +161,16 @@ describe('a model Ollama cannot pull', () => {
       { model: 'Qwen3.8-27B (6-bit)', quant: 'Q6_K', sizeGB: 22.0, source: 'unsloth/Qwen3.8-27B-GGUF' },
     ],
   });
-  test('the standard llama.cpp schemes are pullable; a custom one is not', () => {
-    for (const q of ['Q4_K_M', 'Q6_K', 'Q8_0', 'IQ3_S', 'IQ3_XXS', 'BF16']) expect(ollamaPullable({ ...REC, quant: q })).toBe(true);
-    expect(ollamaPullable({ ...REC, quant: 'Q8_K_P' })).toBe(false);
+  test('reviewed standard llama.cpp schemes are pullable; custom or unreviewed ones are not', () => {
+    const reviewed = [
+      REC,
+      { ...REC, source: 'unsloth/Qwen3.8-27B-GGUF', quant: 'Q6_K' },
+      { ...REC, source: 'ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF', quant: 'IQ3_S' },
+      { ...REC, source: 'ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF', quant: 'IQ3_XXS' },
+      { ...REC, source: 'IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF', quant: 'IQ4_XS' },
+    ];
+    for (const choice of reviewed) expect(ollamaPullable(choice)).toBe(true);
+    for (const quant of ['Q8_K_P', 'Q8_0', 'BF16']) expect(ollamaPullable({ ...REC, quant })).toBe(false);
   });
   test('the next best pullable option is set up instead, and the person is told why', () => {
     const plan = installPlan(base({ recommendation: HOUSE }));
@@ -182,7 +200,16 @@ describe('pull progress', () => {
 
 describe("the platform's own server: what it is started with (2026-10-23)", () => {
   test('the fitted window as its default, one model and one slot', () => {
-    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1', OLLAMA_NO_CLOUD: '1' });
+    expect(managedServeEnv({ window: 32768 })).toEqual({ OLLAMA_CONTEXT_LENGTH: '32768', OLLAMA_NUM_PARALLEL: '1', OLLAMA_MAX_LOADED_MODELS: '1', OLLAMA_NO_CLOUD: '1', OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' });
+  });
+
+  test('flash attention with an 8-bit KV cache: half the cache on the card, more of the model with it; the person\'s own setting stands', () => {
+    expect(managedServeEnv({ window: 20480 })).toMatchObject({ OLLAMA_FLASH_ATTENTION: '1', OLLAMA_KV_CACHE_TYPE: 'q8_0' });
+    // the 4-bit cache a narrow card was fitted with (#24); the person's own setting still stands
+    expect(managedServeEnv({ window: 32768, kvCache: 'q4_0' }).OLLAMA_KV_CACHE_TYPE).toBe('q4_0');
+    expect(managedServeEnv({ window: 32768, kvCache: 'q4_0', env: { OLLAMA_KV_CACHE_TYPE: 'f16' } }).OLLAMA_KV_CACHE_TYPE).toBe('f16');
+    expect(managedServeEnv({ window: 20480, env: { OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' } }))
+      .toMatchObject({ OLLAMA_FLASH_ATTENTION: '0', OLLAMA_KV_CACHE_TYPE: 'f16' });
   });
 
   test("Ollama's cloud models are off by default (prompts stay on this PC); the person's own setting stands", () => {

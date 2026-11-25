@@ -104,9 +104,12 @@ a:hover {
   color: var(--color-white);
 }
 
+/* ONE FOCUS RING, EVERYWHERE (Design note, 2026-11-18: […]). The ring lies ON the element's own edge, never outside it: drawn outside, a scrolling
+   strip (the chat tabs) cut it off and it spilled over the neighbouring tab or row. One weight, one colour; no
+   component sets its own offset or width. */
 :focus-visible {
   outline: 1px solid var(--signal);
-  outline-offset: 3px;
+  outline-offset: -1px;
 }
 
 /* ============================================
@@ -156,6 +159,15 @@ select:focus {
   border-color: var(--color-border-focus);
   background: var(--color-input-fill-focus);
   box-shadow: 0 0 0 1px var(--color-border-primary);
+}
+
+/* A native dropdown's open list is drawn on the platform's own white unless
+   its options say otherwise, under the theme's light text: unreadable on every
+   dark look (#26). The options carry the look's ground and ink. */
+select option,
+select optgroup {
+  background: var(--color-background);
+  color: var(--color-text-primary);
 }
 
 /* ============================================

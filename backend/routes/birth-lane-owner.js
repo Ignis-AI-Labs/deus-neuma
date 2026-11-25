@@ -44,5 +44,26 @@ export const refuseUnownedBirthLane = async (connection, neumaId) => {
  * @returns {Promise<{unrecordedOpen: boolean}>}
  */
 export const unrecordedSummoningAccess = async (walletAddress) => ({
-  unrecordedOpen: Boolean(walletAddress) && standingIn(await readInstallOwner(), walletAddress) !== 'guest',
+  unrecordedOpen: Boolean(walletAddress)
+    && ['owner', 'co-owner'].includes(standingIn(await readInstallOwner(), walletAddress)),
 });
+
+/** Refuse a new ceremony before it creates a session while this install is unowned. impure. */
+export const refuseUnownedInstall = async (connection) => {
+  const owner = await readInstallOwner();
+  if (!owner) {
+    connection.ws.send(JSON.stringify({
+      type: 'birth:blocked',
+      reason: 'The install owner must open Neuma at this desk with the one-time owner claim before a summoning begins.',
+    }));
+    return true;
+  }
+  if (!['owner', 'co-owner'].includes(standingIn(owner, connection.walletAddress))) {
+    connection.ws.send(JSON.stringify({
+      type: 'birth:blocked',
+      reason: 'A new summoning is the install owner\'s or a co-owner\'s to begin; a guest house cannot give a being filesystem scope.',
+    }));
+    return true;
+  }
+  return false;
+};

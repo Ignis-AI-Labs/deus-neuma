@@ -8,15 +8,15 @@ import { ConsciousnessProvider } from '../../frontend/app/RelinkShell/consciousn
 import { WindowContext } from '../../frontend/app/windowing/WindowManager.jsx';
 import { useCouncilStream } from '../../frontend/app/RelinkShell/use-council-stream.js';
 import { WebSocketService } from '../../frontend/services/WebSocketService.js';
-import { ProjectContext } from '../../frontend/app/RelinkShell/projects/project-context.js';
-import { useProjectsState } from '../../frontend/app/RelinkShell/projects/use-projects.js';
+import { FocusContext } from '../../frontend/app/RelinkShell/use-desk-focus.js';
 import '../../frontend/styles/tokens.css';
 const service = new WebSocketService({ quiet: true });
+// The folder in focus, handed in by the test (the map indexes it).
+const focus = { focus: window.__FOCUS_FOLDER ? { kind: 'folder', path: window.__FOCUS_FOLDER } : null, setFocus: () => {} };
 const Page = () => {
   const council = useCouncilStream(service);
-  const projects = useProjectsState();
   useEffect(() => { service.connect(); return () => service.disconnect(); }, []);
-  return <ProjectContext.Provider value={projects}>
+  return <FocusContext.Provider value={focus}>
     <WindowContext.Provider value={{}}>
       <ConsciousnessProvider value={{ state: { messages: [] } }}>
         <CouncilContext.Provider value={council}>
@@ -27,6 +27,6 @@ const Page = () => {
         </CouncilContext.Provider>
       </ConsciousnessProvider>
     </WindowContext.Provider>
-  </ProjectContext.Provider>;
+  </FocusContext.Provider>;
 };
 createRoot(document.getElementById('root')).render(<Page />);

@@ -239,3 +239,7 @@
   color: var(--signal);
 }
 
+
+/* The shelf by kind: each kind's name over its dresses. */
+.settings-look-group + .settings-look-group { margin-top: var(--space-4); }
+.settings-look-tone { margin: var(--space-3) 0 0; color: var(--color-text-secondary); font-size: 13px; }

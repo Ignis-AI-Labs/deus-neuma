@@ -15,6 +15,7 @@ import request from 'supertest';
 import fs from 'fs/promises';
 import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 describe('the file explorer never serves or writes secrets or another house\'s data', () => {
   let app, alpha, beta, folder, realm, workspaces;
@@ -31,6 +32,8 @@ describe('the file explorer never serves or writes secrets or another house\'s d
     const { fullAuth, writeOwner } = await import('../helpers/audit-auth.js');
     alpha = await fullAuth();
     beta = await fullAuth();
+    // Opening a folder is the install owner's act; the walls stand for the owner too.
+    await makeInstallOwner(beta.address);
 
     await fs.mkdir(path.join(folder, 'keys'), { recursive: true });
     await fs.writeFile(path.join(folder, '.env'), 'AUTH_SECRET=planted-fixture\n');
@@ -92,6 +95,34 @@ describe('the file explorer never serves or writes secrets or another house\'s d
     expect(rename.status).toBe(403);
     expect(await fs.readFile(path.join(folder, '.env'), 'utf8')).toBe('AUTH_SECRET=planted-fixture\n');
     await expect(fs.stat(path.join(folder, 'keys', 'keypair.json'))).resolves.toBeTruthy();
+  });
+
+  test('a credential known by where its tool keeps it, a wallet keystore and sealed DNA never read or write (PR600 P6-17)', async () => {
+    const places = [
+      ['.kube', 'config'], ['.config', 'gh', 'hosts.yml'], ['.docker', 'config.json'],
+      ['.config', 'google-chrome', 'Default', 'Login Data'], ['.mozilla', 'firefox', 'abc.default', 'logins.json'],
+      ['.ethereum', 'keystore', `UTC--2026-01-01T00-00-00.000000000Z--${'ab'.repeat(20)}`],
+      ['.config', 'solana', 'id.json'], ['coins', 'wallet.dat'], ['data', 'dna', 'being.json'],
+    ];
+    for (const parts of places) {
+      const p = path.join(folder, ...parts);
+      await fs.mkdir(path.dirname(p), { recursive: true });
+      await fs.writeFile(p, 'planted-fixture');
+      const text = await read(beta, p);
+      expect(text.status, p).toBe(403);
+      expect(JSON.stringify(text.body)).not.toContain('planted-fixture');
+      expect((await raw(beta, p)).status, p).toBe(403);
+      const write = await as(beta, request(app).put('/api/v1/user/files/write')).send({ path: p, content: 'mine' });
+      expect(write.status, p).toBe(403);
+      expect(await fs.readFile(p, 'utf8')).toBe('planted-fixture');
+    }
+    const keystore = path.join(folder, '.ethereum', 'keystore');
+    expect((await as(beta, request(app).get('/api/v1/user/files/list').query({ path: keystore }))).status).toBe(403);
+    // The same last names somewhere a tool does not keep a credential are ordinary files.
+    const ordinary = path.join(folder, 'project', 'config');
+    await fs.mkdir(path.dirname(ordinary), { recursive: true });
+    await fs.writeFile(ordinary, 'ordinary settings');
+    expect((await read(beta, ordinary)).body.content).toBe('ordinary settings');
   });
 
   test('another house\'s lane and realm dir are walled; the owner reads its own', async () => {

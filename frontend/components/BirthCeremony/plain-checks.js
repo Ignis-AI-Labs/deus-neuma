@@ -21,7 +21,6 @@ const NAMES = Object.freeze({
   dnaKey: 'Your neuma\'s private-file key',
   mcp: 'File tools',
   gpu: 'Graphics card',
-  trainer: 'Training your neuma later (refinement)',
   forge: 'Making images and video',
 });
 
@@ -80,10 +79,6 @@ const NOT_PASSED = Object.freeze({
   },
   gpu: {
     warn: { means: 'No graphics card is helping the model, so it runs on the processor — slower, but it works.', todo: CONTINUE },
-  },
-  trainer: {
-    warn: { means: 'Training your neuma later (refinement) is not set up on this computer. You do not need it to summon or talk; it can be added later.',
-      todo: CONTINUE, notYours: 'It cannot be set up from inside the app yet.' },
   },
   forge: {
     warn: { means: 'Making images and video is not available on this computer. Everything else works.', todo: CONTINUE },

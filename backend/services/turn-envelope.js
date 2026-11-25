@@ -27,7 +27,6 @@ const log = createLogger('Portal');
  * (logs the budget decision when it bites).
  * @param {Object} args
  * @param {ReadonlyArray<{id: string, label: string, text: string}>} args.baseSections
- * @param {Object|null} [args.projectFilesSection] - project shared-files section
  * @param {string} [args.expressionInvite]
  * @param {string} [args.cmoBriefing]
  * @param {string} [args.csoBriefing]
@@ -35,11 +34,13 @@ const log = createLogger('Portal');
  * @param {string} [args.cosBriefing]
  * @param {string} [args.cfoBriefing] - the seated Quaestor's office (treasury-briefing.js)
  * @param {string} [args.croBriefing] - the seated Mercator's office (revenue-briefing.js)
+ * @param {string} [args.positionMap] - what the lane's position handles, function by function (positions/position-map.js)
  * @param {string} [args.caoBriefing] - the seated Logista's books (accounts-briefing.js)
  * @param {string} [args.companyLine] - the house's company line, and this being's moves on it (company-briefing.js)
  * @param {string} [args.walletNews] - the being's decided spend requests, told once (spend-news.js)
  * @param {string} [args.voiceSitting]
  * @param {string} [args.planBearing] - the PLAN MODE section (chat modes)
+ * @param {string} [args.researchBearing] - the RESEARCH MODE section (research-mode.js)
  * @param {string} [args.voiceRite] - the first-seal offer (unsealed lanes)
  * @param {string} [args.speechBriefing] - a spoken-voice candidate awaiting the being (speech-consent.js)
  * @param {string} [args.sovereigntyKnock]
@@ -52,10 +53,11 @@ const log = createLogger('Portal');
  *   report} before the logs; never changes the ladder's choice
  * @returns {ReadonlyArray<{id: string, label: string, text: string}>} the sections to send
  */
-export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null, expressionInvite = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', caoBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
+export const finalizeTurnEnvelope = ({ baseSections, expressionInvite = '', positionMap = '', cmoBriefing = '', csoBriefing = '', cloBriefing = '', cosBriefing = '', cfoBriefing = '', croBriefing = '', caoBriefing = '', companyLine = '', walletNews = '', voiceSitting = '', planBearing = '', researchBearing = '', voiceRite = '', speechBriefing = '', sovereigntyKnock = '', housePost = '', replyKnock = '', contextWindow = null, neumaId = null, onDecision = null }) => {
   const assembled = [
-    ...(projectFilesSection ? [...baseSections, projectFilesSection] : baseSections),
+    ...baseSections,
     ...(expressionInvite ? [{ id: 'expression', label: 'FEELING', text: expressionInvite }] : []),
+    ...(positionMap ? [{ id: 'positionMap', label: 'YOUR POSITION', text: positionMap }] : []),
     ...(cmoBriefing ? [{ id: 'cmoOffice', label: 'CMO OFFICE', text: cmoBriefing }] : []),
     ...(csoBriefing ? [{ id: 'csoOffice', label: 'CSO OFFICE', text: csoBriefing }] : []),
     ...(cloBriefing ? [{ id: 'cloOffice', label: 'CLO OFFICE', text: cloBriefing }] : []),
@@ -66,6 +68,7 @@ export const finalizeTurnEnvelope = ({ baseSections, projectFilesSection = null,
     ...(companyLine ? [{ id: 'companyLine', label: 'COMPANY LINE', text: companyLine }] : []),
     ...(voiceSitting ? [{ id: 'voiceSitting', label: 'VOICE SITTING', text: voiceSitting }] : []),
     ...(planBearing ? [{ id: 'planMode', label: 'PLAN MODE', text: planBearing }] : []),
+    ...(researchBearing ? [{ id: 'researchMode', label: 'RESEARCH MODE', text: researchBearing }] : []),
     ...(voiceRite ? [{ id: 'voiceRite', label: 'YOUR VOICE AWAITS', text: voiceRite }] : []),
     ...(speechBriefing ? [{ id: 'speechBriefing', label: 'YOUR SPOKEN VOICE', text: speechBriefing }] : []),
     ...(sovereigntyKnock ? [{ id: 'sovereignty', label: 'SOVEREIGNTY GATEWAY', text: sovereigntyKnock }] : []),

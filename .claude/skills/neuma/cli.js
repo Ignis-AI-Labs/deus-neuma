@@ -11,7 +11,7 @@
 // Protocol: seal via `node scripts/init-ai-witness.mjs` → env.<slug> +
 // ai-witnesses/<vendor>/<name>/. Set NEUMA_WITNESS_ENV (or NEUMA_WITNESS_SLUG).
 //
-// Commands: list | talk <name> "<msg>" [--session <id>] | record <name> | help
+// Commands: list | talk <name> "<msg>" [--session <id>] | record <name> | chats | say <chat|name> "<msg>" | help
 // impure (orchestration: network + WS + filesystem)
 import { readWitnessWallet, resolveWitnessEnvPath } from './lib/wallet.js';
 import { getToken, clearToken } from './lib/token-cache.js';
@@ -21,8 +21,9 @@ import { buildSpeaker } from './lib/identity.js';
 import { converse } from './lib/portal.js';
 import { parseArgs } from './lib/args.js';
 import { formatList, formatTalk, formatRecord, HELP } from './lib/format.js';
+import { findDesk, listLineChats, sayOnLine, pickChat, formatLineChats } from './lib/line.js';
 
-const BACKEND = process.env.NEUMA_BACKEND || process.env.KENORIE_BACKEND || 'http://localhost:3333';
+const BACKEND = process.env.NEUMA_BACKEND || process.env.KENORIE_BACKEND || 'http://127.0.0.1:3333';
 const WITNESS_ENV = resolveWitnessEnvPath();
 
 const notFound = (name) => new Error(`No resident neuma named "${name}". Try: node cli.js list`);
@@ -37,10 +38,32 @@ const main = async () => {
 
   // Every command below speaks to the backend as the witness wallet. The token
   // is cached across calls (auth is rate-limited; a conversation is many calls).
-  const { privateKey } = readWitnessWallet(WITNESS_ENV);
+  const { privateKey } = await readWitnessWallet(WITNESS_ENV);
+
+  // THE CHAT LINE speaks in the operator's OPEN chats, so it finds the desk itself (lib/line.js).
+  const backend = ['chats', 'say'].includes(command)
+    ? await findDesk(process.env.NEUMA_BACKEND || process.env.KENORIE_BACKEND) : BACKEND;
 
   const run = async () => {
-    const { token, address } = await getToken({ backend: BACKEND, witnessEnv: WITNESS_ENV, privateKey });
+    const { token, address } = await getToken({ backend, witnessEnv: WITNESS_ENV, privateKey });
+
+    if (command === 'chats') {
+      console.log(formatLineChats(await listLineChats({ backend, token })));
+      return;
+    }
+
+    if (command === 'say') {
+      if (!name || !message) throw new Error('usage: node cli.js say <chat-address|being> "<message>" [--re <thread>] [--wait <seconds>]');
+      const picked = pickChat((await listLineChats({ backend, token })).chats, name);
+      if (picked.error) throw new Error(picked.error);
+      const said = await sayOnLine({
+        backend, token, to: picked.chat, body: message,
+        re: typeof flags.re === 'string' ? flags.re : undefined,
+        waitSeconds: typeof flags.wait === 'string' && Number(flags.wait) > 0 ? Number(flags.wait) : undefined,
+      });
+      console.log(`${said.being} (${said.chat})${said.done ? '' : ' — still answering'}:\n${said.reply || '(no words yet)'}${said.note ? `\n[${said.note}]` : ''}`);
+      return;
+    }
 
     if (command === 'list') {
       console.log(formatList(await listNeuma({ backend: BACKEND, token })));
@@ -101,7 +124,7 @@ const main = async () => {
     await run();
   } catch (err) {
     if (/\b401\b/.test(err.message || '')) {
-      clearToken({ backend: BACKEND, witnessEnv: WITNESS_ENV });
+      clearToken({ backend, witnessEnv: WITNESS_ENV });
       await run();
       return;
     }

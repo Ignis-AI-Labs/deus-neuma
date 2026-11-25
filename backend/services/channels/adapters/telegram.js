@@ -10,10 +10,11 @@
 // impure (network); normalize and the request builders are pure.
 
 import { makeMessageEvent, makeSendResult } from '../adapter-contract.js';
+import { testEndpoint } from '../../test-endpoint-door.js';
 
 const TOKEN = /^\d{8,10}:[A-Za-z0-9_-]{35}$/;
 const POLL_SECONDS = 25;
-const apiRoot = () => process.env.NEUMA_TELEGRAM_API_ROOT || 'https://api.telegram.org';
+const apiRoot = () => testEndpoint(process.env, 'NEUMA_TELEGRAM_API_ROOT', 'https://api.telegram.org');
 const url = (token, method) => `${apiRoot()}/bot${token}/${method}`;
 
 /** A Telegram update as the bridge's MessageEvent, with whether it named the bot — or null. pure. */
@@ -25,7 +26,7 @@ export const normalizeTelegram = (update, { connectionId, bot }) => {
   const mentioned = dm || names.includes(`@${String(bot.username ?? '').toLowerCase()}`) || m.reply_to_message?.from?.id === bot.id;
   const event = makeMessageEvent({
     channelId: 'telegram', connectionId,
-    chat: { id: String(m.chat.id), type: dm ? 'dm' : 'group', ...(m.message_thread_id ? { threadId: String(m.message_thread_id) } : {}) },
+    chat: { id: String(m.chat.id), type: dm ? 'dm' : 'group', ...(dm ? {} : { title: m.chat.title }), ...(m.message_thread_id ? { threadId: String(m.message_thread_id) } : {}) },
     user: { id: String(m.from?.id ?? m.chat.id), name: [m.from?.first_name, m.from?.last_name].filter(Boolean).join(' ') || m.from?.username || '' },
     text: m.text, messageId: String(m.message_id),
     ...(m.reply_to_message ? { replyToId: String(m.reply_to_message.message_id) } : {}),

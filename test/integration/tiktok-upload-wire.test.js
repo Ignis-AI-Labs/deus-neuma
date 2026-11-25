@@ -232,7 +232,7 @@ describe('through the real queue and the real scheduler (isolated temp queue + r
     const e = await stage(postQueue, TEXT, { scheduledFor: new Date(Date.now() - 60_000).toISOString() });
     await schedulerTick(Date.now());
     expect(legs('init')).toEqual([]); // a draft is never sent
-    await postQueue.approve(e.id, { decidedBy: SERVED_WALLET, tiktokConsent: consent(), textSeen: e.text });
+    await postQueue.approve(e.id, { decidedBy: SERVED_WALLET, tiktokConsent: consent(), textSeen: e.text, mediaSeen: (e.media || []).map((m) => m.sha256 || null) });
     await schedulerTick(Date.now()).finally(house.restore);
     const [after] = await postQueue.load();
     const publishId = tiktok.state.publishes.keys().next().value;
@@ -248,7 +248,7 @@ describe('through the real queue and the real scheduler (isolated temp queue + r
     const publishId = tiktok.state.publishes.keys().next().value;
     const claimed = async (text) => {
       const e = await stage(postQueue, text);
-      await postQueue.approve(e.id, { decidedBy: SERVED_WALLET, tiktokConsent: consent(), textSeen: e.text });
+      await postQueue.approve(e.id, { decidedBy: SERVED_WALLET, tiktokConsent: consent(), textSeen: e.text, mediaSeen: (e.media || []).map((m) => m.sha256 || null) });
       await postQueue.claimForSend(e.id);
       return e.id;
     };

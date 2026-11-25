@@ -6,6 +6,7 @@
 // and none of those would fail loudly.
 
 import { apiCall, authTokenOrNull } from '../utils/http.js';
+import { deskTicketUrl } from './desk-tickets.js';
 
 const BASE = '/api/v1/brands';
 
@@ -53,14 +54,10 @@ export const getFaceRegistry = async () => apiCall('GET', `${BASE}/faces`);
 /**
  * The URL for one vendored face's bytes, for an `@font-face` rule.
  *
- * ⚠️ Carries the session token in the QUERY, because CSS `url()` issues the
- * browser's own bare GET and can attach no header. That route accepts `?token=`
- * explicitly, and only that route.
+ * CSS `url()` cannot attach a header, so this issues a short-lived ticket
+ * bound to the exact face path.
  */
-export const faceFileUrl = (id) => {
-  const token = authTokenOrNull();
-  return `${BASE}/faces/${encodeURIComponent(id)}/file${token ? `?token=${encodeURIComponent(token)}` : ''}`;
-};
+export const faceFileUrl = (id) => deskTicketUrl(`${BASE}/faces/${encodeURIComponent(id)}/file`);
 
 /** The marks a brand carries, recoloured onto its own palette, plus the exact
  *  folder to drop a new one into. */
@@ -98,8 +95,21 @@ export const uploadBrandMark = async (brand, name, file) => {
  * document-level `@font-face` rules instead. That is the difference between an
  * 8KB response and a 1.6MB one on every keystroke.
  */
-export const previewBrandCard = async (brand, { kit, template, data = null, signal } = {}) =>
+export const previewBrandCard = async (brand, { kit, template, data = null, design = null, signal } = {}) =>
   apiCall('POST', `${BASE}/${encodeURIComponent(brand)}/preview`, {
-    body: { kit, template, data },
+    // design: an unsaved {svg, spec} from the card designer, drawn instead of the saved one
+    body: { kit, template, data, ...(design ? { design } : {}) },
     signal,
   });
+
+// A company's cards (brand-card-routes.js): every card type, whether each is its own design or
+// the shared one, and how alike it is to other companies' — then one design, kept or let go.
+const cardsUrl = (brand, template = null) =>
+  `${BASE}/${encodeURIComponent(brand)}/cards${template ? `/${encodeURIComponent(template)}` : ''}`;
+export const listBrandCards = async (brand) => apiCall('GET', cardsUrl(brand));
+export const getBrandCard = async (brand, template) => apiCall('GET', cardsUrl(brand, template));
+export const saveBrandCard = async (brand, template, { svg, spec }) =>
+  apiCall('PUT', cardsUrl(brand, template), { body: { svg, spec } });
+export const dropBrandCard = async (brand, template) => apiCall('DELETE', cardsUrl(brand, template));
+/** Stop using a shared card type for this company (use: false), or use it again. */
+export const setBrandCardUse = async (brand, template, use) => apiCall('PUT', `${cardsUrl(brand, template)}/use`, { body: { use } });

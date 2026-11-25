@@ -1,6 +1,6 @@
 /**
  * House A's world for the cross-house pen matrix: what the owner makes through
- * its OWN routes (tasks, presets, projects, leads, a campaign, its offices'
+ * its OWN routes (tasks, presets, leads, a campaign, its offices'
  * seats, its X and email channels, a queued post, a watched repo, its look and
  * brand, its company with an account and a group of posts under it, its
  * MARKETING boards), plus
@@ -37,9 +37,6 @@ export const seedHouseA = async (ctx) => {
   ids.neumaTask = (await a('neuma task', 'post', `/api/v1/tasks/neuma/${lane}`, { title: 'A being errand', cadence: 'once' }))?.task?.id;
   ids.preset = (await a('preset', 'post', '/api/v1/tasks/presets', { name: 'A preset', tasks: [{ title: 'A daily', cadence: 'daily' }] }))?.preset?.id;
   await a('calendar token', 'post', '/api/v1/tasks/calendar-token', {});
-  const projectDir = path.join(ctx.root, 'a-project');
-  await fs.mkdir(projectDir, { recursive: true });
-  ids.project = (await a('project', 'post', '/api/v1/user/projects', { name: 'A project', folder: projectDir, channel: 'neuma', neumaId: lane }))?.project?.id;
   ids.lead = (await a('lead', 'post', '/api/v1/leads', { name: 'A lead', contact: 'a@example.invalid' }))?.lead?.id;
   ids.campaign = (await a('campaign', 'post', '/api/v1/campaigns', { name: 'A campaign', companyId: 'ignis' }))?.campaign?.id;
   ids.ask = (await a('campaign ask', 'post', `/api/v1/campaigns/${ids.campaign}/asks`, { text: 'A ask' }))?.campaign?.asks?.[0]?.id;
@@ -111,7 +108,7 @@ export const seedHouseA = async (ctx) => {
   // Which of A's ids a route's `:id` means, by the family it sits in.
   const idByFamily = [
     ['/api/v1/cso/threats/', ids.threat], ['/api/v1/cso/watch/repos/', ids.repo], ['/api/v1/leads/', ids.lead],
-    ['/api/v1/campaigns/', ids.campaign], ['/api/v1/user/projects/', ids.project], ['/api/v1/look/presets/', ids.lookPreset],
+    ['/api/v1/campaigns/', ids.campaign], ['/api/v1/look/presets/', ids.lookPreset],
     ['/api/v1/remote/devices/', ids.device], ['/api/v1/gallery/roots/', ids.galleryRoot], ['/api/v1/social-channels/queue/', ids.post], ['/api/v1/lanes/', ids.unclaimed],
     ['/api/v1/company-links/', ids.linkChange], ['/api/v1/company-line/', ids.companyLine], ['/api/v1/raise/', ids.companyLine],
     ['/api/v1/chat-bridge/', '42'],
@@ -153,7 +150,7 @@ export const seedHouseA = async (ctx) => {
   const aimed = Object.freeze({
     neumaId: lane, laneId: lane, beingId: lane, holder: lane, ownerNeumaId: lane, id: lane, companion: lane,
     wallet: ids.wallet, address: ids.wallet, owner: ids.wallet, taskId: ids.task, presetId: ids.preset,
-    postId: ids.post, threatId: ids.threat, projectId: ids.project, campaignId: ids.campaign, channelId: 'x',
+    postId: ids.post, threatId: ids.threat, campaignId: ids.campaign, channelId: 'x',
     accountId: ids.account, companyId: ids.company, group: ids.group, textsSeen: { [ids.groupPost]: 'A group post' },
     path: target, file: target, filePath: target, folder: aLaneDir, root: aRealmDir, dir: aLaneDir,
     from: target, to: path.join(aLaneDir, 'moved.md'), source: target, destination: path.join(aLaneDir, 'moved.md'),

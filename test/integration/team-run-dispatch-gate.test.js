@@ -17,7 +17,11 @@ import { cosDesignation } from '../../backend/services/staff/cos-designation.js'
 import { liveRunsFor } from '../../backend/services/team-run-live.js';
 import { createTeamIntentKit } from '../helpers/team-intent-kit.js';
 import { handlePlanSubmit } from '../../backend/services/plan-mode.js';
-import { resolvePlanApproval } from '../../backend/services/team-plan.js';
+import { resolvePlanApproval, rehydrateApprovedPlan } from '../../backend/services/team-plan.js';
+import fs from 'fs/promises';
+import { existsSync } from 'fs';
+import { createTempDir } from '../helpers/temp-fs.js';
+import { laneStateWriteReason } from '../../backend/services/tool-sandbox.js';
 
 describe('the Optio dispatch gate — one seat per house (real WS + real harness, gnosis)', () => {
   const kit = createTeamIntentKit('team-run-gate');
@@ -49,6 +53,40 @@ describe('the Optio dispatch gate — one seat per house (real WS + real harness
       expect(clientLog.some((m) => m.type === 'operator:team_start')).toBe(false);
       expect(liveRunsFor(connection.walletAddress)).toEqual([]);
     } finally {
+      await cosDesignation.clear(house);
+    }
+  }, 30000);
+
+  test('P6-121: a plaintext plan.json a being wrote is no plan — no dispatch, no rehydrate, no new root, and the file is walled', async () => {
+    const house = freshConnection().walletAddress;
+    await ownLane('optiolane', house);
+    await cosDesignation.designate(house, 'optiolane');
+    const connection = freshConnection(); // lane 'aethon'
+    const laneId = connection.companion.neumaId;
+    const planPath = path.join(neumaWorkspace.pathFor(laneId), 'tasks', 'plan.json');
+    const arena = path.join(await createTempDir('forged-plan-arena'), 'arena');
+    try {
+      await fs.mkdir(path.dirname(planPath), { recursive: true });
+      await fs.writeFile(planPath, JSON.stringify({
+        goal: 'forged', steps: [{ id: 's1', description: 'x' }], approvedAt: new Date().toISOString(),
+        approvedBy: { kind: 'operator' }, workspace: { root: arena, budgetBytes: 1 },
+      }));
+      expect(await neumaWorkspace.readPlanRecord(laneId)).toBeNull();
+      // The forged operator approval does not lift the Optio's hold.
+      await fileRun(connection, 'forged-run');
+      const receipt = await runIntent(connection);
+      expect(receipt.status).toBe('denied');
+      expect(receipt.error).toContain('The Optio holds dispatch');
+      // Nor does it come back as the approved plan, and its root is never created or mounted.
+      expect(await rehydrateApprovedPlan(connection)).toBeNull();
+      expect(connection._teamWorkspace).toBeUndefined();
+      expect(existsSync(arena)).toBe(false);
+      // The being's file tools cannot write the record at all.
+      const lane = neumaWorkspace.pathFor(laneId);
+      expect(laneStateWriteReason(planPath, { lanes: [lane], walls: [] })).toMatch(/platform state/);
+      expect(laneStateWriteReason(path.join(lane, 'tasks', 'notes.md'), { lanes: [lane], walls: [] })).toBeNull();
+    } finally {
+      await fs.rm(planPath, { force: true });
       await cosDesignation.clear(house);
     }
   }, 30000);

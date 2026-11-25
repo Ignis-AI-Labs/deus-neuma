@@ -20,7 +20,7 @@ import {
   parseModelId, formatRouteView, formatModels,
 } from '../lib/routing.js';
 
-const DEFAULT_BACKEND = 'http://localhost:3333';
+const DEFAULT_BACKEND = 'http://127.0.0.1:3333';
 
 // Resolve the target being → record with { neumaId, name } via residency,
 // exactly as `neuma talk` does (--being override, else the active being).
@@ -57,7 +57,7 @@ export const registerModelCommand = (cli, { stdout = process.stdout, stderr = pr
     'model',
     "show or set a being's active model route (natal local + optional override)",
     (y) => y
-      .option('backend', { describe: 'backend origin (default http://localhost:3333)', type: 'string' })
+      .option('backend', { describe: 'backend origin (default http://127.0.0.1:3333)', type: 'string' })
       .option('being', { describe: 'being name or id (default: the active being)', type: 'string' })
       .command('show', "show a being's route (natal / override / effective)", () => {}, (argv) =>
         run({ stderr, argv }, async (backend, token, target) => {

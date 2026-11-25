@@ -25,7 +25,7 @@ export const barView = ({ mind, plan, job, error, readyModel }) => {
   if (error) return { view: 'none', line: NOT_RUNNING, act: 'reread', note: 'The setup plan could not be read.' };
   if (!plan) return { view: 'none', line: NOT_RUNNING, act: 'reading' };
   if (!plan.supported) return { view: 'none', line: NOT_RUNNING, act: null, note: 'This computer cannot set one up by itself.' };
-  if (!plan.enoughDisk) return { view: 'none', line: NOT_RUNNING, act: 'setup', note: 'Not enough free disk space.' };
+  if (!plan.enoughDisk) return { view: 'none', line: NOT_RUNNING, act: 'setup', note: 'Not enough free space on this drive. Choose a folder on another drive, or free some space.' };
   return { view: 'none', line: NOT_RUNNING, act: 'setup' };
 };
 

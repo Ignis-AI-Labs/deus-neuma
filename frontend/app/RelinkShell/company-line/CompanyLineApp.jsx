@@ -83,6 +83,7 @@ const CompanyLineAppBody = () => {
       <CompanyLineBody
         board={board} names={names} error={error} loading={loading} busy={busy} drafts={drafts} onDraft={onDraft}
         onRefresh={() => { uiSound('activate'); load(); }}
+        onOpenPosition={(office, tab) => { uiSound('open'); requestWaitingJump({ where: { app: 'positions', office, tab } }); }}
         onOpen={() => move('_open', () => openCompany({ name: drafts._open?.name, mode: drafts._open?.mode }))}
         onHandOn={(c) => move(c.id, () => handOnStage(c.id, handOnPayload(c, drafts[c.id] ?? {})))}
         onInspect={(c, verdict) => move(c.id, () => inspectStage(c.id, { stage: c.stage, verdict, flaw: drafts[c.id]?.flaw }))}
@@ -95,6 +96,7 @@ const CompanyLineAppBody = () => {
           onPick: (v) => { uiSound('open'); setPick(v); },
           onSeat: () => move('_sales', async () => { await seatMercator(pick); setPick(''); }),
           onClear: () => move('_sales', clearMercator),
+          onChanged: load,
           onDestination: () => move('_delivery', () => setDeliveryDestination(String(drafts._delivery?.folder ?? '').trim(), String(drafts._delivery?.linkBase ?? '').trim())),
         }}
         books={books}

@@ -8,6 +8,7 @@ import { createWriteChain } from '../write-chain.js';
 import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
 import { companyPath, listCompanies } from '../company-line/company-store.js';
 import { foldBooks } from './books-shape.js';
+import { claimReceipt } from '../money-in/receipt-consumption.js';
 
 const serialize = createWriteChain();
 const fileOf = (wallet, id) => companyPath(wallet, id, 'books.jsonl');
@@ -29,6 +30,10 @@ export const bookedRefs = async (wallet) => {
 export const bookEntry = (wallet, id, entry) => serialize(async () => {
   if (entry.receipt.ref && (await bookedRefs(wallet)).has(`${entry.receipt.kind}:${entry.receipt.ref}`)) {
     return { ok: false, reason: `that ${entry.receipt.kind} receipt is already booked — one receipt, one entry` };
+  }
+  if (entry.receipt.ref) {
+    const claimed = await claimReceipt(wallet, entry.receipt, { kind: 'book', companyId: id, entryId: entry.id, at: entry.bookedAt });
+    if (!claimed.ok) return claimed;
   }
   await appendJsonLine(fileOf(wallet, id), { type: 'booked', entry, at: entry.bookedAt });
   return { ok: true, entry };

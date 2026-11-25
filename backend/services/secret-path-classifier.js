@@ -2,7 +2,7 @@
 // Basenames: dotenv and credential stores, ssh keys, keypairs wherever they
 // stand (keys/ is walled by place already), shell and REPL histories (a typed
 // token outlives the session there), and the token files tools keep.
-const SECRET_FILE = /^(?:\.env(?:\..*)?|env\..+|.+\.env|\.git-credentials|\.gitconfig|\.netrc|\.npmrc|\.pypirc|\.pgpass|\.vault-token|\.terraformrc|auth\.json|\.?credentials(?:\..+)?|secrets?(?:\..+)?|service-account.*\.json|.*-credentials\.json|.*keypair.*\.json|(?:mnemonic|seed-?phrase)(?:\.txt)?|rclone\.conf|id_(?:dsa|ecdsa|ed25519|rsa)(?:_sk)?(?:\.pub)?|\.[a-z0-9_.-]*_history|\.history|fish_history|.*\.(?:jks|kdbx|key|keyring|keystore|p12|pem|pfx|tfstate(?:\.backup)?))$/i;
+const SECRET_FILE = /^(?:\.env(?:\..*)?|env\..+|.+\.env|\.git-credentials|\.gitconfig|\.netrc|\.npmrc|\.pypirc|\.pgpass|\.vault-token|\.terraformrc|auth\.json|\.?credentials(?:\..+)?|secrets?(?:\..+)?|service-account.*\.json|.*-credentials\.json|.*keypair.*\.json|neuma-cli-token-.+\.json|(?:mnemonic|seed-?phrase)(?:\.txt)?|rclone\.conf|wallet\.dat|UTC--\d{4}-.+--[0-9a-f]{40}|id_(?:dsa|ecdsa|ed25519|rsa)(?:_sk)?(?:\.pub)?|\.[a-z0-9_.-]*_history|\.history|fish_history|.*\.(?:jks|kdbx|key|keyring|keystore|p12|pem|pfx|tfstate(?:\.backup)?))$/i;
 // Path tails: generic names that are a credential only where their tool keeps
 // them (gh's hosts.yml carries its token, docker's config.json its registry
 // auths, kube's config its cluster tokens, hub's its GitHub token) — and a
@@ -10,13 +10,25 @@ const SECRET_FILE = /^(?:\.env(?:\..*)?|env\..+|.+\.env|\.git-credentials|\.gitc
 // Re-audit 2026-10-29 (M-02 residual): Maven's and Gradle's repository passwords,
 // doctl's token, gcloud's and Azure's token stores, and a Chromium-family
 // profile's saved logins, cookies and form data.
+// PR600 audit (P6-17): the stores that hold a wallet's key — an Ethereum node's keystore
+// (and its UTC-- files wherever they are copied), Solana's keypair files, Foundry's
+// keystores, Electrum's wallets and a Bitcoin wallet.dat. A keystore folder is walled
+// with everything below it.
+const CHROMIUM_STORES = '(?:Login Data(?: For Account)?|Cookies|Web Data|Network/Cookies|Local Storage(?:/.+)?|IndexedDB(?:/.+)?|Session Storage(?:/.+)?|Extension Cookies|History|Local State)';
+const CHROMIUM_ROOTS = '(?:google-chrome(?:-beta|-unstable)?|chromium|BraveSoftware/Brave-Browser|microsoft-edge|Microsoft Edge|vivaldi|Google/Chrome|Arc|browsers/[^/]+)';
 const SECRET_PATH = new RegExp('(?:^|/)(?:'
   + '\\.docker/config\\.json|gh/hosts\\.yml|\\.kube/config|\\.config/hub'
-  + '|(?:\\.mozilla/firefox|\\.thunderbird)/[^/]+/(?:logins\\.json|key[34]\\.db|cookies\\.sqlite)'
+  + '|(?:\\.mozilla/firefox|\\.thunderbird|Firefox|Thunderbird)/(?:[^/]+/)*(?:logins\\.json|key[34]\\.db|cookies\\.sqlite)'
   + '|\\.m2/settings(?:-security)?\\.xml|\\.gradle/gradle\\.properties|\\.config/doctl/config\\.yaml'
   + '|\\.config/gcloud/(?:credentials\\.db|access_tokens\\.db|application_default_credentials\\.json|legacy_credentials/.+)'
   + '|\\.azure/(?:accessTokens\\.json|msal_token_cache\\.(?:json|bin))'
-  + '|(?:google-chrome(?:-beta|-unstable)?|chromium|BraveSoftware/Brave-Browser|microsoft-edge|vivaldi|Google/Chrome)/[^/]+/(?:Login Data|Cookies|Web Data|Network/Cookies)'
+  + `|${CHROMIUM_ROOTS}/(?:[^/]+/)*${CHROMIUM_STORES}`
+  + '|\\.ethereum/(?:[^/]+/)?keystore(?:/.+)?|\\.config/solana/[^/]+\\.json|\\.foundry/keystores(?:/.+)?|\\.electrum/wallets(?:/.+)?'
+  + '|login\\.keychain-db|\\.aws/sso/cache/.+|\\.config/stripe/.+|(?:\\.config/)?\\.?wrangler/.+'
+  + '|\\.cache/huggingface/token|\\.gemini/oauth_creds\\.json|(?:github-copilot|\\.copilot)/(?:apps|hosts)\\.json'
+  + '|\\.yarnrc\\.yml|(?:configstore/)?firebase-tools(?:\\.json|/.+)'
+  + '|\\.s3cfg|\\.my\\.cnf|\\.boto|Exodus/(?:[^/]+/)*seed\\.seco|MetaMask/(?:[^/]+/)*(?:leveldb|Local Storage)(?:/.+)?'
+  + '|\\.neuma/cli/token-[^/]+\\.json|hooks/hooks\\.json'
   + ')$', 'i');
 const CREDENTIAL_SOURCE = /^(?:[a-z0-9_-]+[-.])?credentials?(?:[-.][a-z0-9_-]+)*\.(?:js|mjs|cjs|jsx|ts|tsx)(?:\.map)?$/i;
 const basename = (value) => String(value).replace(/\\/g, '/').split('/').at(-1);

@@ -93,7 +93,10 @@ const BEFORE = Object.freeze({
 });
 
 // The read load measured after the slice: a later slice lowers it, never raises it (marketing-floor-browser too).
-const CEILING = Object.freeze({ account: 118, card: 23, 'draft-card': 26, leads: 26 });
+// THE HOUSE RAIL (Design note, 2026-11-12, marketing-floor-browser's note) stands beside the account level and LEADS: their
+// ceilings rise by what they measured with it (account 118 → 130, LEADS 26 → 43); a card has no rail.
+// Then campaigns joined the rail and the account names its own (marketing-floor-browser's note): account 133, LEADS 45.
+const CEILING = Object.freeze({ account: 133, card: 23, 'draft-card': 26, leads: 45 });
 
 // The numbers no longer drawn where they were, and where each now stands.
 const MOVED = Object.freeze({

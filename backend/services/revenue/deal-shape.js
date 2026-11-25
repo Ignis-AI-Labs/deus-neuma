@@ -17,6 +17,13 @@ import crypto from 'crypto';
 export const DEAL_STAGES = Object.freeze(['qualified', 'proposed', 'won', 'lost']);
 export const OPEN_STAGES = Object.freeze(['qualified', 'proposed']);
 export const THREAD_REST_DAYS = 30;
+// A DEAL THAT HAS GONE QUIET IS SAID SO: open and not moved for this many days.
+export const STALE_DAYS = 14;
+// WHY A DEAL CLOSED, in a word the house can count later (beside the note, which says it in full).
+export const CLOSE_REASONS = Object.freeze({
+  won: Object.freeze(['the offer fit', 'the price', 'the timing', 'they trust us', 'someone referred them', 'other']),
+  lost: Object.freeze(['the price', 'the timing', 'no need now', 'went with someone else', 'they stopped answering', 'not a fit', 'other']),
+});
 const DAY_MS = 86_400_000;
 const TEXT_MAX = 600;
 
@@ -25,6 +32,9 @@ const clean = (v, max = TEXT_MAX) => (typeof v === 'string' ? v.replace(/\s+/g, 
 // pure — {amount, currency}, or null when it is not a value.
 const valueOf = (v) => (v && Number.isFinite(v.amount) && v.amount >= 0 && /^[A-Z]{3}$/.test(String(v.currency))
   ? Object.freeze({ amount: v.amount, currency: v.currency }) : null);
+
+/** Whole days an OPEN deal has stood without a move, or null for a closed one. pure. */
+export const idleDays = (deal, now) => (OPEN_STAGES.includes(deal?.stage) && Number.isFinite(Date.parse(deal.movedAt)) ? Math.max(0, Math.floor((now - Date.parse(deal.movedAt)) / DAY_MS)) : null);
 
 /** Who a deal is with, for the rest law: the lead it came from, else the buyer's name. pure. */
 export const buyerKey = (deal) => (deal.leadId ? `lead:${deal.leadId}` : `buyer:${clean(deal.buyer).toLowerCase()}`);
@@ -76,21 +86,24 @@ export const restRefusal = (deal, deals) => {
 /**
  * Judge a move. pure.
  * @param {?object} deal - the folded deal
- * @param {{stage: unknown, note: unknown, value?: unknown, nextStep?: unknown, by: string, now: string}} move
+ * @param {{stage: unknown, note: unknown, reason?: unknown, value?: unknown, nextStep?: unknown, by: string, now: string}} move
  * @returns {{ok: true, event: object} | {ok: false, reason: string}}
  */
-export const judgeMove = (deal, { stage, note, value, nextStep, by, now }) => {
+export const judgeMove = (deal, { stage, note, reason, value, nextStep, by, now }) => {
   if (!deal) return { ok: false, reason: 'no such deal in this house — your MERCATOR OFFICE briefing names each by its [id]' };
   if (!OPEN_STAGES.includes(deal.stage)) return { ok: false, reason: `this deal is ${deal.stage} — a closed deal does not move` };
   if (!['proposed', 'won', 'lost'].includes(stage)) return { ok: false, reason: 'a move is to proposed, won or lost' };
   if (stage === deal.stage) return { ok: false, reason: `the deal is already ${stage}` };
   const why = clean(note);
   if (why.length < 10) return { ok: false, reason: stage === 'proposed' ? 'note: what was offered, and on what terms' : `note: why we ${stage === 'won' ? 'won' : 'lost'} — the compass asks it every time` };
+  // The reason is optional and only ever one of the house's own words for that outcome.
+  const word = clean(reason, 60).toLowerCase();
+  if (word && !(CLOSE_REASONS[stage] ?? []).includes(word)) return { ok: false, reason: stage === 'proposed' ? 'a reason is given only when a deal is won or lost' : `reason: one of ${CLOSE_REASONS[stage].join(', ')} — or leave it out and say it in the note` };
   const worth = value === undefined ? null : valueOf(value);
   if (value !== undefined && !worth) return { ok: false, reason: 'value is {amount, currency}, or leave it out' };
   return {
     ok: true,
-    event: { type: 'moved', id: deal.id, stage, note: why, ...(worth ? { value: worth } : {}), ...(clean(nextStep, 200) ? { nextStep: clean(nextStep, 200) } : {}), by, at: now },
+    event: { type: 'moved', id: deal.id, stage, note: why, ...(word ? { reason: word } : {}), ...(worth ? { value: worth } : {}), ...(clean(nextStep, 200) ? { nextStep: clean(nextStep, 200) } : {}), by, at: now },
   };
 };
 
@@ -105,7 +118,7 @@ export const foldDeals = (events) => events.reduce((acc, e) => {
   }
   const deal = e?.type === 'moved' && acc.deals.find((d) => d.id === e.id);
   if (deal && OPEN_STAGES.includes(deal.stage) && DEAL_STAGES.includes(e.stage)) {
-    const moved = { ...deal, stage: e.stage, movedAt: e.at, value: e.value ?? deal.value, nextStep: e.nextStep ?? deal.nextStep, notes: [...deal.notes, { stage: e.stage, note: e.note, at: e.at }] };
+    const moved = { ...deal, stage: e.stage, movedAt: e.at, value: e.value ?? deal.value, nextStep: e.nextStep ?? deal.nextStep, notes: [...deal.notes, { stage: e.stage, note: e.note, at: e.at, ...(e.by ? { by: e.by } : {}), ...(e.reason ? { reason: e.reason } : {}) }], ...(e.reason ? { reason: e.reason } : {}) };
     return { ...acc, deals: acc.deals.map((d) => (d === deal ? moved : d)) };
   }
   return { ...acc, skipped: acc.skipped + 1 };

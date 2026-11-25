@@ -4,8 +4,9 @@
  *
  * THE MIRROR LAW. The shell family is the witness seat's own, never a parallel
  * implementation: the definitions are read live from witness-tools.js, and the
- * SAME runner handles SANDBOX OFF (direct execution, normal environment) and
- * SANDBOX ON (bubblewrap, scrubbed environment, bounded output). The tiers are
+ * SAME runner handles SANDBOX OFF (approval-required direct execution with an
+ * allowlisted environment) and SANDBOX ON (the default: bubblewrap, scrubbed
+ * environment, bounded output). The tiers are
  * the SAME ACTS rows every seat resolves. Only the seat-shaped parts differ:
  * the policy cascade and refusal wording.
  *
@@ -362,7 +363,7 @@ export const handleBeingCodingTool = async (ws, connection, neumaPolicy, toolMod
   if (!sandbox) {
     const error = connection._turnSandboxError
       ? `The coding shell is unavailable this turn: ${connection._turnSandboxError}`
-      : 'No focused workspace is open. Focus an opened folder or project before using coding tools.';
+      : 'No focused workspace is open. Focus an opened folder before using coding tools.';
     sendToolEvent(ws, companion, { tool, status: 'unavailable', summary: 'coding shell unavailable', detail: error });
     return { tool, status: 'unavailable', error };
   }
@@ -378,7 +379,7 @@ export const handleBeingCodingTool = async (ws, connection, neumaPolicy, toolMod
   if (toolName === 'execute' || toolName === 'inspect') {
     try {
       shellConsent.assertCurrent();
-      if (toolName === 'execute') await requestShellNetwork(connection, shellConsent,
+      if (toolName === 'execute' && !sandbox.direct) await requestShellNetwork(connection, shellConsent,
         (event) => sendToolEvent(ws, companion, { tool, ...event }));
     } catch (error) {
       const result = { tool, status: error.name === 'AbortError' ? 'interrupted' : 'error', error: error.message };
@@ -474,6 +475,7 @@ export const stashBeingTurnCatalog = async (connection, advertisedTools, skills)
     resolvePolicy(GLOBAL_DEFAULTS, lanePolicy, connection._sessionToolPolicy || null),
     normalizeToolMode(connection.toolMode),
     resolvePolicy({}, lanePolicy, connection._sessionToolPolicy || null),
+    connection.sandboxEnabled === false,
   )).concat(callerCatalogTools(connection)); // closed-book keeps local servers only; the sender's tools ride regardless
   connection._turnCatalog = stamped;
   connection._turnSkills = skills;

@@ -13,6 +13,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import { isUncPath } from './local-path-guard.js';
 
 /**
  * Create a NEW directory inside a browsed parent — the picker's NEW FOLDER.
@@ -69,6 +70,7 @@ export const createDirIn = async (parent, name) => {
 export const browseDir = async (dirPath, { includeFiles = false } = {}) => {
   const home = os.homedir();
   const target = typeof dirPath === 'string' && dirPath.trim() ? dirPath : home;
+  if (isUncPath(target)) throw Object.assign(new Error('UNC network shares are not local browse paths'), { code: 'EINVAL' });
   const real = path.resolve(target);
   const dirents = await fs.readdir(real, { withFileTypes: true });
   const entries = [];

@@ -34,6 +34,8 @@ export default Object.freeze({
       failed: '接続は完了しませんでした。',
       tiktokWaiting: 'ブラウザで TikTok のサインインを完了してください…',
       tiktokNeedClient: '先に TikTok のクライアントキーとシークレットを保存してから、接続してください。',
+      linkedinWaiting: 'ブラウザで LinkedIn のサインインを完了してください…',
+      linkedinNeedClient: '先に LinkedIn アプリのクライアント ID とシークレットを保存してから CONNECT を押してください。',
     }),
   }),
 

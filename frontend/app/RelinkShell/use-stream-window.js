@@ -40,6 +40,9 @@ export const useStreamWindow = ({ length, thread, scroller, following }) => {
     setStart((s) => Math.max(0, s - STREAM_WINDOW));
   }, [scroller]);
 
+  // FIND brings a message above the drawn window on screen (ChatFind.jsx): draw from it, a few before it for context.
+  const showFrom = useCallback((index) => { setStart((s) => Math.min(s, Math.max(0, index - 3))); }, []);
+
   // Hold the reading place still while earlier messages land above it.
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -59,5 +62,5 @@ export const useStreamWindow = ({ length, thread, scroller, following }) => {
     return () => watch.disconnect();
   }, [sentinel, scroller, showEarlier]);
 
-  return { start, sentinelRef: setSentinel, showEarlier };
+  return { start, sentinelRef: setSentinel, showEarlier, showFrom };
 };

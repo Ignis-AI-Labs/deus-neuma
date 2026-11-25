@@ -40,8 +40,8 @@ export const SECRET_PATTERNS = Object.freeze([
   }),
   Object.freeze({
     id: 'evm-private-key',
-    regex: /(?:PRIVATE[_-]?KEY|SECRET[_-]?KEY|MNEMONIC|SEED[_-]?PHRASE)["'\s:=]+(0x[0-9a-fA-F]{64})\b/i,
-    ere: '(PRIVATE[_-]?KEY|SECRET[_-]?KEY|MNEMONIC|SEED[_-]?PHRASE)["\'[:space:]:=]+0x[0-9a-f]{64}',
+    regex: /(?:PRIVATE[_-]?KEY|SECRET[_-]?KEY|MNEMONIC|SEED[_-]?PHRASE)["'\s:=]+((?:0x)?[0-9a-fA-F]{64})\b/i,
+    ere: '(PRIVATE[_-]?KEY|SECRET[_-]?KEY|MNEMONIC|SEED[_-]?PHRASE)["\'[:space:]:=]+(0x)?[0-9a-f]{64}',
   }),
   Object.freeze({ id: 'github-token', regex: /\bgh[pousr]_[A-Za-z0-9]{36,}/, ere: 'gh[pousr]_[a-z0-9]{36}' }),
   // Anthropic keys share OpenAI's sk- prefix; named apart so a leak's remedy
@@ -69,8 +69,8 @@ export const SECRET_PATTERNS = Object.freeze([
   }),
 ]);
 
-// pure — paths the sweep never reports: examples meant to hold placeholders,
-// test fixtures (which plant fakes on purpose), lockfiles and minified
+// pure — paths where the sweep narrows its judgment to high-signal key blocks:
+// examples meant to hold placeholders, test fixtures, lockfiles and minified
 // bundles (hash-dense, never operator-authored), and binary media.
 //
 // `docs/audit/` was on this list until 2026-08-13 (#160), exempted because
@@ -110,20 +110,25 @@ const fingerprintOf = (material) => createHash('sha256').update(material).digest
 // key, so the first body line is what tells two keys apart.
 const materialOf = (patternId, match, nextLine) => {
   if (patternId === 'private-key-block') return `${match[0]}\n${String(nextLine || '').trim()}`;
+  if (patternId === 'evm-private-key') return `0x${match[1].replace(/^0x/i, '').toLowerCase()}`;
   return match[1] || match[0];
 };
+
+const ALLOWLISTED_SHAPES = new Set(['evm-private-key', 'private-key-block']);
 
 /**
  * pure — scan one line; returns [{patternId, fingerprint}], the matched text
  * itself deliberately dropped. `nextLine` lets a PEM header be told apart
- * from another key's.
+ * from another key's. Allowlisted paths keep only the high-signal key shapes.
  * @param {string} line
  * @param {string} [nextLine]
+ * @param {{allowlisted?: boolean}} [options]
  * @returns {Array<{patternId: string, fingerprint: string}>}
  */
-export const scanLine = (line, nextLine = '') => {
+export const scanLine = (line, nextLine = '', { allowlisted = false } = {}) => {
   const hits = [];
   for (const { id, regex } of SECRET_PATTERNS) {
+    if (allowlisted && !ALLOWLISTED_SHAPES.has(id)) continue;
     // The ten published Anvil/Hardhat dev keys are skipped: public by design,
     // they guard nothing, and reporting them hid the findings that do. Every
     // key on the line is read, so a dev key first never hides a real one
@@ -142,10 +147,11 @@ export const scanLine = (line, nextLine = '') => {
  * with the matched text itself deliberately dropped. Also the shape an
  * outbound scan uses: any hit means the text carries a secret.
  * @param {string} text
+ * @param {{allowlisted?: boolean}} [options]
  */
-export const scanText = (text) => {
+export const scanText = (text, options = {}) => {
   const lines = String(text).split('\n');
-  return lines.flatMap((line, i) => scanLine(line, lines[i + 1]).map((hit) => ({ line: i + 1, ...hit })));
+  return lines.flatMap((line, i) => scanLine(line, lines[i + 1], options).map((hit) => ({ line: i + 1, ...hit })));
 };
 
 // pure — one finding per file + pattern + value: a path whose index and HEAD
@@ -177,7 +183,7 @@ export const sweepRepo = async (repo) => {
   if (!at?.isDirectory()) return { repo: repo.id, scanned: 0, findings: [], error: `watched repo path is gone: ${repo.path}` };
   let targets;
   try {
-    targets = (await listTrackedBlobs(repo.path)).filter(({ path }) => !isAllowlisted(path));
+    targets = await listTrackedBlobs(repo.path);
   } catch (err) {
     return { repo: repo.id, scanned: 0, findings: [], error: `git could not list the tracked files: ${err.message}` };
   }
@@ -189,8 +195,11 @@ export const sweepRepo = async (repo) => {
     await readBlobs(repo.path, [...pathsOf.keys()], {
       maxBytes: MAX_BLOB_BYTES,
       onBlob: (sha, bytes) => {
-        const hits = scanText(bytes.toString('utf8'));
-        for (const file of pathsOf.get(sha)) findings.push(...hits.map((hit) => ({ file, ...hit })));
+        const text = bytes.toString('utf8');
+        for (const file of pathsOf.get(sha)) {
+          const hits = scanText(text, { allowlisted: isAllowlisted(file) });
+          findings.push(...hits.map((hit) => ({ file, ...hit })));
+        }
       },
       onUnread: (sha, why) => unread.push(...pathsOf.get(sha).map((file) => `${file} (${why})`)),
     });

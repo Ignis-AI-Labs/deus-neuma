@@ -58,9 +58,9 @@ import { GENERATED_PROVIDERS } from './provider-catalog-data.js';
 
 /** @type {ReadonlyArray<ProviderEntry>} */
 const CORE_PROVIDERS = Object.freeze([
-  Object.freeze({ id: 'llama-server', name: 'llama-server', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://localhost:8089', chatPath: '/v1/chat/completions', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
-  Object.freeze({ id: 'lm-studio', name: 'LM Studio', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://localhost:1234', chatPath: '/v1/chat/completions', keyEnv: 'LM_STUDIO_API_KEY', requiresKey: false, defaultModel: 'local-model' }),
-  Object.freeze({ id: 'ollama', name: 'Ollama', kind: 'local', sovereign: true, dialect: 'ollama', endpoint: 'http://localhost:11434', chatPath: '/api/chat', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
+  Object.freeze({ id: 'llama-server', name: 'llama-server', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://127.0.0.1:8089', chatPath: '/v1/chat/completions', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
+  Object.freeze({ id: 'lm-studio', name: 'LM Studio', kind: 'local', sovereign: true, dialect: 'openai', endpoint: 'http://127.0.0.1:1234', chatPath: '/v1/chat/completions', keyEnv: 'LM_STUDIO_API_KEY', requiresKey: false, defaultModel: 'local-model' }),
+  Object.freeze({ id: 'ollama', name: 'Ollama', kind: 'local', sovereign: true, dialect: 'ollama', endpoint: 'http://127.0.0.1:11434', chatPath: '/api/chat', keyEnv: null, requiresKey: false, defaultModel: 'local-model' }),
   Object.freeze({ id: 'openai', name: 'OpenAI', kind: 'cloud', dialect: 'openai', endpoint: 'https://api.openai.com', chatPath: '/v1/chat/completions', keyEnv: 'OPENAI_API_KEY', requiresKey: true, defaultModel: 'gpt-4o-mini' }),
   Object.freeze({ id: 'anthropic', name: 'Anthropic', kind: 'cloud', dialect: 'anthropic', endpoint: 'https://api.anthropic.com', chatPath: '/v1/messages', keyEnv: 'ANTHROPIC_API_KEY', requiresKey: true, defaultModel: 'claude-haiku-4-5-20251001' }),
   Object.freeze({ id: 'xai', name: 'xAI (Grok)', kind: 'cloud', dialect: 'openai', endpoint: 'https://api.x.ai', chatPath: '/v1/chat/completions', keyEnv: 'XAI_API_KEY', requiresKey: true, defaultModel: 'grok-3-mini', oauth: Object.freeze(['browser', 'device']) }),
@@ -157,6 +157,19 @@ export const SERVICE_CATALOG = Object.freeze([
   Object.freeze({ id: 'tavily', name: 'Tavily', kind: 'service', service: 'web-search', endpoint: 'https://api.tavily.com', keyEnv: null, requiresKey: true, group: 'Benchmarks', format: 'key' }),
   // Set in the desk for everyone; the env name stays the developers' door
   // (stored-secrets.js: saved wins, env is the fallback).
+  // LEAD DATA — a contact-data provider the operator attaches with their own key (sales/lead-sources.js).
+  Object.freeze({ id: 'hunter', name: 'Hunter (free company search; people and addresses at a company; a free account works)', kind: 'service', service: 'lead-data', endpoint: 'https://api.hunter.io/v2', keyEnv: 'HUNTER_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
+  // Tomba asks for two values (Design note, 2026-11-18: […]), and they are ONE
+  // row, the secret under the key ([…]): a `partOf`
+  // value is stored on its own but shown inside the row it belongs to, each field named by its `label`.
+  Object.freeze({ id: 'tomba', name: 'Tomba (people and addresses at a company; its API key and its secret)', label: 'API key', kind: 'service', service: 'lead-data', endpoint: 'https://api.tomba.io/v1', keyEnv: 'TOMBA_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
+  Object.freeze({ id: 'tomba-secret', partOf: 'tomba', name: 'Tomba secret', label: 'Secret', kind: 'service', service: 'lead-data', endpoint: null, keyEnv: 'TOMBA_API_SECRET', requiresKey: true, group: 'Lead data', format: 'key' }),
+  Object.freeze({ id: 'apollo', name: 'Apollo (verified work addresses; a paid Apollo plan)', kind: 'service', service: 'lead-data', endpoint: 'https://api.apollo.io/api/v1', keyEnv: 'APOLLO_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
+  // RootData holds crypto projects, their backers and where they are reached, and no email (sales/rootdata-api.js).
+  Object.freeze({ id: 'rootdata', name: 'RootData (crypto projects: what each is, its backers, its X and LinkedIn; team members on its Pro plan)', kind: 'service', service: 'lead-data', endpoint: 'https://api.rootdata.com', keyEnv: 'ROOTDATA_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
+  // PAYMENTS — the operator's own Stripe account, so an invoice can be paid by card (invoices/stripe-pay.js). A
+  // restricted key is enough and is what to make: write on Payment Links, read on Checkout Sessions.
+  Object.freeze({ id: 'stripe', name: 'Stripe (card payments on your invoices; a restricted key: Payment Links write, Checkout Sessions read)', kind: 'service', service: 'payments', endpoint: 'https://api.stripe.com', keyEnv: 'STRIPE_API_KEY', requiresKey: true, group: 'Payments', format: 'key' }),
   Object.freeze({ id: 'exa', name: 'Exa (web search)', kind: 'service', service: 'web-search', endpoint: 'https://api.exa.ai', keyEnv: 'EXA_API_KEY', requiresKey: true, group: 'Web search', format: 'key' }),
   Object.freeze({ id: 'brave', name: 'Brave Search (web and image search)', kind: 'service', service: 'web-search', endpoint: 'https://api.search.brave.com', keyEnv: 'BRAVE_SEARCH_API_KEY', requiresKey: true, group: 'Web search', format: 'key' }),
   Object.freeze({ id: 'searxng', name: 'SearXNG address (self-hosted search)', kind: 'service', service: 'web-search', endpoint: null, keyEnv: 'SEARXNG_URL', requiresKey: true, group: 'Web search', format: 'url' }),

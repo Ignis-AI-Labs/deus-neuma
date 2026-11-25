@@ -16,7 +16,6 @@ import { walletDir } from './user-realm.js';
 import { loadHouseWorkspace, isWithin } from './ground-roots.js';
 import { listLanesByOwner } from './lane-ownership.js';
 import { getRoots, withOwnRoots } from './user-files.js';
-import { readProjectStore } from './user-projects.js';
 import { realOf, namedPaths } from './explorer-walls.js';
 import { deskStanding, requireInstallOwner } from './install-owner.js';
 import neumaWorkspace from '../../core/workspace/neuma-workspace.js';
@@ -42,16 +41,9 @@ export const houseGroundsOf = async (wallet) => {
   return [walletDir(wallet), root, ...lanes].filter(Boolean).map((ground) => path.resolve(ground));
 };
 
-// impure — the folders a guest works in: the machine's opened folders that lie
-// in its house, and its own projects' folders there. A guest's project never
-// opens a folder for the machine (user-projects-routes.js); it opens it here,
-// for that house alone.
-const guestRootsOf = async (wallet, inHouse) => {
-  const { projects } = await readProjectStore(wallet);
-  const own = projects.flatMap((project) => (project.folders || []).map((folder) => folder.path))
-    .filter((p) => typeof p === 'string' && path.isAbsolute(p));
-  return [...new Set([...getRoots(), ...own].map((p) => path.resolve(p)))].filter(inHouse);
-};
+// pure over the live roots — the folders a guest works in: the machine's opened
+// folders that lie in its house.
+const guestRootsOf = (inHouse) => [...new Set(getRoots().map((p) => path.resolve(p)))].filter(inHouse);
 
 /**
  * Express middleware, after requireAuth and the walls. The owner passes (a
@@ -72,7 +64,7 @@ export const explorerGround = async (req, res, next) => {
     const grounds = await houseGroundsOf(req.walletAddress);
     const inHouse = (target) => [path.resolve(target), realOf(path.resolve(target))]
       .every((candidate) => grounds.some((ground) => isWithin(candidate, ground)));
-    const roots = await guestRootsOf(req.walletAddress, inHouse);
+    const roots = guestRootsOf(inHouse);
     if (req.path === '/roots' && req.method === 'GET') return res.json({ roots });
     // Its reach: those folders, and each part of its house that an opened
     // folder holds (the owner opening the lanes' root opens a guest's lane to it).

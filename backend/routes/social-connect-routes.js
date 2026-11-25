@@ -1,7 +1,8 @@
 /**
  * The CONNECT of a channel whose key is a sign-in —
  * /api/v1/social-channels/:channel/connect, for `youtube` (Google desktop
- * OAuth) and `tiktok` (Login Kit for Desktop).
+ * OAuth), `tiktok` (Login Kit for Desktop) and `linkedin` (three-legged OAuth
+ * with the operator's own LinkedIn app, on one registered loopback address).
  *
  *   POST   → open the house's consent; answers the URL the desk opens in the
  *            system browser (the loopback listener is already up).
@@ -19,6 +20,7 @@ import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { startYouTubeConnect, pollYouTubeConnect, cancelYouTubeConnect } from '../services/social/youtube-connect.js';
 import { startTikTokConnect, pollTikTokConnect, cancelTikTokConnect } from '../services/social/tiktok-connect.js';
+import { startLinkedInConnect, pollLinkedInConnect, cancelLinkedInConnect } from '../services/social/linkedin-connect.js';
 import { channelOfAccountId, firstAccountId } from '../services/social/account-shape.js';
 import { createLogger } from '../services/logger.js';
 
@@ -28,8 +30,9 @@ const router = express.Router();
 const FLOWS = Object.freeze({
   youtube: Object.freeze({ name: 'YouTube', start: startYouTubeConnect, poll: pollYouTubeConnect, cancel: cancelYouTubeConnect }),
   tiktok: Object.freeze({ name: 'TikTok', start: startTikTokConnect, poll: pollTikTokConnect, cancel: cancelTikTokConnect }),
+  linkedin: Object.freeze({ name: 'LinkedIn', start: startLinkedInConnect, poll: pollLinkedInConnect, cancel: cancelLinkedInConnect }),
 });
-const PATH = '/:channel(youtube|tiktok)/connect';
+const PATH = '/:channel(youtube|tiktok|linkedin)/connect';
 
 router.use(PATH, requireAuth, (req, res, next) => {
   res.set('Cache-Control', 'private, no-store');

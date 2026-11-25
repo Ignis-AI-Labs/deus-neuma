@@ -128,6 +128,11 @@ export const KIND = Object.freeze({
   // having to open the panel (ruling, 2026-08-10).
   securityAlert: 'security_alert',
 
+  // The RAM keeper (backend/services/ram-keeper/) rested an idle engine, or memory stayed short after it
+  // cleaned what was its to clean (Design note, 2026-11-16: […]).
+  // System standing — the machine keeping itself; the card says what it did or what it may not touch.
+  memoryKeeper: 'memory_keeper',
+
   // The standing legal watch found NEW serious matters (critical/high): a
   // licence that may bar shipping, a missing paper a user is owed. System
   // standing — the Praetor's office reads the ledger, but the operator must
@@ -189,12 +194,24 @@ export const KIND = Object.freeze({
   // when one did, rides as the actor.
   companyLine: 'company_line',
 
+  // A MEETING on a calendar the operator keeps elsewhere (calendar/meeting-reminders.js; Design note, 2026-11-20: […]): it was just booked, or it starts in an hour, or in ten minutes. System
+  // standing — the calendar reports; nobody acted.
+  meeting: 'meeting',
+
   // A being put a decision before its operator and its turn is PARKED on the
   // answer — an ask_operator card or a plan_submit verdict, neither carrying
   // a clock (ruling, 2026-07-27). The in-stream card cannot reach an operator in
   // another window; this can. Producers phrase the title as an EVENT
   // ("asked for…") so a card read after the answer landed never lies.
   awaitingAnswer: 'awaiting_answer',
+
+  // A house member's LP wallet on Umbrae (Design note, 2026-11-12, […]): the platform's once-a-day report of its positions and what it did,
+  // and the moment a deposit past the budget starts waiting for the operator.
+  // Neuma standing — the house member is the actor; both open the WALLET.
+  lpReport: 'lp_report',
+  lpWaiting: 'lp_waiting',
+  // A house member earned a reward it set as its goal and asks for it (umbrae-lp/lp-rewards.js).
+  lpReward: 'lp_reward',
 });
 
 const KINDS = Object.freeze(Object.values(KIND));
@@ -251,7 +268,10 @@ export const isBeingKind = (kind) => kind === KIND.turnDone
   || kind === KIND.houseAck
   || kind === KIND.houseWake
   || kind === KIND.operatorChangeAnswered
-  || kind === KIND.sovereigntyProposal;
+  || kind === KIND.sovereigntyProposal
+  || kind === KIND.lpReport
+  || kind === KIND.lpWaiting
+  || kind === KIND.lpReward;
 
 /**
  * Build a record. Pure — every varying input is passed in.

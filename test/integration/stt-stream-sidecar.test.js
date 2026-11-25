@@ -47,7 +47,7 @@ const noiseChunk = () => {
 };
 
 // the backend's own token (sidecar-trust.js): the sidecar the backend launched holds the install key
-const openStream = (headers = { [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey()) }) => new Promise((resolve, reject) => {
+const openStream = (headers = { [SIDECAR_CALLER_HEADER]: callerToken(sidecarKey(), 'whisper') }) => new Promise((resolve, reject) => {
   const ws = new WebSocket(STREAM_URL, { headers });
   const events = [];
   const closed = { code: null };
@@ -103,7 +103,7 @@ describe('whisper sidecar /stream (real sidecar, real speech, CPU-only)', () => 
     // Release the sidecar we launched, even after a failure: SIGTERM, then its own
     // /shutdown until the port is silent.
     stop('whisper');
-    await shutdownSidecar('127.0.0.1', WHISPER_TEST_PORT, 15_000);
+    await shutdownSidecar('127.0.0.1', WHISPER_TEST_PORT, 15_000, 'whisper');
     if (fixtureDir) await fs.rm(fixtureDir, { recursive: true, force: true });
     delete process.env.WHISPER_FORCE_CPU;
     delete process.env.WHISPER_HOST;

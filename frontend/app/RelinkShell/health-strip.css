@@ -30,7 +30,7 @@
   transition: border-color 0.24s ease, background-color 0.24s ease;
 }
 .hlth-cell:hover { border-color: var(--line-hover); }
-.hlth-cell:focus-visible { outline: 1px solid var(--signal); outline-offset: 2px; }
+.hlth-cell:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 .hlth-cell .lvl-mark { grid-area: mark; }
 .hlth-part { grid-area: part; font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-secondary); }
 .hlth-word { grid-area: word; font-size: 13px; letter-spacing: 0.12em; color: var(--color-text-tertiary); }

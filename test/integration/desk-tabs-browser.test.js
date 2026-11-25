@@ -1,4 +1,4 @@
-/* global sessionStorage, document */
+/* global sessionStorage, document, window */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -8,23 +8,21 @@ import { chromium, expect } from '@playwright/test';
 import { test } from 'vitest';
 import { recoveryKit } from '../helpers/summoning-recovery-kit.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
-import { createProject, setActiveProject } from '../../backend/services/user-projects.js';
-import { verifySessionToken } from '../../backend/services/auth.js';
+import { getRoots, setRoots } from '../../backend/services/user-files.js';
 
-// Real app bodies, signed portal/project routes and a temporary repository; no model or birth.
+// Real app bodies, signed portal routes and a temporary repository in focus; no model or birth.
 test('desk tabs navigate by keyboard with window-local panels and truthful map filters', async () => {
-  const app = express(); const previous = getRealmRoot();
+  const app = express(); const previous = getRealmRoot(); const previousRoots = getRoots();
   let kit; let vite; let browser;
   try {
     kit = await recoveryKit(app);
     setRealmRoot(path.join(kit.root, 'realm'));
-    const { address: wallet } = verifySessionToken(kit.token);
-    const folder = path.join(kit.root, 'project'); await fs.mkdir(folder);
+    const folder = path.join(kit.root, 'repo'); await fs.mkdir(folder);
     await fs.writeFile(path.join(folder, 'index.js'), 'export const answer = () => 42;\n');
-    const project = await createProject(wallet, { name: 'Tab proof', folder });
-    await setActiveProject(wallet, project.id);
+    // The map follows the folder in focus, which must stand open in the Explorer.
+    const focused = await fs.realpath(folder);
+    setRoots([...previousRoots, focused]);
     app.use('/api/v1/map', (await import('../../backend/routes/map-routes.js')).default);
-    app.use('/api/v1/user/projects', (await import('../../backend/routes/user-projects-routes.js')).default);
     app.use('/api/v1/user/realm', (await import('../../backend/routes/user-realm-routes.js')).default);
     vite = await createServer({ configFile: false, root: process.cwd(), cacheDir: path.join(kit.root, 'vite'),
       appType: 'custom', esbuild: { jsx: 'automatic' }, optimizeDeps: { entries: ['test/fixtures/desk-tabs.jsx'] },
@@ -33,8 +31,12 @@ test('desk tabs navigate by keyboard with window-local panels and truthful map f
     app.use(vite.middlewares);
     browser = await chromium.launch({ args: ['--disable-gpu'] });
     const page = await browser.newPage(); const errors = [];
-    page.on('pageerror', error => errors.push(error.message));
-    await page.addInitScript(token => sessionStorage.setItem('authToken', token), kit.token);
+    // The dev server's own reload socket is switched off for this fixture (hmr port 1); its client saying so is not the desk's.
+    page.on('pageerror', error => { if (error.message !== 'WebSocket closed without opened.') errors.push(error.message); });
+    await page.addInitScript(([token, dir]) => {
+      sessionStorage.setItem('authToken', token);
+      window.__FOCUS_FOLDER = dir;
+    }, [kit.token, focused]);
     await page.goto(kit.url);
     const first = page.locator('#chats-a'); const second = page.locator('#chats-b');
     const ones = first.getByRole('tab', { name: 'ONE-ON-ONES' });
@@ -51,12 +53,12 @@ test('desk tabs navigate by keyboard with window-local panels and truthful map f
     await page.keyboard.press('End'); await expect(councils).toBeFocused();
     await page.keyboard.press('Tab'); await expect(first.getByRole('tabpanel')).toBeFocused();
     const context = page.locator('#context-map');
-    await context.getByRole('tab', { name: 'COMPOSITION' }).focus();
+    await context.getByRole('tab', { name: 'WINDOW · THIS TURN' }).focus();
     await page.keyboard.press('End');
-    await expect(context.getByRole('tab', { name: 'FIELD' })).toBeFocused();
-    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('FIELD');
+    await expect(context.getByRole('tab', { name: 'MEMORY · EVERYTHING KEPT' })).toBeFocused();
+    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('MEMORY · EVERYTHING KEPT');
     await page.keyboard.press('Home');
-    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('COMPOSITION');
+    await expect(context.getByRole('tabpanel')).toHaveAccessibleName('WINDOW · THIS TURN');
     const relations = await page.locator('[role="tab"]').evaluateAll(tabs => tabs.map(tab => {
       const panel = document.getElementById(tab.getAttribute('aria-controls'));
       return Boolean(panel && panel.getAttribute('aria-labelledby') === tab.id);
@@ -75,6 +77,6 @@ test('desk tabs navigate by keyboard with window-local panels and truthful map f
     expect(errors).toEqual([]);
   } finally {
     await browser?.close(); await vite?.close();
-    setRealmRoot(previous); await kit?.close();
+    setRealmRoot(previous); setRoots(previousRoots); await kit?.close();
   }
 }, 45_000);

@@ -8,7 +8,10 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const KEY_FILE = 'resources/app/electron/release-public-key.cjs';
-const keySource = (keyText) => `module.exports = { RELEASE_PUBLIC_KEY: '${keyText}' };\n`;
+const keySource = (keyText) => {
+  const keys = [].concat(keyText);
+  return `module.exports = { RELEASE_PUBLIC_KEY: '${keys[0] ?? ''}' };\nmodule.exports.RELEASE_PUBLIC_KEYS = Object.freeze([\n${keys.map((key) => `  '${key}',`).join('\n')}\n]);\n`;
+};
 
 /** The AppImage runtime electron-builder already downloaded on this box, or null. */
 export const APPIMAGE_RUNTIME = [

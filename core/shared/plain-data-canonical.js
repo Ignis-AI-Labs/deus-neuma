@@ -130,13 +130,14 @@ const rejection = (policy, value, field) => {
   if (reason) throw new Error(`${field} ${typeof reason === 'string' ? reason : 'is rejected'}`);
 };
 
-const inspectPlainData = (root, input, collectText) => {
+// `emit` receives the canonical text in order, a whole token at a time (null: walk only). The hash is fed as the
+// walk goes, so hashing never builds the whole text as one string.
+const inspectPlainData = (root, input, emit) => {
   const options = boundedOptions(input);
   const stack = [{ kind: 'value', value: root, depth: 0, field: options.field }];
   const active = new WeakSet();
   const observed = new WeakSet();
   const containers = [];
-  const parts = collectText ? [] : null;
   let scheduledNodes = 1;
   let outputBytes = 0;
   const append = (text, bytes = text.length) => {
@@ -144,16 +145,16 @@ const inspectPlainData = (root, input, collectText) => {
       throw new Error(`${options.field} exceeds the plain-data UTF-8 output limit`);
     }
     outputBytes += bytes;
-    if (parts) parts.push(text);
+    if (emit) emit(text);
   };
   const appendQuoted = (value, bytes, suffix = '') => {
     if (bytes + suffix.length > options.maxOutputBytes - outputBytes) {
       throw new Error(`${options.field} exceeds the plain-data UTF-8 output limit`);
     }
     outputBytes += bytes + suffix.length;
-    if (parts) {
-      parts.push(JSON.stringify(value));
-      if (suffix) parts.push(suffix);
+    if (emit) {
+      emit(JSON.stringify(value));
+      if (suffix) emit(suffix);
     }
   };
   while (stack.length) {
@@ -229,21 +230,33 @@ const inspectPlainData = (root, input, collectText) => {
       }
     }
   }
-  return { containers, text: parts?.join('') ?? null };
+  return { containers };
 };
 
 export const assertBoundedPlainData = (value, options = {}) => {
-  inspectPlainData(value, options, false);
+  inspectPlainData(value, options, null);
   return value;
 };
 
-export const canonicalJson = (value, options = {}) =>
-  inspectPlainData(value, options, true).text;
+export const canonicalJson = (value, options = {}) => {
+  const parts = [];
+  inspectPlainData(value, options, (text) => parts.push(text));
+  return parts.join('');
+};
 
-export const canonicalSha256 = (value, options = {}) => crypto
-  .createHash('sha256')
-  .update(canonicalJson(value, options), 'utf8')
-  .digest('hex');
+// The same digest as hashing canonicalJson's text, fed in pieces of about 64 KB: every emitted token is whole (no
+// surrogate pair is ever split), so the UTF-8 bytes are exactly the joined text's.
+const HASH_CHUNK = 64 * 1024;
+export const canonicalSha256 = (value, options = {}) => {
+  const hash = crypto.createHash('sha256');
+  let pending = '';
+  inspectPlainData(value, options, (text) => {
+    pending += text;
+    if (pending.length >= HASH_CHUNK) { hash.update(pending, 'utf8'); pending = ''; }
+  });
+  if (pending) hash.update(pending, 'utf8');
+  return hash.digest('hex');
+};
 
 export const canonicalAuthoritySha256 = (
   value,
@@ -261,7 +274,7 @@ export const canonicalAuthoritySha256 = (
 export const isSha256 = (value) => typeof value === 'string' && SHA256.test(value);
 
 export const deepFreezePlainData = (value, options = {}) => {
-  const { containers } = inspectPlainData(value, options, false);
+  const { containers } = inspectPlainData(value, options, null);
   for (let index = containers.length - 1; index >= 0; index -= 1) {
     const container = containers[index];
     try {

@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
 import { generateKeyPairSync } from 'node:crypto';
 import { createServer } from 'node:http';
+import { prepareFeedForSigning } from '../../scripts/release/feed-policy.mjs';
 
 const require = createRequire(import.meta.url);
 const {
@@ -135,8 +136,9 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
   const CHANNEL = 'latest-linux.yml';
   const key = generateKeyPairSync('ed25519');
   const publicKey = releasePublicKey(embeddedFormOf(key.publicKey));
-  const yml = (version) => Buffer.from(`version: ${version}\nfiles:\n  - url: Deus-Neuma-${version}-x86_64.AppImage\n    sha512: AAAA\n    size: 1\n`);
-  const offered = (version) => require('js-yaml').load(yml(version).toString());
+  const currentDate = new Date().toISOString();
+  const yml = (version, signedAt = currentDate) => Buffer.from(`version: ${version}\nfiles:\n  - url: Deus-Neuma-${version}-x86_64.AppImage\n    sha512: AAAA\n    size: 1\nreleaseDate: ${signedAt}\nsignedAt: ${signedAt}\nminimumVersion: ${version}\n`);
+  const offered = (version, releaseDate) => require('js-yaml').load(yml(version, releaseDate).toString());
   const servers = [];
   afterEach(async () => { await Promise.all(servers.splice(0).map((s) => new Promise((r) => s.close(r)))); });
 
@@ -177,6 +179,23 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
     expect(requests).toEqual([`/${CHANNEL}`, `/${CHANNEL}.sig`]);
   });
 
+  it('an older install accepts the real publisher\'s newer signed feed', async () => {
+    const prepared = prepareFeedForSigning(`version: 0.1.188\nfiles:\n  - url: Deus-Neuma-0.1.188-x86_64.AppImage\n    sha512: AAAA\n    size: 1\nreleaseDate: 2026-11-25T00:00:00.000Z\n`, new Date());
+    const feed = Buffer.from(prepared);
+    const good = { [CHANNEL]: feed, [`${CHANNEL}.sig`]: signFeed(CHANNEL, feed, key.privateKey) };
+    const { feedUrl, requests } = await cachedFeed({ origin: good, cached: good });
+    const verdict = await siteVerdict({
+      fetchImpl: fetch,
+      feedUrl,
+      channelFile: CHANNEL,
+      publicKey,
+      offered: require('js-yaml').load(prepared),
+      currentVersion: '0.1.187',
+    });
+    expect(verdict).toMatchObject({ ok: true, refreshed: false, signed: { version: '0.1.188', minimumVersion: '0.1.188' } });
+    expect(requests).toEqual([`/${CHANNEL}`, `/${CHANNEL}.sig`]);
+  });
+
   it('a forged .sig fails both reads — closed, with the reason, after exactly one retry', async () => {
     const other = generateKeyPairSync('ed25519');
     const forged = { [CHANNEL]: yml('0.1.32'), [`${CHANNEL}.sig`]: signFeed(CHANNEL, yml('0.1.32'), other.privateKey) };
@@ -192,6 +211,15 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
     const verdict = await siteVerdict({ fetchImpl: fetch, feedUrl, channelFile: CHANNEL, publicKey, offered: offered('0.1.32') });
     expect(verdict.ok).toBe(false);
     expect(verdict.reason).toMatch(/signature does not match latest-linux\.yml/);
+  });
+
+  it('a genuinely signed but expired feed fails both reads', async () => {
+    const date = '2020-01-01T00:00:00.000Z';
+    const stale = { [CHANNEL]: yml('0.1.32', date), [`${CHANNEL}.sig`]: signFeed(CHANNEL, yml('0.1.32', date), key.privateKey) };
+    const { feedUrl, requests } = await cachedFeed({ origin: stale, cached: stale });
+    const verdict = await siteVerdict({ fetchImpl: fetch, feedUrl, channelFile: CHANNEL, publicKey, offered: offered('0.1.32', date) });
+    expect(verdict).toEqual({ ok: false, reason: 'the signed feed was signed more than 30 days ago' });
+    expect(requests).toHaveLength(4);
   });
 });
 

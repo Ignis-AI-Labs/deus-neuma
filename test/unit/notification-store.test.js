@@ -18,7 +18,7 @@ import { promises as fs } from 'fs';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
 import {
-  READ_WINDOW, notificationPath, appendNotification, markNotificationsRead, readNotifications,
+  READ_WINDOW, notificationPath, appendNotification, markNotificationsRead, markNotificationsThrough, readNotifications,
 } from '../../backend/services/notification-store.js';
 import { KIND, STANDING, makeRecord } from '../../core/runtime/notification-record.js';
 
@@ -141,6 +141,26 @@ describe('notification store on real disk', () => {
     await markNotificationsRead(ALICE, ['w4', 'w3'], T0 + 10, { dismiss: true });
     const { records } = await readNotifications(ALICE, { limit: 2 });
     expect(records.map((r) => r.id)).toEqual(['w2', 'w1']);
+  });
+
+  it('a through-marker clears every card up to its stamp, the ones past the read window too', async () => {
+    for (let i = 0; i < READ_WINDOW + 30; i += 1) {
+      await appendNotification(ALICE, rec(`t${i}`, { ts: T0 + i }));
+    }
+    const shown = (await readNotifications(ALICE)).records;
+    expect(shown).toHaveLength(READ_WINDOW);
+    expect(await markNotificationsThrough(ALICE, shown[0].ts, T0 + 9_999, { dismiss: true })).toBe(true);
+    await appendNotification(ALICE, rec('later', { ts: T0 + 10_000 }));
+    expect((await readNotifications(ALICE)).records.map((r) => r.id)).toEqual(['later']);
+    expect(await markNotificationsThrough(ALICE, Number.NaN, T0)).toBe(false);
+  });
+
+  it('a read through-marker reads the older cards too, and leaves a newer one unread', async () => {
+    for (let i = 0; i < 5; i += 1) await appendNotification(ALICE, rec(`r${i}`, { ts: T0 + i }));
+    await markNotificationsThrough(ALICE, T0 + 3, T0 + 10);
+    const { records, unread } = await readNotifications(ALICE);
+    expect(records.map((r) => [r.id, r.read])).toEqual([['r4', false], ['r3', true], ['r2', true], ['r1', true], ['r0', true]]);
+    expect(unread).toBe(1);
   });
 
   it('read state survives a restart too', async () => {

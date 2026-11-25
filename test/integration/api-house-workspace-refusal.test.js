@@ -3,6 +3,7 @@ import request from 'supertest';
 import path from 'path';
 import { mkdirSync, writeFileSync } from 'fs';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 /**
  * PUT /user/realm/house-workspace — a refused ground answers with its OWN
@@ -16,13 +17,17 @@ describe('House workspace API — a refusal says why', () => {
   let witness;
   let world;
   let setHouseWorkspace;
+  let priorData;
 
   beforeEach(async () => {
     vi.resetModules();
+    priorData = process.env.NEUMA_DATA_ROOT;
     process.env.NEUMA_REALM_SETTINGS_PATH = path.join(await createTempDir('realm-settings'), 'user-realm.json');
     const { strangerWitness } = await import('../helpers/witness.js');
     witness = strangerWitness();
     world = await createTempDir('house-ws-refusal');
+    process.env.NEUMA_DATA_ROOT = path.join(world, 'data');
+    await makeInstallOwner(witness.address);
     const realm = await import('../../backend/services/user-realm.js');
     realm.setRealmRoot(path.join(world, 'realm'));
     ({ setHouseWorkspace } = await import('../../backend/services/house-workspace.js'));
@@ -30,6 +35,11 @@ describe('House workspace API — a refusal says why', () => {
     app = express();
     app.use(express.json());
     app.use('/api/v1/user/realm', router);
+  });
+
+  afterEach(() => {
+    if (priorData === undefined) delete process.env.NEUMA_DATA_ROOT;
+    else process.env.NEUMA_DATA_ROOT = priorData;
   });
 
   const put = (root) => request(app).put('/api/v1/user/realm/house-workspace').set(witness.header).send({ root });
@@ -48,6 +58,21 @@ describe('House workspace API — a refusal says why', () => {
     const res = await put(path.join(other.root, 'repos'));
     expect(res.status).toBe(400);
     expect(res.body.error).toContain('another house');
+  });
+
+  test('a signed guest cannot set any standing filesystem ground', async () => {
+    const { strangerWitness } = await import('../helpers/witness.js');
+    const guest = strangerWitness();
+    const attempts = [
+      ['put', '/api/v1/user/realm/house-workspace'],
+      ['put', '/api/v1/user/realm/alliance-ground'],
+      ['post', '/api/v1/user/realm/alliance-ground/raise'],
+    ];
+    for (const [method, route] of attempts) {
+      const res = await request(app)[method](route).set(guest.header).send({ root: path.join(world, 'guest-ground') });
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('INSTALL_OWNER_ONLY');
+    }
   });
 
   test('a clear root still sets', async () => {

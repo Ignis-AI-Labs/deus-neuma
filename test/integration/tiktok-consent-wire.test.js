@@ -47,7 +47,7 @@ const stage = (text = TEXT) => postQueue.add({
   channelId: 'tiktok', text, media: [{ path: videoPath, alt: '' }], queuedBy: 'tt-holder', authorNeumaId: 'tt-holder',
 });
 const approve = (entry, body, who = operator) => request(app)
-  .put(`/api/v1/social-channels/queue/${entry.id}/approve`).set(who.header).send({ textSeen: entry.text, ...body });
+  .put(`/api/v1/social-channels/queue/${entry.id}/approve`).set(who.header).send({ textSeen: entry.text, mediaSeen: (entry.media || []).map((m) => m.sha256 || null), ...body });
 const statusOf = async (id) => (await postQueue.load()).find((e) => e.id === id);
 const CHOICE = Object.freeze({
   privacyLevel: 'FOLLOWER_OF_CREATOR',
@@ -159,7 +159,7 @@ describe('approval is impossible until the person has chosen, within what the ac
     expect(thread.status).toBe(409);
     expect(thread.body.error).toMatch(/TikTok post is no thread/);
     // And the store itself refuses a TikTok approval that carries no choices.
-    expect((await postQueue.approve(entry.id, { decidedBy: operator.address, textSeen: entry.text })).error)
+    expect((await postQueue.approve(entry.id, { decidedBy: operator.address, textSeen: entry.text, mediaSeen: (entry.media || []).map((m) => m.sha256 || null) })).error)
       .toMatch(/approved from its card/);
     await schedulerTick(Date.now());
     expect(legs('init')).toEqual([]);

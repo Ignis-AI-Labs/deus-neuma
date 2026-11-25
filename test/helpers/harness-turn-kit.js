@@ -13,6 +13,7 @@ import { handlePortalMessage } from '../../backend/routes/portal-message-handler
 import { portalConnections } from '../../backend/routes/portal-connections.js';
 import workspace, { getWorkspacesRoot, setWorkspacesRoot, getWitnessesRoot, setWitnessesRoot, isWitnessLane } from '../../core/workspace/neuma-workspace.js';
 import { getRealmRoot, setRealmRoot } from '../../backend/services/user-realm.js';
+import { makeInstallOwner } from './install-owner-kit.js';
 
 /** impure - bounded wait for a real frame or disk condition. */
 export const untilHarness = async (predicate, timeoutMs = 5000) => {
@@ -39,6 +40,7 @@ export const createHarnessTurnKit = async (laneId = 'neuma-turn-fixture') => {
   setWitnessesRoot(path.join(root, 'witnesses'));
   setRealmRoot(path.join(root, 'realm'));
   const auth = await fullAuth();
+  await makeInstallOwner(auth.address);
   await workspace.create(laneId);
   await writeOwner(path.dirname(workspace.pathFor(laneId)), laneId, auth.address);
   const ground = path.join(root, 'ground');

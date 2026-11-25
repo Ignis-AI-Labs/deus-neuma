@@ -12,12 +12,14 @@
 //
 // THIS IS THE FALLBACK, not the pattern. Fetching by hand costs the HTTP cache,
 // progressive decode, and native memory eviction, and it spends a rate-limit
-// slot per image. Where a route can accept the token another way — /gallery/file
-// takes `?token=`, and the gallery is a plain <img> because of it — prefer that
+// slot per image. Where a route offers an exact-resource ticket — /gallery/file
+// takes `?ticket=`, and the gallery is a plain <img> because of it — prefer that
 // and let the browser do what it is good at. Reach for AuthImage only when the
 // route genuinely offers no such door.
 
 import { useEffect, useState } from 'react';
+import { Lightbox } from './Lightbox.jsx';
+import { uiSound } from '../../services/ui-sound.js';
 import { authHeadersOrNull } from '../../utils/http.js';
 import { forgeImageIdOf, mediaMenuDoor } from './media-menu.js';
 import './AuthImage.css';
@@ -31,12 +33,14 @@ import './AuthImage.css';
  *   Every loaded image and clip wears the media menu (media-menu.js): a forge
  *   render's id is read from its URL, so it can open in the gallery; `media`
  *   adds what only the caller knows (the file's path on disk). `menu={false}`
- *   is for what is not content (a pairing code).
+ *   is for what is not content (a pairing code). `zoom` makes a still a door to the Lightbox: one press and it hangs
+ *   full size, wheel to zoom, drag to pan (Design note, 2026-11-20, a render in the chat: […]) — the same bytes, no second fetch.
  */
-export const AuthImage = ({ src, alt = '', className, onClick, video = false, media = null, menu = true }) => {
+export const AuthImage = ({ src, alt = '', className, onClick, video = false, media = null, menu = true, zoom = false }) => {
   const [url, setUrl] = useState(null);
   const [mime, setMime] = useState('');
   const [failed, setFailed] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -72,5 +76,16 @@ export const AuthImage = ({ src, alt = '', className, onClick, video = false, me
     ? mediaMenuDoor({ kind: video ? 'video' : 'image', src: url, mime, imageId: forgeImageIdOf(src), alt, ...media })
     : null;
   if (video) return <video className={className} src={url} aria-label={alt} controls playsInline preload="metadata" {...door} />;
+  if (zoom) {
+    return (
+      <>
+        <button type="button" className="authimg-zoom" aria-label={`view ${alt || 'the image'} full size`}
+          onClick={() => { uiSound('toggle'); setZoomed(true); }} {...door}>
+          <img className={className} src={url} alt={alt} />
+        </button>
+        {zoomed ? <Lightbox src={url} alt={alt} caption={media?.path || alt} onClose={() => setZoomed(false)} /> : null}
+      </>
+    );
+  }
   return <img className={className} src={url} alt={alt} onClick={onClick} tabIndex={door ? 0 : undefined} {...door} />;
 };

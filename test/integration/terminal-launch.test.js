@@ -19,6 +19,7 @@ import { setupTerminalRoutes } from '../../backend/routes/terminal-routes.js';
 import { setRoots } from '../../backend/services/user-files.js';
 import { AGENT_CATALOG, resolveAgent, binOnPath, availableAgents } from '../../backend/services/agent-launch.js';
 import { createTempDir } from '../helpers/temp-fs.js';
+import { ticketedWsUrl } from '../helpers/desk-ticket-kit.js';
 
 const makeAuthToken = async () => {
   const keypair = generateKeypair();
@@ -53,6 +54,7 @@ describe('terminal ?launch= (real PTY, real socket)', () => {
   let httpServer;
   let wss;
   let baseUrl;
+  let token;
   let root;
   let binDir;
   let savedPath;
@@ -74,10 +76,10 @@ describe('terminal ?launch= (real PTY, real socket)', () => {
     wss = new WebSocketServer({ server: httpServer, maxPayload: 1048576 });
     setupTerminalRoutes(wss);
     await new Promise((resolve) => httpServer.listen(0, '127.0.0.1', resolve));
-    const token = await makeAuthToken();
+    token = await makeAuthToken();
     // The shell is the install owner's (terminal-routes.js): this wallet owns the test's install.
     await makeInstallOwner(verifySessionToken(token).address);
-    baseUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws?token=${encodeURIComponent(token)}`;
+    baseUrl = `ws://127.0.0.1:${httpServer.address().port}/terminal-ws`;
   });
 
   afterAll(async () => {
@@ -117,19 +119,19 @@ describe('terminal ?launch= (real PTY, real socket)', () => {
   });
 
   test('a cataloged agent spawns as the PTY process, in the focus folder', async () => {
-    const { output, error } = await collect(`${baseUrl}&launch=kimi&cwd=${encodeURIComponent(root)}`);
+    const { output, error } = await collect(ticketedWsUrl(baseUrl, token, '/terminal-ws', { launch: 'kimi', cwd: root }));
     expect(error).toBe(null);
     expect(output).toContain(`AGENT LIVE in ${root}`);
   }, 30000);
 
   test('an unknown launch id is refused before any spawn', async () => {
-    const { output, error } = await collect(`${baseUrl}&launch=nope&cwd=${encodeURIComponent(root)}`);
+    const { output, error } = await collect(ticketedWsUrl(baseUrl, token, '/terminal-ws', { launch: 'nope', cwd: root }));
     expect(error).toMatch(/unknown agent/i);
     expect(output).not.toContain('AGENT LIVE');
   }, 30000);
 
   test('a hostile launch id is refused — nothing reaches a spawn', async () => {
-    const { error } = await collect(`${baseUrl}&launch=${encodeURIComponent('kimi;id')}`);
+    const { error } = await collect(ticketedWsUrl(baseUrl, token, '/terminal-ws', { launch: 'kimi;id' }));
     expect(error).toMatch(/unknown agent/i);
   }, 30000);
 });

@@ -37,7 +37,11 @@ describe('the CLI reads the claim from its own data root, for a loopback backend
   it('reads the claim a backend wrote under NEUMA_DATA_ROOT', () => {
     const root = writeClaim(`${CLAIM}\n`);
     expect(localOwnerClaim('http://127.0.0.1:47317', { NEUMA_DATA_ROOT: root })).toBe(CLAIM);
-    expect(localOwnerClaim('http://localhost:47317', { NEUMA_DATA_ROOT: root })).toBe(CLAIM);
+  });
+
+  it('trusts only the literal loopback address, never the name localhost (a hosts file can re-point a name)', () => {
+    const root = writeClaim(CLAIM);
+    expect(localOwnerClaim('http://localhost:47317', { NEUMA_DATA_ROOT: root })).toBeNull();
   });
 
   it('never sends it to a backend that is not on this computer', () => {

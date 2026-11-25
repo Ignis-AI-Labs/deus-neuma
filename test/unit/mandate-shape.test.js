@@ -4,7 +4,7 @@
  */
 import { describe, test, expect } from 'vitest';
 import {
-  settleGrant, mandateStanding, coverPost, coverRender, legalTrips, isSpamRefusal, paceDay, plainWords,
+  settleGrant, mandateStanding, coverPost, coverRender, legalTrips, isSpamRefusal, paceDay, plainWords, REPLY_TIER_WORDS,
 } from '../../backend/services/marketing/mandate/mandate-shape.js';
 import { mandateGuidance, mandateBriefingLine, mandateWaitingItem } from '../../backend/services/marketing/mandate/mandate-words.js';
 import { feedRows } from '../../backend/services/marketing/mandate/mandate-feed.js';
@@ -96,6 +96,14 @@ describe('what a mandate covers', () => {
     expect(paceDay('2026-10-24T18:00:00Z', 'Asia/Jakarta')).toBe('2026-10-25');
   });
 
+  test('past the day\'s reply pace the rest WAIT for the operator — no trip (Design note, 2026-11-11; the cap tops out at 50', () => {
+    const m = grant({ acts: { replies: true }, replyPace: 2 });
+    const answered = approvedUnder(2).map((e) => ({ ...e, kind: 'reply' }));
+    expect(judge(m, post({ kind: 'reply' }), { entries: answered })).toEqual({ verdict: 'ask', reason: 'x-1 has answered 2 of its 2 replies on 2026-10-24 — the rest wait for you' });
+    expect(judge(m, post({ kind: 'reply' }), { entries: answered.slice(1) }).verdict).toBe('covered');
+    expect(grant({ acts: { replies: true }, replyPace: 99 }).replyPace).toBe(50);
+  });
+
   test('crossing companies or houses trips', () => {
     const m = grant();
     expect(judge(m, post(), { campaignCompanyId: 'ignis', accountCompanyId: 'neuma' })).toMatchObject({ verdict: 'trip', kind: 'cross-company' });
@@ -120,6 +128,10 @@ describe('words', () => {
     expect(plainWords(m, { seatName: 'Kestrel' })[0]).toBe('Kestrel may post on x-1 (2 a day) and make images and videos without asking you, until it turns itself off on Oct 31.');
     expect(plainWords(m).join(' ')).toContain('anything drawn from it waits on you, and the rest goes on');
     expect(plainWords(m)).toContain('Replies still ask you.');
+    const answering = grant({ acts: { replies: true }, replyPace: 30 });
+    expect(plainWords(answering)[0]).toContain('answer the easy replies on X (up to 30 a day)');
+    expect(plainWords(answering)).toContain(REPLY_TIER_WORDS);
+    expect(mandateGuidance(answering, { now: NOW })).toContain('An AWARENESS answer is staged for your operator with its reason and the mandate goes on');
     expect(mandateGuidance(m, { now: NOW })).toContain('Your operator trusts you');
     expect(mandateGuidance(m, { now: NOW })).toContain('WHAT IS HELD (the rest goes on)');
     expect(mandateGuidance(null)).toContain('No mandate stands for you');

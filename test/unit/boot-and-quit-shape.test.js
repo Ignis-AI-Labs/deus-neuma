@@ -73,7 +73,7 @@ describe('INFRA-009 #211 — the quit takes the whole tree, and says goodbye fir
       .not.toMatch(/backend\.kill\(\)/);
   });
 
-  it('Windows gets taskkill /T /F; POSIX keeps the signal cascade', async () => {
+  it('Windows gets taskkill /T /F; POSIX walks the real descendant tree', async () => {
     const source = await read('electron/backend-spawn.cjs');
     const fn = source.slice(source.indexOf('const killBackendTree'));
     const body = fn.slice(0, fn.indexOf('\n};'));
@@ -81,28 +81,36 @@ describe('INFRA-009 #211 — the quit takes the whole tree, and says goodbye fir
     expect(body).toMatch(/taskkill/);
     expect(body).toMatch(/'\/T'/);
     expect(body).toMatch(/'\/F'/);
-    // POSIX takes the process GROUP — a negative pid. Signalling the backend
-    // alone leaves the MCP grandchild standing, because the real server sits
-    // under an `npx` wrapper. Proven live: 4 processes in the group → 0.
-    expect(body).toMatch(/process\.kill\(-backend\.pid/);
+    expect(body).toMatch(/stopPosixBackend\(backend\)/);
+    expect(source).toMatch(/if \(!Number\.isInteger\(child\.pid\)\) \{ child\.kill\(\); return; \}/);
+    expect(body).not.toMatch(/process\.kill\(-backend\.pid/);
   });
 
-  it('the backend is spawned as a group LEADER on POSIX, so there is a group to kill', async () => {
+  it('the backend uses utilityProcess without RunAsNode and keeps launch authentication', async () => {
     const source = await read('electron/backend-spawn.cjs');
-    const fn = source.slice(source.indexOf('const startBackend'));
-    const body = fn.slice(0, fn.indexOf('\n};'));
-    expect(body).toMatch(/detached: true/);
-    // Windows has no process groups — it must NOT get detached.
-    expect(body).toMatch(/process\.platform === 'win32' \? \{\} : \{ detached: true \}/);
+    expect(source).toMatch(/utilityProcess\.fork\(UTILITY_ENTRY, \[\], \{/);
+    expect(source).toMatch(/delete environment\.ELECTRON_RUN_AS_NODE/);
+    expect(source).not.toMatch(/ELECTRON_RUN_AS_NODE: '1'/);
+    expect(source).not.toMatch(/spawn\(process\.execPath/);
+    expect(source).toMatch(/message\.healthToken/);
+    expect(source).toMatch(/token: backendHealthToken/);
+    expect(source).toMatch(/NEUMA_BACKEND_PROCESS: 'utility'/);
+    const entry = await read('electron/backend-utility-entry.cjs');
+    expect(entry).toMatch(/installUtilityProcessCompat\(\)/);
+    expect(entry).toMatch(/import\('\.\.\/backend\/server\.js'\)/);
+    const compat = await read('electron/utility-process-compat.cjs');
+    expect(compat).toMatch(/port\.postMessage\(message\)/);
+    expect(compat).toMatch(/process\.emit\('message', event\.data\)/);
   });
 
-  it('a missing group falls back to the single pid rather than throwing on quit', async () => {
+  it('utility stdio and the parent adapter preserve logs and existing child consumers', async () => {
     const source = await read('electron/backend-spawn.cjs');
-    const fn = source.slice(source.indexOf('const killBackendTree'));
-    const body = fn.slice(0, fn.indexOf('\n};'));
-    const posix = body.slice(body.indexOf('} else {'));
-    expect(posix).toMatch(/catch/);
-    expect(posix).toMatch(/backend\.kill\(\)/); // the fallback
+    expect(source).toMatch(/asNodeChild\(utilityProcess\.fork/);
+    expect(source).toMatch(/captureBackendLog\(backend, backendLog\)/);
+    expect(source).toMatch(/backendLog \? \['ignore', 'pipe', 'pipe'\]/);
+    const adapter = await read('electron/utility-child.cjs');
+    expect(adapter).toMatch(/child\.postMessage\(message\)/);
+    expect(adapter).toMatch(/get: \(\) => connected/);
   });
 
   it('taskkill can never hold the app open, and a failure still kills something', async () => {

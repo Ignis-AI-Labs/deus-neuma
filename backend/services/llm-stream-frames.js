@@ -315,6 +315,7 @@ const _readLine = (line, provider) => {
       reasoning: choice?.delta?.reasoning_content ?? choice?.delta?.reasoning ?? null,
       toolCalls: choice?.delta?.tool_calls ?? null,
       usage: readOpenAIStreamUsage(parsed),
+      timings: parsed.timings ?? null, // llama.cpp's own account of the reply, on its last frame (reply-meter.js)
       // 'stop' | 'length' | … on the final content chunk; null until then.
       // A 'length' here is the ONLY mechanical proof an answer was cut by
       // the token budget (S7f RCA lead: a cut answer used to be

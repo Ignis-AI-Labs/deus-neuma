@@ -43,6 +43,14 @@ describe('the card never claims a config it did not check', () => {
     expect(h.sub).toMatch(/re-scan/i);        // and the way out, named
   });
 
+  test('a CARRIED ceiling (the served model was never scanned) keeps its number and names where it came from', () => {
+    const h = headlineFor({ ...measuredOnGemma, carriedFrom: 'gemma-4-31b' }, 'qwen3.8-27b');
+    expect(h.stale).toBe(false);
+    expect(h.big).toContain('8');
+    expect(h.sub).toContain('gemma-4-31b');
+    expect(h.sub).not.toMatch(/re-scan/i);
+  });
+
   test('a ceiling measured on the served model says so plainly', () => {
     const h = headlineFor(measuredOnQwen, 'qwen3.8-27b');
     expect(h.stale).toBe(false);

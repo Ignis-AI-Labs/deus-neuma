@@ -17,6 +17,7 @@
 // impure (network).
 
 import { createLogger } from '../logger.js';
+import { testEndpoint } from '../test-endpoint-door.js';
 
 const log = createLogger('MoneyIn.Price');
 
@@ -26,7 +27,7 @@ const ID_RE = /^[a-z0-9-]{1,64}$/;
 /** The feed's name as written on each row. */
 export const PRICE_SOURCE = 'coingecko';
 
-const feedBase = () => process.env.NEUMA_COINGECKO_URL || 'https://api.coingecko.com/api/v3';
+const feedBase = () => testEndpoint(process.env, 'NEUMA_COINGECKO_URL', 'https://api.coingecko.com/api/v3');
 
 /**
  * Spot USD for a set of CoinGecko ids. impure.

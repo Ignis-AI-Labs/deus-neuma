@@ -82,7 +82,7 @@ const render = async (clip, words) => {
     const said = [];
     let utteranceRef = null;
     for await (const chunk of speak({
-      endpoint: target.endpoint, text, voice, context: ring.segments,
+      endpoint: target.endpoint, engine: target.engine, text, voice, context: ring.segments,
       signal: AbortSignal.timeout(SPEAK_TIMEOUT_MS), maxAudioMs: MAX_AUDIO_MS,
     })) {
       sampleRate = chunk.sampleRate;

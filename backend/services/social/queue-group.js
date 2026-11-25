@@ -5,7 +5,8 @@
 // campaign — a subsidiary's account runs its own company's campaign.
 //
 // APPROVE GROUP approves every draft of the group in one atom, all or nothing
-// — each copy SEEN as it stands, each through the outbound-secret check. A
+// — each copy and its media SEEN as they stand (approval-seal.js, audit
+// P6-124), each through the outbound-secret check. A
 // platform that asks its own consent per post (TikTok's card: who can watch,
 // interactions, disclosure) keeps it: its post is approved in the group only
 // with its own choices given, and otherwise stays a draft, named, for its card.
@@ -15,6 +16,7 @@
 
 import { queuedSecretRefusal } from './queue-rules.js';
 import { tiktokApproveRefusal } from './tiktok-metadata.js';
+import { seenRefusal } from './approval-seal.js';
 
 const LIVE = Object.freeze(['draft', 'approved', 'sending', 'sent']);
 
@@ -48,11 +50,11 @@ export const groupJoinRefusal = (draft, { members, accounts, companies }) => {
  * a draft and is named in `ownCard`.
  * @param {object[]} entries - the whole store (mutated on success)
  * @param {string} groupId
- * @param {{ids: ReadonlySet<string>, decidedBy: string, textsSeen: Record<string, string>,
+ * @param {{ids: ReadonlySet<string>, decidedBy: string, textsSeen: Record<string, string>, mediaSeen?: Record<string, Array<?string>>,
  *   consents?: Record<string, object|null>, now: Date}} decision - ids: the house's own members
  * @returns {{approved: object[], ownCard: string[]} | {error: string}}
  */
-export const approveGroupIn = (entries, groupId, { ids, decidedBy, textsSeen = {}, consents = {}, now }) => {
+export const approveGroupIn = (entries, groupId, { ids, decidedBy, textsSeen = {}, mediaSeen = {}, consents = {}, now }) => {
   const members = groupMembers(entries, groupId).filter((e) => ids.has(e.id));
   if (!members.length) return { error: 'no such group' };
   const drafts = members.filter((e) => e.status === 'draft' && !e.placeholder);
@@ -63,6 +65,8 @@ export const approveGroupIn = (entries, groupId, { ids, decidedBy, textsSeen = {
   }
   for (const e of deciding) {
     if (textsSeen[e.id] !== e.text) return { error: `the post on ${e.accountId} changed since you read it — nothing in the group was approved; read it again` };
+    const moved = seenRefusal(e, { textSeen: textsSeen[e.id], mediaSeen: mediaSeen?.[e.id] });
+    if (moved) return { error: `${e.accountId}: ${moved} — nothing in the group was approved` };
     const secret = queuedSecretRefusal(e, 'nothing in the group was approved');
     if (secret) return { error: `${e.accountId}: ${secret}` };
     const tiktok = tiktokApproveRefusal(e, { consent: consents[e.id], textSeen: textsSeen[e.id] });

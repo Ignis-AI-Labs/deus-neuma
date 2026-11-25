@@ -7,7 +7,7 @@
 //   1. MOUNT ORDER. Express matches in order, so `/:brand` will happily swallow
 //      `/form` and `/faces` as brand names. That is the same trap `/:brand/new`
 //      already had to be declared above `/:brand` to avoid.
-//   2. THE ?token= DOOR. CSS url() issues the browser's own bare GET and can
+//   2. THE ?ticket= DOOR. CSS url() issues the browser's own bare GET and can
 //      carry no Authorization header — so the face bytes need a query door, and
 //      it must open for exactly that one path and nothing else.
 //   3. UPLOAD VALIDATION. A route that writes a file somebody chose the name of
@@ -27,6 +27,7 @@ import { setRealmRoot } from '../../backend/services/user-realm.js';
 import { setHouseWorkspace } from '../../backend/services/house-workspace.js';
 import brandRoutes from '../../backend/routes/brand-routes.js';
 import { KIT_SECTIONS } from '../../backend/services/branding/kit-readiness.js';
+import { ticketedUrl } from '../helpers/desk-ticket-kit.js';
 
 const WALLET = '0x1111111111111111111111111111111111111111';
 let token;
@@ -91,8 +92,8 @@ describe('the face bytes, and the one door that reaches them', () => {
     expect(res.headers['cache-control']).toMatch(/immutable/);
   });
 
-  test('?token= opens it, because a stylesheet cannot send a header', async () => {
-    const res = await request(app).get(`/api/v1/brands/faces/grotesk-light/file?token=${token}`);
+  test('?ticket= opens it, because a stylesheet cannot send a header', async () => {
+    const res = await request(app).get(ticketedUrl('/api/v1/brands/faces/grotesk-light/file', token, '/api/v1/brands/faces/grotesk-light/file'));
     expect(res.status).toBe(200);
   });
 

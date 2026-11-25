@@ -27,7 +27,7 @@ import { pressDocument, listBrandKits } from './index.js';
 import { locateChromium } from './chromium-press.js';
 import { checkOutboundSecrets } from '../security/outbound-secrets.js';
 import { focusGroundOf } from '../focus-ground.js';
-import { resolvePressPaths } from './press-paths.js';
+import { pressImageReader, resolvePressPaths } from './press-paths.js';
 import fs from 'fs/promises';
 import { createLogger } from '../logger.js';
 
@@ -40,7 +40,7 @@ export const PRESS_TOOLS = Object.freeze([
   Object.freeze({
     name: 'press_document',
     server: 'press',
-    description: 'Make a PDF: press markdown into a branded PDF document (the press — the Nimbus system) — args {markdown | markdownPath, title?, kit?, kitsDir?, outputPath?}. Give the FULL markdown, or markdownPath to a .md file. kit is a brand-kit id your operator configured, e.g. the company\'s short id; kitsDir is a folder of kits (e.g. a repository\'s own press-kit folder) to look the id up in; an unknown id answers with the available ones; omit kit for the neutral look. outputPath (a .pdf) sets where the PDF lands; without it the PDF is saved into your own workspace. Every path is absolute and must be inside the operator\'s open folder or your own workspace. The real saved path is returned — report that path, never a guessed one. Supports chartjs/pagebreak fences, ::: summary|feature|warning|note boxes, and @icon tags from the kit.',
+    description: 'Make a PDF: press markdown into a branded PDF document (the press — the Nimbus system) — args {markdown | markdownPath, title?, kit?, kitsDir?, outputPath?}. Give the FULL markdown, or markdownPath to a .md file. outputPath (a .pdf) sets where the PDF lands; without it the PDF is saved into your own workspace. Every path is absolute and must be inside the operator\'s open folder or your own workspace. The real saved path is returned — report that path, never a guessed one. KITS: kitsDir is the PARENT folder and kit the name of a folder inside it holding kit.json (kitsDir /a/press-kit + kit acme reads /a/press-kit/acme/kit.json); an unknown id answers with the available ones; omit kit for the neutral look. A kit.json can set ONLY: name, companyName (running header), documentFooter, colors {ink, paper, heading, accent, accentWash, muted, rule, ruleSoft, wash, washSoft}, fonts {body, mono} (fonts installed on this machine), logos {primary (masthead), badge (running header), seal (footer), bullets (list marker), any other key = an inline @key icon}, pdf {format Letter|A4|Legal, marginCm}, charts {palette}; any other key is ignored and named back to you. Anything else (a cover page, heading fonts, table colours, logo size) is a raw <style> block at the top of the markdown; the class title-page makes a cover. Markdown images embed when the file is inside the open folder or your workspace (a relative path reads from markdownPath\'s folder); web images do not load (save them first with a web/download intent) and any image not embedded is named back. Supports chartjs (pie, bar, line) and pagebreak fences, ::: summary|feature|warning|note boxes, and @icon tags from the kit.',
     inputSchema: Object.freeze({
       type: 'object',
       properties: Object.freeze({
@@ -186,14 +186,22 @@ export const handlePressTool = async (ws, connection, neumaPolicy, toolMode, mat
     ownWorkspace, 'tool-results', 'pressed', `${slugify(checked.title)}-${Date.now()}.pdf`,
   );
   try {
+    const roots = [focusGroundOf(connection), ownWorkspace];
     const result = await pressDocument({
       markdown: checked.markdown,
       title: checked.title,
       kitId: checked.kitId,
       kitsDir: placed.kitsDir,
       outputPath,
+      mayRead: pressImageReader(roots),
+      imageDir: placed.markdownPath ? path.dirname(placed.markdownPath) : (roots.find(Boolean) || ownWorkspace),
     });
-    const content = `Document pressed with the "${result.kitId}" kit: ${result.outputPath} (${(result.pdf.length / 1024).toFixed(0)} KB).`;
+    // what the press could not carry is said back, never left for the reader of the PDF to find (#33)
+    const content = [
+      `Document pressed with the "${result.kitId}" kit: ${result.outputPath} (${(result.pdf.length / 1024).toFixed(0)} KB).`,
+      result.droppedImages.length ? `Images not embedded (each shows as a note in the PDF): ${result.droppedImages.map((d) => `${d.src} — ${d.why}`).join('; ')}.` : '',
+      result.ignoredKitKeys.length ? `Kit keys the press ignored (it cannot express them; use a <style> block in the markdown): ${result.ignoredKitKeys.join(', ')}.` : '',
+    ].filter(Boolean).join('\n');
     ports.sendToolEvent(ws, companion, {
       tool, status: 'ok',
       summary: `pressed "${checked.title}" — ${(result.pdf.length / 1024).toFixed(0)} KB`,

@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { WebSocketServer } from 'ws';
 import { createAuthRouter, requireAuth } from '../../backend/services/auth.js';
 import { setupTerminalRoutes, terminalAgentsRouter } from '../../backend/routes/terminal-routes.js';
+import deskTicketRouter from '../../backend/routes/desk-ticket-routes.js';
 import { liveTerminalCount } from '../../backend/services/terminal-manager.js';
 import { setRoots } from '../../backend/services/user-files.js';
 import { setRealmRoot } from '../../backend/services/user-realm.js';
@@ -16,6 +17,7 @@ setRealmRoot(process.env.NEUMA_REALM_ROOT);
 const app = express();
 app.use(express.json());
 app.use('/api/v1/auth', createAuthRouter(express));
+app.use('/api/v1/desk-tickets', deskTicketRouter);
 app.use('/api/v1/terminal', terminalAgentsRouter);
 // Read-only fixture observation; never substitutes for any production handler.
 app.get('/fixture/count', requireAuth, (req, res) => res.json({ count: liveTerminalCount() }));

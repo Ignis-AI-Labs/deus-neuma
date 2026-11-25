@@ -9,6 +9,7 @@
 //   keys       {channelId?, accountId?, add?}
 //                                           Settings → API → Channel keys (→ the platform → the account
 //                                           row, or its ADD ACCOUNT, marked)
+//   service    {serviceId}                  Settings → API → that service's key row, open, its field marked
 //   brand      {companyId, section?}        MARKETING → that company → BRAND (→ the kit's section)
 //   account    {channelId, accountId?, companyId?}
 //                                           MARKETING → the account level (that account, else the first
@@ -26,6 +27,7 @@
 //                                           card on ACCOUNTS / a place on the tab, marked)
 //   app        {app, reveal?}               that window (→ a place in it, marked)
 //   chat       {neumaId, sessionId?, name?} that member's sitting (else their newest one-on-one)
+//   position   {office, tab?, reveal?}       POSITIONS → that position (→ its tab → a record on it, marked)
 //
 // THIS HOUSE ONLY: a door names its place by id, and every window it opens
 // reads that place from the signed-in operator's own house — a door cannot
@@ -63,7 +65,7 @@ const accountPlan = ({ channelId, accountId = null, companyId = null, section = 
  * Where a door lands, as data. Pure.
  * @param {?{kind: string}} door
  * @returns {?{open?: string, settingsFocus?: string, landings?: Array<{app: string, item: object}>,
- *   brandSection?: {companyId: string, section: string}, jump?: object, sitting?: {neumaId: string, name: ?string},
+ *   brandSection?: {companyId: string, section: string}, position?: {office: string, tab: ?string}, jump?: object, sitting?: {neumaId: string, name: ?string},
  *   reveal?: ?string}} null when it is not a door this table knows (or it names no place)
  */
 export const doorPlan = (door) => {
@@ -74,6 +76,13 @@ export const doorPlan = (door) => {
         settingsFocus: keysFocus(door),
         reveal: door.add && door.channelId && !door.accountId ? inWindow('settings', '.cred-item.is-open .account-add') : null,
       };
+    case 'service':
+      // Settings → API → that service's own key row, open, its field marked: the key is pasted there and nowhere else.
+      return door.serviceId ? {
+        open: 'settings',
+        settingsFocus: `service-keys/${safe(door.serviceId)}`,
+        reveal: inWindow('settings', `[data-service-input="${safe(door.serviceId)}"]`),
+      } : null;
     case 'brand':
       return {
         open: 'marketing',
@@ -97,6 +106,8 @@ export const doorPlan = (door) => {
       return marketingPlan(door);
     case 'app':
       return door.app ? { open: door.app, reveal: inWindow(door.app, door.reveal) } : null;
+    case 'position':
+      return door.office ? { open: 'positions', position: { office: door.office, tab: door.tab || null }, reveal: inWindow('positions', door.reveal) } : null;
     case 'chat':
       if (!door.neumaId) return null;
       return door.sessionId

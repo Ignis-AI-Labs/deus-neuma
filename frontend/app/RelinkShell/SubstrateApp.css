@@ -64,7 +64,6 @@
 }
 .ignite-select:hover:not(:disabled) { border-color: var(--line-hover); color: var(--color-text-primary); }
 .ignite-select:disabled { opacity: 0.5; }
-.ignite-select option { background: var(--color-background); color: var(--color-text-primary); }
 /* The substrate model dropdown keeps its bounded width; the shared Select
    owns the rest of its look. */
 .ignite-select-dd { max-width: 260px; }
@@ -118,3 +117,11 @@
 .sub-fail-ts { font-size: var(--text-xs); color: var(--color-text-tertiary); font-variant-numeric: tabular-nums; }
 
 .sub-empty-row { color: var(--color-text-tertiary); font-size: var(--text-xs); padding: var(--space-1) 0; }
+
+/* The window's two views: the machine, and the network. Text tabs on one hairline; the one in view carries the signal. */
+.sub-tabs { display: flex; gap: var(--space-4); padding: var(--space-2) var(--space-4) 0; border-bottom: 1px solid var(--line); }
+.sub-tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: var(--space-2) 0; color: var(--color-text-tertiary); cursor: pointer; font: inherit; }
+.sub-tab:hover, .sub-tab:focus-visible { color: var(--color-text-primary); }
+.sub-tab.is-on { color: var(--color-text-primary); border-bottom-color: var(--signal); }
+.sub-net-line { margin: 0 0 var(--space-3); padding: var(--space-3); background: var(--surface-raised, transparent); border-left: 2px solid var(--signal); color: var(--color-text-primary); font-size: 14px; line-height: 1.6; }
+.sub-net-note { margin: var(--space-2) 0 0; color: var(--color-text-tertiary); font-size: 14px; line-height: 1.5; }

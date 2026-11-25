@@ -24,11 +24,11 @@ test('CONTEXT MAP opens from the dock with the honest empty state before any tur
   await expect(page.locator('.empty-state')).toContainText('NO TURN OBSERVED YET THIS SESSION');
   await expect(page.locator('.ctx-sec')).toHaveCount(0);
 
-  // FIELD against the live stack: the seeded lane holds no crystallized memory,
-  // so the pane says so (or names the failed read) — never a blank or invented map.
-  await page.locator('.ctx-tab', { hasText: 'FIELD' }).click();
-  await expect(page.locator('.empty-state')).toContainText(/NO CRYSTALLIZED FIELD YET|THE FIELD COULD NOT BE READ/);
-  await expect(page.locator('.ctx-field-refresh')).toBeVisible();
+  // MEMORY against the live stack: the seeded lane holds no memory, so the pane
+  // says so (or names the failed read) — never a blank or invented map.
+  await page.locator('.ctx-tab', { hasText: 'MEMORY' }).click();
+  await expect(page.locator('.empty-state')).toContainText(/NO MEMORIES YET|THE MEMORY COULD NOT BE READ/);
+  await expect(page.locator('.empty-state .atlas-btn', { hasText: 'REFRESH' })).toBeVisible();
 
   expect(page.__crashes, `JS crashes: ${page.__crashes.join(' | ')}`).toEqual([]);
 });

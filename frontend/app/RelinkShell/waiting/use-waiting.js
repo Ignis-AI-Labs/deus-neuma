@@ -20,6 +20,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { getWaiting } from '../../../services/waiting-client.js';
 import { playSound } from '../../../services/sound-engine.js';
 import { useVisibleInterval } from '../use-visible-interval.js';
+import { onWaitingChanged, announceWaitingChanged } from './waiting-changed.js';
 import { arrivals, arrivalSounds } from './waiting-view.js';
 import { OS_NOTICE_EVENT, isOsNoticeOn, osNoticeAvailable } from '../../../services/os-notice.js';
 
@@ -36,6 +37,8 @@ const CHANGE_FRAMES = Object.freeze([
   'tool:approval_request', 'tool:approval_resolved', 'operator:ask', 'operator:ask_resolved',
   'operator:plan', 'operator:plan_resolved', 'seal:self_offer', 'seal:self_resolved', 'notification:new',
 ]);
+// The backend's own word that something changed for this house, by any door (services/waiting/waiting-pulse.js).
+const PULSE_FRAME = 'waiting:changed';
 
 /**
  * impure — { account, error, refresh, watch }: `account` is null until the
@@ -99,9 +102,16 @@ export const useWaiting = (wsService) => {
     let timer = null;
     const soon = () => { clearTimeout(timer); timer = setTimeout(refresh, 250); };
     for (const type of CHANGE_FRAMES) wsService.on(type, soon);
+    // The backend's pulse is passed on to every window that shows waiting things (the POSITIONS board, a
+    // hub's own list): each reads its own records again, so none shows what another door already settled.
+    wsService.on(PULSE_FRAME, announceWaitingChanged);
+    // …and a decision the operator took inside a window (waiting-changed.js)
+    const stop = onWaitingChanged(soon);
     return () => {
       clearTimeout(timer);
+      stop();
       for (const type of CHANGE_FRAMES) wsService.off(type, soon);
+      wsService.off(PULSE_FRAME, announceWaitingChanged);
     };
   }, [wsService, refresh]);
 

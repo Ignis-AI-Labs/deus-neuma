@@ -1,0 +1,2 @@
+Added
+- Find in a chat. Press Ctrl+F in a chat, type words, and every message of that chat holding them is counted and marked. It starts at the newest match; Enter goes to the one before, Shift+Enter to the one after, Escape closes. A match far up the history is brought onto the screen. It searches what was said by you and the being, in the flow you are looking at, and nothing leaves your computer.

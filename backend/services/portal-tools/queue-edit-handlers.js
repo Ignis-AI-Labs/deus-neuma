@@ -27,6 +27,15 @@ const _editTarget = (entries, id, channel) => {
   return { entry, refusal: null };
 };
 
+// Did this lane draft the entry itself? pure.
+const isOwn = (entry, companion) => Boolean(entry?.authorNeumaId) && entry.authorNeumaId === companion?.neumaId;
+
+// May this edit skip the card as the being's own work? Only when the operator still decides the
+// result afterwards: its own draft, or its own approved post that the edit returns to DRAFT. An edit
+// that leaves a post APPROVED (a new slot, a new campaign) is carded, own post or not (audit P6-100). pure.
+const skipsCard = (entry, companion, preview) =>
+  isOwn(entry, companion) && (entry.status !== 'approved' || preview.resetsApproval);
+
 // The diff the operator DECIDES on (pure): every changed field as {was, now} —
 // the chip shows what the copy WAS, never just the patch.
 const _diffForChip = (preview) => Object.fromEntries(
@@ -56,9 +65,13 @@ const _queueEditCrewGate = async (ws, connection, tool, toolName, channel, accou
 // no GLOBAL_DEFAULTS row on purpose, so the default is the fail-closed chip):
 // an ALWAYS granted on staging never unlocks editing, nor the reverse.
 // Returns the refusal, or null when the edit may proceed.
-const _queueEditActsGate = async (ws, connection, neumaPolicy, toolMode, tool, toolName, chipArgs) => {
+// A being revising only ITS OWN staged posts raises no card (Design note, 2026-11-12:
+// […]) — new words or images on an approved post return
+// it to DRAFT, and an edit that keeps the approval is carded (skipsCard), so
+// nothing it rewrites or re-times goes out unseen.
+const _queueEditActsGate = async (ws, connection, neumaPolicy, toolMode, tool, toolName, chipArgs, ownWork = false) => {
   const gate = await gateAct(connection, {
-    server: 'social', tool: toolName, toolLabel: tool, cardArgs: chipArgs,
+    server: 'social', tool: toolName, toolLabel: tool, cardArgs: chipArgs, ownWork,
     lanePolicy: neumaPolicy, mode: toolMode,
     emit: (event) => _sendToolEvent(ws, connection.companion, event),
   });
@@ -125,7 +138,7 @@ export const handleNeumaQueueUpdate = async (ws, connection, neumaPolicy, toolMo
     ...(preview.resetsApproval
       ? { renewsApproval: 'the words or images change — this edit returns the post to DRAFT for a fresh decision' }
       : {}),
-  });
+  }, skipsCard(target.entry, companion, preview));
   if (actsRefusal) return actsRefusal;
 
   _sendToolEvent(ws, companion, { tool, status: 'executing' });
@@ -202,7 +215,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
       results[i] = { id, ok: false, error: preview.error };
       continue;
     }
-    viable.push({ index: i, id, patch, preview, accountId: entryAccountId(target.entry) });
+    viable.push({ index: i, id, patch, preview, accountId: entryAccountId(target.entry), own: skipsCard(target.entry, companion, preview) });
   }
 
   const verdict = () => {
@@ -221,7 +234,7 @@ export const handleNeumaQueueBulkUpdate = async (ws, connection, neumaPolicy, to
         changes: _diffForChip(preview),
         ...(preview.resetsApproval ? { renewsApproval: 'returns to DRAFT for a fresh decision' } : {}),
       })),
-    });
+    }, viable.every((v) => v.own));
     if (actsRefusal) return actsRefusal;
 
     _sendToolEvent(ws, companion, { tool, status: 'executing' });

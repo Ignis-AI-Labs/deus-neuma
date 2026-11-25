@@ -16,7 +16,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { execFile } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import {
-  isOrphaned, deskPidFrom, watchDeskParent, DESK_PID_ENV,
+  isOrphaned, deskPidFrom, watchDeskParent, DESK_PID_ENV, deskGone, pidAlive,
 } from '../../backend/services/desk-parent-watch.js';
 
 const settle = (ms) => new Promise((r) => { setTimeout(r, ms); });
@@ -145,4 +145,39 @@ describe('watchDeskParent — the watch itself, on a real clock', () => {
     const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
     expect(elapsedMs, 'the watch kept the process alive').toBeLessThan(10_000);
   }, 20_000);
+});
+
+// 2026-11-10: on Windows nothing is reparented, so a desk replaced by an update left its backend
+// serving forever in the new version's way. There the watch also asks if the desk's pid lives.
+describe('deskGone — Windows asks whether the desk itself is alive', () => {
+  const deadPid = () => new Promise((resolve) => {
+    const child = execFile(process.execPath, ['-e', '0'], () => resolve(child.pid));
+  });
+  it('a dead desk is gone on Windows even with a stale ppid, and never on its liveness elsewhere', async () => {
+    const dead = await deadPid();
+    expect(pidAlive(dead)).toBe(false);
+    expect(pidAlive(process.pid)).toBe(true);
+    // Windows: the ppid still names the dead desk (no reparenting), its liveness decides
+    expect(deskGone({ deskPid: dead, ppid: dead, platform: 'win32', alive: pidAlive })).toBe(true);
+    expect(deskGone({ deskPid: process.pid, ppid: process.pid, platform: 'win32', alive: pidAlive })).toBe(false);
+    // Linux keeps the ppid test alone
+    expect(deskGone({ deskPid: dead, ppid: dead, platform: 'linux', alive: pidAlive })).toBe(false);
+    expect(deskGone({ deskPid: dead, ppid: 1, platform: 'linux', alive: pidAlive })).toBe(true);
+    // not desk-spawned: never
+    expect(deskGone({ deskPid: null, ppid: 1, platform: 'win32', alive: pidAlive })).toBe(false);
+  });
+  it('the watch stands down on Windows when the desk dies', async () => {
+    const dead = await deadPid();
+    let fired = null;
+    const stop = watchDeskParent({
+      onOrphaned: (pid) => { fired = pid; },
+      env: { [DESK_PID_ENV]: String(dead) },
+      ppid: () => dead,
+      platform: 'win32',
+      intervalMs: 20,
+    });
+    await settle(120);
+    stop?.();
+    expect(fired).toBe(dead);
+  });
 });

@@ -24,12 +24,13 @@ import crypto from 'crypto';
 import { classifyFile, migrateFile } from './migrate-dek.js';
 import { decryptEnvelope, deriveKeyFromSecret, encryptEnvelope, isEnvelope, unwrapDEK, wrapDEK } from './workspace-crypto.js';
 import { decryptVaultData, encryptVaultData } from '../identity/dna-vault-crypto.js';
+import { keepRetiredDek, readRetiredDeks } from './retired-deks.js';
 
 const STALE_BACKUP = '.pre-dek.bak';
 // A sealed record is JSON — an envelope or envelope lines — and never this big; a model, a video or a
 // log is not opened whole to find that out (one 3.6 GB file stopped the first real dry run).
 const SEALED_MAX_BYTES = 512 * 1024 * 1024;
-const KEY_FILES = Object.freeze(new Set(['dek.json', 'dek-next.json']));
+const KEY_FILES = Object.freeze(new Set(['dek.json', 'dek-next.json', 'retired-deks.json']));
 
 /** Pure — the key candidates a list of master secrets yields, newest first. */
 export const masterCandidates = (secrets) => secrets.map((secret, i) => ({ label: `master-${i}`, key: deriveKeyFromSecret(secret) }));
@@ -218,9 +219,13 @@ export const rekeyLane = async (lane, { oldMasters, newMaster, dryRun = true }) 
     newDek = crypto.randomBytes(32);
     if (!dryRun) await writeDurable(nextPath, JSON.stringify(wrapDEK(newDek, newMaster), null, 2));
   }
-  const tally = await resealTree(lane.dir, [{ label: 'old-dek', key: oldDek }, ...oldMasters], newDek, { dryRun });
+  // Keys this being held before earlier re-keys are tried too: whatever in the lane still sits under one moves now.
+  const retired = (await readRetiredDeks(lane.dir, [{ key: newMaster }, ...oldMasters])).map((key, i) => ({ label: `retired-dek-${i}`, key }));
+  const tally = await resealTree(lane.dir, [{ label: 'old-dek', key: oldDek }, ...retired, ...oldMasters], newDek, { dryRun });
   // A file no key here opens was unreadable before and stays as it was; it never holds the lane back.
   if (!dryRun) {
+    // The old key is never destroyed: it is kept in the lane before dek.json is replaced (retired-deks.js).
+    await keepRetiredDek(lane.dir, oldDek, oldMasters, newMaster);
     await writeDurable(path.join(lane.dir, 'keys', 'dek.json'), JSON.stringify(wrapDEK(newDek, newMaster), null, 2));
     await fs.unlink(nextPath);
   }

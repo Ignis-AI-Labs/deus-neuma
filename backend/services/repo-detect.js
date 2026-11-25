@@ -1,7 +1,7 @@
 /**
  * Repo detection — classify a folder as a git repository and read its current
- * branch, cheaply and without a subprocess. A folder attached to a project is
- * "a repo" when it carries a `.git`; the branch is whatever HEAD points at.
+ * branch, cheaply and without a subprocess. A folder is "a repo" when it
+ * carries a `.git`; the branch is whatever HEAD points at.
  *
  * This reads `.git/HEAD` directly. The normal case is a `.git` DIRECTORY; a
  * `.git` FILE (worktrees / submodules) carries `gitdir: <path>` and HEAD lives
@@ -83,14 +83,3 @@ export const detectRepo = async (absPath) => {
   if (!headFile) return { isRepo: true, branch: null };
   return { isRepo: true, branch: parseBranch(await readBounded(headFile)) };
 };
-
-/**
- * Enrich folder entries ({ path, ... }) with live git classification — the
- * one shared repo-badge helper (the projects list and /folder-info both ride
- * it, so the badge can never drift between surfaces).
- * @param {Array<{path: string}>|null|undefined} folders
- * @returns {Promise<Array<object>>}
- */
-// impure
-export const enrichFolders = async (folders) =>
-  Promise.all((folders || []).map(async (f) => ({ ...f, ...(await detectRepo(f.path)) })));

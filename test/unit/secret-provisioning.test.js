@@ -79,6 +79,20 @@ describe('secret-provisioning', () => {
     expect(stored.dnaEncryptionKey).toBeUndefined(); // operator key stays out of the file
   });
 
+  test('refuses malformed or incomplete existing records without changing their bytes', () => {
+    const damaged = [
+      '{ not json',
+      'null',
+      JSON.stringify({ dnaEncryptionKey: 'existing-dna-placeholder' }),
+      JSON.stringify({ authSecret: 'existing-auth-placeholder' }),
+    ];
+    for (const bytes of damaged) {
+      fs.writeFileSync(file, bytes, { mode: 0o600 });
+      expect(() => ensureSecrets({ env: {} })).toThrow(/exists|cannot be read/);
+      expect(fs.readFileSync(file, 'utf8')).toBe(bytes);
+    }
+  });
+
   test('skips entirely under NODE_ENV=test', () => {
     const env = { NODE_ENV: 'test' };
     const r = ensureSecrets({ env });

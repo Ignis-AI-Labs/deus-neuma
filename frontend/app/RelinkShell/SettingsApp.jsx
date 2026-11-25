@@ -25,14 +25,17 @@ import { LanguageSection } from './LanguageSection.jsx';
 import { DeskSection } from './DeskSection.jsx';
 import { LookSection } from './LookSection.jsx';
 import { PinsSection } from './PinsSection.jsx';
+import { ImportSection } from './ImportSection.jsx';
 import { RealmSection } from './RealmSection.jsx';
 import { SoundSection } from './SoundSection.jsx';
 import { InferenceSection } from './InferenceSection.jsx';
 import { HotkeysSection } from './HotkeysSection.jsx';
+import { SystemDictationSection } from './SystemDictationSection.jsx';
 import { ModelsSection } from './ModelsSection.jsx';
 import { ModelFoldersSection } from './ModelFoldersSection.jsx';
 import { SecuritySection } from './SecuritySection.jsx';
 import { ConnectionsSection } from './ConnectionsSection.jsx';
+import { ChatLineSection } from './ChatLineSection.jsx';
 import { RemoteSection } from './RemoteSection.jsx';
 import { DocPressSection } from './DocPressSection.jsx';
 import { ApiTab } from './SettingsApiTab.jsx';
@@ -54,6 +57,7 @@ const GeneralTab = () => (
     <RealmSection />
     <DocPressSection />
     <HotkeysSection />
+    <SystemDictationSection />
   </>
 );
 
@@ -69,9 +73,10 @@ const ModelsTab = ({ focus }) => (
 // windows decide WHO speaks; this tab holds WHAT unlocks the door.
 // Remote sits beside Security: a phone on the tailnet is a security posture
 // before it is a convenience (docs/security/remote-surface.md).
-const SecurityTab = () => (
+const SecurityTab = ({ focus }) => (
   <>
-    <ConnectionsSection />
+    <ConnectionsSection focus={focus} />
+    <ChatLineSection />
     <SecuritySection />
     <RemoteSection />
   </>
@@ -80,8 +85,14 @@ const SecurityTab = () => (
 // The witness's cosmetic control — its own tab, never buried in GENERAL.
 const LookTab = () => <LookSection />;
 
-// The memory window: what each being holds close (read-only by design).
-const MemoryTab = () => <PinsSection />;
+// The memory window: what each being holds close (read-only by design), and what another
+// assistant knew, brought over as material (docs/work/assistant-import.md).
+const MemoryTab = () => (
+  <>
+    <PinsSection />
+    <ImportSection />
+  </>
+);
 
 const TABS = [
   { id: 'general', Body: GeneralTab },
@@ -101,6 +112,7 @@ const TAB_OF_FOCUS = Object.freeze({
   providers: 'models',
   route: 'models',
   'channel-keys': 'api',
+  'service-keys': 'api',
   email: 'api',
   web: 'api',
   security: 'security',

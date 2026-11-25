@@ -38,7 +38,7 @@ test('a lock on another endpoint than the stored key\'s is refused, and the key 
       openai: { providerId: 'openai', model: 'gpt-proof', endpoint: elsewhere, credentialKind: 'key', lockedAt: new Date().toISOString() },
     }));
     await expect(summonWitness({
-      providerId: 'openai', walletAddress: '0x' + 'ab'.repeat(20), keypairPassword: 'a-real-operator-password',
+      providerId: 'openai', walletAddress: '0x' + 'ab'.repeat(20), keypairPassword: 'a-real-operator-password', standing: 'owner',
     })).rejects.toThrow('stored key belongs to another endpoint');
     expect(seen).toEqual([]);
   } finally {

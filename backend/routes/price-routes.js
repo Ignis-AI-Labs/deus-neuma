@@ -19,19 +19,17 @@
 import express from 'express';
 import { requireAuth } from '../services/auth.js';
 import { createLogger } from '../services/logger.js';
+import { testEndpoint } from '../services/test-endpoint-door.js';
 
 const router = express.Router();
 const log = createLogger('Prices');
 
 router.use(requireAuth);
 
-// The upstream price feed. Read PER CALL through NEUMA_COINGECKO_URL — the
-// same isolation law as the settings paths — so this route can be aimed at a
-// mirror, a cache, or a local server. Without it the URL was a hardcoded
-// const, which meant the price lane could not be exercised at all without
-// reaching the live public API: rate-limited, flaky, and outbound network from
-// a test suite that has no business making any (#390 tranche 6).
-const coingecko = () => process.env.NEUMA_COINGECKO_URL || 'https://api.coingecko.com/api/v3';
+// The upstream price feed is pinned in production. NEUMA_COINGECKO_URL admits
+// a loopback stand-in only under NODE_ENV=test, so the real route can be exercised
+// without rate-limited, flaky outbound network from a test suite (#390 tranche 6).
+const coingecko = () => testEndpoint(process.env, 'NEUMA_COINGECKO_URL', 'https://api.coingecko.com/api/v3');
 const TTL_MS = 60_000;   // one upstream call per minute, shared across clients
 const FETCH_MS = 6000;   // upstream timeout — never hang the wallet on a slow feed
 

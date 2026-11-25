@@ -237,6 +237,20 @@ export const createSessionToken = (address) => {
   return Buffer.from(`${payload}:${hmac}`).toString('base64');
 };
 
+// Session-origin attestations use the same private server key without exposing it.
+export const signOriginProof = (payload) =>
+  crypto.createHmac('sha256', getTokenSecret()).update(`session-origin:${payload}`).digest('hex');
+
+export const verifyOriginProof = (payload, proof) => {
+  try {
+    const expected = signOriginProof(payload);
+    return typeof proof === 'string' && /^[a-f0-9]{64}$/.test(proof)
+      && crypto.timingSafeEqual(Buffer.from(proof, 'hex'), Buffer.from(expected, 'hex'));
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Verify and decode a session token.
  * Returns { address, expiresAt } if valid, null otherwise.
@@ -393,13 +407,18 @@ export const verifyNeumaToken = (token) => {
 export const createAuthRouter = (express) => {
   const router = express.Router();
 
-  router.get('/challenge', (req, res) => {
+  router.get('/challenge', async (req, res) => {
     const { address } = req.query;
     if (!address || !ethers.isAddress(address)) {
       return res.status(400).json({ error: 'Valid Ethereum address required' });
     }
     const challenge = generateChallenge(address);
-    res.json({ challenge });
+    const boundHost = `127.0.0.1:${req.socket.localPort}`;
+    const proofOrigin = req.headers.host === boundHost ? `${req.protocol}://${boundHost}` : null;
+    const localProof = req.accessScope === 'local' && proofOrigin
+      ? await (await import('./owner-claim.js')).localAuthProof({ challenge, origin: proofOrigin })
+      : null;
+    res.json({ challenge, ...(localProof ? { localAuthProof: localProof } : {}) });
   });
 
   router.post('/verify', async (req, res) => {

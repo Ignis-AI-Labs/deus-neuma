@@ -10,7 +10,7 @@ const GROUPS = Object.freeze([
   Object.freeze({ id: 'machine', label: 'THE MACHINE', ids: ['memory', 'gpu'] }),
   // what a neuma can do LATER, never what the summoning needs: shown apart, outside the tally,
   // so a machine that can summon and talk reads fully clear
-  Object.freeze({ id: 'optional', label: 'OPTIONAL · NOT NEEDED TO SUMMON OR TALK', ids: ['trainer', 'forge'], optional: true }),
+  Object.freeze({ id: 'optional', label: 'OPTIONAL · NOT NEEDED TO SUMMON OR TALK', ids: ['forge'], optional: true }),
 ]);
 const OTHER = Object.freeze({ id: 'other', label: 'MORE CHECKS' });
 

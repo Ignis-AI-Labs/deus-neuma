@@ -26,27 +26,19 @@ import { default as neumaWorkspace } from '../../core/workspace/neuma-workspace.
 import { isRecipientAllowed, requiresApproval, buildApprovalMessage, classifySpend, spendMemo, toAllowlist } from '../../core/wallet/spend-policy.js';
 import { decryptKeypair } from '../../core/wallet/keypair-vault.js';
 import { readSpendRecords, recordAutonomousSpend } from './treasury/spend-records.js';
+import { balanceWithFloor } from './chain/public-floor.js';
+import { providerFor, redactRpcUrl } from './chain/chain-registry.js';
+import { MAX_GAS_COST_WEI } from './umbrae-lp/lp-signer.js';
 
 // --- Rate limiting ---
 
-const txCounts = new Map(); // neumaId → { count, windowStart }
 const TX_RATE_LIMIT = 10;
 const TX_RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
-const checkTxRateLimit = (neumaId) => {
-  const now = Date.now();
-  const entry = txCounts.get(neumaId);
-
-  if (!entry || now - entry.windowStart > TX_RATE_WINDOW_MS) {
-    txCounts.set(neumaId, { count: 1, windowStart: now });
-    return true;
-  }
-
-  if (entry.count >= TX_RATE_LIMIT) return false;
-
-  entry.count++;
-  return true;
-};
+const checkTxRateLimit = (neumaId) => neumaWorkspace.consumeSpendRateSlot(neumaId, {
+  limit: TX_RATE_LIMIT,
+  windowMs: TX_RATE_WINDOW_MS,
+});
 
 // --- Provider ---
 
@@ -101,16 +93,7 @@ const getProvider = (network = 'base') => {
 
 // --- Operator approval (transfers above the autonomous threshold) ---
 
-const usedApprovalNonces = new Map(); // `${neumaId}:${nonce}` → eviction timer
 const pendingApprovalLocks = new Map(); // neumaId → serialized approval promise
-
-const markNonceUsed = (neumaId, nonce, expirySec) => {
-  const key = `${neumaId}:${nonce}`;
-  const ttl = Math.max(0, Number(expirySec) * 1000 - Date.now());
-  const timer = setTimeout(() => usedApprovalNonces.delete(key), ttl);
-  if (timer.unref) timer.unref();
-  usedApprovalNonces.set(key, timer);
-};
 
 // impure — serialize pending approvals per neuma so two concurrent HTTP
 // decisions cannot both observe the same request as pending.
@@ -142,9 +125,6 @@ const verifyWitnessApproval = async (neumaId, to, value, approval) => {
   if (Date.now() > Number(approval.expiry) * 1000) {
     throw new Error('Operator approval expired');
   }
-  if (usedApprovalNonces.has(`${neumaId}:${approval.nonce}`)) {
-    throw new Error('Operator approval already used');
-  }
   const owner = await neumaWorkspace.readOwner(neumaId);
   if (!owner?.wallet) {
     throw new Error('No workspace owner to authorize this transfer');
@@ -159,7 +139,7 @@ const verifyWitnessApproval = async (neumaId, to, value, approval) => {
   if (signer.toLowerCase() !== owner.wallet.toLowerCase()) {
     throw new Error('Operator approval not signed by the owner');
   }
-  markNonceUsed(neumaId, approval.nonce, approval.expiry);
+  await neumaWorkspace.consumeSpendApproval(neumaId, approval.nonce, Number(approval.expiry));
 };
 
 /**
@@ -189,9 +169,9 @@ export const getBalance = async (neumaId, { network } = {}) => {
   const address = await getAddress(neumaId);
   if (!address) throw new Error('No wallet address found');
 
-  const provider = getProvider(network);
-  const balance = await provider.getBalance(address);
-  return ethers.formatEther(balance);
+  const read = await balanceWithFloor(getProvider(network), walletNetworkKey(network), address);
+  if (read.eth === null) throw new Error('The chain did not answer the balance read');
+  return read.eth;
 };
 
 /**
@@ -225,10 +205,6 @@ const valueWeiOf = (value) => {
 };
 
 export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
-  if (!checkTxRateLimit(neumaId)) {
-    throw new Error('Transaction rate limit exceeded (max 10/hour)');
-  }
-
   const valueWei = valueWeiOf(tx.value);
 
   // DEFAULT-DENY recipient allowlist — checked before the cached key is pulled,
@@ -251,9 +227,6 @@ export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
   const keypair = signingKeypair || getCachedKey(neumaId);
   if (!keypair) throw new Error('Keypair not unlocked — use /api/neuma-auth/unlock first');
 
-  const provider = getProvider();
-  const wallet = new ethers.Wallet(keypair.privateKey, provider);
-
   // W3-005: refuse arbitrary calldata — allowlisted ETH transfers only unless
   // a future contract-call policy binds data hash to operator approval.
   const data = tx.data || '0x';
@@ -261,12 +234,44 @@ export const sendTransaction = async (neumaId, tx, signingKeypair = null) => {
     throw new Error('Contract calldata not permitted on sendTransaction');
   }
 
+  let cfg;
+  try { cfg = getAppConfig(); } catch { cfg = null; }
+  const provider = await providerFor('base', {
+    ...process.env,
+    BASE_MAINNET_RPC_URL: process.env.BASE_MAINNET_RPC_URL || resolveWalletRpc('base', cfg),
+  });
+  if (!provider) throw new Error('Base did not provide a verified RPC connection');
+  const wallet = new ethers.Wallet(keypair.privateKey, provider);
+  const request = { from: wallet.address, to: tx.to, value: ethers.toQuantity(valueWei), data: '0x' };
+  let block; let priority; let gas; let nonce;
+  try {
+    [block, priority, gas, nonce] = await Promise.all([
+      provider.send('eth_getBlockByNumber', ['latest', false]),
+      provider.send('eth_maxPriorityFeePerGas', []),
+      provider.send('eth_estimateGas', [request]),
+      provider.send('eth_getTransactionCount', [wallet.address, 'pending']),
+    ]);
+  } catch (error) {
+    throw new Error(`Base could not price this transaction: ${redactRpcUrl(error.shortMessage || error.message)}`, { cause: error });
+  }
+  if (!block?.baseFeePerGas || priority === null || priority === undefined) throw new Error('Base gave no bounded fee to pay');
+  const maxPriorityFeePerGas = BigInt(priority);
+  const maxFeePerGas = BigInt(block.baseFeePerGas) + maxPriorityFeePerGas;
+  const gasLimit = (BigInt(gas) * 12n) / 10n;
+  if (gasLimit * maxFeePerGas > MAX_GAS_COST_WEI) {
+    throw new Error(`The gas for this transaction could reach ${ethers.formatEther(gasLimit * maxFeePerGas)} ETH, over the ${ethers.formatEther(MAX_GAS_COST_WEI)} ETH ceiling`);
+  }
+  if (!await checkTxRateLimit(neumaId)) throw new Error('Transaction rate limit exceeded (max 10/hour)');
+
   const txResponse = await wallet.sendTransaction({
     to: tx.to,
     value: valueWei,
     data: '0x',
+    nonce: Number(BigInt(nonce)),
+    gasLimit,
+    maxFeePerGas,
+    maxPriorityFeePerGas,
   });
-
   const receipt = await txResponse.wait();
 
   return Object.freeze({
@@ -362,19 +367,13 @@ export const getWalletView = async (neumaId) => {
     listPendingSpends(neumaId),
   ]);
 
-  let balanceEth = null;
-  if (address) {
-    try {
-      balanceEth = await getBalance(neumaId, { network: 'base' });
-    } catch {
-      balanceEth = null;
-    }
-  }
+  const read = address ? await balanceWithFloor(getProvider('base'), 'base', address) : { eth: null, node: null };
 
   return Object.freeze({
     network: 'base',
     address,
-    balanceEth,
+    balanceEth: read.eth,
+    balanceNode: read.node,
     signingReady: hasCachedKey(neumaId),
     autonomousThresholdEth: threshold?.thresholdEth ?? 0,
     approvedRecipients: toAllowlist(allowlist).entries.map(({ address: recipient, label }) => ({

@@ -26,6 +26,9 @@ import { getSettingsDir } from '../data-root.js';
 import { createWriteChain } from '../write-chain.js';
 import { createHouseStore } from '../house-office.js';
 import { legacyCmoPath } from '../marketing/cmo-designation.js';
+import { cleanSaid } from '../sales/reply-said.js';
+import { appendJsonLine, readJsonLines } from '../jsonl-append.js';
+import { recordChange, mergeLeads, recordWords } from './lead-record.js';
 
 const DEFAULT_LEGACY_PATH = join(getSettingsDir(), 'lead-ledger.json');
 
@@ -35,12 +38,48 @@ const legacyLeadLedgerPath = () =>
   process.env.NEUMA_LEAD_LEDGER_PATH || DEFAULT_LEGACY_PATH;
 
 export const LEAD_STATUSES = Object.freeze(['cold', 'contacted', 'replied', 'qualified', 'won', 'lost']);
+export const TOUCH_DIRECTIONS = Object.freeze(['in', 'out']);
+// WHAT A LEAD IS TO THE HOUSE (Design note, 2026-11-16: […]). A buyer may pay the house; an applicant wants to work
+// for it; a partner wants to build with it; an investor may fund it; press writes about it; a vendor sells TO
+// it. Each is worked differently, so each is filed apart.
+// NOBODY IS CALLED A BUYER BY DEFAULT (Design note, 2026-11-16: […]). A lead nobody has sorted reads as UNSORTED until the sales seat or the operator
+// says what it is. Only a lead the lead engine itself put on the list (a company scored against an audience) is a
+// buyer without being told.
+export const LEAD_KINDS = Object.freeze(['buyer', 'applicant', 'partner', 'investor', 'press', 'vendor', 'other']);
+export const UNSORTED = 'unsorted';
+// WHERE A LEAD CAME FROM (Design note, 2026-11-16: […]). The lane it was recorded on says; a lead recorded on no lane ('other') is read
+// from how it is reached: an address is email, a profile link names its platform.
+const SOURCE_OF_HOST = Object.freeze([[/(^|\.)(x|twitter)\.com$/, 'x'], [/(^|\.)linkedin\.com$/, 'linkedin'], [/(^|\.)(t\.me|telegram\.org)$/, 'telegram'], [/(^|\.)(discord\.com|discord\.gg)$/, 'discord'],
+  [/(^|\.)facebook\.com$/, 'facebook'], [/(^|\.)(youtube\.com|youtu\.be)$/, 'youtube'], [/(^|\.)tiktok\.com$/, 'tiktok'], [/(^|\.)bsky\.app$/, 'bluesky']]);
+/** pure — the channel a lead came through: its lane, else what its contact shows, else 'other'. */
+export const sourceOf = (lead) => {
+  if (lead?.channelId && lead.channelId !== 'other') return lead.channelId;
+  const contact = String(lead?.contact ?? '').trim().toLowerCase();
+  if (/^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(contact)) return 'email';
+  const host = /^(?:https?:\/\/)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})(?:\/|$)/.exec(contact)?.[1] ?? '';
+  return SOURCE_OF_HOST.find(([re]) => re.test(host))?.[1] ?? (contact.startsWith('@') ? 'x' : 'other');
+};
+/** pure — the kind a lead is filed under. */
+export const kindOf = (lead) => (LEAD_KINDS.includes(lead?.kind) ? lead.kind : String(lead?.source ?? '').startsWith('lead engine [') ? 'buyer' : UNSORTED);
+// A LEAD MOVES TO ANOTHER PERSON at its company (Design note, 2026-11-17: an address found dead, or the top one silent and
+// the next one up named): its contact changes, and that touch keeps the address it moved from (contactFrom). What
+// was written to the person before is history; the emails to the new one count from the move.
+/** pure — the touches since the lead's current person: a contact change starts them anew. */
+export const personTouches = (lead) => {
+  const touches = lead?.touches || [];
+  const moved = touches.findLastIndex((t) => t.contactFrom);
+  return moved < 0 ? touches : touches.slice(moved + 1);
+};
+/** pure — every address the lead pointed at before its current one. */
+export const formerContacts = (lead) => (lead?.touches || []).map((t) => t.contactFrom).filter(Boolean);
 
 // Where a lead can come from: any social channel the house speaks through,
 // the email lane, or anywhere else the field produced one.
 const KNOWN_LANES = Object.freeze(['email', 'other']);
 const FIELD_MAX = 500;
 const NOTE_MAX = 2000;
+const TEXT_MAX = 6000;
+const REMOVED_FILE = 'lead-removed.jsonl';
 
 /**
  * Validate the shape of a new or updated lead (pure). Returns an error string
@@ -48,7 +87,7 @@ const NOTE_MAX = 2000;
  * @param {{name?: string, contact?: string, channelId?: string,
  *   source?: string, status?: string, campaignId?: string, accountId?: string}} lead
  */
-export const validateLead = ({ name, contact, channelId, source, status, campaignId, accountId } = {}) => {
+export const validateLead = ({ name, contact, channelId, source, status, campaignId, accountId, kind } = {}) => {
   const n = typeof name === 'string' ? name.trim() : '';
   const c = typeof contact === 'string' ? contact.trim() : '';
   if (!n && !c) return 'a lead needs a name or a way to reach them';
@@ -64,6 +103,7 @@ export const validateLead = ({ name, contact, channelId, source, status, campaig
   if (channelId != null && !KNOWN_LANES.includes(channelId) && !getChannel(channelId)) {
     return `Unknown lane: ${channelId}`;
   }
+  if (kind != null && kind !== UNSORTED && !LEAD_KINDS.includes(kind)) return `kind is one of: ${LEAD_KINDS.join(', ')}`;
   if (status != null && !LEAD_STATUSES.includes(status)) {
     return `Unknown status: ${status}`;
   }
@@ -97,6 +137,7 @@ export const formatLeadsForBeing = (leads, { max = 60 } = {}) => {
       l.channelId && l.channelId !== 'other' ? `via ${l.channelId}` : null,
       l.ownerNeumaId ? `held by ${l.ownerNeumaId}` : '· unheld',
       last ? `· last: ${last.note.slice(0, 80)}` : null,
+      recordWords(l) ? `· ${recordWords(l)}` : null,
     ].filter(Boolean).join(' ');
   });
   const dropped = leads.length - lines.length;
@@ -168,6 +209,7 @@ export const createLeadLedger = ({ path }) => {
           channelId: lead.channelId || 'other',
           source: trimmed(lead.source),
           status: lead.status || 'cold',
+          ...(lead.kind ? { kind: lead.kind } : {}),
           campaignId: trimmed(lead.campaignId) || null,
           accountId: trimmed(lead.accountId) || null,
           ownerNeumaId: lead.ownerNeumaId || null,
@@ -178,6 +220,7 @@ export const createLeadLedger = ({ path }) => {
             by: String(lead.addedBy || ''),
             status: lead.status || 'cold',
             ...(lead.ownerNeumaId ? { ownerTo: lead.ownerNeumaId } : {}),
+            ...(lead.direction && TOUCH_DIRECTIONS.includes(lead.direction) ? { direction: lead.direction } : {}),
             ...(trimmed(lead.note) ? { note: trimmed(lead.note).slice(0, NOTE_MAX) } : {}),
           }],
         };
@@ -193,7 +236,14 @@ export const createLeadLedger = ({ path }) => {
      * @param {string} id
      * @param {{name?: string, contact?: string, channelId?: string,
      *   source?: string, status?: string, note?: string,
-     *   ownerNeumaId?: string|null, by: string}} change
+     *   ownerNeumaId?: string|null, direction?: 'in'|'out', promised?: string, by: string}} change
+     *   direction: which way a message went on this touch — 'out' the house
+     *   wrote to them, 'in' they wrote to the house (lead upkeep reads it).
+     *   promised: what the house said it would send on a yes (sales/first-email.js).
+     *   from: the actual sending address, for the per-address daily ramp (sales-cover.js).
+     *   messageId: the Message-ID of the email this touch sent — a later bounce or
+     *   "stop" is believed only when it carries one (sales/reply-rules.js).
+     *   delivery: `maybe-sent` when DATA left but the acknowledgement was lost.
      */
     touch(id, change = {}) {
       return serialize(async () => {
@@ -208,16 +258,21 @@ export const createLeadLedger = ({ path }) => {
           status: change.status !== undefined ? change.status : lead.status,
           campaignId: change.campaignId !== undefined ? change.campaignId : lead.campaignId,
           accountId: change.accountId !== undefined ? change.accountId : lead.accountId,
+          kind: change.kind !== undefined ? change.kind : kindOf(lead),
         };
         const invalid = validateLead(merged);
         if (invalid) return { ok: false, error: invalid };
+        if (change.direction !== undefined && !TOUCH_DIRECTIONS.includes(change.direction)) return { ok: false, error: `direction is one of ${TOUCH_DIRECTIONS.join(', ')}` };
         const now = new Date().toISOString();
+        const kindBefore = kindOf(lead);
+        const contactBefore = lead.contact;
         Object.assign(lead, {
           name: trimmed(merged.name),
           contact: trimmed(merged.contact),
           channelId: merged.channelId || 'other',
           source: trimmed(merged.source),
           status: merged.status,
+          ...(merged.kind !== UNSORTED ? { kind: merged.kind } : {}),
           // Which campaign and account it came through can be set later (slice 6).
           campaignId: trimmed(merged.campaignId) || null,
           accountId: trimmed(merged.accountId) || null,
@@ -232,23 +287,148 @@ export const createLeadLedger = ({ path }) => {
           at: now,
           by: String(change.by || ''),
           ...(change.status !== undefined ? { status: merged.status } : {}),
+          ...(change.kind !== undefined && change.kind !== kindBefore ? { kindFrom: kindBefore, kindTo: merged.kind } : {}),
           ...(ownerAfter !== ownerBefore ? { ownerFrom: ownerBefore, ownerTo: ownerAfter } : {}),
+          ...(contactBefore && lead.contact !== contactBefore ? { contactFrom: contactBefore } : {}),
+          ...(change.direction ? { direction: change.direction } : {}),
+          ...(trimmed(change.promised) ? { promised: trimmed(change.promised).slice(0, FIELD_MAX) } : {}),
+          ...(trimmed(change.from) ? { from: trimmed(change.from).toLowerCase() } : {}),
+          ...(trimmed(change.messageId) ? { messageId: trimmed(change.messageId).slice(0, FIELD_MAX) } : {}),
+          ...(change.delivery === 'maybe-sent' ? { delivery: 'maybe-sent' } : {}),
           ...(trimmed(change.note) ? { note: trimmed(change.note).slice(0, NOTE_MAX) } : {}),
+          // What they wrote, kept with the touch that says they wrote (mail-upkeep.js): its subject and their own words.
+          ...(change.direction === 'in' && trimmed(change.subject) ? { subject: trimmed(change.subject).slice(0, FIELD_MAX) } : {}),
+          ...(change.direction === 'in' && trimmed(change.text) ? { text: trimmed(change.text).slice(0, TEXT_MAX) } : {}),
+          // What their reply SAYS (sales/reply-reading.js): read by the mail watch, or said by the operator or a member.
+          ...(cleanSaid(change.said, change.by) ? { said: cleanSaid(change.said, change.by) } : {}),
+          // A call booked with them (sales/booked-calls.js): when, and what it is called — or that it was called off.
+          ...(change.callOff === true ? { callOff: true } : {}),
+          // Who showed for a call whose time has passed (booked-calls.js markCallShow): it was held, the operator did not show, or they did not.
+          ...(['held', 'me', 'them'].includes(change.callShow) ? { callShow: change.callShow } : {}),
+          ...(change.call && !Number.isNaN(Date.parse(change.call.at)) ? { callAt: new Date(change.call.at).toISOString(), callTitle: trimmed(change.call.title).slice(0, FIELD_MAX), ...(/^https:\/\/\S+$/.test(trimmed(change.call.link)) ? { callLink: trimmed(change.call.link).slice(0, FIELD_MAX) } : {}) } : {}),
         });
         await save(leads);
         return { ok: true, lead };
       });
     },
 
-    /** Drop one lead from the ledger entirely. impure. */
-    remove(id) {
+    /**
+     * Keep what they wrote on the touch that says they wrote (the watch names it "(mail #uid)"), for a message
+     * recorded before the watch kept the words: read once from the mailbox (sales/their-email.js), then kept. It
+     * fills that touch, never one already filled, and appends nothing — the history says what it said. impure.
+     * @param {string} id
+     * @param {string} ref - "mail #7232"
+     * @param {{subject?: string, text?: string}} words
+     */
+    keepWords(id, ref, { subject, text } = {}) {
+      return serialize(async () => {
+        const leads = await load();
+        const touch = leads.find((l) => l.id === id)?.touches?.find((t) => t.direction !== 'out' && String(t.note ?? '').includes(`(${ref})`));
+        if (!touch) return { ok: false, error: 'no touch on that lead names that message' };
+        if (trimmed(subject) && !touch.subject) touch.subject = trimmed(subject).slice(0, FIELD_MAX);
+        if (trimmed(text) && !touch.text) touch.text = trimmed(text).slice(0, TEXT_MAX);
+        await save(leads);
+        return { ok: true };
+      });
+    },
+
+    /**
+     * Add many leads in ONE write — an import from another tool (leads/lead-import.js). Each is validated as add
+     * validates it and carries its own history: the messages that passed before it came to the house, at the
+     * moments they passed (oldest first), then one touch saying it came. Nothing is written unless every lead
+     * stands. impure.
+     * @param {Array<object>} list - add's fields, plus history?: Array<{at: string, direction: 'in'|'out', note: string, from?: string}>
+     * @returns {Promise<object[]>} the leads written
+     */
+    addMany(list) {
+      const problems = list.map((lead, i) => { const why = validateLead(lead); return why ? `lead ${i + 1}: ${why}` : null; }).filter(Boolean);
+      if (problems.length) return Promise.reject(new Error(`${problems.length} lead(s) refused — ${problems.join('; ')}`));
+      return serialize(async () => {
+        const leads = await load();
+        const now = new Date().toISOString();
+        const entries = list.map((lead) => {
+          const by = String(lead.addedBy || '');
+          const history = (lead.history ?? [])
+            .filter((t) => t && !Number.isNaN(Date.parse(t.at)) && TOUCH_DIRECTIONS.includes(t.direction))
+            .map((t) => ({ at: new Date(Date.parse(t.at)).toISOString(), by, direction: t.direction, ...(trimmed(t.from) ? { from: trimmed(t.from).toLowerCase() } : {}), ...(trimmed(t.note) ? { note: trimmed(t.note).slice(0, NOTE_MAX) } : {}) }))
+            .sort((a, b) => a.at.localeCompare(b.at));
+          return {
+            id: crypto.randomBytes(8).toString('hex'),
+            name: trimmed(lead.name), contact: trimmed(lead.contact), channelId: lead.channelId || 'other', source: trimmed(lead.source),
+            status: lead.status || 'cold', ...(lead.kind ? { kind: lead.kind } : {}),
+            campaignId: trimmed(lead.campaignId) || null, accountId: trimmed(lead.accountId) || null, ownerNeumaId: lead.ownerNeumaId || null,
+            createdAt: now, updatedAt: now,
+            // The touch of its coming carries no status: the messages before it say what happened, and a bare
+            // "contacted" touch would read as one more email sent (lead-upkeep.js isOut).
+            touches: [...history, { at: now, by, ...(trimmed(lead.note) ? { note: trimmed(lead.note).slice(0, NOTE_MAX) } : {}) }],
+          };
+        });
+        leads.push(...entries);
+        await save(leads);
+        return entries;
+      });
+    },
+
+    /**
+     * Drop one lead from the ledger entirely. It leaves a TOMBSTONE beside the ledger (lead-removed.jsonl): which
+     * lead, who removed it and when — never who the person was, so a removal the person asked for stays one. impure.
+     * @param {string} id
+     * @param {{by?: string, why?: string}} [who]
+     */
+    remove(id, { by = '', why = '' } = {}) {
       return serialize(async () => {
         const leads = await load();
         if (!leads.some((l) => l.id === id)) return false;
+        await appendJsonLine(join(dirname(target()), REMOVED_FILE), { type: 'removed', id, by: String(by).slice(0, FIELD_MAX), ...(trimmed(why) ? { why: trimmed(why).slice(0, FIELD_MAX) } : {}), at: new Date().toISOString() });
         await save(leads.filter((l) => l.id !== id));
         return true;
       });
     },
+
+    /**
+     * The operator's own record of a person: tags, the house's fields, the note on top (lead-record.js). One touch
+     * says what changed. impure.
+     * @param {string} id
+     * @param {{tags?: unknown, fields?: object, about?: unknown}} change
+     * @param {{defs: object[], by: string}} ctx - defs: the house's fields (crm-fields.js)
+     */
+    setRecord(id, change, { defs = [], by = '' } = {}) {
+      return serialize(async () => {
+        const leads = await load();
+        const lead = leads.find((l) => l.id === id);
+        if (!lead) return { ok: false, error: 'no such lead' };
+        const judged = recordChange(lead, change ?? {}, defs);
+        if (!judged.ok) return { ok: false, error: judged.why };
+        if (!Object.keys(judged.set).length) return { ok: true, lead, changed: false };
+        const now = new Date().toISOString();
+        Object.assign(lead, judged.set, { updatedAt: now });
+        lead.touches.push({ at: now, by: String(by), ...judged.touch });
+        await save(leads);
+        return { ok: true, lead, changed: true };
+      });
+    },
+
+    /**
+     * Two leads that are one person, as one (lead-record.js mergeLeads): `keepId` stays with both histories, `dropId`
+     * goes, leaving a tombstone that says where it went. impure.
+     */
+    merge(keepId, dropId, { by = '' } = {}) {
+      return serialize(async () => {
+        if (keepId === dropId) return { ok: false, error: 'a lead cannot be merged with itself' };
+        const leads = await load();
+        const keep = leads.find((l) => l.id === keepId);
+        const drop = leads.find((l) => l.id === dropId);
+        if (!keep || !drop) return { ok: false, error: 'no such lead' };
+        const at = new Date().toISOString();
+        const merged = mergeLeads(keep, drop, { by: String(by), at });
+        await appendJsonLine(join(dirname(target()), REMOVED_FILE), { type: 'removed', id: dropId, by: String(by).slice(0, FIELD_MAX), why: `merged into ${keepId}`, at });
+        await save(leads.filter((l) => l.id !== dropId).map((l) => (l.id === keepId ? merged : l)));
+        return { ok: true, lead: merged };
+      });
+    },
+
+    /** The tombstones: every lead removed, newest last. impure. */
+    removed: async () => (await readJsonLines(join(dirname(target()), REMOVED_FILE))).records,
   };
 };
 

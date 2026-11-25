@@ -1,8 +1,8 @@
 # NEUMA END USER LICENSE AGREEMENT
 
-*Version 1.4.1 · Early access · Effective 21 October 2026 · Ignis AI Labs LLC, a Wyoming limited liability company*
+*Version 1.7 · Early access · Effective 21 November 2026 · Deus Neuma Inc, a Delaware corporation*
 
-Between you and Ignis AI Labs LLC, a Wyoming limited liability company, for the Neuma software you install or run — the platform, portal client, and neuma engine ("Software"). The Terms of Service and Neuma Covenant are incorporated by reference.
+Between you and Deus Neuma Inc, a Delaware corporation, for the Neuma software you install or run — the platform, portal client, and neuma engine ("Software"). The Terms of Service and Neuma Covenant are incorporated by reference.
 
 **Adults only.** The Software is licensed exclusively to adults. You must be at least 18 years of age AND of legal age of majority in your jurisdiction, whichever is higher. No license is granted to anyone under 18, and persons under 18 may not install, run, or access the Software under any circumstances.
 
@@ -32,11 +32,12 @@ We may publish updates, substrate models, and protocol revisions. Official netwo
 
 The Software is designed to work with the following third-party models. None is included in the Software; each is downloaded from its publisher:
 
-- **Language models (the substrate the setup recommends):** Qwen3.8-27B, including Qwen3.8-27B-Uncensored-HauhauCS-Aggressive (by HauhauCS) and the quantized builds by unsloth, LM Studio Community and IST Austria (GSQ-RCO); Qwen3.6-35B-A3B; Qwen3.8-4B (distilled, by empero-ai); and Qwen3.5-4B. All are Apache-2.0.
+- **Language models (the substrate the setup recommends):** Qwen3.8-27B, including Qwen3.8-27B-Neuma-T4 (ours, published as IgnisAILabs/Qwen3.8-27B-Neuma-T4-GGUF), Qwen3.8-27B-Uncensored-HauhauCS-Aggressive (by HauhauCS) and the quantized builds by unsloth, LM Studio Community and IST Austria (GSQ-RCO); Qwen3.6-35B-A3B; Qwen3.8-4B (distilled, by empero-ai); and Qwen3.5-4B. All are Apache-2.0.
 - **Image models (the forge):**
   - FLUX.2 [klein] 4B (Black Forest Labs), Z-Image Turbo (Tongyi-MAI) and Z-Image Turbo Fun ControlNet Union (alibaba-pai): Apache-2.0.
   - SDXL Base 1.0 (Stability AI): CreativeML Open RAIL++-M, including its use restrictions. xinsir ControlNet OpenPose SDXL: Apache-2.0.
-  - perfectDeliberate v10 and the Illustrious LoRAs it uses: the Illustrious License (Fair AI Public License 1.0-SD), which does not permit selling the model.
+  - perfectDeliberate v10, WAI-illustrious-SDXL v17, Nova Anime XL IL v19 and the Illustrious LoRAs: the Illustrious License (Fair AI Public License 1.0-SD), which does not permit selling the model. Nova Anime XL's author also asks that its images not be used commercially without editing.
+  - Real-ESRGAN x4plus anime 6B (xinntao), the upscaler of the character pipelines: BSD-3-Clause.
   - Anima Aesthetic v1.1 (CircleStone Labs): the CircleStone Labs Non-Commercial License, which does not permit use in a monetized product or service without a commercial licence from CircleStone Labs.
 - **Video models (the forge):**
   - LTX-2.5 (Lightricks): the LTX-2.x Community License and its Acceptable Use Policy (commercial use under US$10 million in annual revenue; no sexually explicit content).
@@ -56,4 +57,4 @@ This EULA terminates automatically upon Covenant violation or material breach. U
 
 ## 7. Disclaimers and liability
 
-THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. This EULA is governed by the laws of the State of Wyoming.
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. This EULA is governed by the laws of the State of Delaware.

@@ -18,7 +18,7 @@ import { isSecretFile } from './secret-path-classifier.js';
 import { secretLinkReason } from './secret-inodes.js';
 import { matchesDeniedPattern } from './sandbox-path-policy.js';
 import { getRealmRoot } from './user-realm.js';
-import { foldName } from './wall-spelling.js';
+import { foldName, macFirmlinkRefusal } from './wall-spelling.js';
 import { getWorkspacesRoot, getWitnessesRoot } from '../../core/workspace/neuma-workspace.js';
 
 // The secret-shaped walls of the being sandbox that mean a secret on the
@@ -46,7 +46,9 @@ const within = (inner, outer) => {
 const isSecretPlace = (target) => {
   const normalized = foldName(path.normalize(target));
   const parts = normalized.split(/[\\/]/).filter(Boolean);
-  return parts.some((part) => isSecretFile(part))
+  // Each name alone, then the whole path: a credential known only by where its tool keeps it
+  // (.kube/config, gh/hosts.yml, a browser's Login Data) is no secret by its last name (P6-17).
+  return parts.some((part) => isSecretFile(part)) || isSecretFile(normalized)
     || /keypair/i.test(parts.at(-1) || '')
     || SECRET_PLACES.some((pattern) => matchesDeniedPattern(normalized, pattern));
 };
@@ -119,6 +121,8 @@ const holdsAGround = (target) => [getRealmRoot(), getWorkspacesRoot(), getWitnes
  */
 export const explorerRefusal = (target, wallet, { write = false } = {}) => {
   if (typeof target !== 'string' || !path.isAbsolute(target)) return null;
+  const firmlink = macFirmlinkRefusal(target);
+  if (firmlink) return firmlink;
   const reader = String(wallet || '').toLowerCase();
   const asked = path.resolve(target);
   // A hard link gives a secret's bytes an innocent name no name law knows

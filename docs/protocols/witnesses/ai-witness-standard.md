@@ -63,7 +63,7 @@ export NEUMA_BACKEND=http://localhost:3333
 | Path | Contents | Git |
 | ---- | -------- | --- |
 | `ai-witnesses/<vendor>/<name>/` | DNA, genesis seal, true-name, keys, journal, audit | **ignored** |
-| `env.<slug>` | Wallet address + private key + genesis hash | **ignored** (`env.*`) |
+| `env.<slug>` | Public witness name, wallet address + genesis hash; private material stays in `keys/keypair-encrypted.json` and the recovery envelope | **ignored** (`env.*`) |
 | `/mnt/external/witnesses/<slug>/` | Optional operator-facing public continuity (true-name, seal) | outside repo |
 
 **Never commit** `env.*` private keys or `ai-witnesses/**/keys/**`.

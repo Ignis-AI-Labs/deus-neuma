@@ -28,15 +28,14 @@ test('skill selection, allocation controls and composer retain keyboard operatio
       import {SendLayer} from ${modulePath('frontend/app/RelinkShell/WalletAppSend.jsx')};
       import {StreamInput} from ${modulePath('frontend/app/RelinkShell/StreamInput.jsx')};
       import { ConsciousnessProvider } from ${modulePath('frontend/app/RelinkShell/consciousness-context.js')};
-      import {ProjectContext} from ${modulePath('frontend/app/RelinkShell/projects/project-context.js')};
       import {WindowManager} from ${modulePath('frontend/app/windowing/WindowManager.jsx')};
       import ${modulePath('frontend/styles/tokens.css')};
       const Page = () => { const [sent,setSent]=useState(''); return <ConsciousnessProvider value={{}}>
-        <ProjectContext.Provider value={{projects:[]}}><WindowManager registry={{}}>
+        <WindowManager registry={{}}>
           <section id="skills"><skillsApp.Body /></section>
           <section id="allocation"><SendLayer wallet={{balance:'1'}} identities={[]} /></section>
           <section id="composer"><StreamInput connected onSend={setSent} /><output>{sent}</output></section>
-        </WindowManager></ProjectContext.Provider></ConsciousnessProvider>; };
+        </WindowManager></ConsciousnessProvider>; };
       createRoot(document.getElementById('root')).render(<Page />);`;
     const bundle = await build({ configFile: false, root: process.cwd(), logLevel: 'error',
       esbuild: { jsx: 'automatic', loader: 'jsx' },
@@ -68,15 +67,16 @@ test('skill selection, allocation controls and composer retain keyboard operatio
     await expect(slider).toHaveValue('500');
     await slider.focus(); await page.keyboard.press('ArrowRight'); await expect(slider).toHaveValue('501');
     const composer = page.locator('#composer');
-    const sandboxOff = composer.getByRole('button', { name: 'SANDBOX OFF', exact: true });
-    await expect(sandboxOff).toHaveAttribute('aria-pressed', 'false');
-    await sandboxOff.focus(); await page.keyboard.press('Enter');
     const sandboxOn = composer.getByRole('button', { name: 'SANDBOX ON', exact: true });
     await expect(sandboxOn).toHaveAttribute('aria-pressed', 'true');
-    expect(await page.evaluate(() => localStorage.getItem('neuma.sandbox.enabled'))).toBe('1');
+    expect(await page.evaluate(() => localStorage.getItem('neuma.sandbox.enabled'))).toBeNull();
     await sandboxOn.focus(); await page.keyboard.press('Enter');
-    await expect(composer.getByRole('button', { name: 'SANDBOX OFF', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    const sandboxOff = composer.getByRole('button', { name: 'SANDBOX OFF', exact: true });
+    await expect(sandboxOff).toHaveAttribute('aria-pressed', 'false');
     expect(await page.evaluate(() => localStorage.getItem('neuma.sandbox.enabled'))).toBe('0');
+    await sandboxOff.focus(); await page.keyboard.press('Enter');
+    await expect(composer.getByRole('button', { name: 'SANDBOX ON', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => localStorage.getItem('neuma.sandbox.enabled'))).toBe('1');
     const send = composer.getByRole('button', { name: 'Send thought', exact: true });
     await expect(send.locator('svg')).toHaveAttribute('aria-hidden', 'true');
     await composer.locator('textarea').fill('Keyboard composer proof');

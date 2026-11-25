@@ -59,7 +59,8 @@ const SandboxToggleView = ({ disabled }) => {
       >
         {`SANDBOX ${enabled ? 'ON' : 'OFF'}`}
       </button>
-      {refusal ? <span className="relink-sandbox-refusal" role="alert">OWNER AT DESK ONLY</span> : null}
+      {/* What the server answered, in its own words — never a fixed label that may not be the reason. */}
+      {refusal ? <span className="relink-sandbox-refusal" role="alert">{refusal}</span> : null}
     </div>
   );
 };

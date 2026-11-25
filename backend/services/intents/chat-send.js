@@ -14,6 +14,7 @@
 import {
   chatLinkDoors, addressOf, linkRunFull, LINK_RUN_LIMIT, MAX_LINK_BODY, MAX_LINK_RE,
 } from '../chat-link.js';
+import { holdsTaint } from '../security/injected-value-gate.js';
 
 const RUN_REST = `has taken ${LINK_RUN_LIMIT} linked messages in a row without its operator; the line rests until the operator speaks`;
 
@@ -29,6 +30,10 @@ export const chatSendIntent = Object.freeze({
     const doors = chatLinkDoors();
     if (!doors?.canLink(connection)) {
       return { ok: false, status: 'denied', reason: 'chat links run between chats open on the desk, and this sitting is not one' };
+    }
+    // By address, as canLink reads it: the sweep asks with a captured copy of the connection.
+    if (holdsTaint(doors.find(connection, addressOf(connection)) ?? connection)) {
+      return { ok: false, status: 'denied', reason: 'held: this chat read content carrying planted instructions, so it does not message another chat on its own. Tell your operator what you wanted to pass on' };
     }
     const to = String(payload?.to ?? '').trim();
     const body = typeof payload?.body === 'string' ? payload.body.trim() : '';

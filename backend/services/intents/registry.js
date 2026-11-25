@@ -22,7 +22,10 @@
  *                 asks on, when one type does two acts the operator grants
  *                 apart (image/generate → video.generate for a video
  *                 pipeline); every chip, card, grant and journal line uses it
- *   cardArgs(value) → object — optional: what the card shows when the
+ *   prepare(value, {connection}) → {ok:true, value} | {ok:false, reason} —
+                optional impure reads AFTER policy/observe and BEFORE the card;
+                validate stays local, and the prepared value reaches card+execute
+  cardArgs(value) → object — optional: what the card shows when the
  *                 filed fields alone would not show the act (a run's code)
  *   execute(value, {connection, signal}) → {ok:true, detail} | {ok:false,
  *                 reason}
@@ -39,15 +42,24 @@ import { legalIntents } from './legal-acts.js';
 import { treasuryIntents } from './treasury-acts.js';
 import { emailSendIntent } from './email-send.js';
 import { walletSendIntent } from './wallet-send.js';
+import { lpIntents } from './lp-acts.js';
+import { lpSwapIntent, lpSendIntent } from './lp-trade-acts.js';
+import { lpGoalIntent, lpRewardIntent } from './lp-reward-acts.js';
+import { lpCreatePoolIntent } from './lp-pool-acts.js';
 import { mediaSaveIntent } from './media-save.js';
 import { mediaKeepIntent } from './media-keep.js';
 import { webDownloadIntent } from './web-download.js';
 import { imageGenerateIntent } from './image-generate.js';
+import { forgeInstallIntent } from './forge-install.js';
+import { forgeRegisterWorkflowIntent, forgeEditWorkflowIntent, forgeForgetWorkflowIntent } from './forge-workflow.js';
 import { formRenderIntent } from './form-render.js';
 import { formChampionIntent } from './form-champion.js';
 import { housePostIntent } from './house-post.js';
 import { chatSendIntent } from './chat-send.js';
 import { houseReviewPacketIntent } from './house-review-packet.js';
+import { houseSeatingIntent } from './house-seating.js';
+import { houseCharterIntent } from './house-charter-act.js';
+import { houseWakeIntent } from './house-wake-act.js';
 import { kspCommandIntent } from './ksp-command.js';
 import { voiceSealIntent, voiceClaimIntent } from './voice-rites.js';
 import { speechAcceptIntent, speechAnotherIntent } from './speech-accept.js';
@@ -58,6 +70,7 @@ import { teamTuneIntent } from './team-tune.js';
 import { staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent } from './staff-acts.js';
 import { companyIntents } from './company-acts.js';
 import { revenueIntents } from './revenue-acts.js';
+import { salesIntents } from './sales-acts.js';
 import { invoiceIntents } from './invoice-acts.js';
 import { deliveryIntents } from './delivery-acts.js';
 import { programmeIntents } from './programme-acts.js';
@@ -73,6 +86,9 @@ import { campaignCreateIntent, campaignUpdateIntent, campaignAskIntent } from '.
 import { marketingPlanIntent } from './marketing-plan.js';
 import { marketingBoardArrangeIntent } from './marketing-board-arrange.js';
 import { marketingCompanyLinksIntent } from './marketing-company-links.js';
+import { marketingAccountIntents } from './marketing-account-acts.js';
+import { marketingCardIntent } from './marketing-card-acts.js';
+import { registryLookupIntent } from './registry-lookup.js';
 import {
   memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
   memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
@@ -80,8 +96,8 @@ import {
 
 const TYPES = new Map(
   [
-    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent,
-    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, housePostIntent, houseReviewPacketIntent, kspCommandIntent,
+    socialPostIntent, socialQueueIntent, ...securityIntents, ...legalIntents, ...treasuryIntents, emailSendIntent, walletSendIntent, ...lpIntents, lpSwapIntent, lpSendIntent, lpGoalIntent, lpRewardIntent, lpCreatePoolIntent,
+    mediaSaveIntent, mediaKeepIntent, webDownloadIntent, imageGenerateIntent, forgeInstallIntent, forgeRegisterWorkflowIntent, forgeEditWorkflowIntent, forgeForgetWorkflowIntent, housePostIntent, houseReviewPacketIntent, houseSeatingIntent, houseCharterIntent, houseWakeIntent, kspCommandIntent,
     chatSendIntent,
     formRenderIntent, formChampionIntent,
     voiceSealIntent, voiceClaimIntent, refinementDialIntent,
@@ -89,13 +105,13 @@ const TYPES = new Map(
     teamRunIntent, teamWorkspaceRunIntent, teamPostIntent, teamTuneIntent, sovereigntyProposeIntent, sovereigntyConsentIntent,
     staffDispatchIntent, staffDispatchUpdateIntent, staffAckIntent,
     boardAddIntent, boardUpdateIntent,
-    ...companyIntents, ...revenueIntents, ...accountsIntents, ...raiseIntents, ...invoiceIntents, ...deliveryIntents, ...programmeIntents,
+    ...companyIntents, ...revenueIntents, ...salesIntents, ...accountsIntents, ...raiseIntents, ...invoiceIntents, ...deliveryIntents, ...programmeIntents,
     // Stage 3 batch 4 — the state-shaped tools as filed acts.
     vaultSaveIntent, vaultRenameIntent, vaultArchiveIntent, vaultRestoreIntent, vaultPublishIntent,
     taskAddIntent, taskUpdateIntent, taskFocusIntent, taskTakeIntent, operatorTaskAddIntent, operatorTaskUpdateIntent, operatorTaskDropIntent,
     leadAddIntent, leadTouchIntent,
     campaignCreateIntent, campaignUpdateIntent, campaignAskIntent,
-    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent,
+    marketingPlanIntent, marketingBoardArrangeIntent, marketingCompanyLinksIntent, ...marketingAccountIntents, marketingCardIntent, registryLookupIntent,
     memoryPinIntent, memoryUnpinIntent, memorySupersedeIntent,
     memoryRetractIntent, memoryMergeIntent, memoryArchiveIntent,
   ].map((t) => [t.name, t]),

@@ -42,6 +42,7 @@ export default Object.freeze({
   presets: Object.freeze({
     heading: '프리셋',
     note: '출하 때의 차림입니다. 한 번에 적용됩니다.',
+    tones: Object.freeze({ 'soft-dark': '소프트 다크 — 눈이 편안한', 'soft-light': '소프트 라이트 — 눈이 편안한', 'deep-dark': '딥 다크', 'bright-light': '브라이트 라이트' }),
   }),
 
   yourPresets: Object.freeze({

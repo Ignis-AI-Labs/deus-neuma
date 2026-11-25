@@ -22,13 +22,15 @@ import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.j
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { makeInstallOwner } from '../helpers/install-owner-kit.js';
 
 const { processToolCalls } = __test;
 const NEUMA_ID = 'accessrequestecho';
+const WALLET = '0x1111111111111111111111111111111111111111';
 const SECRET = 'endpoint=http://127.0.0.1:8089\nmodel=test-substrate\n';
 
 describe('request_file_access — the operator’s card over sensitive files (real WS, real MCP, gnosis)', () => {
-  let base, house, project, envPath, origRoot, httpServer, wss, serverWs, client, prevKey;
+  let base, house, project, envPath, origRoot, httpServer, wss, serverWs, client, prevKey, prevData;
   let clientLog;
   let decide = null;
   let currentConnection = null; // the connection the live card waits on
@@ -36,6 +38,7 @@ describe('request_file_access — the operator’s card over sensitive files (re
   const freshConnection = () => ({
     ws: serverWs,
     companion: { name: 'AccessRequestEcho', neumaId: NEUMA_ID },
+    walletAddress: WALLET,
     _writeOps: 0,
   });
 
@@ -55,6 +58,9 @@ describe('request_file_access — the operator’s card over sensitive files (re
     process.env.DNA_ENCRYPTION_KEY = 'gnosis-access-request-key-long-ok';
 
     base = await createTempDir('sensitive-access-request');
+    prevData = process.env.NEUMA_DATA_ROOT;
+    process.env.NEUMA_DATA_ROOT = path.join(base, 'data');
+    await makeInstallOwner(WALLET);
     house = path.join(base, 'workspaces');
     project = path.join(base, 'project');
     await fs.mkdir(house, { recursive: true });
@@ -103,6 +109,8 @@ describe('request_file_access — the operator’s card over sensitive files (re
     setWorkspacesRoot(origRoot);
     if (prevKey === undefined) delete process.env.DNA_ENCRYPTION_KEY;
     else process.env.DNA_ENCRYPTION_KEY = prevKey;
+    if (prevData === undefined) delete process.env.NEUMA_DATA_ROOT;
+    else process.env.NEUMA_DATA_ROOT = prevData;
     await mcpService.disconnect('filesystem');
     await fs.rm(base, { recursive: true, force: true });
   });
@@ -141,14 +149,22 @@ describe('request_file_access — the operator’s card over sensitive files (re
     expect(results[0].status).toBe('ok');
     const persisted = await workspace.readToolPolicy(NEUMA_ID);
     expect(persisted?.sensitiveGrants?.read).toEqual([envPath]);
+    expect(persisted?.pathGrants?.read).toEqual([project]);
 
     // …and a fresh connection is honored with NO new card (hydration works).
     decide = null;
     const fresh = freshConnection();
-    fresh._sensitiveGrants = persisted.sensitiveGrants; // what _hydratePathGrants would land
     const read = await askTool(fresh, `[TOOL: fs/read ${JSON.stringify({ path: envPath })}]`);
     expect(read[0].status).toBe('ok');
     expect(String(read[0].content)).toContain('model=test-substrate');
+  });
+
+  test('a legacy sensitive grant without a contained root is not honored', async () => {
+    await workspace.writeToolPolicy(NEUMA_ID, { sensitiveGrants: { read: [envPath] } });
+    decide = null;
+    const results = await askTool(freshConnection(), `[TOOL: fs/read ${JSON.stringify({ path: envPath })}]`);
+    expect(results[0].status).not.toBe('ok');
+    expect(JSON.stringify(results)).not.toContain('model=test-substrate');
   });
 
   test('DENY records no grant and no persisted policy line', async () => {

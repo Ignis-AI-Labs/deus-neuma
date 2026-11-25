@@ -100,6 +100,9 @@ export const collectToolAction = (ws, event) => {
     // A benchmark launched from the chat: its comparison, so the card watches
     // the run to its end — live, and again on a resumed chat.
     ...(event.bench?.comparisonId ? { bench: event.bench } : {}),
+    // A shadow clone split: each clone's sub-channel (its report and acts), so the chat shows them
+    // again when it is reopened (shadow-clone.js).
+    ...(event.split?.clones?.length ? { split: event.split } : {}),
     mark: marks.get(ws) || 0,
   };
   const live = lastLiveActionIndex(actions, action.tool);
@@ -114,6 +117,25 @@ export const collectToolAction = (ws, event) => {
     detail: action.detail || actions[live].detail,
     mark: actions[live].mark,
   };
+};
+
+/**
+ * A finished act's result, filled into the newest row for `tool` that has no detail yet, so a
+ * resumed chat opens it as the live one did (sendResultDetail in portal-tools/tool-events.js). A
+ * row with its own detail keeps it. A no-op outside an open turn.
+ * @param {Object} ws
+ * @param {string} tool
+ * @param {string} detail
+ */
+// impure — WeakMap write
+export const fillToolDetail = (ws, tool, detail) => {
+  const actions = records.get(ws);
+  if (!actions || !tool || !detail) return;
+  for (let i = actions.length - 1; i >= 0; i -= 1) {
+    if (actions[i].tool !== tool) continue;
+    if (!actions[i].detail) actions[i] = { ...actions[i], detail: detail.toWellFormed() };
+    return;
+  }
 };
 
 /**

@@ -395,7 +395,8 @@ describe('assignment → completion', () => {
         WITNESS_CONTEXT_TOOLS,
         null,
       );
-      expect(results[0].status).toBe('error');
+      // refused by the one argument check before the handler (tool-args-check.js): a view outside its choices
+      expect(results[0].status).toBe('invalid');
 
       const after = await workspace.readTaskLedger(laneId);
       expect(after.tasks.find((t) => t.id === focusedId).work.artifacts).toHaveLength(countBefore);

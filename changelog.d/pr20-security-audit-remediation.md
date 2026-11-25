@@ -1,0 +1,11 @@
+Security
+- Closed the PR #20 security-audit findings across card rendering, sales email, liquidity swaps, local authentication, guest filesystem scope and macOS path handling.
+- Card designs are parsed as strict SVG and rendered without scripts or network access.
+- Sales-cover emails remain operator-reviewed outside the buyer lane, and evidence lookups no longer run before policy checks.
+- Swaps reject look-alike token symbols, display resolved contracts and expected output, and enforce independent market minimums plus two-node aggregator simulations.
+- Managed media tools are re-hashed before every execution, and more program, workflow, browser and model stores are write-protected.
+- Local CLI sign-ins verify the backend before signing or using cached tokens; guest houses cannot grant themselves filesystem scope or summon beings.
+- Intent validation no longer performs network or spending side effects before policy, visitor chats cannot recall private memories, and outbox sends require the exact reviewed draft digest.
+- Local model ownership checks cover both loopback families, paid lead-data and machine-history controls are install-owner only, and model installs and renders verify their pinned bytes.
+- Approval cards now bind browser clicks to the exact reviewed element, instant posts re-check sealed media, and money-moving actions cannot receive permanent approval grants.
+- Names, payment details, nested control tokens, update freshness, ZIP expansion, undo directories and decoy removal are hardened against spoofing, replacement and resource-exhaustion attacks.

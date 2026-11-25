@@ -3,10 +3,9 @@
  *
  * The capacity scan measures the SUBSTRATE (rig + model server), so these
  * routes are deliberately non-:id and mount on a fresh router: there is no
- * workspace to own, and requireOwnership must not apply. Any authenticated
- * wallet may read — a rig fact has no owner, and inventing one would be a lie
- * the honesty doctrine forbids. Acting on the rig (a scan's load, an unload,
- * the standby switch) is the install owner's, at its own desk.
+ * workspace to own, and requireOwnership must not apply. Ordinary rig facts
+ * stay readable to an authenticated house. Machine connection history, process
+ * holders and every machine change are the install owner's, at its own desk.
  *
  * GET  /capacity — { runs, latest, current, measurable } (scan history, newest
  *                  first; `current` = the model LOADED RIGHT NOW + its loaded
@@ -25,12 +24,17 @@ import { writeCapacity, listCapacity, readUsableCapacity } from '../services/cap
 import { getSubstrateTelemetry } from '../services/substrate-telemetry.js';
 import { issuesForHouse, issuesForOwner } from '../services/house-issue-feed.js';
 import { createSharedSnapshot } from '../services/shared-snapshot.js';
+import { readNetwork } from '../services/network/network-watch.js';
+import { readNetworkHistory } from '../services/network/network-log.js';
 import { stopSupervised } from '../services/llama-server-supervisor.js';
 import { standbySettings } from '../services/standby-settings.js';
 import { lastServingFit, saveServingShare, servingFitStatus } from '../services/serving-fit.js';
 import { refitServing } from '../services/serving-refit.js';
 import { activeLaunchConfig } from '../services/supervisor-launch-config.js';
 import { readMachineThermals } from '../services/machine-thermals.js';
+import { readMachineHolders } from '../services/machine-holders.js';
+import { readEngineLens } from '../services/image-forge/engine-lens.js';
+import { resolveComfyConfig, supervisedEnginePid } from '../services/image-forge/comfyui-supervisor.js';
 import { createLogger } from '../services/logger.js';
 
 const router = Router();
@@ -70,9 +74,9 @@ const currentSubstrate = async () => {
 
 router.get('/capacity', async (req, res) => {
   try {
-    const [runs, latest, current] = await Promise.all([
-      listCapacity(), readUsableCapacity(), currentSubstrate(),
-    ]);
+    const [runs, current] = await Promise.all([listCapacity(), currentSubstrate()]);
+    // the scan that speaks for the model served now, carried from another model when it has none
+    const latest = await readUsableCapacity(current?.model ?? null);
     // `scan` is the live truth of a run in flight — the panel reads it on
     // open and on every poll, so progress survives a refresh and a wedged scan
     // is visibly wedged (its elapsed climbs while levelsDone does not).
@@ -292,6 +296,55 @@ router.get('/machine', async (req, res) => {
   } catch (error) {
     log.error('Machine read', { error: error.message });
     res.status(500).json({ error: 'Failed to read the machine' });
+  }
+});
+
+// WHO HOLDS WHAT — the graphics card, system memory and every CPU core, each holder named by what it is
+// (machine-holders.js). The same map a being reads with machine_map. One read shared by every open window:
+// it samples the cores for a third of a second and walks the process table.
+const readHolders = createSharedSnapshot(() => readMachineHolders({ enginePid: supervisedEnginePid() }), 3000);
+router.get('/holders', requireInstallOwner, async (req, res) => {
+  try {
+    res.json(await readHolders());
+  } catch (error) {
+    log.error('Holders read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read what holds the machine' });
+  }
+});
+
+// THE IMAGE ENGINE, whole — up or down, what its models hold on the card, which it last loaded, its queue and
+// its idle clock (image-forge/engine-lens.js). The same lens a being reads with forge_status.
+router.get('/image-engine', async (req, res) => {
+  try {
+    res.json(await readEngineLens(resolveComfyConfig(process.env)));
+  } catch (error) {
+    log.error('Image engine read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the image engine' });
+  }
+});
+
+// THE NETWORK — every connection this machine holds now: what goes out, what came in, what listens, by which program
+// and to which address, and which of the platform's own self-running connections are on (network/network-watch.js).
+// One read shared by every open window: it asks the kernel's socket table.
+const readNetworkShared = createSharedSnapshot(readNetwork, 2500);
+router.get('/network', requireInstallOwner, async (req, res) => {
+  try {
+    res.json(await readNetworkShared());
+  } catch (error) {
+    log.error('Network read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the network' });
+  }
+});
+
+// THE NETWORK'S HISTORY AND AUDIT — what this machine was connected to over the days kept, and what in it is worth the
+// operator's eye: what came in from outside, what began listening, what hid its program (network/network-log.js).
+const readHistoryShared = createSharedSnapshot(readNetworkHistory, 5000);
+router.get('/network/history', requireInstallOwner, async (req, res) => {
+  try {
+    res.json(await readHistoryShared());
+  } catch (error) {
+    log.error('Network history read', { error: error.message });
+    res.status(500).json({ error: 'Failed to read the network history' });
   }
 });
 

@@ -1,5 +1,5 @@
 // A PAIRED PHONE NEVER REWRITES A WALLET'S CONSENT OR A HOUSE'S POSTING CREDENTIALS (re-audit
-// 2026-10-29, NEW-M1). The local-only tier already held the substrate and the licence; the wallet
+// 2026-10-29, NEW-M1), NOR ITS MAILBOX OR SERVICE KEYS (CRM security read, 2026-11-23). The local-only tier already held the substrate and the licence; the wallet
 // allowlist, the autonomous-spend threshold and the social credential/app/account/connect writes
 // were reachable from the tailnet. A real Express app guarded exactly as server.js guards it — the
 // access middleware over a real remote store on a tmp file, the real local-only tier
@@ -22,6 +22,14 @@ import neumaWalletRouter from '../../backend/routes/neuma-wallet-routes.js';
 import socialConnectRouter from '../../backend/routes/social-connect-routes.js';
 import socialAccountRouter from '../../backend/routes/social-account-routes.js';
 import socialChannelRouter from '../../backend/routes/social-channel-routes.js';
+import lpWalletRouter from '../../backend/routes/lp-wallet-routes.js';
+import recoveryRouter from '../../backend/routes/recovery-routes.js';
+import neumaAuthRouter from '../../backend/routes/neuma-auth-routes.js';
+import treasuryRouter from '../../backend/routes/treasury-routes.js';
+import raiseRouter from '../../backend/routes/raise-routes.js';
+import revenueRouter from '../../backend/routes/revenue-routes.js';
+import emailRouter from '../../backend/routes/email-routes.js';
+import routingRouter from '../../backend/routes/routing-routes.js';
 
 const ENROLLED = 'phone.test.ts.net';
 const WALLET = '0x67f39a66108068b66c1c409f71c81f5697e990cf';
@@ -39,6 +47,31 @@ const WRITES = Object.freeze([
   ['DELETE', '/api/v1/social-channels/accounts/x-1', {}],
   ['PUT', '/api/v1/social-channels/apps/youtube', { clientId: 'attacker-app' }],
   ['POST', '/api/v1/social-channels/youtube/connect', {}],
+  ['POST', '/api/v1/neuma/probe-being/lp/open', {}],
+  ['PUT', '/api/v1/neuma/probe-being/lp/budget', {}],
+  ['PUT', '/api/v1/neuma/probe-being/lp/controls', {}],
+  ['PUT', '/api/v1/neuma/probe-being/lp/vault', {}],
+  ['PUT', '/api/v1/neuma/probe-being/lp/pace', {}],
+  ['POST', '/api/v1/neuma/probe-being/lp/pending/waiting/approve', {}],
+  ['POST', '/api/v1/neuma/probe-being/lp/pending/waiting/decline', {}],
+  ['POST', '/api/v1/neuma/probe-being/lp/rewards/reward/approve', {}],
+  ['POST', '/api/v1/neuma/probe-being/lp/rewards/reward/decline', {}],
+  ['POST', '/api/v1/neuma/probe-being/lp/rewards/reward/delivered', {}],
+  ['POST', '/api/v1/neuma/probe-being/recovery/verify-codes', {}],
+  ['POST', '/api/v1/neuma/probe-being/recovery/rotate', {}],
+  ['POST', '/api/v1/neuma-auth/reset-password', {}],
+  ['PUT', '/api/v1/treasury/invoice-wallet', {}],
+  ['POST', '/api/v1/raise/company/sign', {}],
+  ['PUT', '/api/v1/revenue/delivery-destination', {}],
+  // 2026-11-23: the house mailbox, who holds it, and the keys of the services it pays or is paid through
+  ['PUT', '/api/v1/email/credentials', { address: 'attacker@evil.example' }],
+  ['DELETE', '/api/v1/email/credentials', {}],
+  ['PUT', '/api/v1/email/binding', { neumaId: 'probe-being' }],
+  ['DELETE', '/api/v1/email/binding', {}],
+  ['PUT', '/api/v1/routing/services/stripe/key', { apiKey: 'rk_test_attacker' }],
+  ['DELETE', '/api/v1/routing/services/stripe/key', {}],
+  ['PUT', '/api/v1/routing/providers/openai/key', { apiKey: 'sk-attacker' }],
+  ['DELETE', '/api/v1/routing/providers/openai/key', {}],
 ]);
 
 let dir; let server; let port; let cookie; let phoneToken;
@@ -73,6 +106,14 @@ beforeAll(async () => {
   app.use('/api/v1/social-channels', socialAccountRouter);
   app.use('/api/v1/social-channels', socialChannelRouter);
   app.use('/api/v1/neuma', neumaWalletRouter);
+  app.use('/api/v1/neuma', lpWalletRouter);
+  app.use('/api/v1/neuma', recoveryRouter);
+  app.use('/api/v1/neuma-auth', neumaAuthRouter);
+  app.use('/api/v1/treasury', treasuryRouter);
+  app.use('/api/v1/raise', raiseRouter);
+  app.use('/api/v1/revenue', revenueRouter);
+  app.use('/api/v1/email', emailRouter);
+  app.use('/api/v1/routing', routingRouter);
   server = http.createServer(app);
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   port = server.address().port;

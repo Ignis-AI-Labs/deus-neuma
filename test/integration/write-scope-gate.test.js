@@ -1,18 +1,20 @@
 /**
  * Write-scope gate (Unit 2) — the witness's yes on a neuma WRITE that reaches
- * into the active project's folder, proven end to end with NO mock on the
- * claimed path (AGENTS.md RULE 0): REAL WebSocket pair, REAL
+ * outside its own lane, proven end to end with NO mock on the claimed path
+ * (AGENTS.md RULE 0): REAL WebSocket pair, REAL
  * @modelcontextprotocol/server-filesystem, REAL NeumaWorkspace + realm on disk,
- * REAL policy cascade + project store.
+ * REAL policy cascade.
  *
- * This is the gnosis for […] A write into an active-project folder
- * prompts with the folder as the stakes; a yes lands at every layer (connection
- * sandbox, persisted policy, the real server process, reconnected with the
- * root) and the bytes appear on disk. A write OUTSIDE the project's folders
- * ASKS too (Design note, 2026-07-23, universal approval: […]) — the WITNESS is the blast-radius bound,
- * and only her yes ever widens a wall.
+ * This is the gnosis for […] A write into a folder prompts with
+ * the folder as the stakes; a yes lands at every layer (connection sandbox,
+ * persisted policy, the real server process, reconnected with the root) and
+ * the bytes appear on disk. The grant is the target's OWN folder — least
+ * privilege, never its parent (the project-folder bound went with Projects,
+ * 2026-11-10). Every such write ASKS (Design note, 2026-07-23, universal approval: […]) — the WITNESS is the
+ * blast-radius bound, and only her yes ever widens a wall.
  */
 import { describe, test, expect, beforeAll, afterAll, vi } from 'vitest';
+import { setTimeout } from 'node:timers';
 import fs from 'fs/promises';
 import path from 'path';
 import { createServer } from 'http';
@@ -23,22 +25,22 @@ import { connectFilesystemServer } from '../../backend/services/mcp-filesystem.j
 import { __test } from '../../backend/services/portal-test-surface.js';
 import { resolveToolApproval } from '../../backend/services/tool-approval.js';
 import { setRealmRoot } from '../../backend/services/user-realm.js';
-import { createProject } from '../../backend/services/user-projects.js';
 import workspace, { setWorkspacesRoot, getWorkspacesRoot } from '../../core/workspace/neuma-workspace.js';
+import { recordFirstLocalOwner } from '../../backend/services/install-owner.js';
+import { refuseUnownedInstall } from '../../backend/routes/birth-lane-owner.js';
 
 const { processToolCalls } = __test;
 const NEUMA_ID = 'writegate';
 const WALLET = '0x1111111111111111111111111111111111111111';
 
-describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
-  let house, origRoot, httpServer, wss, serverWs, client, port, project, projectId;
+describe('write-scope gate (real WS + real MCP + a real folder, gnosis)', () => {
+  let house, origRoot, priorDataRoot, httpServer, wss, serverWs, client, port, project;
   let clientLog, decide;
 
   const freshConnection = () => ({
     ws: serverWs,
     companion: { name: 'WriteGate', neumaId: NEUMA_ID },
     walletAddress: WALLET,
-    space: { id: projectId, kind: 'project', label: 'P' },
     _writeOps: 0,
   });
 
@@ -64,12 +66,14 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     house = await createTempDir('write-gate-house');
     origRoot = getWorkspacesRoot();
     setWorkspacesRoot(house);
+    priorDataRoot = process.env.NEUMA_DATA_ROOT;
+    process.env.NEUMA_DATA_ROOT = path.join(house, 'data');
+    await recordFirstLocalOwner(WALLET);
     await workspace.create(NEUMA_ID);
 
     setRealmRoot(await createTempDir('write-gate-realm'));
     project = await createTempDir('write-gate-project');
     await fs.mkdir(path.join(project, '.git'), { recursive: true }); // a repo, to prove denylist holds
-    projectId = (await createProject(WALLET, { name: 'P', folder: project })).id;
 
     await connectFilesystemServer(); // real MCP server, real disk
 
@@ -95,6 +99,7 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     wss?.close();
     httpServer?.close();
     setWorkspacesRoot(origRoot);
+    if (priorDataRoot === undefined) delete process.env.NEUMA_DATA_ROOT; else process.env.NEUMA_DATA_ROOT = priorDataRoot;
     await mcpService.disconnect('filesystem');
     await fs.rm(house, { recursive: true, force: true });
   });
@@ -102,7 +107,7 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
   const writeCall = (file, content) =>
     `[TOOL: fs/write {"path": "${path.join(project, file)}", "content": "${content}"}]`;
 
-  test('WRITE ALLOW — a write into the active project folder prompts, then lands on real disk', async () => {
+  test('WRITE ALLOW — a write into a folder prompts, then lands on real disk', async () => {
     const connection = freshConnection();
     wireApprovals(connection);
     clientLog.length = 0;
@@ -119,6 +124,21 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     expect(results[0].status).toBe('ok');
     expect(await fs.readFile(path.join(project, 'main.js'), 'utf8')).toContain('export const ok = 1;');
     expect(connection._grantedWriteRoots).toContain(project);
+  }, 45000);
+
+  test('LEAST PRIVILEGE — a yes grants the target\'s own folder, never its parent', async () => {
+    const connection = freshConnection();
+    wireApprovals(connection);
+    clientLog.length = 0;
+    decide = () => 'allow';
+    const sub = path.join(project, 'src', 'deep');
+    await fs.mkdir(sub, { recursive: true });
+
+    const results = await processToolCalls(serverWs, writeCall(path.join('src', 'deep', 'leaf.js'), 'x'), connection);
+
+    expect(results[0].status).toBe('ok');
+    expect(connection._grantedWriteRoots).toContain(sub);
+    expect(connection._grantedWriteRoots).not.toContain(project);
   }, 45000);
 
   test('WRITE ALWAYS — the grant persists (pathGrants.write) and the next session writes with no prompt', async () => {
@@ -160,7 +180,7 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     expect(landed).toBe(false);
   }, 45000);
 
-  test('a write OUTSIDE the project folders ASKS — the witness, not the envelope, is the bound', async () => {
+  test('a write into ANOTHER folder ASKS too — the witness, not the envelope, is the bound', async () => {
     // The universal-approval law (ruling, 2026-07-23): the being may request
     // access on every level; the witness's card is the one grant surface.
     // Her NO is the wall — nothing lands, no grant materializes.
@@ -200,7 +220,72 @@ describe('write-scope gate (real WS + real MCP + real project, gnosis)', () => {
     expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(true);
   }, 45000);
 
-  test('.git inside the granted project folder stays hard-denied — never a prompt', async () => {
+  test('PR20 M-16: AUTO grants reads only inside the lane or open folder', async () => {
+    const connection = { ...freshConnection(), toolMode: 'auto' };
+    wireApprovals(connection);
+    clientLog.length = 0;
+    decide = () => 'allow';
+    await fs.writeFile(path.join(project, 'private.txt'), 'operator only');
+    const outside = await processToolCalls(serverWs, `[TOOL: fs/read {"path": "${path.join(project, 'private.txt')}"}]`, connection);
+    expect(outside[0].status).toBe('ok');
+    expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(true);
+
+    const focused = { ...freshConnection(), toolMode: 'auto', toolWorkspace: project };
+    clientLog.length = 0;
+    const inside = await processToolCalls(serverWs, `[TOOL: fs/read {"path": "${path.join(project, 'private.txt')}"}]`, focused);
+    expect(inside[0].status).toBe('ok');
+    expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
+  }, 45000);
+
+  test('PR20 H-08: a guest cannot hydrate grants, use focus, read, write, or approve its own scope', async () => {
+    await workspace.writeToolPolicy(NEUMA_ID, { pathGrants: { read: [project], write: [project] } });
+    await fs.writeFile(path.join(project, 'private.txt'), 'operator only');
+    const connection = { ...freshConnection(), walletAddress: '0x2222222222222222222222222222222222222222', toolMode: 'auto', toolWorkspace: project };
+    wireApprovals(connection);
+    clientLog.length = 0;
+    decide = () => 'allow';
+
+    const read = await processToolCalls(serverWs, `[TOOL: fs/read {"path": "${path.join(project, 'private.txt')}"}]`, connection);
+    expect(read[0].status).toBe('denied');
+    expect(read[0].error).toContain('install owner');
+    const write = await processToolCalls(serverWs, writeCall('guest-planted.js', 'x'), connection);
+    expect(write[0].status).toBe('denied');
+    expect(connection._scopeGrantsAllowed).toBe(false);
+    expect(connection._grantedReadRoots).toEqual([]);
+    expect(connection._grantedWriteRoots).toEqual([]);
+    expect(clientLog.some((m) => m.type === 'tool:approval_request')).toBe(false);
+    expect(await fs.readFile(path.join(project, 'private.txt'), 'utf8')).toBe('operator only');
+    await expect(fs.stat(path.join(project, 'guest-planted.js'))).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await refuseUnownedInstall(connection)).toBe(true);
+    expect((await untilClient((m) => m.type === 'birth:blocked')).reason).toContain('install owner');
+    expect(await refuseUnownedInstall(freshConnection())).toBe(false);
+    await workspace.writeToolPolicy(NEUMA_ID, {});
+  }, 45000);
+
+  test('PR20 H-08: a guest cannot grant and use sensitive access in one batch', async () => {
+    const sensitive = path.join(project, '.env');
+    await fs.writeFile(sensitive, 'fixture=not-a-secret\n');
+    const connection = { ...freshConnection(), walletAddress: '0x2222222222222222222222222222222222222222' };
+    wireApprovals(connection);
+    clientLog.length = 0;
+    decide = () => 'allow';
+    const calls = [
+      `[TOOL: filesystem/request_file_access ${JSON.stringify({ path: sensitive, tier: 'edit', reason: 'guest scope attempt' })}]`,
+      `[TOOL: fs/read ${JSON.stringify({ path: sensitive })}]`,
+      writeCall('.env', 'planted=true'),
+    ].join('\n');
+
+    const results = await processToolCalls(serverWs, calls, connection);
+
+    expect(results).toHaveLength(3);
+    expect(results.every((result) => result.status !== 'ok')).toBe(true);
+    expect(results[0].error).toContain('install owner');
+    expect(clientLog.some((message) => message.type === 'tool:approval_request')).toBe(false);
+    expect(connection._sensitiveGrants || {}).toEqual({});
+    expect(await fs.readFile(sensitive, 'utf8')).toBe('fixture=not-a-secret\n');
+  }, 45000);
+
+  test('.git inside a granted folder stays hard-denied — never a prompt', async () => {
     const connection = freshConnection();
     connection._grantedWriteRoots = [project]; // already granted the folder
     clientLog.length = 0;

@@ -160,7 +160,7 @@ describe('portal voice frames + stream-session bridge (real portal, real sidecar
     // The sidecar this file launched must be gone even after a failure: the
     // manager's SIGTERM, then the sidecar's own /shutdown until the port is silent.
     stop('whisper');
-    await shutdownSidecar('127.0.0.1', WHISPER_TEST_PORT, 15_000);
+    await shutdownSidecar('127.0.0.1', WHISPER_TEST_PORT, 15_000, 'whisper');
     if (fixtureDir) await fs.rm(fixtureDir, { recursive: true, force: true });
     delete process.env.WHISPER_FORCE_CPU;
     delete process.env.WHISPER_HOST;
@@ -286,7 +286,7 @@ describe('portal voice frames + stream-session bridge (real portal, real sidecar
     // Leave no DYING sidecar behind: one still answering /health while it exits
     // gets adopted by the next sitting, acks its mic_open, then drops the link —
     // and that test streams into a session that is already gone.
-    expect(await shutdownSidecar('127.0.0.1', WHISPER_TEST_PORT, 15_000)).toBe(true);
+    expect(await shutdownSidecar('127.0.0.1', WHISPER_TEST_PORT, 15_000, 'whisper')).toBe(true);
   }, 300_000);
 
   test('S-20: STT finalize latency is logged — timings and counts only, never content', async () => {

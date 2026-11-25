@@ -11,7 +11,7 @@ import path from 'path';
 import { createTempDir } from '../helpers/temp-fs.js';
 import { createServer } from 'http';
 import { pressDocument, locateChromium } from '../../backend/services/doc-press/index.js';
-import { pressMayLoad } from '../../backend/services/doc-press/chromium-press.js';
+import { pressMayLoad, pressChromiumArgs } from '../../backend/services/doc-press/chromium-press.js';
 import { pdfText } from '../../backend/services/pdf-text.js';
 
 const TINY_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#ff0000"/></svg>';
@@ -118,6 +118,14 @@ describe.skipIf(!chromiumAvailable)('pressDocument (real Chromium, real PDF)', (
       loopback.close();
     }
   }, 60_000);
+});
+
+describe('the Chromium debugger transport', () => {
+  test('uses inherited pipes and never opens a debugging port', () => {
+    const args = pressChromiumArgs('/usr/bin/chromium', '/tmp/press-profile');
+    expect(args).toContain('--remote-debugging-pipe');
+    expect(args.some((arg) => arg.startsWith('--remote-debugging-port'))).toBe(false);
+  });
 });
 
 describe('pressMayLoad — the press page loads its own document and inline data only', () => {

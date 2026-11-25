@@ -92,7 +92,7 @@ const run = (cwd, args, { signal, timeoutMs = 10000, authorization } = {}) => ne
 
 // Config is data for preflight only. Unknown configuration fails closed instead
 // of maintaining an inevitably incomplete list of executable Git mechanisms.
-const SAFE_KEY = /^(?:core\.(?:repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks|autocrlf|eol|safecrlf|hookspath|fsmonitor)|user\.(?:name|email)|branch\.[^.]+(?:\.[^.]+)*\.(?:remote|merge|description)|remote\.[^.]+\.(?:url|fetch)|extensions\.objectformat)$/i;
+const SAFE_KEY = /^(?:core\.(?:repositoryformatversion|filemode|bare|logallrefupdates|ignorecase|precomposeunicode|symlinks|autocrlf|eol|safecrlf|hookspath)|user\.(?:name|email)|branch\.[^.]+(?:\.[^.]+)*\.(?:remote|merge|description)|remote\.[^.]+\.(?:url|fetch)|extensions\.objectformat)$/i;
 // Inert preferences used by editors/Git LFS metadata, not executable filters.
 // These keys are never consulted for authentication or command construction.
 const METADATA_KEY = /^(?:branch\..+\.(?:vscode-merge-base|vscode-merge-base-server|rebase)|lfs\.(?:repositoryformatversion|.+\.access)|user\.signingkey|commit\.gpgsign|tag\.gpgsign|pull\.(?:rebase|ff)|remote\.[^.]+\.pushurl)$/i;

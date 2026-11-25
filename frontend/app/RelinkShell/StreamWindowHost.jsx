@@ -41,7 +41,6 @@ import { CompositionContext } from './composition-context.js';
 import { useContextComposition } from './use-context-composition.js';
 import { useDeskTabs } from './use-desk-tabs.js';
 import { TabsContext, useTabs } from './tabs-context.js';
-import { useProjects } from './projects/project-context.js';
 import { sittingGround } from './desk-focus.js';
 import { decodeStreamTransfer } from './stream-tab-transfer.js';
 import { useWindows } from '../windowing/use-windows.js';
@@ -59,7 +58,6 @@ const OwnStream = ({ windowId, payload, children }) => {
   // One portal, minted once and held for this window's life. Created lazily in
   // state rather than in an effect so the stream hook below never sees null.
   const [wsService] = useState(() => new WebSocketService());
-  const projects = useProjects();
   // This window's OWN strip, lifted ABOVE the stream (2026-09-01): the stream
   // must read the strip anchor's ground, so the tabs state has to exist first.
   // The budget is borrowed from the desk unchanged — the ceiling is a rig fact.
@@ -71,8 +69,6 @@ const OwnStream = ({ windowId, payload, children }) => {
     focus: tabs.anchorTabId
       ? sittingGround(tabs.anchorGround)
       : sittingGround(payload?.focus),
-    projects: projects?.projects ?? null,
-    onProjectChatCreated: projects?.refresh ?? null,
     // Never — the desk-level stream speaks for the machine.
     house: false,
   });

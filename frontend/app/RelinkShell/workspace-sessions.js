@@ -58,9 +58,10 @@ const rebaseMarks = (entries, raw) =>
     : t));
 
 // A user-role row the PLATFORM wrote — a watch's report, a house wake's
-// opening note, another chat's link, the citation law's hold — keeps its origin, so a resumed sitting
+// opening note, another chat's link, the citation law's hold, CONTINUE on a
+// cut reply, a queue change said but not made — keeps its origin, so a resumed sitting
 // draws it as that line and never as the operator's bubble (stream-reducer-messages.js).
-const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link', 'hold']);
+const PLATFORM_ORIGINS = Object.freeze(['watch', 'wake', 'link', 'hold', 'resume', 'unacted']);
 const platformOrigin = (m) => (PLATFORM_ORIGINS.includes(m?.origin) ? { origin: m.origin } : {});
 
 // A compaction summary row as the display carries it: the counts the marker
@@ -126,6 +127,8 @@ export const toDisplayMessages = (messages, limit = 50, where = {}) =>
           // The declared affect persists per take — the revelation outlives
           // the reload (Campaign 6).
           ...(typeof t.affect === 'string' && t.affect ? { affect: t.affect } : {}),
+          // A take the app's close cut short (turn-keep.js) — the desk offers CONTINUE on it.
+          ...(t.cutOff ? { cutOff: t.cutOff } : {}),
         }));
         const viewed = takes[entry.viewed - 1];
         return {
@@ -186,6 +189,22 @@ export const listSessions = async (neumaId) => {
   }
 };
 
+/**
+ * Which chats are sub-chats, and of which chat: { child: { parent, kind, title } } (backend chat-threads.js).
+ * A failed read is no threads: the list still shows every chat, only flat.
+ */
+// impure
+export const listChatThreads = async (neumaId) => {
+  try {
+    const headers = authHeaders();
+    if (!neumaId || !headers) return {};
+    const body = await apiCall('GET', `/api/v1/workspace/${neumaId}/session-threads`, { headers });
+    return body?.threads && typeof body.threads === 'object' ? body.threads : {};
+  } catch {
+    return {};
+  }
+};
+
 // STRICT variants (Design note, 2026-08-31 — […]): the relink path
 // must know a FAILED load from an EMPTY one — a 500 or a dropped connection is
 // damage, not a chatless being. The browser views keep the resilient []
@@ -237,31 +256,3 @@ export const loadSessionMessages = async (neumaId, sessionId, limit = 50) => {
   }
 };
 
-/**
- * Ask the conduit to name chats from what was said — one chat (sessionIds)
- * or the whole one-on-one shelf; `force` retitles even already-named chats.
- * Returns the per-chat results plus the updated label map (null labels when
- * the call itself failed, so the caller keeps its current names).
- * @param {string} neumaId
- * @param {Object} [opts]
- * @param {string[]} [opts.sessionIds] - explicit chats to name
- * @param {boolean} [opts.force=false] - retitle even already-named chats
- * @returns {Promise<{results: Array<{sessionId: string, status: string, label?: string}>, labels: Object|null}>}
- */
-// impure
-export const autotitleChats = async (neumaId, { sessionIds, force = false } = {}) => {
-  try {
-    const headers = authHeaders();
-    if (!neumaId || !headers) return { results: [], labels: null };
-    const body = await apiCall('POST', `/api/v1/workspace/${neumaId}/sessions/autotitle`, {
-      headers,
-      body: { ...(sessionIds ? { sessionIds } : {}), force },
-    });
-    return {
-      results: Array.isArray(body?.results) ? body.results : [],
-      labels: body?.labels && typeof body.labels === 'object' ? body.labels : null,
-    };
-  } catch {
-    return { results: [], labels: null };
-  }
-};

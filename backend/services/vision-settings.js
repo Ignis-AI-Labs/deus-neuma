@@ -1,6 +1,9 @@
 // Vision — the operator's master switch for image input.
 // A fresh install defaults ON. A persisted OFF stays off; NEUMA_VISION=0 is
 // the launch-time hard kill. The setting is machine-wide and install-owner gated.
+// ON BY DEFAULT IS FOUNDER'S RULING (2026-11-03, reaffirmed 2026-11-17 after an audit batch made it fail
+// closed and image sharing died on his desk: […]).
+// No security change flips it: a finding is answered with the switch and the kill (AGENTS.md, Vision).
 
 import fs from 'fs/promises';
 import { dirname, join } from 'path';

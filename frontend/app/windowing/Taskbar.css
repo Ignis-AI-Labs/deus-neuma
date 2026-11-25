@@ -117,6 +117,11 @@ html[data-taskbar-edge='top'] .relink-main { padding-top: 56px; }
   color: var(--color-text-tertiary);
   white-space: nowrap;
 }
+/* The notification marks, right of the clock (notice-slot.js; the tray portals its bell row in). */
+.taskbar-notices { display: inline-flex; align-items: center; padding-right: var(--space-2); }
+.taskbar-notices:empty { display: none; }
+.taskbar.edge-left .taskbar-notices { flex-direction: column; padding: 0 0 var(--space-2); }
+.taskbar.edge-left .taskbar-notices .ntray-bell-row { flex-direction: column; height: auto; }
 .taskbar.edge-left .taskbar-clock { padding: var(--space-2) 0; font-size: 9px; letter-spacing: 0.04em; }
 
 /* The right-click menu — fixed at the pointer (Dock.jsx menuPlace). */

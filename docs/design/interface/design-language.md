@@ -261,6 +261,89 @@ Together they ask for less text carrying the same data — all of it.
    person. A neuma's own voice stays its own; this binds what is written for
    the operator to read, never how a being speaks.
 
+## FOLD — a section is a line first (Design note, 2026-11-16
+
+> […]
+
+This is the rule for EVERY section of every window that holds records (a hub tab, a board, a ledger). It is how
+LESS TEXT, NOT LESS DATA is carried out on a screen with many sections. One component draws it
+(`frontend/app/RelinkShell/fold/Fold.jsx`); a section that is not built from it does not ship.
+
+1. **A section is a line first.** Its name, its state, its counts. A screen of ten sections is ten lines, read
+   in one look.
+2. **The line carries the numbers.** Every count and every state stands on the line itself (SHINKEI: each is the
+   length of the list it opens). Folding a section hides sentences and controls, never a number.
+3. **What waits on you stands open.** A section opens by itself only when it owes the operator a decision, and
+   it is marked. Everything else arrives folded. The operator's own press to open or fold is kept for that
+   section, and nothing folds under their hands.
+4. **Read first, edit on a press.** A stored record shows as text under its labels. Boxes appear when the
+   operator presses EDIT, or when nothing is written yet.
+5. **One thing, one place, nested where it belongs.** A record stands on one tab. What belongs to another thing
+   sits folded under it (an audience under its campaign, its leads under the audience), never as a second list.
+   Two rows of tiles that count the same records are one row.
+6. **At most three levels.** Section, item, detail. A fourth level is a sign the tab holds two subjects.
+7. **A tab holds only its own subject.** If a section's name would not make sense under the tab's name, it is on
+   the wrong tab.
+
+Checklist, per surface before it ships: can every number on this tab be read with every section folded; does
+anything open that does not wait on the operator; is any record or count shown twice; is any stored value
+sitting in a box nobody asked to edit.
+
+## SURFACES — parts are told apart by tone (Design note, 2026-11-17
+
+Founder, of the POSITIONS window: […]
+
+Hairlines alone do not part a screen. A window has FOUR steps of fill and ONE heavier line, each a token that
+every dress derives (`tokens.css`, `look-derive.js`), so a custom look keeps them by construction:
+
+| Token | What wears it |
+| --- | --- |
+| `--surface-sunk` | a rail or a well: a step below the window |
+| `--surface-raised` | a card: one section, one stage, one tile's parent |
+| `--surface-band` | a head: a table's, an open section's own line, the chosen row, a tile on a card |
+| `--surface-stripe` | every other row of a table |
+| `--line-strong` | between sections, under a table's head, beside a rail |
+
+1. A section that stands beside its siblings is a CARD (`--surface-raised`, a hairline edge, a gap before the next); its name sits on a ruled line.
+2. A table's head is a BAND, its rows alternate, the row under the pointer lifts (`sheet/Sheet.css`).
+3. A rail is SUNK and parts from the body with the heavier line; the chosen row is a band.
+4. A fill never carries meaning by itself: state is still said in words and in the signal and alert colours.
+5. Never a fifth step invented in one stylesheet. If a screen needs one, it is added here first.
+
+The fills are the ink at low strength, so they lighten a dark dress and darken a light one.
+
+## SHEET — a list of records is a sheet (Design note, 2026-11-16
+
+> […]
+
+FOLD says how a window's SECTIONS stand. SHEET says how the RECORDS inside a section stand. One component draws
+it (`frontend/app/RelinkShell/sheet/Sheet.jsx`); a list of like records that is not built from it does not ship.
+
+1. **One record, one line.** People, companies, deals, deadlines, entries: each is a row. Never a card per
+   record, never a sentence per record.
+2. **One fact, one column, the same columns for every row.** The eye runs down a column. A cell holds a value
+   (a name, an address, a date, a state in two or three words), never a sentence. An empty cell is a dash.
+3. **The first column names the row.** It is the row's header, and where a row has more to say it is the press
+   that opens it.
+4. **What does not fit a cell opens under the row.** A note, the reasons behind a score, a history. Closed until
+   pressed; one open at a time.
+5. **Narrowing lives above the sheet, in one line.** A search, and at most a few small controls with their
+   counts. Rows of filter chips are for the two or three views that change WHAT the sheet lists, nothing more.
+6. **Change in place.** A value the operator may change (what a lead is filed as) is changed in its own cell.
+7. **Colour means state.** A cell is plain unless it says something is confirmed or something is wrong.
+8. **A hundred rows a page**, and the sheet says where it stands (SHOWING 1–100 OF 3,385).
+9. **Nothing under the desk's 13px floor**, the column heads included. A head is quieter by colour, never by size.
+
+Built so far (2026-11-16): the leads sheet, an audience's companies, do-not-contact, open and won deals, the
+books' deadlines and unbooked receipts, and each company's facts on the facts sheet (the one sheet with a
+wrapping column: a fact's own words are read whole), and the campaigns a campaign works with. The mailbox tab
+holds settings, not a list. In the treasury: the flight check, the wallets, money out and the budgets. Still to
+convert: the treasury's invoices and cost entries (each row carries a form), the marketing replies board, and the
+lists inside the staff, legal and security bodies.
+
+Checklist, per list before it ships: is any row taller than one line; does any cell hold a sentence; do two rows
+show different facts in the same column; is a filter taking a row of its own that a small control could carry.
+
 ## SHOW, DON'T TELL — the next step, still SHINKEI
 
 Design note, 2026-10-24: *[…]* *[…]* *[…]*
@@ -287,6 +370,33 @@ meaning out of words wherever a mark can carry it. Every mark stays true.
    without meaning.
 8. **Patterns repeat.** The same mark means the same thing on every surface,
    so the mind learns it once (CHOKKAN 4).
+
+## THE GOLDILOCKS ZONE — the picture carries it, the words complete it
+
+Design note, 2026-11-05, on release notes set as twenty paragraphs: *[…]* *[…]* *[…]*
+
+LESS TEXT keeps all the data; SHOW, DON'T TELL moves meaning into marks. The
+Goldilocks zone says where to stop: neither a wall of words nor marks without a
+key.
+
+1. **The drawing carries the experience.** Every section a person reads leads
+   with one composed drawing that shows its whole shape: what is there, how it
+   connects, where the person stands. Moving through a page is moving from
+   picture to picture, never from paragraph to paragraph.
+2. **The words complete it, then stop.** Beside the drawing, a numbered
+   readout: each mark's name and one line of a few words, with every number in
+   it. Someone who reads only the statement, the drawing and its readout
+   understands the section fully.
+3. **Too much, too little.** Too much: paragraphs in panels, a list standing
+   in for the visual, a sentence repeating a figure. Too little: a mark with no
+   key, a number with no unit, an icon asked to carry a sentence, detail cut
+   instead of drawn.
+4. **The full text stays one press away.** Prose a few readers want (notes in
+   full, the argument, the terms) folds beneath its drawing, named for what it
+   holds; never deleted.
+5. **The test.** Hide the folded text: does the section still say everything a
+   person needs? Hide the readout: does the drawing still show the shape? Both
+   must hold.
 
 ## SOUND REGISTER (reserved — Founder's domain)
 
@@ -389,6 +499,12 @@ No frame of the outside world pokes through: custom thin scrollbar,
 signal-tinted text selection, bracket-style `:focus-visible` rings. Keyboard
 navigation and text highlighting stay inside the fiction — immersion holds
 for the user who never touches the mouse.
+
+**One focus ring, on the element's own edge** (Design note, 2026-11-18: […]). The ring is
+`base.css`'s alone: 1px signal, `outline-offset: -1px`. Drawn outside an element,
+a scrolling strip cut it off and it spilled across the neighbouring tab or row. No
+component sets its own ring width or offset. A component may answer focus another
+way (a border, a band), never with a ring that leaves its own box.
 
 ---
 
@@ -774,6 +890,7 @@ permitted, climbing requires the demand to be real.
 - [ ] CHOKKAN (site): where am I / what is this / what next in the first screen; a process drawn as steps; one primary action per view; plain words; legibility floor met (reading 18px, labels 13px, nothing under 12px).
 - [ ] LESS TEXT, NOT LESS DATA: every number the person needs is on screen; marks carry what words used to; one legend or unit, not repeated labels; human names, not codes; only genuine noise folds, and is marked; they never have to say what the system already knows.
 - [ ] SHOW, DON'T TELL: a mark says it before a word does; fine status is marks, lists only for inventory; every problem opens where it is fixed, or fixes in place; setup is a guided path; a fix a house member can do hands over in one press; one mark, one meaning, everywhere.
+- [ ] THE GOLDILOCKS ZONE: each section leads with a drawing that carries its shape; its readout names every mark in a few words, every number in it; the statement, the drawing and the readout say it all; prose folds beneath, named, one press away.
 - [ ] Every element belongs to a plane; the level's plane allowance holds.
 - [ ] Reduced-motion final states exist and were viewed with my own eyes.
 

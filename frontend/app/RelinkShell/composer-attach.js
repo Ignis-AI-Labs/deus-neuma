@@ -15,15 +15,12 @@ export const VISION_BLIND_DOCS_NOTE = 'The current substrate cannot see images â
  * The menu's display model. `vision` is the runtime truth about the ACTIVE
  * substrate: true = it sees, false = it is blind, null = unknowable (the menu
  * makes no claim either way). Pure.
- * @param {{ vision: boolean|null, projects: Array<{id: string, name: string}>, activeProjectId: string|null }} input
- * @returns {{ filesDesc: string, visionOff: boolean, projects: Array<{id: string, name: string, active: boolean}> }}
+ * @param {{ vision: boolean|null }} input
+ * @returns {{ filesDesc: string, visionOff: boolean }}
  */
-export const attachMenuModel = ({ vision, projects, activeProjectId }) => Object.freeze({
+export const attachMenuModel = ({ vision }) => Object.freeze({
   filesDesc: vision === false ? VISION_OFF_NOTE : FILES_DESC,
   visionOff: vision === false,
-  projects: Object.freeze((projects || []).map((p) => Object.freeze({
-    id: p.id, name: p.name, active: p.id === activeProjectId,
-  }))),
 });
 
 /**

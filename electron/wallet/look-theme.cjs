@@ -12,8 +12,38 @@ const KNOBS = ['ground', 'panel', 'ink', 'trim'];
 const OPTIONAL_KNOBS = ['head', 'body', 'ital', 'emph', 'line', 'alert', 'warn', 'okay'];
 
 
+// pure — WCAG relative luminance of a #RRGGBB colour, and the contrast ratio of two
+const luminance = (hex) => {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+// The words a person reads before signing stand at least this far from what they are written on.
+const CONTRAST_FLOOR = 4.5;
+// The heading is large type, which reads at a lower ratio (WCAG AA large text).
+const HEADING_FLOOR = 3;
+
 /**
- * Exactly the four knob hexes (uppercased) or null. Pure.
+ * Can the trusted window be read in this dress? Its ink against its ground
+ * and its panel, and a heading colour against the panel when one is set. A
+ * dress that fails (ink the colour of the ground blanks the window: audit
+ * PR600 P6-09) is not worn; the window opens in stock. Pure.
+ * @param {{ground:string,panel:string,ink:string,head?:string}} theme - strict hexes
+ * @returns {boolean}
+ */
+const isReadableTheme = (theme) => contrast(theme.ink, theme.ground) >= CONTRAST_FLOOR
+  && contrast(theme.ink, theme.panel) >= CONTRAST_FLOOR
+  && (!theme.head || contrast(theme.head, theme.panel) >= HEADING_FLOOR);
+
+/**
+ * Exactly the four knob hexes (uppercased) or null: null too for a dress the window cannot be read in. Pure.
  * @param {*} theme
  * @returns {{ground:string,panel:string,ink:string,trim:string}|null}
  */
@@ -33,7 +63,7 @@ const sanitizeLookTheme = (theme) => {
     if (typeof theme[knob] !== 'string' || !HEX_RE.test(theme[knob])) return null;
     out[knob] = theme[knob].toUpperCase();
   }
-  return out;
+  return isReadableTheme(out) ? out : null;
 };
 
 /**
@@ -56,4 +86,4 @@ const readLookTheme = (file) => {
   }
 };
 
-module.exports = { sanitizeLookTheme, readLookTheme };
+module.exports = { sanitizeLookTheme, readLookTheme, isReadableTheme, CONTRAST_FLOOR };

@@ -15,11 +15,9 @@ const readToken = () =>
 const stateHeader = () => ({ 'X-Neuma-State': currentEntryMode() });
 
 /**
- * The bare session token, for the one case a header cannot reach: an element
- * that fetches its OWN bytes (`<img src>`, `<video src>`, a native download).
- * Prefer `authHeaders`/`authHeadersOrNull` everywhere else — a token in a URL
- * is visible to anything that logs URLs, so only routes that explicitly accept
- * `?token=` should ever be built this way.
+ * The bare session token for identity checks and the portal's legacy transport.
+ * Never build a media/download URL with it: `services/desk-tickets.js` issues
+ * short-lived exact-resource tickets for headerless lanes instead.
  * @returns {string | null}
  */
 export const authTokenOrNull = () => readToken();

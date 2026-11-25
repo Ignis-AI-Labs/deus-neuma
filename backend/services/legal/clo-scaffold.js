@@ -6,10 +6,10 @@
 // Idempotent BY CONSTRUCTION: every write rides the wx flag, so a re-seat
 // never clobbers a file the being or the operator has edited.
 
-import fs from 'fs/promises';
 import path from 'path';
 import neumaWorkspace from '../../../core/workspace/neuma-workspace.js';
 import { createLogger } from '../logger.js';
+import { containedDirectory, writeContainedFile } from '../no-follow-write.js';
 
 const log = createLogger('CloScaffold');
 
@@ -84,8 +84,9 @@ The platform enforces these. They are also simply how the work is done.
    question. Commentary written before the newest action is stale.
 6. **The platform checks, twice.** Run legal_cite_check {citations, text}
    before any legal answer leaves you, chat included. An answer that cites
-   law the app did not confirm that turn is HELD: you are sent back once to
-   check it, and a second miss is marked UNCHECKED for the operator.
+   law the app has not confirmed in that chat is HELD (your operator's own
+   words, quoted back, are not law): you are sent back once to check it,
+   and a second miss is marked UNCHECKED for the operator.
    Anything the house will act on goes out as legal/opinion, legal/assess
    or legal/file. Before it lands the app re-reads every source, sweeps the
    official feeds for the last 120 days on your sweep terms (you answer for
@@ -214,9 +215,9 @@ answer it.)
 `;
 
 // wx + EEXIST-tolerant: author only what is absent — never overwrite an edit.
-const seedFile = async (file, content) => {
+const seedFile = async (root, directory, name, content) => {
   try {
-    await fs.writeFile(file, content, { flag: 'wx' });
+    await writeContainedFile({ root, directory, name, body: content, exclusive: true });
     return true;
   } catch (err) {
     if (err.code === 'EEXIST') return false;
@@ -232,11 +233,12 @@ const seedFile = async (file, content) => {
  */
 export const scaffoldCloWorkspace = async (laneId) => {
   await neumaWorkspace.create(laneId);
-  const dir = path.join(neumaWorkspace.pathFor(laneId), 'legal');
-  await fs.mkdir(path.join(dir, 'opinions'), { recursive: true });
+  const root = neumaWorkspace.pathFor(laneId);
+  const dir = path.join(root, 'legal');
+  await containedDirectory(root, path.join(dir, 'opinions'));
   const seeded = [];
-  if (await seedFile(path.join(dir, 'charter.md'), CHARTER)) seeded.push('charter.md');
-  if (await seedFile(path.join(dir, 'register.md'), REGISTER)) seeded.push('register.md');
+  if (await seedFile(root, dir, 'charter.md', CHARTER)) seeded.push('charter.md');
+  if (await seedFile(root, dir, 'register.md', REGISTER)) seeded.push('register.md');
   log.info('CLO office scaffolded', { laneId, seeded });
   return { laneId, dir, seeded };
 };

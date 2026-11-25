@@ -12,9 +12,10 @@
  * the line's fit under its write chain at execute, so a race can never land
  * two moves for one step.
  *
- * Tier `allowed` (tool-policy-defaults.js): word between the house's seats and
- * a record on the house's own realm — no egress, no spend, the house/post
- * precedent. The operator's own inspections are floor and gate, not a card.
+ * The base tier is `allowed` for house records with no egress or spend. HANDS
+ * is different: its external destination uses a fail-closed per-host row, so
+ * the first link to each host carries a card. The operator's own inspections
+ * are floor and gate, not a card.
  */
 import { houseSeatFor } from '../house-titles.js';
 import { seatHolders } from '../company-line/stage-holders.js';
@@ -152,9 +153,18 @@ export const companyInspectIntent = Object.freeze({
   execute: ({ context, company, event }) => landMove({ ...context, company }, event),
 });
 
+const handsPolicyTool = (where) => {
+  try {
+    return `company.hands.${new URL(String(where ?? '')).hostname.toLowerCase()}`;
+  } catch {
+    return 'company.hands.invalid';
+  }
+};
+
 export const companyHandsIntent = Object.freeze({
   name: 'company/hands',
   policyTool: 'company.hands',
+  policyToolFor: (fields) => handsPolicyTool(fields?.where),
   fieldsForPrompt: '{company, what, why, where, answer, unblocks?, cost?, by?}',
   descriptionForPrompt: `THE COMPANY LINE. Ask the operator for an act only a person can do — sign, pass an identity check, file, pay a fee, anything physical. what: the one act; why: what the company needs it for; where: the exact https link where they do it; answer: what comes back (${ANSWERS.join(', ')} — "held" when it is secret: they say where they keep it, never the secret); unblocks: the stage it holds; cost: the honest estimate of money and time; by: a deadline date if one is real. It reaches them in WAITING ON YOU at every dial stop.`,
 
@@ -175,7 +185,7 @@ export const companyHandsIntent = Object.freeze({
     }
   },
 
-  summarize: (payload) => `ask the operator: "${String(payload?.what ?? '').trim().slice(0, 80)}"`,
+  summarize: (payload) => `ask the operator: "${String(payload?.what ?? '').trim().slice(0, 80)}" at ${handsPolicyTool(payload?.where).slice('company.hands.'.length)}`,
 
   execute: async ({ context, company, item }) => {
     const raised = await raiseHands(context.wallet, company.id, item);

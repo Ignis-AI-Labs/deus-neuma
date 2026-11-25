@@ -12,8 +12,9 @@ least 18 years old and of legal age where they live; the experience is not
 made for minors. See the [Terms of Service](docs/legal/TERMS_OF_SERVICE.md).
 
 > **Status: early access.** Expect rough edges. We release for **Linux and
-> Windows**. There is no macOS release; it builds from source, untested, and
-> we would welcome your help ([BUILDING.md](docs/BUILDING.md#macos)).
+> Windows**. Unsigned per-chip macOS artifacts are built and binary-checked in
+> CI for preview only; they are not a signed production release and still need
+> fresh-Mac acceptance ([BUILDING.md](docs/BUILDING.md#macos)).
 
 ## What you need
 
@@ -26,8 +27,9 @@ made for minors. See the [Terms of Service](docs/legal/TERMS_OF_SERVICE.md).
 - **No GPU:** a machine with plenty of RAM is offered a mixture-of-experts
   model that answers from the processor, more slowly.
 
-Every recommended model passed a full rehearsal summoning (the summon
-check); the whole table is in [BUILDING.md](docs/BUILDING.md#a-local-model).
+Recommendations use measured capacity and rehearsal results; a rehearsal can
+need retries or end in a refusal. The whole table and its evidence limits are
+in [BUILDING.md](docs/BUILDING.md#a-local-model).
 
 ## What early access means today
 
@@ -104,4 +106,4 @@ always local.
   part of running Neuma ([LICENSE-ASSETS.md](LICENSE-ASSETS.md)).
 - **Contributions:** under our [Contributor License Agreement](CLA.md).
 
-Neuma is built by [Ignis AI Labs](https://ignislabs.ai).
+Neuma is built by Deus Neuma Inc, a company of [Ignis AI Labs](https://ignislabs.ai).

@@ -23,16 +23,19 @@ import { runSecurityScan, readScanState } from '../services/security/security-sc
 import { mapThreatAttackSurface, readArchitectureSurface, selectWatchedRepo } from '../services/security/attack-surface.js';
 import { readSecurityTelemetry } from '../services/security/traffic-monitor.js';
 import { circuitBreaker } from '../services/security/circuit-breaker.js';
-import { requireInstallOwner, deskStanding } from '../services/install-owner.js';
+import { requireInstallOwner, deskStanding, isLocalDesk } from '../services/install-owner.js';
 import { houseGroundsOf } from '../services/explorer-ground.js';
 import { realOf } from '../services/explorer-walls.js';
 import { isWithin } from '../services/ground-roots.js';
 import { createLogger } from '../services/logger.js';
+import tripwireRoutes from './tripwire-routes.js';
 
 const log = createLogger('Security');
 
 const router = express.Router();
 router.use(requireAuth);
+// The decoy watch and the clipboard swap report (tripwire-routes.js).
+router.use('/tripwire', tripwireRoutes);
 
 const publicSurface = ({ graph, ...surface }) => surface;
 const repoOnWatch = async (wallet, repoId = null) => selectWatchedRepo(await (await watchStoreFor(wallet)).load(), repoId);
@@ -225,12 +228,12 @@ router.get('/watch', async (req, res) => {
 });
 
 // impure — what this caller may put under its watch: the install owner (and a
-// co-owner) any checkout on the machine; a guest only one inside its own house
+// co-owner) at the local desk any checkout on the machine; anyone else only one inside their own house
 // (its realm dir, its house ground, its lanes — the explorer's reach), judged
 // as typed and with its links resolved. A watched repo's leak findings land in
 // the watcher's ledger, so another house's checkout is never a guest's to watch.
 const watchReachOf = async (req) => {
-  if (['owner', 'co-owner'].includes(await deskStanding(req))) return null;
+  if (isLocalDesk(req) && ['owner', 'co-owner'].includes(await deskStanding(req))) return null;
   const grounds = await houseGroundsOf(req.walletAddress);
   const forms = [...new Set([...grounds, ...grounds.map(realOf)])];
   return (target) => [target, realOf(target)].every((candidate) => forms.some((ground) => isWithin(candidate, ground)));

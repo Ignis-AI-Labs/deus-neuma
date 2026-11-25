@@ -8,7 +8,8 @@
  * layer, no key handling here. The wrapped DEK (keys/dek.json) travels with the
  * copy, so a backup is restorable with the same master key. The plaintext
  * files that are meant to be plaintext (owner.json, the genesis seal, the audit
- * log) copy as-is.
+ * log) copy as-is. The house's office records are sealed under the same master
+ * key on the way in (backup-seal.js): `neuma backup open` opens them.
  *
  * Backups live OUTSIDE the workspace root (a sibling dir) so they are never
  * mistaken for beings by the roster/enumeration, and each carries a manifest
@@ -24,6 +25,7 @@ import path from 'path';
 import { getWorkspacesRoot, neumaWorkspace } from '../../core/index.js';
 import { walletDir } from './user-realm.js';
 import { readDestination } from './backup-destination.js';
+import { sealTree, SEALED_DIR } from './backup-seal.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('Backup');
@@ -66,12 +68,25 @@ const dirSize = async (dir) => {
   return total;
 };
 
+const copyLane = async (src, dest) => {
+  const overlays = path.join('coding', 'sandboxes');
+  await fs.cp(src, dest, {
+    recursive: true,
+    filter: (source) => {
+      const relative = path.relative(src, source);
+      return relative !== overlays && !relative.startsWith(overlays + path.sep);
+    },
+  });
+};
+
 /**
  * Create a backup of every being the wallet owns — AND of the witness's own
  * realm (councils, chat labels, readable chat logs, projects, tasks). The
  * beings' files copy as ciphertext-by-design; the realm is plaintext by
  * design, the witness's only copy of their organizational record — a backup
- * that skips it protects the beings but not the witness. Copies each being's
+ * that skips it protects the beings but not the witness. The realm's OFFICES
+ * (the house's CRM: leads, their words, deals, invoices — other people's
+ * data) are the exception: they travel sealed (backup-seal.js, 2026-11-23). Copies each being's
  * whole workspace directory plus the wallet's realm dir into a timestamped
  * snapshot and writes a manifest.
  *
@@ -90,8 +105,8 @@ export const createBackup = async (wallet, { now = new Date() } = {}) => {
   const beings = [];
   for (const { neumaId } of owned) {
     const src = path.join(root, neumaId);
-    // recursive: copy the whole being tree (ciphertext + plaintext-by-design).
-    await fs.cp(src, path.join(dest, neumaId), { recursive: true });
+    // Sovereign records and ordinary work; volatile kernel overlays stay out.
+    await copyLane(src, path.join(dest, neumaId));
     beings.push(neumaId);
   }
 
@@ -103,18 +118,21 @@ export const createBackup = async (wallet, { now = new Date() } = {}) => {
   for (const laneId of await neumaWorkspace.listWitnessLanes()) {
     const owner = await neumaWorkspace.readOwner(laneId).catch(() => null);
     if (String(owner?.wallet || '').toLowerCase() !== wallet.toLowerCase()) continue;
-    await fs.cp(neumaWorkspace.pathFor(laneId), path.join(dest, laneId), { recursive: true });
+    await copyLane(neumaWorkspace.pathFor(laneId), path.join(dest, laneId));
     witnesses.push(laneId);
   }
 
-  // The witness's own realm — councils, labels, chats, projects, tasks.
+  // The witness's own realm — councils, labels, chats, projects, tasks. Its OFFICES (the house's CRM: other
+  // people's data) travel sealed under the master key instead (backup-seal.js).
   const realmSrc = walletDir(wallet);
-  const realm = await fs.cp(realmSrc, path.join(dest, 'realm'), { recursive: true })
+  const offices = path.join(realmSrc, 'offices');
+  const realm = await fs.cp(realmSrc, path.join(dest, 'realm'), { recursive: true, filter: (source) => source !== offices && !source.startsWith(offices + path.sep) })
     .then(() => true)
     .catch((err) => {
       if (err.code === 'ENOENT') return false; // no realm yet — nothing to carry
       throw err;
     });
+  const officesSealed = realm ? await sealTree(offices, path.join(dest, SEALED_DIR), { wallet, id }) : 0;
 
   const sizeBytes = await dirSize(dest);
   const manifest = {
@@ -124,6 +142,8 @@ export const createBackup = async (wallet, { now = new Date() } = {}) => {
     beings: beings.sort(),
     witnesses: witnesses.sort(),
     realm,
+    // How many office records travel sealed (open them with `neuma backup open <this folder> <a folder>`).
+    officesSealed,
     sizeBytes,
   };
   await fs.writeFile(path.join(dest, 'manifest.json'), JSON.stringify(manifest, null, 2));

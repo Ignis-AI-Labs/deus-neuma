@@ -8,7 +8,7 @@
  * it arrives: words land while the key is down and the final follows the
  * release by ~0.2 s, however long the hold (docs/work/dictation-flow.md).
  *
- * One socket = one hold. Auth-on-connect like the terminal (`?token=`); the
+ * One socket = one hold. Exact-lane ticket on connect (`?ticket=`); the
  * key owns the endpoint (hold mode — the sidecar's VAD is bypassed). The
  * bridge is the portal's own VoiceStreamSession, so the flood bound, the
  * owed-flush and the honest degrade are the sitting's, not a copy.
@@ -19,7 +19,7 @@
  * an error; the desk falls back to /transcribe for that hold.
  */
 
-import { verifySessionToken } from '../services/auth.js';
+import { deskTicketSessionForUrl } from '../services/desk-tickets.js';
 import { VoiceStreamSession } from '../services/voice/stream-session.js';
 import { createLogger } from '../services/logger.js';
 
@@ -45,8 +45,7 @@ const send = (ws, frame) => {
 /** Bind the dictation socket. impure. */
 export const setupDictateRoutes = (wss) => {
   wss.on('connection', async (ws, req) => {
-    const token = new URL(req.url, 'http://localhost').searchParams.get('token');
-    if (!token || !verifySessionToken(token)) { ws.close(4001, 'Unauthorized'); return; }
+    if (!deskTicketSessionForUrl(req.url)) { ws.close(4001, 'Unauthorized'); return; }
 
     let open = false;
     let heard = false;      // any PCM reached the lane
@@ -65,7 +64,10 @@ export const setupDictateRoutes = (wss) => {
       else if (frame.type === 'voice:utterance') finish(frame.text);
       else if (frame.type === 'voice:speech_stopped') {
         graceTimer = setTimeout(() => finish(''), FINAL_GRACE_MS);
-      } else if (frame.type === 'voice:error' && frame.code !== 'pcm_flood') {
+      } else if (frame.type === 'voice:error') {
+        // EVERY error ends the lane, a flood included (2026-11-25): audio the bound dropped is words the lane never
+        // heard, and a lane that carried on would hand back a transcript with a hole in it as if it were whole.
+        // Told, the desk finishes the hold from its own recording.
         send(ws, { type: 'error', code: frame.code });
         ws.close(1011, frame.code);
       }
@@ -116,7 +118,9 @@ export const setupDictateRoutes = (wss) => {
     }
     if (ws.readyState !== ws.OPEN) { session.close(); return; }
     open = true;
-    for (const pcm of early) forward(pcm);
+    // What was held while the lane opened goes in as it is: it was spoken in real time and only arrives at once,
+    // so it is not counted against the flood bound (it used to trip it, and the hold's first seconds were dropped).
+    for (const pcm of early) { heard = true; session.sendPcm(pcm, { held: true }); }
     early = [];
     send(ws, { type: 'ready' });
     if (flushOwed) flush();

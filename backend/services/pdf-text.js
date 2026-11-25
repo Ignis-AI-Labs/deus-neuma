@@ -60,15 +60,37 @@ const withPdf = async (bytes, visit) => {
  * @param {Uint8Array} bytes
  * @returns {Promise<string[]>}
  */
-export const pdfPagesFromBytes = (bytes) => withPdf(bytes, async (pdf) => {
-  const pages = [];
-  for (let number = 1; number <= pdf.numPages; number += 1) {
+export const MAX_WEB_PAGES_PER_READ = 100;
+
+const readPageRange = async (pdf, from, to) => {
+  const pages = Array(pdf.numPages).fill('');
+  for (let number = from; number <= to; number += 1) {
     const page = await pdf.getPage(number);
-    pages.push(pageWords(await page.getTextContent()));
+    pages[number - 1] = pageWords(await page.getTextContent());
     page.cleanup();
   }
-  if (!pages.some(Boolean)) throw new Error('This PDF has no selectable text (a scan?) — ask your operator for a searchable copy or the pages as images.');
+  if (!pages.slice(from - 1, to).some(Boolean)) throw new Error('This PDF has no selectable text (a scan?) — ask your operator for a searchable copy or the pages as images.');
   return pages;
+};
+
+export const pdfPagesFromBytes = (bytes) => withPdf(bytes, async (pdf) => readPageRange(pdf, 1, pdf.numPages));
+
+/** Only the requested pages, with an explicit bound on one web read. Impure (pdfjs). */
+export const pdfPagesForRequest = (bytes, ask = {}) => withPdf(bytes, async (pdf) => {
+  const span = ask.pages ? parseRange(ask.pages, pdf.numPages) : null;
+  if (span && span[1] - span[0] + 1 > MAX_WEB_PAGES_PER_READ) {
+    throw new Error(`ask for at most ${MAX_WEB_PAGES_PER_READ} PDF pages at a time`);
+  }
+  const from = span?.[0] ?? 1;
+  const to = span?.[1] ?? Math.min(pdf.numPages, MAX_WEB_PAGES_PER_READ);
+  const pages = await readPageRange(pdf, from, to);
+  const capped = !span && to < pdf.numPages;
+  return {
+    pages,
+    readRange: span || capped ? [from, to] : null,
+    capped,
+    invalidRange: Boolean(ask.pages && !span),
+  };
 });
 
 /**

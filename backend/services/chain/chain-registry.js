@@ -26,6 +26,7 @@
 import { ethers } from 'ethers';
 import { createLogger } from '../logger.js';
 import { serviceValue } from '../stored-secrets.js';
+import { floorProvider } from './public-floor.js';
 
 const log = createLogger('ChainRegistry');
 
@@ -71,6 +72,21 @@ export const isConfigured = (key, env = process.env) => {
   return Boolean(c && c.rpcUrl(env) !== '');
 };
 
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+/** Is this node address safe to believe? https, or a node on this computer:
+ *  plain http across a network lets anyone on the path answer as the chain
+ *  (audit P6-43). Pure. */
+export const isSecureRpcUrl = (url) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'https:' || parsed.protocol === 'wss:'
+      || ((parsed.protocol === 'http:' || parsed.protocol === 'ws:') && LOOPBACK_HOSTS.has(parsed.hostname));
+  } catch {
+    return false;
+  }
+};
+
 // Verified providers, keyed by key+URL so an env repoint never rides a stale
 // endpoint; `logged` arms the log-once guard per (kind, chain, URL).
 const providers = new Map();
@@ -100,7 +116,9 @@ const probeNetwork = (url) => {
  * The verified provider for a chain, or null. impure (real RPC round trip).
  * Unknown key, unset env, dead endpoint, wrong chainId — all null + one log
  * line, never a throw. Failures are NOT cached: a transiently dead endpoint
- * gets a fresh probe next call.
+ * gets a fresh probe next call. A dead endpoint on a chain with a public
+ * floor (public-floor.js) answers through that floor instead of null; an
+ * endpoint on the WRONG chain never falls back — that is a mistake to fix.
  *
  * @param {string} key - a registry key ('ethereum', 'base', …)
  * @param {Record<string, string|undefined>} [env]
@@ -120,13 +138,17 @@ export const providerFor = async (key, env = process.env) => {
   const cacheKey = `${key}\n${url}`;
   const cached = providers.get(cacheKey);
   if (cached) return cached;
+  if (!isSecureRpcUrl(url)) {
+    logOnce(`insecure:${cacheKey}`, 'error', `chain-registry: the ${key} node address is plain http to another computer — refusing it; save an https address (reads use the public node where the chain has one)`);
+    return floorProvider(key, { failedUrl: url, env });
+  }
 
   let network;
   try {
     network = await probeNetwork(url);
   } catch (err) {
-    logOnce(`rpc:${cacheKey}`, 'warn', `chain-registry: ${key} RPC probe failed — reads will refuse until it answers`, { error: redactRpcUrl(err.message) });
-    return null;
+    logOnce(`rpc:${cacheKey}`, 'warn', `chain-registry: ${key} RPC probe failed — reads use the public node where the chain has one, and refuse otherwise`, { error: redactRpcUrl(err.message) });
+    return floorProvider(key, { failedUrl: url, env });
   }
   if (Number(network.chainId) !== c.chainId) {
     // The wrong-chain refusal — loud, and the endpoint is never trusted.

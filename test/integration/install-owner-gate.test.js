@@ -59,9 +59,11 @@ describe('machine-wide settings belong to the install owner, changed at its own 
     owner = await fullAuth();
     guest = await fullAuth();
     third = await fullAuth();
-    // The guest's being was born too — later. The first genesis names the owner.
+    // Both wallets hold a sealed being. A genesis seal no longer seats anyone (P6-37): the owner is the
+    // wallet recorded at the first local sign-in, seated here the way that sign-in seats it.
     await sealLane(process.env.WORKSPACES_ROOT, 'guestlane', guest.address, Date.UTC(2026, 6, 1));
     await sealLane(process.env.WORKSPACES_ROOT, 'ownerlane', owner.address, Date.UTC(2026, 5, 23));
+    await (await import('../../backend/services/install-owner.js')).recordFirstLocalOwner(owner.address);
     const feedLog = (await import('../../backend/services/logger.js')).createLogger('OwnerFeedProof');
     feedLog.warn('owner house bind failed', { neumaId: 'ownerlane', wallet: owner.address });
     feedLog.warn('guest house bind failed', { neumaId: 'guestlane', wallet: guest.address });
@@ -90,6 +92,7 @@ describe('machine-wide settings belong to the install owner, changed at its own 
     app.use('/api/v1/preflight', (await import('../../backend/routes/preflight-routes.js')).default);
     app.use('/api/v1/web', (await import('../../backend/routes/web-routes.js')).default);
     app.use('/api/v1/substrate', (await import('../../backend/routes/substrate-routes.js')).default);
+    app.use('/api/v1/revenue/lead-engine', (await import('../../backend/services/auth.js')).requireAuth, (await import('../../backend/routes/lead-engine-routes.js')).default);
     app.use('/api/v1/install-owner', (await import('../../backend/routes/install-owner-routes.js')).default);
     app.use('/api/v1/remote', createRemoteRouter({ store }));
     server = http.createServer(app);
@@ -119,7 +122,7 @@ describe('machine-wide settings belong to the install owner, changed at its own 
   ];
   const send = (who, place, [method, url], body) => place(who, request(base())[method](url)).send(body);
 
-  test('the first genesis names the owner; every other wallet is a guest', async () => {
+  test('the wallet seated at the first local sign-in is the owner; every other wallet is a guest', async () => {
     const seen = await atDesk(guest, request(base()).get('/api/v1/install-owner'));
     expect(seen.status).toBe(200);
     expect(seen.body).toMatchObject({ standing: 'guest', owner: owner.address, coOwners: [] });
@@ -171,6 +174,22 @@ describe('machine-wide settings belong to the install owner, changed at its own 
     expect(theirs.failures.map((row) => row.msg)).toContain('guest house bind failed');
     expect(theirs.failures.map((row) => row.msg)).not.toContain('owner house bind failed');
     expect(theirs.failuresWithheld).toBeGreaterThan(0);
+  });
+
+  test('machine connection history and paid lead-data rules are owner-only, including from a phone', async () => {
+    for (const route of ['/api/v1/substrate/network', '/api/v1/substrate/network/history', '/api/v1/substrate/holders']) {
+      expect((await atDesk(guest, request(base()).get(route))).status).toBe(403);
+      expect((await atDesk(owner, request(base()).get(route))).status).not.toBe(403);
+    }
+    const spend = (place, who) => place(who, request(base()).post('/api/v1/revenue/lead-engine/spend')).send({ mode: 'off', cap: 100 });
+    expect((await spend(atDesk, guest)).status).toBe(403);
+    expect((await spend(fromPhone, owner)).status).toBe(403);
+    expect((await spend(atDesk, owner)).status).toBe(200);
+
+    const { forgeInstallIntent } = await import('../../backend/services/intents/forge-install.js');
+    const filing = { repo: 'owner/model', file: 'diffusion_models/model.safetensors' };
+    expect((await forgeInstallIntent.validate(filing, { connection: { walletAddress: guest.address } })).status).toBe('denied');
+    expect((await forgeInstallIntent.validate(filing, { connection: { walletAddress: owner.address } })).ok).toBe(true);
   });
 
   test('the owner names a co-owner, who may then change the machine; no one else names one', async () => {

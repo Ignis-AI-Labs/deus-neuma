@@ -53,6 +53,7 @@ export const browserProvider = () => {
           await ensureUnlocked();
           const txParams = params[0];
           const approved = await requestConfirmation('transaction', {
+            from: active.address,
             to: txParams.to,
             value: txParams.value,
             data: txParams.data,

@@ -32,7 +32,7 @@ router.post('/:brand/preview', async (req, res) => {
   const refusal = brandNameRefusal(req.params.brand);
   if (refusal) return res.status(400).json({ error: refusal });
 
-  const { kit, template, data } = req.body || {};
+  const { kit, template, data, design } = req.body || {};
   if (!template) return res.status(400).json({ error: 'name the template to preview' });
 
   try {
@@ -40,6 +40,8 @@ router.post('/:brand/preview', async (req, res) => {
       brand: req.params.brand,
       kit,
       template,
+      // an unsaved design from the card designer, drawn instead (held to card-safety.js first)
+      design: design && typeof design === 'object' ? design : null,
       data: data || null,
       wallet: req.walletAddress,
     });
@@ -55,6 +57,7 @@ router.post('/:brand/preview', async (req, res) => {
       svg: result.svg,
       missing: result.missing,
       sample: result.sample,
+      source: result.source,
       // The faces the BROWSER should install, since the SVG carries none.
       faces: previewFaceIds(kit),
     });

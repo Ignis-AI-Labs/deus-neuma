@@ -17,7 +17,7 @@ import {
 import {
   loadShelf, saveShelf, loadShelfSections, saveShelfSections,
 } from '../windowing/window-storage.js';
-import { useOpenFolder } from './projects/use-open-folder.js';
+import { useOpenFolder } from './use-open-folder.js';
 import { CtxMenu } from './CtxMenu.jsx';
 import { shelfMenuItems } from './files/files-menu.js';
 

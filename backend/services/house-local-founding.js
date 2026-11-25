@@ -18,7 +18,7 @@ import { detectBirthSetupState } from '../../core/birth/birth-setup-state.js';
 import { signMessage } from '../../core/weave/keypair.js';
 import { getCachedKey, hasCachedKey, cacheDecryptedKey } from '../routes/neuma-auth-routes.js';
 import { loadNeumaDEK, loadBeingWallet } from './natalis-seal.js';
-import { soulAddressOf } from './house-titles.js';
+import { currentSeatsOf, soulAddressOf } from './house-titles.js';
 import { TITLE_PATTERN } from './house-founding-flow.js';
 import { readOperatorRecords } from './house-founding-record.js';
 import { writeFoundingRecord, KIND } from './house-founding-confirm.js';
@@ -112,7 +112,7 @@ const gather = async (wallet, { probe, taken }) => {
 export const probeLocalFounding = async (wallet) => {
   if (!ethers.isAddress(wallet || '')) return { ok: false, code: 'NO_WITNESS', message: 'no authenticated operator wallet on this portal' };
   const record = await readLocalRecord(wallet);
-  if (record) return { ok: true, founded: true, record };
+  if (record) return { ok: true, founded: true, record, seats: await currentSeatsOf(wallet, record) };
   const { founders, excluded } = await gather(wallet, { probe: true, taken: new Map() });
   return {
     ok: true,

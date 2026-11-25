@@ -11,7 +11,7 @@
 // whisper). What this proves is the forge path around it, over a real socket.
 
 import http from 'node:http';
-import { answerIdentity } from './sidecar-identity.js';
+import { answerIdentity, directSidecarCredential } from './sidecar-identity.js';
 
 const json = (res, status, body) => {
   res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -23,9 +23,10 @@ const json = (res, status, body) => {
  * @param {{text: string}} opts - the words every /transcribe answers
  */
 export const startTranscribeWire = async ({ text }) => {
+  const credential = directSidecarCredential('whisper');
   const heard = [];
   const server = http.createServer((req, res) => {
-    if (answerIdentity(req, res)) return undefined;
+    if (answerIdentity(req, res, credential)) return undefined;
     if (req.url === '/health') return json(res, 200, { ok: true, phase: 'ready', idle_seconds: 0, device: 'stand-in', error: null });
     let bytes = 0;
     req.on('data', (c) => { bytes += c.length; });
@@ -48,7 +49,7 @@ export const startTranscribeWire = async ({ text }) => {
     heard,
     close: () => new Promise((resolve) => {
       server.closeAllConnections?.();
-      server.close(() => resolve());
+      server.close(() => { credential.restore(); resolve(); });
     }),
   };
 };

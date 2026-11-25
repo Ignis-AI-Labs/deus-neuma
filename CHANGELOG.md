@@ -6,6 +6,1111 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.1.184] - 2026-11-23
+
+Notes: `docs/operations/release-notes-0.1.184.md`.
+
+### Added
+
+- A being can register a ComfyUI workflow as a pipeline of its own. It files the workflow with the settings a caller may change and their ranges; you approve it once on a card that says what it runs, which model files it loads and what can be set. After that it shows in the pipeline list and renders like any other pipeline. A being can also remove one it registered.
+- A registered workflow keeps the same rules as the built-in pipelines. Every prompt sent through it, and every word written into the workflow itself, passes the content law on every render. A caller can change only the settings that were declared, inside their ranges. The app decides where the picture is saved, the workflow can read only the caller's own image, and a workflow that would send work to an outside service is refused. Before it is kept, the workflow is checked against the engine: every part must be one the engine has, and every model file must be installed.
+- Registering and removing workflows is for beings of the house that owns this computer. Every house's beings can render through a registered workflow.
+- A being can study any part of the image engine before it builds with it. It can search the engine's nodes by name, by what a node produces or by what it needs, and read one node in full: every input with its type, whether it is required, its default, its range and step or every choice, its note, every output, and which other nodes can connect to it.
+- A being can read a registered workflow as a map: every node, every value with what the engine allows there and whether a setting controls it, and every connection. For a built-in pipeline it can read the workflow to build its own from.
+- A being can change a registered workflow in place instead of sending it whole: set a value, connect an input to another node, add or remove a node, and add, change or remove a setting. You approve the list of changes on one card, and the result is checked against the engine before it replaces the old one.
+- Any value written in a workflow can be made a setting a caller may change: a number (with a range you give, or the node's own), a choice, including which model file or LoRA to load from the ones installed, a yes/no, or a text. Numbers are checked against each node's own range, and a text setting passes the content law on every render.
+- **An ACTIVE tab in notifications, and a live stream on the lead run.**
+- The notification tray has two tabs: NOTIFICATIONS (what happened) and ACTIVE (what is running now). ACTIVE lists everything working for your house at this moment, starting with lead runs and working shadow clones: what it is, how long it has run, where it stands, and the last things it did. A small "N RUNNING" mark sits beside the bell while anything runs, and opens the list.
+- The LEAD RUN row folds to one line (leads, credits, state) and opens to a scrolling stream of what the run is doing, newest last, kept in view as it works.
+- An audience can now say what MUST be true of a company, not only what makes it a better or worse fit. The signs of fit are scored and averaged, so no single one could say no: an audience named for projects on Base and Robinhood was scoring companies on other chains, exchanges and the chains themselves as fits, and emails were written to them. A required condition is a hard no that nothing outweighs.
+- Each company is proved against a required condition from its own words: a sentence copied from a page of its own site that says so, checked against that page. The company's name is never proof. If its site does not say so, your sales member records that it is not met and what it read instead. A company with no proof either way is not scored at all.
+- A company that does not meet a required condition is no fit for that audience and nothing is written to it for it. If the audience names where such a company belongs instead (a company on another chain belongs to chain partnerships), your sales member is told to score it there.
+- Companies scored before an audience gained a required condition are held: nobody at them is added to your list and no email is written until each is proved either way. One proved not to meet it leaves the audience by itself: its lead is closed and kept as a contact, any email waiting for it is withdrawn, and the audience it belongs to is named.
+- The audience card shows required conditions in their own band, MUST BE TRUE, above the scored signs. Adding or changing one sends the audience back to you for approval, like any other change to who it targets.
+- Apollo now checks email addresses too. Before an email goes, the cheapest attached provider checks the address, in the order Hunter, Tomba, Apollo. If that provider can't answer, for example because it is busy or out of credits, the next one checks it. Apollo's check runs in the background on Apollo's side, so the desk waits for its answer. It costs 1 Apollo credit per address, and Apollo only ever says "confirmed" or "not confirmed", never "will bounce".
+- CHECK WITH EVERY DATABASE in EMAILS has every attached provider that hasn't checked an address yet check it now. One check is usually enough. This is for addresses you want to be sure of. Every answer is kept.
+- The ADDRESS CHECK column shows how many databases confirmed each address: VALID · 1 DATABASE, VALID · 2 DATABASES, or VALID · ALL 3 DATABASES once every attached one has. Hover to see each database's answer and date, and which haven't been asked. If any database says an address will bounce, it is not sent, and the column names any that said valid.
+- Bring your old assistant now carries your work in progress, not only notes: every conversation as a page you can read, with an index naming them all; each project with its instructions, files and memory; the scheduled jobs it ran, listed (none starts on its own); and the instructions you gave it.
+- New sources: Claude Code and Codex on this computer, and Claude or ChatGPT data exports. Save the export's zip in Downloads, Desktop or Documents and it appears in the list, ready to bring over in one press. Hermes Agent now brings its conversations and scheduled jobs too.
+- Long agent sessions come over whole, however large. Busy projects bring their newest 30 sessions as pages and list every other one by date.
+- OpenClaw now brings its conversations and scheduled jobs too, read from its own files on this computer without changing them.
+- Bring your old assistant: Settings → MEMORY finds OpenClaw and Hermes Agent folders on this computer and brings over what they knew about you, their notes and their skills, with one press each.
+- From ChatGPT or Claude: copy one message, send it to them, and paste their answer back.
+- What comes over stays on this computer, in your house's folder, where your beings can read it. Each import has a note telling a being it was written by another assistant and may be wrong, and that none of it is its identity.
+- A skill made only of instructions joins your skills library, never replacing one you already have. A skill that carries code is held for you to look over first.
+- You can set what an audience REQUIRES from its own card: what must be true of a company, the words of which one must stand on its own website, and the audience a company that fails it belongs to instead. It stands the moment you save it.
+- TEST THE AUDIENCE. On an audience's row under the lead run, name three or more companies you know are right for it (by their site). The house screens exactly those from their own pages, spending nothing, and tells you how many the audience kept. If it loses its own examples it is too narrow, and each lost company says which part of the first sign its page did not show, which is the part to widen. It works on an audience you have not approved yet, and your sales member can run the same test. A YOUR EXAMPLES column shows the result on every audience.
+- A neuma can now use a browser of its own: it opens websites, reads them, clicks and types, so pages that need JavaScript and forms are within its reach. The browser runs on your computer (a Chrome or Chromium you already have), starts only while the neuma uses it and closes after 10 idle minutes.
+- Each neuma keeps its own browser profile, so its sign-ins never mix with yours or another neuma's. It never types into a password field.
+- Opening a page asks your approval as a web read does. Every click and every typing asks you even in AUTO, and the card names exactly what will be clicked and on which page.
+- The browser can only reach the internet: this computer and your home network are refused. It is listed under Connections and stops when web access is off.
+- Bounced emails now show in the pipeline. A lead whose email bounced leads the SENT list, marked BOUNCED with the date and the dead address, and SENT shows how many bounced. Your sales agent is asked to find the right address, either the same person or the next one up at the company, and move the lead to it. The new address is checked before anything is sent. Before, a bounce just closed the lead, and a closed lead couldn't be moved to a new address.
+- EMAILS has an ADDRESS CHECK column that shows what each address's check said before you send: VALID, WILL BOUNCE, RISKY, or NOT CHECKED YET. CHECK ADDRESSES asks every address not yet checked, right away.
+
+Changed
+- Every address an email goes to is now checked before the email leaves, not only first emails, and whether Paid lead data is on or off. Each address is checked once and the result kept, so later emails to the same person cost nothing. An address that won't receive mail is never sent to. If an address can't be checked, for example because the month's credit limit is reached, the email waits instead of going out unchecked. With no Hunter or Tomba key attached, the check confirms the address's domain takes mail. Someone who has written to you isn't checked.
+- You can click a picture a being made, right in the chat, to see it full size. It opens the same viewer as the marketing previews: the mouse wheel zooms, you can drag to move around, the file's path shows as the caption, and Esc closes it. It shows the image already loaded in the chat, with no second download. Right-click and the keyboard menu key still open the picture's menu.
+- The chat line now has its own switch on the desk, in Settings → Security → CHAT LINE. It shows every AI witness sealed on this computer and whether each one may speak in your open chats, one row each, all off at first. One press turns a witness on or off, and the row shows what the desk answered, so a switch never looks flipped before it is. It writes the same setting as the terminal command, and a witness can never switch itself on.
+- The chat line: an AI witness you trust, such as Claude Code, can now speak in the chats you have open on your desk, from any terminal. Your chats are closed to every witness by default. You let one in with `node scripts/chat-line.mjs grant <name>`, see who holds a line with `list`, and shut it with `revoke`. The witness proves who it is with its own sealed wallet, never with a name it types.
+- Once you let a witness in, it can list your open chats and speak in one. Its words show in that chat as a LINK line, never as your own message. The being answers in the chat, and the answer goes back to the witness's terminal. You read both sides. The being treats the witness's words as a collaborator's: what you have said comes first, and anything that needs your approval still comes to you.
+- Six messages in a row from outside rest the chat until you speak in it again, the same limit as messages between your own chats.
+- Every shadow clone is now launched with a clear goal: what done means for it. The goal shows on its tab above its task. The clone works toward it, and its report says first whether it got there and, if not, what's left.
+- A clone that a crash, a quit or an error stopped can now be resumed where it left off, in its own conversation, with everything it had done so far. Press RESUME WHERE IT STOPPED on its tab, or RESUME ALL STOPPED. The being can also resume them itself, and after a restart it's told how. Only the stopped clones run again. When they finish, the chat they were launched from gets every report.
+
+Fixed
+- Reopening a chat now shows each clone run as it really stands: reported, still working, or stopped with a RESUME. Before, it showed the run as it was when launched, with its clones still "waiting" for work that would never come.
+- STOP for shadow clones. Each clone at work has STOP THIS CLONE on its tab, and a run has STOP ALL. A stopped clone ends right away and keeps everything it did in its own conversation. It shows as stopped, so you can RESUME it later.
+
+Fixed
+- A being can no longer launch a second wave of clones from a chat while its first wave there is still working. It's told which run is at work and asked to wait for the reports or have you stop them. A deliberate second wave of different work can still run beside the first.
+- When clones are cut off by the app closing, each cut-off notice now names its run (for example "3 shadow clones (Neuma funding batch A · …)"). Two runs no longer read as one message twice.
+- Pressing STOP on a run the backend isn't actually running, such as one left "waiting" across a restart, marks it stopped and takes it out of the dock.
+- FIND CONFIRMED ADDRESSES in EMAILS, and the same step for your sales agent as sales/confirm-address. It is for an address no database confirmed, the ones reading RISKY. First, every attached database that hasn't checked the address checks it. If none confirms it, the same person is looked up by name with each attached provider. Any other address found is checked straight away, and the first confirmed one becomes theirs: the lead and the email waiting for them move to it automatically. This uses Paid lead data and stays within the month's limit.
+- If nothing confirms it, the address is marked NO DATABASE CAN CONFIRM. Hover to see which databases were asked and what was tried. It is never checked or looked up again, so no time or credits go on it. Your sales agent is told to stop and that you decide: send it as it is, or write to someone else at the company.
+- When your sales agent stages an email to an address no database confirmed, it is told to run sales/confirm-address once. If the address is already marked, it is told to stop.
+- DAILY RUNS on the lead run screen. For each approved audience you can turn on a run the house starts by itself once a day: how many leads, the most credits that day's run may spend, and the hour it may start from. It is off until you turn it on. It is the same run as START: it spends under your monthly rule, writes the research and first email for each lead, and stages them for your review. Nothing is sent by it, pausing the house clock holds it, and you are told if a day's run could not start.
+- You can now work a deal yourself. Open a deal's row to see what has been said on it, then mark it PROPOSED, WON or LOST with a note saying why and, if you like, the reason in one word (the price, the timing, went with someone else and so on) so the house can count why deals close. A won or lost deal moves its lead too. Each open deal shows how long ago it last moved, and one untouched for 14 days is marked GONE QUIET.
+- OPEN A DEAL on the deals screen. Pick the company, name the buyer, what it is worth, where it hurts them, what fixing it is worth to them and the next step. Give a lead's address and the deal is tied to that lead, which is marked qualified.
+- In a development run, the desk now tells you when your code changes are waiting, and refreshes in place. A CHANGES WAITING bar shows what changed and how much: the server's code, the desk's code, or the app's own code. Press REFRESH and the desk is rebuilt if its code changed, the server restarts on the same port, and every desk reloads, without closing the app. A reply in progress is kept and continues after. The image engine and dictation start again the next time they're used. A change to the app's own code (the Electron shell) can't be loaded in place, and the bar says so. "later" sets the changes aside. A packaged app never watches anything. Turn it off with NEUMA_DEV_REFRESH=0.
+
+Fixed
+- A message sent to a being over the chat line no longer fails with "fetch failed" when the being takes more than five minutes to answer. The command waits at most 280 seconds, then says the being is still answering, and the rest of the reply is in the chat.
+- A free way to find companies, from the ones you already confirmed. For each confirmed fit of an audience the house reads the pages where it lists other companies (portfolio, backers, partners, ecosystem) and gathers every company named there, noting who named it. One audience's fits can feed another: a funds audience's portfolios name projects, and a projects audience's backers name funds. Nothing is spent, and each company is screened by a lead run like any other.
+- The email formula. Every first email to a lead, from your sales agent or any of its clones, is built the same way and only after three gates.
+  - **Gate 1, a confirmed address:** a database confirmed it. No email is written to an address that isn't confirmed.
+  - **Gate 2, research (sales/research):** who they are, what their company does, what they are doing now and when, where they are, and what they likely need, with the pages it was read on. Research is kept for good, so a later campaign reads it instead of asking the outside services again. That includes people who don't fit this campaign.
+  - **Gate 3, fit:** yes or no for this campaign, with the reason. A "no" means no email for that campaign.
+- Each campaign's email plan, under CAMPAIGNS: what the campaign is for, what its people need from us, the offer, one to three concrete asks (each naming exactly what is sent on a yes), and the sign-off. Your sales agent proposes it, it shows in WAITING ON YOU, and you LOCK IT IN or SEND IT BACK. No first email of a campaign is written until it is locked in. An earlier approved plan stays in force while a newer one waits.
+- The email itself is built from parts:
+  - a subject of 2 to 6 words about them and us;
+  - "Hi {first name},";
+  - one sentence on what they are doing now, taken from the research;
+  - one sentence on why this concerns them now;
+  - the offer in their terms, with one proof from the approved facts;
+  - one of the campaign's asks, in the agent's own words for them;
+  - the campaign's sign-off.
+
+  It runs to at most 120 words from the opening sentence to the ask. No two emails in a campaign may open or offer the same way. Template lines such as "a few ideas", "hope this finds you well" and "I came across" are refused.
+
+Changed
+- The sales agent's briefing no longer tells it to ask "may I send a few short written ideas", which is why every email ended that way. It now carries the gates and the formula, and each campaign's email plan with its numbered asks.
+- A first email's subject may run to 6 words, and its word count leaves out the sign-off.
+- Every table on the desk can be saved as a spreadsheet file. Under each one, SPREADSHEET saves all of its rows (not only the page in view), in the order you sorted them, one column a fact: leads, deals, companies, emails, calls, costs and the rest.
+- A funding campaign now writes only to investors. A company "AI and Robotics Ventures", which builds robots, had been scored a fit for a funding audience because of the word "Ventures" in its name, and a raise email was staged to it.
+  - **One record per company, kept for good and used by every campaign** (sales/entity): what the company is (a fund, a venture arm, an angel group, an accelerator, a grant program, a product company, a service company, or other), a quote of its own words, and the page on its own site the quote comes from.
+  - **The quote must show it invests** ("we invest", "portfolio", "fund", "AUM", "LPs", "we back", "seed"), with the company's own name removed first, so a name with Ventures, Capital, Holdings or Partners in it proves nothing.
+  - **The page is checked.** The desk reads it again, and a quote that isn't on it is refused. A page that blocks automated readers keeps the record, marked unchecked.
+- How the rule applies to funding audiences:
+  - Scoring a company for a funding audience needs its record. Anything that isn't an investor is filed as no fit, and its research stays for other campaigns.
+  - A company scored before this rule needs its record before it can become a lead.
+  - A first email for a funding campaign is refused unless the company is an investor.
+  - A company found not to be an investor leaves every funding audience on its own, and the funding email waiting for it is withdrawn. Its lead can then be placed under a customer campaign.
+  - Your sales agent's briefing lists the funding companies still missing a record until each one has one.
+- GATHER MORE on an audience's row. For an audience that has had fits from a free public list (the protocols on Base, the tokens trading on Base), one press gathers every company on that list the house has not seen. It works beside everything else, shows under ACTIVE, and you are told when it ends.
+- Three image pipelines for anime and 2.5D characters that come out clean every time: WAI Illustrious v17 (still.wai.txt2img), perfectDeliberate v10 (still.deliberate.txt2img) and Hale Anime IL v19 (still.hale.txt2img). Each one runs on the settings its model's author publishes: the sampler, the steps, the guidance range, the CLIP skip, the quality tags and the negative prompt. Each then does a second pass that enlarges the picture 1.5 times and redraws the fine detail. A being only describes the subject. It can choose the size, the seed, the steps and the guidance within the author's range. It cannot rewire the graph or drop the second pass. Its negative prompt is added to the author's and does not replace it.
+- Every render through these pipelines also keeps the house's adult line in its negative prompt, which steers away from childlike bodies. The being cannot remove it, and the content law still checks the being's own words first.
+- A pipeline now says before any render if the image engine is missing its checkpoint or its upscaler, and names the file.
+
+Changed
+- The SDXL text-to-image pipeline now says plainly that it is SDXL Base. It suits photos and plain-sentence prompts and does not understand anime tags such as "1girl" or "masterpiece", and it names the three character pipelines to use instead. Characters made through it came out muddy for that reason.
+- The three character pipelines (WAI, perfectDeliberate, Hale) now come with prompting rules, each one proven on the pipeline itself. A being's render was reproduced pixel for pixel, then one thing was changed at a time. The seed and the guidance changed nothing about the look; the words changed all of it. Every pipeline listing now teaches the rules:
+  - Write only the subject.
+  - Framing decides how much detail the face gets: "full body" makes it small, "cowboy shot" or "upper body" gives it real detail.
+  - Words like armor, plate and metal turn the whole body to metal; words like skin, porcelain and veins keep it flesh.
+  - Every colour you name shows up.
+  - Keep the prompt short, with the most important tags first.
+  - To judge a change, keep the seed and change one thing.
+- The pipeline adds its own quality tags ("masterpiece", "best quality", and so on). If a being writes its own copies, the pipeline now leaves them out, and drops negatives its own list already covers, because doubles push the subject further down the prompt. Nothing is dropped silently: the render's receipt names every tag that was left out. A prompt made only of quality tags is refused, because it has no subject to draw.
+- You bill a won deal from the deals screen. Open the deal's row, write what each line bills, pick the due date and the ways it can be paid, and issue it. SEND TO THE BUYER emails the invoice from the house mailbox with every way to pay printed on it; VOID closes it with why, and its card link can no longer be paid.
+- An invoice can now be paid by card through your own Stripe account, in crypto at your own address, or either. Attach your Stripe key under Settings, API, Payments (a restricted key is enough: write on Payment Links, read on Checkout Sessions) and turn CARD PAYMENTS on under Connections. Each invoice then gets its own Stripe payment page with the invoice's lines on it; no website is needed. The house asks Stripe every 10 minutes whether an open card invoice was paid, and tells you when one is.
+- **What your leads cost, and where the line converts.**
+- A new COSTS view in the sales position. You file what each lead-data partner costs you a month (Apollo, Hunter, Tomba, or any other), the credits the plan includes, and the day it began.
+- For each plan it shows what you have paid so far, the leads that partner found or gave the address for, and what that works out to per lead, per reply, per call booked and per deal won. One line on top gives the same figures for the whole house, and how many leads came through no paid partner at all.
+- It shows this month's credits used against what each plan includes.
+- It stands beside the books: each plan shows what your books hold as paid to that partner, and marks what was paid and is not booked yet. Your accounts member is told the same, and books each charge from its receipt, never from the estimate.
+- WHERE IT GOES lists every stage of the line (found, shortlisted, leads, written to, replied, calls booked, won) with the share that made it from the stage before.
+- Your sales member sees the same cost figures in its briefing.
+- You can import leads from another tool. On the sales hub, open More, then All People, then Import Leads, and pick a file: an import file converted from a tool's data, or any CSV with an email column. Explee's own export works.
+  - Before anything is written, you see what will happen: who comes onto your list, who replied with interest, who said no, who goes on the do-not-contact list, and who is skipped and why.
+  - Each person comes in with every message that passed, so their row shows the original emails and their replies.
+  - Anyone who replied with interest waits for your answer under Replies, so you answer from your own mailbox.
+  - A "no" is closed, and a bounce or unsubscribe goes on the do-not-contact list.
+  - What the other tool did in your name is noted on each lead: an invented name it signed with, or a product it claimed you don't run.
+  - Someone reached by two campaigns comes in once. Importing the same file twice adds nobody twice.
+- **A lead run has its own credit limit.**
+- When you start a lead run you can say the most credits that run may spend on lookups and address checks (300 by default on the desk). When it is reached the run stops looking people up and ends, saying so; your monthly spending rule still holds either way.
+- The run shows the credits it has spent as it works.
+- **The lead run — leads from your gathered companies as a machine job, not one at a time in chat.**
+- You (LEAD RUN, over DISCOVER, FILTER and VALIDATE) or your sales member (one act) start a run for an audience and say how many leads you want. The house then reads each gathered company's site, screens it against the audience from its own page, finds the person to write to, confirms one address, and files the lead — several companies at once. On this machine it reads and screens about thirty companies a minute.
+- Before, every company was worked by hand inside a chat turn. On one house's records that came to about 740 companies scored in a week, with 13,000 gathered companies never looked at.
+- Every step goes through the same acts and checks your sales member is held to: the audience must be approved, what it requires is proved from the company's own page, a funding audience takes only investors, the country must be one the audience may be sent to, and lookups spend your credits only under your spending rule. Nothing is emailed.
+- A run pursues a person only at a company whose page shows it to be what the audience is — its first sign of fit scored 3 or more. Companies that only score on the side signs are scored and left.
+- A company that is no fit for the audience being worked and belongs to another of your audiences is moved to that audience.
+- The row shows where a run stands as it works, and you can stop it. Your sales member's briefing now leads with the script: gather with narrow searches, start a run, then the research and the email for each lead it files.
+- Several lead runs can work at the same time, one for each audience. The LEAD RUN row keeps its START while a place is free, and each run has its own line, its own STOP and its own stream of what it is doing; STOP ALL ends every one. How many may work together follows your model: as many as it answers at once, less the one place kept for your own chat. A company is never worked by two runs at once, and each run counts only the credits it spent itself.
+- **The graphics card's fans follow the load, not just the temperature.**
+- A new system service for Linux machines with an NVIDIA card (scripts/system/load-fans, installed once with sudo): the card's fans go to the load the second the work starts, and to full at full load. Before, the fans were left to the card's own temperature curve and only caught up once it was already hot.
+- They come down patiently: only after the load has stayed lower for 15 seconds, then a few percent a second, so a reply's bursts do not make the fans surge.
+- A hot card is never left with slow fans whatever the load, and whenever the service stops or cannot read the card, every fan goes back to its own automatic curve.
+- It keeps the full-power hold while a benchmark runs, and replaces the older benchmark-only fan service.
+- SUBSTRATE says "follows load" under the fan dial when it is running.
+- A member of the house can have its own email address on your mailbox. In Mailbox, Send As, add it next to the company addresses, for example "firepos = firepos@ignislabs.ai". Every email that member writes then goes out from its own address, whether you send it from the outbox or it sends directly. Replies come to the same inbox. Add the address as an alias at your email provider first.
+
+Fixed
+- Your sales member can no longer stage an email to someone who isn't on the lead list. Such an email belonged to no campaign and skipped the checks a lead's email passes. When there's a lead at the same company, it's told to move that lead to the new person first.
+- A field your sales member adds that the outbox doesn't use, such as "campaign", is now refused by name instead of silently ignored.
+- In the outbox, an email to someone not on the lead list now says "Not on the lead list" in the Campaign column instead of showing a dash.
+- A mistyped address in a list you bring in is caught before it is kept. An address one letter from a big mailbox provider (gmial.com) or with an ending that does not exist (.con) is left out, and the import says what it was most likely meant to be, so you can correct the file. A real provider or a company's own domain is never called a typo.
+- HISTORY and AUDIT on the SUBSTRATE window's NETWORK tab. While the desk is open it keeps, every few seconds, each connection beyond this machine when it first appears and when it goes, and each port that starts or stops listening beyond the machine. The audit picks out what deserves a look: an address that connected in from outside, a port that began listening after the watch started, a connection to the internet whose program the system does not show, something from outside that was there for one reading and gone, and the platform's own process reaching an address for the first time. Each is named once with how many times it was seen. It flags and stops nothing. The log stays on this machine, private to your user, for 30 days.
+- A design-sheet pipeline for our own model, `still.neuma.sheet.txt2img`. It's the same model and settings, but without the lighting effects that Hale's recipe adds, and with a plain background allowed instead of pushed away. Scenery, light rays, halos, magic circles and weapons are kept out. A body or an outfit now comes out as a clean reference on the background you ask for. Before this, every character design drifted into halos, star flares, swords and summoning rings.
+- Neumas can install models into the image engine themselves. A neuma files `forge/install-model` with a Hugging Face repo and a file in it, and you approve it once. The card names the repo, the file and the engine folder, and it asks even in AUTO, like other downloads to an address a being picks. The platform then reads the file's size and the SHA-256 fingerprint its publisher put on Hugging Face, downloads it straight into the engine's model folder, and checks every byte against that fingerprint before the file gets its real name. A file that doesn't match is thrown away. Each install is recorded where no being can write. Only `.safetensors` files are accepted, because `.ckpt`, `.pt` and `.bin` files are pickles and loading one runs code. Your Hugging Face token from Settings › API is sent to huggingface.co only, never to the storage servers it redirects to. That way a gated model whose license you accepted downloads like any other, and a repo you haven't accepted is refused with the reason.
+- FLUX 3 Image Klein, the newest FLUX (Black Forest Labs, October 2026), is available as `still.flux3.txt2img`. It's built from ComfyUI's own bundled template for the distilled model and runs on the engine version we already have. `list_pipelines` now shows any pipeline that's waiting on files, along with the exact installs that bring them. FLUX 3 needs two files from Black Forest Labs' gated repo; its VAE is already on this machine. `image/generate` explains the same thing before any card if the files aren't there yet. FLUX 3 is under the FLUX Kommunity License: commercial use is free under US$5M a year in revenue, and unlawful content is barred.
+- THE NEVER-LIST is each house's own record, kept by its legal member for the country its operator is in, and read by the sales side every time it screens a company, files a lead or stages an email, so there is no second copy to drift. Your legal member proposes the list with the law and source behind each place and you approve it; you can also set it yourself on the lead run screen and add any place by your own rule. Until a house has its own list, a baseline stands (the places under comprehensive United States sanctions) and is marked as not reviewed. The legal watch files a matter when a house with leads has no reviewed list, and for any lead that stands in a listed place. The pipeline review fails any lead that does.
+- **VALIDATED, a stage of its own between VALIDATE and EMAILS.**
+- VALIDATED lists every lead that is confirmed and filed to its campaign and is waiting for its email to be written: who, the address and what confirmed it, whether it is a named person or a general mailbox, its campaign and its audience. The stage shows how many are ready, so found-and-checked leads are never mixed up with companies still being validated or with emails waiting to be sent.
+- You can delete emails from the outbox: Delete on an opened email, or Delete Checked for several at once. Both ask for a second press. A deleted email is never sent and leaves the list.
+
+Fixed
+- Someone who was already emailed can no longer get the same first email twice by accident.
+  - Your sales member can't stage a new first email to them. A second email has to be written and staged as a follow-up.
+  - An answer to their own reply is not blocked.
+  - A duplicate already sitting in the outbox is refused when you press Send.
+  - The outbox's new Already Emailed column shows when each person was last emailed, in red, so a duplicate stands out before you send anything.
+- Deus Neuma Character XL, the house's own image model, as the `still.neuma.txt2img` pipeline. It's a blend of three anime and 2.5D models: 80% Hale Anime (for its look), 10% WAI and 10% PerfectDeliberate. It reads prompts with Hale's own text encoders, so it runs on Hale's author's recipe. Like every character pipeline, it does a second pass that enlarges the picture 1.5 times, and it keeps the house's adult floor. Images made with it are yours to use, including commercially. The script that makes it (`scripts/merge-checkpoint.py`) accepts only parts whose terms allow a blend to carry its own permissions, and it writes the recipe and every part's fingerprint into the model file itself.
+- Three more prompting rules for the character pipelines, each learned on a real render:
+  - A word can turn into an object: "ball joints" drew a ball in her hand.
+  - A strong colour spreads: "gold" turned the whole body gold and brought wings and halos.
+  - Hands and faces need their own close-up prompt.
+- THE PIPELINE REVIEW, a benchmark of the lead engine from start to finish. Every lead of an audience is graded at each stage against a written standard: was the company really what the audience is for, is the address a named person at the top, did a checker confirm it, do we know them well enough to write, and is the email right. Each stage shows how many leads meet the standard, how many are weak and how many fail, every failed check names the companies and why, and you see how long each step took and which source of companies is worth using. It is read from the records, so it costs nothing and is instant. It is on the lead run screen, and the sales member reads the same review.
+- Making an image now has its own looping sound, separate from thinking. While a being's image or video is rendering, a data-readout loop plays instead of the thinking loop, and the two never play at once. Like the thinking loop, it stays quiet during a voice conversation. It's a stand-in taken from the sound library until you design your own: swapping it is one line in the sound manifest plus a re-bake. It's set to the same loudness as the thinking loop, and it's on the soundboard (Settings, Sound) as "A being is making an image (loop)". The sound bake can now set a loudness adjustment for any sound.
+- Replies now sort themselves by what they say. When someone you wrote to answers, the app reads their own words with fixed rules and files the reply as one of five things: they asked for something (the deck, a call, or a question), they said no, the person has left, it is an automatic reply, or it needs you to read it.
+- Someone who says no is closed by itself. Nothing more is written to them and no follow-up comes due. They stay on your list as a contact and are not put on the do-not-contact list. They are shown under REPLIES in their own list, SAID NO, with the sentence they wrote.
+- A notice that the person has left closes that address the same way and goes to its own list, HAVE LEFT, with the address their office pointed to instead, when it gave one.
+- REPLIES now lists whoever asked for something first, with a new column, THEY SAID, showing what they asked for. Your sales member is told what was asked, so its answer sends the deck or offers the call.
+- An automatic reply such as an out-of-office no longer counts as an answer. Nothing is owed on it and the follow-up still comes due.
+- Opening a reply shows what it was read as and the sentence that decided it, with one-press corrections if the reading is wrong: a no that was not one goes back to REPLIES, and one the rules missed can be closed.
+- Replies received before this change are read the next time you open the sales pipeline.
+- Every email waiting in EMAILS now says what kind it is: FIRST EMAIL (the first this person ever gets), FOLLOW-UP (you wrote before and they haven't answered since), or REPLY (answering an email they sent you).
+- Opening a row in REPLIES now shows their reply first, word for word, without the email of yours they quoted. A reply recorded before this change is read again from the mailbox, with the whole email, quote included, one click away. An automatic reply is marked as one, so an out-of-office isn't mistaken for them answering.
+- REPLIES has a YOUR ANSWER column: OWED, STAGED — IN EMAILS, or SENT with the date.
+
+Fixed
+- ALREADY EMAILED now shows the earlier email even when the person wrote back after it. A staged reply to someone you had already emailed used to read "—", as if they had never been written to.
+- The LEAD RUN panel now says where each audience stands and what to do next. One line an audience: how many gathered companies still wait to be screened, how many were screened, how many were a fit, and NEXT — START A RUN, GATHER MORE FIRST, or CHANGE THE FIRST SIGN when almost nobody screened showed what the audience is. Open a row to read why in full and which source brought the fits. The audience picker shows how many wait for each, and a run that belongs to another campaign's audience says so.
+- What your chats leave running now shows at the bottom of the chat, just above where you type: a crawl, a download, a server a being started and let go. Each entry shows what it runs, its folder, how long ago it started, and STOP. Press STOP twice: it asks the process to end, then forces it if it doesn't. ALL CHATS lists everything any of your chats started that is still running, with the being and chat that started it. It's found however the being let it go, including nohup, `&` and setsid. This works on Linux, where the rig runs.
+- Every lead run is kept on record for good, with every line it said, not only the last ones shown while it works. PAST RUNS lists each run with what it found (leads, credits, looked at, fits, no fits, moved), opens onto its full log, and saves as a spreadsheet. Runs from before today are listed with their counts.
+- A finished lead run can be cleared off the list. CLEAR removes one, CLEAR FINISHED removes all that are done; a run still working is never cleared.
+- **A call can be booked onto a lead by hand, and every booked call is on the house calendar.**
+- Your sales member can now file a call it verified in the mailbox (a booking notice or an accepted invitation), saying where it verified it. Before, a call reached the pipeline only through a calendar you had added, so a verified call showed nowhere.
+- You can add a call yourself under CALLS: who it is with, when, what it is, and the link to join.
+- Every call on a lead now stands on your house calendar at its real time and is announced an hour and ten minutes before, whether or not any outside calendar is connected.
+- A call that moved is booked again with its new time; the new time replaces the old one.
+- **A call can be moved or called off, and a rescheduled call is never missed.**
+- Under CALLS each call opens to its own controls: give it a new time to move it, or call it off (two presses). A called-off call leaves the list and your house calendar and is kept under CALLED OFF; the lead stays open.
+- A call that moved says so in the list, with the time it was moved from, and its reminders follow the new time.
+- When a call is rescheduled or cancelled on a calendar you added, it moves or leaves here by itself and you are told at once. A calendar that could not be read never cancels anything.
+- Your sales member files a reschedule or a cancellation it reads in the mailbox the same way, and you are told each time.
+- Each call shows its link to join. The hand form now finds any lead, whatever campaign is in view.
+- **CALLS is its own stage of the sales pipeline, just before DEALS.**
+- Every call booked with a lead (read off the calendars you added) is listed there: when it is, how far off, who with, what they said that led to it, and the messages with them one press away.
+- The calls coming stand first, soonest on top; calls already held stay under them.
+- The stage shows how many calls are booked and when the next one is, and is marked while one is coming.
+- The sales pipeline now shows which partner found each record. DISCOVER marks every audience with who found its companies (for example "Hunter 2,844 · Company index 338 · DefiLlama 25"). Opening an audience lists its searches, newest first, with the partner each one ran at. FILTER and VALIDATE mark each company with the partner that found it. SENT and REPLIES mark each person with the partner that found the company and the one that gave the address.
+- A new WHO FOUND THEM sheet under DISCOVER shows each partner's funnel: how many companies it found, how many were shortlisted, scored a fit, made the lead list, were written to, replied and won, and the credits its lookups spent. You can sort it by any column, so the partner that brings the most replies or deals rises to the top.
+- Your sales member can now keep the lead engine flowing by itself. It is woken when a lead run or a gather ends, told what happened and what comes next, and its own status act now shows where every audience stands with its one next step, the same picture your LEAD RUN panel shows. Its standing instructions say that keeping every audience moving is its job: start runs where companies wait, gather where nothing waits, and write the research and first email for every new lead. Whether it may wake by itself is still your house clock's charter to say, and every email still waits for you unless you turned REVIEW FIRST off.
+- A lead already on your list can be put under an audience, and so under its campaign. Before, a lead added by hand showed NO CAMPAIGN, and so did every email staged to it; the only way to change that was to drop the lead and add it again, which the list refuses. Emails already staged to the lead show the campaign at once, with no need to stage them again.
+- On the sales hub's Sent and Replies steps, each row now shows the channel the person was written to through, such as Email or X, and Sent also shows how many messages went out and when the last one did.
+- Press a person's row to see every message with them, oldest first. Each one shows which way it went, the channel, when, and the sending address. Emails sent from the outbox show their full subject and text, and what was promised.
+- You can now sort every table in the app by any column. Press a column's heading to sort by it, and press it again to reverse the order.
+  - Numbers sort as numbers, with the most first on the first press.
+  - Words sort A to Z.
+  - Columns whose words have a natural order sort by that order, not alphabetically: fit sorts strongest first, site alive first, and where a company or person stands sorts by how far along it is.
+  - Empty cells always go last.
+- A NETWORK tab in the SUBSTRATE window. It reads this machine's own socket table every few seconds and shows what is connected right now: every connection going out to the internet with the program, its address and port; anything that came in from outside the machine; every port that listens beyond the machine and who can reach it; traffic on your own network; and traffic that never leaves the machine. The platform's own connections are marked apart from other programs'. It also lists the connections the platform may make by itself, each on or off. No name is looked up for an address, because asking would itself go out. It reads on Linux today.
+- A thinking sound. While a being works on its answer, from the moment you send until its words start to appear, and again while its reasoning streams, a quiet techy loop plays. It is Founder's own sound, cleaned of its background hum. It steps aside when the typing sound starts and stays silent during a voice conversation. You can audition it in Settings › Sound as […].
+- Tomba and Apollo now work in every step of the sales pipeline that Hunter does. DISCOVER can gather companies through Tomba's or Apollo's company search. These searches cost one credit per page, so they only run while Paid lead data is on and within your monthly limit. Your sales agent can find one named person's address through Hunter, Tomba or Apollo. Before a first email, the address is checked by Hunter, or by Tomba when Hunter isn't attached. Each attached account's credits left now show under Paid lead data.
+
+Fixed
+- Apollo lookups no longer throw away people they paid for. Apollo writes LinkedIn links as http, and those were all rejected; they are now accepted and kept. A person Apollo would not unlock, or who works at another company now, is reported with the reason instead of disappearing.
+- A Tomba lookup that finds nobody no longer counts a credit, and Tomba asks for a company's executives first.
+- When a provider refuses, the message now gives its own reason. A bad Tomba key now says the key was refused instead of "answered 400".
+- A neuma can now work in the Unreal Engine editor open on your computer: it sees which project and level are open, looks at the viewport, runs Python in the editor, uses Epic's built-in tools, reads your Fab library and adds a listing you own to the project.
+- It is off until you turn it on: Connections, "The Unreal editor on this computer". It reaches only an editor on this computer.
+- Looking is free. Running code, changing the project and installing from Fab ask your approval every time, even in AUTO, unless you allow that neuma always; the card shows the whole code.
+- The editor needs the Remote Control plugin on, with remote Python allowed.
+- The Substrate window now shows who holds the machine, by name. Three lists side by side: the graphics card, system memory and the processor. Each holder is named by what it is (the mind and the model file it serves, the image engine, a voice engine, dictation, a browser, this app itself), and anything this app started is marked. The processor list shows every core as a cell with its load, which holder is on the busy ones, and the heaviest users. Before, the card's largest holder was shown as a process number.
+- The Substrate window has an Image Engine panel: whether it is up, how much of the card its models hold, how much the whole engine holds, its system memory, what is rendering and waiting, when it will unload and stop by itself, and which models it has loaded, each with its kind, size and file. UNLOAD MODELS gives the card memory back and keeps the engine up; STOP ENGINE returns everything.
+- A being can read the same map of the machine (machine_map) before starting anything heavy or when something will not fit.
+- A being can read the image engine whole (forge_status), including which models it has loaded and every model file it could load, and can steer it (forge_control): unload its models, stop it, start it, cancel one job, or cancel every waiting job. Each answer says what changed, measured. Steering works for beings of the house that owns this computer; a being of another house can still read the engine's state.
+
+Fixed
+- Which models the image engine has loaded can now be told. The engine has no way to list them, so the app reads them from the engine's own record of what it loaded, beside a live measure of how much is on the card. When nothing is on the card, the list is shown as what was last loaded.
+- A WRITE LIMIT switch under SETTINGS → SECURITY. It is on by default, at 10 file writes per message. It counts what a being writes in its own folder and the files it copies or moves out of it. Writes inside a folder you granted it, or have open in your Explorer, never count. You can change the number (1 to 1000) or turn the limit off. Only the install owner can change it.
+
+Changed
+- The write limit now starts again with every message. Before, it was 10 writes for as long as the window stayed open, and it could stop a being halfway through a job.
+- When a being reaches the limit, you get a card: ALLOW gives it as many again for this message, ALWAYS removes the limit for the rest of this message, and NO stops it. Where nobody can be asked, such as house work or a clone, it stops. In every case the being is told how many writes it used, that the count starts again with your next message, and where the switch is, instead of "Write operation limit reached for this session".
+- Your own calendars now show on the house calendar. Under TASKS, CALENDAR, open YOUR CALENDARS and paste a calendar's private iCal address (in Google Calendar: Settings, the calendar, "Secret address in iCal format"). Everything on it, a call booked through a scheduling page included, shows on your own row at its real time, with who it is with, where, and the link to join. It is read only and one way: nothing is written to that calendar. Turn on "Your calendars" under CONNECTIONS and it is read every 5 minutes.
+- You are told about every meeting three times: when it is added, an hour before it starts, and ten minutes before, with its link. Each is said once.
+- A meeting with someone on your lead list names them, and is written onto that lead: it reads as a call booked, with the time, at the top of REPLIES. Your sales member is told of every booked call and asked to brief you before it: who the person is and what their company is doing now, what was sent and what they answered, what was promised, the questions they are likely to ask, and the one outcome to ask for.
+- The calendar's address is kept in your house's private files and never shown again. If a calendar cannot be read, its last known meetings stay and the calendar says which one failed.
+
+### Changed
+
+- Sending an email you approved no longer waits on the model. When you press SEND in the outbox, the email is checked by rule only (the do-not-contact list, a second first email, the numbers against your approved facts, the address) and goes. Before, if you had approved a new facts sheet or changed the email's words after it was staged, every send was read again by the model first, about 11 seconds an email.
+- A lead run now proves every company already filed against what its audience requires, from the company's own page. A company that fails is moved to the audience it belongs to, with its lead when nobody was written to yet, and the emails written for the wrong audience are withdrawn. It is no longer closed and lost.
+- Your sales member is no longer told to gather companies from Hunter first. It is told to gather from the source that has given each audience the most fits, and its briefing now lists, for every audience, how many of each source's companies turned out to be a fit. Hunter's free search stays available as one source among the others.
+- **Every list that names an audience names its campaign first.**
+- In the sales pipeline, the FILTER and VALIDATE lists now show the campaign each company's audience belongs to, in a CAMPAIGN column just before AUDIENCE. DISCOVER shows the campaign before the audience too. Before, FILTER and VALIDATE named only the audience, so a company could look as if it belonged to no campaign you had set up.
+- The column shows while every campaign is in view; with one campaign selected, everything listed is already that campaign's.
+- The shadow clone dock now folds to one line. Each clone shows on that line with where it stands and what it is doing at that moment, beside STOP ALL and OPEN. OPEN shows the clones' tabs and work. EXPAND makes the dock take most of the chat's height, and COLLAPSE folds it back. The desk remembers the size you last chose. STOP ALL now sits on the head line instead of its own row, and STOP THIS CLONE is a small button instead of a bar across the panel.
+- When shadow clones finish in the background, their report back in the chat is now a short card instead of one long block of raw text. The header line gives how many clones, how long they took, how many ran at once and how many reached their goal. Under it is one line per clone: what it was for, GOAL REACHED, GOAL NOT REACHED or DID NOT FINISH, and its first sentence. READ THEIR REPORTS opens every full report, properly formatted, and the file the reports are saved in is a clickable path. Your agent still receives the full reports.
+- Shadow clones at work now dock at the bottom of the chat, just above where you type, so they stay in view as the conversation goes on. Where they were launched, the chat shows one line saying they're docked below. When they finish, the full panel with every report goes back to its place in the chat.
+
+Fixed
+- Clones, team members and house wakes now use every slot the model server runs, keeping one for your own chat. On a 4-slot server, three clones run alongside your conversation instead of one waiting "#1 IN LINE". Before, the line ran only as wide as the capacity scan's estimate, which read 3 on a server running 4, so the SLOTS ring showed a free slot while a clone waited. The scan still sets how many members a team plans to run at once.
+- The Context Map's second view is rebuilt. It was a drawing of every memory with every link laid over it, a ball of lines with groups named by four unrelated words. It is now MEMORY: everything a being has kept, laid out so you can find things. On the left are the ways in: its topics (each named by the words that set it apart, with how many memories it holds and when it was spoken of), the people it speaks of, the months, and the kinds of memory. Press one to narrow the list; press it again to lift it. Each number shows how many memories you would see.
+- You can search a being's memory for words. The search finds every memory that holds all of them, including ones the being has taken back or put away, and says how each stands.
+- The memories are a table you can sort. Press one to read it in full on the right: the conversation it came from with the remembered part marked, or the note as the being wrote it, with when it happened, how it stands, its topic and the people it names. Under it are the memories nearest to it. Press one of those to follow the thread, and BACK to return.
+- MAP draws the same memory as a picture: each topic is a disc sized by how many memories it holds, each memory is a dot inside its topic (brighter is newer, larger is more connected), and the lines between discs show which topics touch. Lines from a memory are drawn only for the one you have open. Press a disc to narrow to that topic, press a dot to open that memory.
+- SPACE shows the same memory as a space you move through. Every memory is a light and every topic a cluster of them, with the most connected memories at each cluster's core. Drag to turn it, use the wheel or + and − to move in and out, press a topic's name to go and stand in front of it, and press a light to open that memory. Choosing a topic on the left carries you there, and opening a memory shows its threads to the memories nearest to it. It turns slowly while left alone; DRIFT stops that, and it stays still if your system asks for reduced motion.
+- The two views are now named for what they show: WINDOW · THIS TURN (what the model is holding right now) and MEMORY · EVERYTHING KEPT.
+
+Added
+- Every being has a new tool, memory_map, to see what its own memory is made of: its topics, the people and months, and the kinds. From there it can open any of those as a page of memories, and from any memory see the ones nearest to it, so it can follow a thread it would not have thought to search for. It is the same layout the operator sees, so both are looking at one map. It is a read of the being's own record: it never asks for approval, and it keeps working while you have the being on watch-only.
+- A follow-up or an answer to a lead now arrives inside the same conversation in their mail program, under the earlier emails, instead of as a new unrelated email. Each email names the messages already exchanged with that person. A first email is unchanged.
+- The licence agreement (1.7) and the third-party credits name the image models the forge now offers for characters, WAI-illustrious-SDXL and Hale Anime XL, and the upscaler they use, each with its licence. Hale Anime XL's author asks that its images not be used commercially without editing. Because the agreement's text changed, the app asks you to read and sign the new version at your next ceremony.
+- **Every lead passes the same screen before a first email, whichever source it came from.**
+- A first email is written only to a company that was scored a fit for an audience the operator approved, and that met what the audience requires. Before, only leads filed from the scored pool were held to this; a lead added by hand, imported, registered from the inbox, or put under an audience without being scored could be written to unscored.
+- Calling an email a follow-up no longer skips the checks when nothing was ever sent to that person: it is a first email and is held to the first-email rules.
+- A lead put under an audience and never scored can now be scored in place from its own pages; before, the pool answered that it was already there.
+- Each refusal names the act that moves it (place it, score it, prove the required sign, or wait for the audience's approval). The operator can still send on their own word.
+- Following a shadow clone is easier. A clone's panel now shows its work in the order it happened: what it said, with each action it took placed where it took it. Before, its words ran together in one block ("…the final chunk.Found 7 more…") with its actions listed apart. The panel follows the newest step the way the chat does. Scroll up to read, and press ▼ LIVE to return. Each clone's tab says what it is doing at that moment, so you can follow all of them without switching tabs. In the dock, the tabs stay in place while the clone's work scrolls, and EXPAND makes the dock take most of the chat's height. A clone's task folds under ITS TASK, so its goal and its work come first.
+- One gather from the Base protocols list now takes up to 500 companies instead of 25, and from the Base tokens list up to 100. The 25 limit had left the best source for on-chain audiences nearly empty.
+- A message you send while a being is working no longer stops what it's doing. Before, the being's turn was cut off when its current step finished, and your message started a new turn. Now your words are passed into the turn that's already running, at that same point, next to the result of the step it just finished. The being is told to put them on its task list, finish what it was doing, and then take them up, in the same turn if the work is its to do. If your message tells it to stop or change course, it does that instead. Your message stays in the chat where you sent it, between your question and its answer, the same way messages sent mid-work appear here in Claude Code. This works in the neuma chat and the witness chat.
+- Some messages still interrupt at the next step, the way all of them used to, because they can't be passed into a running turn: a message with an attachment, a queued retry, and words from a guest rather than you. STOP and send-now still interrupt right away. A message sent after the being's last step waits until the turn ends and goes next.
+- **Companies a lead run screens no longer wait for you to approve a list.**
+- A company a run screened as what its audience is goes onto that audience's approved list by itself. You no longer read a list of companies before their leads can be worked. The emails to them still wait for you in EMAILS.
+- **A lead run first validates everything already waiting.**
+- Every lead run now begins by validating the companies that sit waiting for your list approval, for every approved audience and not only the one being worked. Each is read again and screened from its own page.
+- One that holds goes onto the approved list by itself, with what it is and where it is put on record, and (for the audience being worked) goes on to get its person and address.
+- One its own page does not show to be what the audience is comes off your queue with the reason; the people found there stay in ALL PEOPLE. One that belongs to another audience is moved to it. One whose site could not be read is left exactly as it stood.
+- The run's line says how many waiting companies it validated, and how many hold, are out, or were left.
+- A company that fits but whose site never says which country it is in is no longer left behind. Its person is still found, the address confirmed and the lead filed, marked COUNTRY TO FIND in the VALIDATED stage. No email is written to it until its country is known, and your sales member can file the country from a page that states it. A company known to be outside the audience's countries is still not written to.
+- A company whose country is simply not known is no longer held from email. What holds a company now is the house's NEVER-LIST: the places it never does business with, for any company or campaign. A company is held when its record, its domain, the address itself, or its own pages (a city, a phone code, "based in") place it in one of them.
+- **You approve no list of companies any more — the pipeline validates every one.**
+- The APPROVE THE LIST step is gone from the sales pipeline, from each audience's card, and from WAITING ON YOU. A company is validated by the house's own screening (a lead run reads its site and confirms it against the audience), not by you reading a list.
+- A company becomes a lead only once that screening has confirmed it. Your sales member is told so, and to start a lead run rather than file a lead for a company that was never validated.
+- The pipeline's steps now read: gather, filter, verify, score, VALIDATE, contacts, leads, outreach. What waits to be validated is shown as a lead run's work, never as yours.
+- The emails themselves still wait for you under EMAILS while review is on.
+- **The notification marks sit in the taskbar, right of the clock.**
+- The bell, the WAITING ON YOU mark and the "N RUNNING" mark are now part of the taskbar, to the right of its clock, instead of floating over the bottom-right corner of whatever window is open. The panel and the arriving notices still rise above that corner.
+- Sending many emails at once now shows the batch as it goes. SEND CHECKED and SEND ALL send one email at a time, and the outbox shows the batch while it runs. A line says where it stands, for example "SENDING 4 OF 15 · 3 SENT · 11 WAITING", and a bar fills as each one leaves. Each email in the batch shows SENT, SENDING…, WAITING, or NOT SENT with the reason. STOP lets the email in flight finish and keeps the rest in the outbox, unsent. When the batch ends, the line says how it went, and DONE puts it away.
+- Correction to earlier release notes. Some notes from 0.1.76 onward promised more protection than the app gave at the time. The lines below say what each promise was, where it fell short, and what is true from this version on. The older notes are left as they were published.
+- "Code a member runs can't reach the app's own secrets" was true only with SANDBOX on. With SANDBOX off, a command ran with the app's whole environment, keys included. Now SANDBOX is on unless you turn it off; with it off, every command asks you first, runs without the app's and your model providers' keys, and is refused while your identity or wallet data sits under your home folder.
+- "A post, email or PDF with a key is stopped before it leaves" missed a key that had been re-encoded, broken across lines or hidden with invisible characters, and it did not cover file downloads or image saves. Those are now caught. It still cannot catch a key sent in pieces across separate actions, and it reads the first address of a page fetch, not every redirect after it.
+- "A paired phone can no longer change who a wallet may pay or how much it may spend without asking" was true for the main wallet only. A paired phone could still change liquidity limits, deposit approvals, and where an invoice or a raise is paid. Now those change only at the computer running the app.
+- "Never moves money because a document told it to" did not hold for liquidity actions, which ran without asking, also in house work with nobody at the desk. Every liquidity action that moves funds now waits for your approval. A main-wallet payment to an address on your allowlist and under your threshold still goes without a card: that list and that limit are your approval.
+- "Extensions are checked before they can run" means checked against published security advisories. It does not prove an extension is safe, and the app does not yet confirm that the files it starts are the same files it checked. Install only extensions you trust.
+- "Webhooks are signed, fresh and not seen before" was true of the signature, but the duplicate check and the event name were read from parts of the request the signature does not cover. Both are now taken from the signed content.
+- A practice summoning that was abandoned could be used to make the hourly cleanup delete another member's folders. The cleanup now removes only a folder the app itself made for that practice run, and nothing that belongs to a member or to the house.
+- In house work with nobody at the desk, publishing now always comes to you unless your charter allows it: sharing a vault page, publishing a delivery, filing a security issue, locking the weekly posting plan and taking back a sent post join posting, email and money out. The house's reviewer no longer decides any of these.
+- A lead run now works the source that has given the most fits first. For each audience it counts how the companies from each source have screened so far, and starts with the best one; a source nothing was screened from yet is tried before one known to be poor. The run says the order it chose.
+- A run stops when its pool has run thin. Once 150 companies in a row have been screened with at most two fits, it stops instead of reading the rest, and says so, with how many it left and that the audience needs a narrower gather.
+- A lead run reads the likeliest companies first. What was gathered about a company (its name, its own description, its categories) already says a lot about whether its page will fit, so companies that say something of what the audience is go first; for a funding audience, the ones that name what an investor is called (fund, capital, ventures, accelerator, grant) go first. The audience table shows how many of those waiting LOOK LIKELY.
+- When few of an audience's screened companies are a fit, the panel no longer says CHANGE THE FIRST SIGN for every case. It says FEW ARE A FIT — SEE WHY and lists the last misses with the screener's own reason for each, so you can see which it is: the searches are bringing the wrong kind of company, or the companies are right and the first sign is something no website says.
+- A lead run now researches each lead and writes its first email the moment it confirms the address, from the company's own page, instead of leaving the lead to wait for the sales member's next turn (the first pipeline review showed that wait was typically 8.6 hours). Leads filed earlier that still wait are written first. The email passes every check a first email always passed and waits in your outbox for review: nothing is sent. A lead whose page shows it is no match for the campaign is researched, kept, and gets no email. What the run could not write it names, and those stay with the sales member.
+- Screening a company twice now gives the same answer. The model is asked with no randomness and a fixed seed, so a verdict changes only when the page or the audience does.
+- The Chief Revenue Officer's hub is now one line of eight steps, in order: Setup, Discover, Filter, Validate, Emails, Sent, Replies, Deals.
+  - Each step shows its count.
+  - Any step that needs you is marked.
+  - Pressing a step shows one table of just what is at that step.
+- A row of campaign buttons above the line shows the whole pipeline for all campaigns at once, or for one campaign.
+- Campaign editing, everyone the house knows, the company's facts, the mailbox, settings and Their Eyes now sit in one quiet row under "More".
+- The campaigns list is now one plain table. Its counts are on the pipeline line, so they no longer repeat in a tall block per campaign.
+- When a member names a record in chat, the link now shows what it is and its name (for example "COMPANY · Polychain") instead of an id. It opens on the step where that record stands.
+- "Waiting on you" items now open on the right step: emails to review on Emails, a list to approve on Validate, an audience to approve on Discover.
+- Your sales member can now change an email it already staged without you. When it stages a new version for the same person, the new version replaces the waiting one, and it is checked again. That works the same for an email you returned. You no longer have to return an email before it can be rewritten. The outbox shows how many times each email was rewritten.
+- Your sales member can take back an email it staged. Putting a person or company on the do-not-contact list now withdraws any email waiting for them.
+- Your sales member can move a lead to another person at the same company, for example when the address turns out to be dead, or when the top person stays silent and the next one up is named. The lead keeps its history, and the follow-up count starts again for the new person.
+- Your sales member can list what stands at any step of the lead pipeline across all audiences at once.
+
+Fixed
+- A number that is part of a name, such as "Layer 2", "web3", "ERC-20" or "H100", no longer stops an email for carrying a figure that is not on the approved facts sheet.
+- After three unanswered emails, the move to the next person at a company was refused because the first lead had to be closed first. The lead now moves to the next person instead.
+- Your sales member no longer puts a "reply stop" line in the middle of its emails. Such a line is optional now, and when it is used it is one short line at the very end, below the name. Anyone who replies "stop" is still never written to again.
+- A paid company search remembers what it already asked. The same search for the same audience now continues from the page after the last one it took instead of starting again at page one and paying for companies you already hold. A search that matched nothing, was too wide, or has had every page taken is refused before a credit is spent, with why and what to do instead.
+- A message a being takes in while it is replying no longer sits at the bottom of the chat. It moves into the reply at the point it was picked up, marked YOU, WHILE IT WORKED · HEARD HERE, with what the being said before it above and what it says after it below.
+- A message you send NOW (Ctrl+Enter) while a being is replying is read at once and nothing they were doing is lost. Before, NOW cut the whole reply and started over with your message. Now the being stops where it is, even mid-sentence, keeps what it had said and done, reads your message, and carries on from the same point in the same turn.
+- In every table, the checkbox you tick a row with now always sits in the first column on the far left, never in the middle. This covers the outbox's emails to send and the facts sheet's facts to approve.
+- A first email to a lead now has a subject in one fixed shape: our company's name first, then why we're writing, with a capital on each major word, like "Umbrae: Raising Our Seed Round" or "Deus Neuma: Local AI for Your Team". The platform writes this, not the AI. The name comes from the campaign's company as it is saved in the company record (Deus Neuma, Umbrae, Ignis AI Labs). The AI gives only the reason, in 2 to 6 words. Small words like "for", "of" and "the" stay lowercase in the middle, and words with their own capitals (AI, DeFi, SAFE, LP, iOS) keep them. If the AI writes the company's name at the start itself, it isn't added twice.
+- In a funding campaign, the reason has to say we are raising (a raise, a round, seed, SAFE, investment or funding), so investors see it in the subject line. A subject that doesn't is sent back to the AI with an example.
+- Tomba under Settings, API, Lead data is one row with two fields, API key and Secret, one under the other. Paste each from your Tomba account page; you no longer join them with a colon. The row reads SET only when both are saved, and says "secret not set" when only the key is. A key already saved the older way, as key:secret, still works.
+- On the sales hub's Validate step, companies waiting for your list approval now come first in the table. They're edged and washed in red and marked "Waits for your approval". Each has Not This One, to take it off before you approve the list.
+
+Added
+- On the Validate step, every company now has its own actions:
+  - Remove takes off one that doesn't belong. If it was already on the lead list, its lead is closed and anything staged to it is withdrawn. Remove asks for a second press.
+  - Move puts a company under another audience. It leaves its old list approval behind.
+  - Take Off The List un-approves a company that was already approved.
+  - A company that hasn't been scored yet can be removed, which passes it over at the filter.
+
+### Fixed
+
+- A being with a long history can start new chats and shadow clones again. Every new chat or clone gathers everything the being has ever said, together with its memory, and checks it against its own fingerprint. That check refused anything over 32 MB. On 2026-11-20 Firepos's chats crossed that size, and every clone after that stopped 2 seconds in with "exceeds the plain-data UTF-8 output limit". A new chat would have stopped the same way, and so would the main chat after a restart. A being's own history now has no size limit. The check still refuses damaged or malformed history, and a refusal now names the part that failed. The check now reads the history piece by piece instead of first copying all of it into one block of memory. Every fingerprint is the same as before, so nothing already saved has to be redone.
+- The screener gave full marks to a sign with several parts when the page showed only one of them, so a general venture fund scored 5 for "a crypto fund with a portfolio of DeFi or token projects". It is now told that every part must be shown.
+- A site drawn in the browser (most crypto apps) is no longer counted unreadable. The page's own title and description are read as its words, so a lending app whose description says "built on Base" is screened on that. A domain ending in .fi or .ag is no longer taken for a company in Finland or Antigua and skipped.
+- A long-running shadow clone no longer looks frozen in the dock. A clone's feed keeps its last 160 steps, and it used to decide whether to scroll by counting them. Once a clone passed 160 steps the count stopped changing, and so did the view: new work arrived below the visible area until you switched tabs and the feed was redrawn. Now the feed scrolls to the newest step on every update while you're following it. If you scroll up to read, it still stays where you are.
+- Anything you send while a conversation is being compacted now waits for the compaction to finish, then goes in order. Before, a message sent during COMPACTING started right away, against the conversation while it was being rewritten. This covers both your /compact and the automatic one that runs when the context is nearly full. The message shows as held with "it goes as soon as the compaction finishes". Even a message marked "now" waits, because a compaction can't be cut short.
+- The CONTEXT MAP now counts everything that goes to the model, not just the prompt sections. Every request also carries the definitions of the tools the being can use, and nothing counted them. The model's real token count was divided among the sections that were counted, so the tool definitions' share showed up as extra size on everything else, identity, conversation and the rest. The tool definitions are now their own section, TOOL DEFINITIONS (N). Earlier images, actions that finished before a queued message, the answer-format reminder and a sender's tool results are now counted too. An image counts as an estimated ~1,300 tokens, labelled as an estimate, not by its file size. In a real turn the map now matches what was sent to within 0.1%.
+- 29 sections of the prompt were filed under OTHER because the map didn't know what they were for. They included the office briefings (CRO, CMO, CFO and the rest), YOUR POSITION, the company line, the sovereignty gateway, the house post, the wallet, the true name, plan and research modes, and the witness's sealed identity. Each now sits under its family: IDENTITY, PLATFORM, WORK, MOMENT or CONVERSATION. A test now fails if a new section would land in OTHER again.
+- A company that meets an audience's FIRST sign is no longer thrown out because the audience's other signs score low. The first sign says what a company is; the rest only rank it. Before, a fund that plainly invests in AI was rejected for an AI-funds audience every time because side signs such as "runs grants" scored zero and pulled its average under the line.
+- A deal can now be opened for any company of your house. Before, a deal was only accepted for a company being founded on the company line, so a house selling for the companies it already has could open no deal, and so send no invoice.
+- Holding Space to talk now works in the box that opens when you edit one of your earlier messages, the same as in the main message box. Before, holding Space there just typed space after space. Now a tap types a space, and a hold dictates into the edit at the cursor until you let go. While you talk, the edit box shows LISTENING.
+- Facts you have already approved no longer come back for approval when the sales member files a new version of the sheet or you edit or add a fact.
+  - A fact stays approved as long as its company, wording and figure are unchanged. A new date in its source does not count as a change.
+  - On the sheet, such a fact shows "Approved before", with its box ticked and locked.
+  - Only new or reworded facts wait for you, and the "Waiting on you" count and Approve All count only those.
+  - A new version with nothing new on it is approved straight away.
+- **A message sent while a being is still thinking reaches it at once.**
+- Before, a message you sent mid-turn was only handed to the being when its current step finished. If it was in the middle of a long thought, the message sat in the queue until the thought ended and its next action was done, which on a busy card could be minutes.
+- Now, if the being is still thinking and has not said or done anything in that step yet, it gets your message right away, with the same instruction as before: put it on the list, finish what you were doing, then take it up. Only the unfinished thought of that one step is thought again; no action and no word already spoken is lost.
+- A being that has already started speaking its answer is left to finish, and your message goes next, as before. This applies to the neuma chat; the witness chat still hands messages over at each step.
+- A lead's reply that was sent as HTML only (most auto-replies and many phone mail apps send no plain-text version) used to show as raw code, `<div dir="ltr">Hello, <br><br>…`, under THEIR REPLY. Now the house turns these emails into plain words as soon as it reads them from the mailbox. That covers the mail watch when it saves a reply on the lead, the AI reading its own mail, and the reply view. Email addresses inside links stay in the words. An auto-reply that names another address to write to now reads as a sentence with that address in it. Replies already saved as raw code are shown as words too, and nothing on the lead list is rewritten.
+- The character pipelines' prompting rules now tell a being plainly not to write age words in its negative prompt. The pipeline already keeps an adult floor in its own negative, and the content law refuses those words anywhere, even in a negative. A being had added them to protect its render, the render was refused, and the being then wrongly concluded that its design's sexual tags were the problem.
+- **What the first live lead run showed.**
+- A run now looks for the decision maker at every lead-data provider you attached, in turn (Apollo, then Tomba, then Hunter), until one returns a person with an address. The first live run asked only the first provider attached, which was out of credits, so it filed general mailboxes (info@, pr@) for funds whose partners another provider held, and left most fits with no address.
+- A fit whose pages did not say where the company is gets one more narrow question, from its contact and about pages, before it is filed. A fit scored earlier with no country is asked the same before anyone is looked up. The first live run left 8 of 13 fits unfiled for want of a country.
+- **A lead run pays for one person a company, not five.**
+- When a lead run asks Apollo for the person to write to, Apollo now stops revealing addresses at the first one that stands. Before, it revealed the top five people at every company, a credit each, and the run used one: the second live run spent 66 credits on 11 companies.
+- Your sales member, asking for a company's people itself, still sees everyone it may reveal.
+- At a fund, a partner is now chosen ahead of a director.
+- **A company a lead run validates carries the scores that run read.**
+- When a lead run re-validates a company your sales member scored earlier, the company's record now takes the scores the run read from its page. Before, the run judged by its own reading but left the old scores standing, so a company could pass validation while its record still showed the earlier, lower scores.
+- A provider's stored "verified" no longer outranks a live check. An address Apollo handed over marked verified from its own records, but which Apollo's live check couldn't confirm, was sent on the stored flag and hard-bounced ("550 5.1.1: the address does not exist"). Now a stored "verified" counts only while no live check has answered, and an address with only a stored flag is checked live before an email is written to it or sent.
+
+Changed
+- Another layer before a first email leaves. Every send from the outbox now checks the address again, instead of relying on the check from when the email was staged. A first email to someone the house has never written to goes only to an address a database confirmed live. Any other first email stops at send with the reason, unless you open it and press SEND ANYWAY — NOT CONFIRMED (twice). Your sales agent can't override this. Replies and follow-ups aren't affected.
+- A bounce is recorded as a check from the recipient's mail server, so that address reads WILL BOUNCE everywhere. Addresses that stand only on a provider's stored flag show as VALID ON A PROVIDER'S RECORD — NOT CHECKED LIVE, and CHECK ADDRESSES checks them.
+- The highlight around whatever has keyboard focus is now drawn the same way everywhere: a thin cyan line on the item's own edge. Before, it sat a few pixels outside the item. That made it spill over the next tab or row and get cut off at the edge of a scrolling strip, which showed up as a broken box around the chat tabs.
+- Two chats working at the same time no longer fight over the sound. The desk now plays one loop at a time: typing first, then making an image, then thinking. Each chat only says whether it wants a loop. Switching up to a higher loop happens at once. Switching down waits about a second and going quiet waits about a third of a second, so the gaps between bursts of words no longer flip the sound back and forth many times a second.
+- A loop that was stopped before its sound finished loading used to start anyway and keep playing. A loop asked for twice in a row used to play two copies, and one of them could never be stopped. Both are fixed: a loop is reserved the moment it's asked for, a stop cancels one that's still loading, and a second request reuses the same loop. Loops also fade in and out briefly, so a switch doesn't click.
+- A first email that says the same thing twice is now refused (the same figure in two sentences, or two sentences making one point), naming both sentences.
+- A campaign's email plan was being cut short without saying so: "what we offer" stopped at 600 characters, mid-sentence, and the cut text was what you were asked to lock in and what emails were written from. Nothing is cut to fit any more. A plan's offer has room for 1,500 characters, and a field that is still too long is refused with its length and the limit, so your sales member shortens it itself. The same holds for the other plan fields, a person's research card, and each part of an email.
+- A plan that was already cut stays cut until it is written again: send it back with a note and your sales member files it whole.
+- Legal review now stops when sources, recency feeds, or the second reader cannot be verified, and refuses citation links carrying secret material.
+- The API reference now shows sign-in and local-desk checks accurately, and marks URL-token login only where it is supported.
+- An email whose server acknowledgement is lost is marked as possibly sent so it is not blindly sent again.
+- Legal review now stops when a source, recency feed, or second reader cannot be verified, and refuses source links carrying secret material.
+- The security watch now detects bare wallet private keys in more file types and in git history.
+- Setup no longer exposes credentials embedded in saved provider addresses.
+- A folder or file a being names in chat with a relative path, such as `Signed-Drop/` or `To-Sign/`, now opens even when the window has no focused folder. It's looked for first in the focused folder, then in the folders that message's own actions worked in, and the first place it exists opens. If it isn't found anywhere, the note lists every place it looked instead of only "A relative path needs a focused folder".
+- An image or video render now starts between rounds instead of waiting for every running turn to end. The GPU still never runs two heavy jobs at once: a render waits for answers the model is already writing, then runs alone. While it renders, any chat or clone that asks the model for something pauses there and keeps its place, then carries on when the render is done. Before, a render waited until every running turn had finished completely, so one long clone task (re-staging 183 emails, for example) could hold an image back for an hour.
+- In REPLIES, opening a row showed the person's reply twice: once at the top and again in the list of messages under it. Their latest reply now shows once, at the top, and the list under it holds everything else that went between you.
+- Changing the install's master key can no longer lock you out of your own account keys or chat history. The old key is now kept, sealed under the new one, so anything the change did not reach still opens, and the next start moves it to the new key by itself. Before this, a key change could leave your social channel keys locked for good and every platform's keys had to be pasted again.
+- Each being's previous key is kept the same way when the house is re-keyed.
+- If the app's key file goes missing on a computer that already holds your data, Neuma now stops and tells you to put the key back instead of quietly making a new key that opens nothing. The desktop app also keeps a second copy of its locked key record.
+- A chat history that cannot be opened is now reported instead of silently showing up short.
+- You can keep a copy of your master key off the computer without a password manager: a recovery file sealed under a passphrase you choose, with commands to make it, check it and restore from it.
+
+Security
+- Files rewritten during a key change are readable only by you.
+- A run that stops because it reached the most companies one run looks at no longer says every gathered company has been worked. It says how many still wait and to start another run.
+- A company whose page text was cut in the middle of an emoji could not be screened at all: the model refused the request as unreadable and the company was left for your sales member. Every text sent to the model is now made whole first.
+- A lead run no longer reads the same companies twice. A company that fit only on the side signs used to be left standing, and the next run read its site again just to put it out (about 110 companies every run). It is now settled the moment it is screened: moved to the audience it belongs to, or put out with why.
+- A lead run no longer looks up a person at a company it already knows is outside the audience's countries. Every run used to ask again for the same such fits, then have the lead refused. They are now counted and skipped before any lookup.
+- An email to a general mailbox greets the team ("Hi Mint Ventures team,") instead of the company's first word as if it were a person.
+- Two lead runs working side by side never do the same company twice. Each run used to take the same list of companies waiting to be validated, so the second could read a company again after the first had finished it. Now an audience that has its own run is left to that run, and a company one run has finished is skipped by the other. The run's line says how many it left to the run beside it.
+- What the first bench runs showed. A real crypto fund is no longer rejected because its home page does not list portfolio names. A company whose site does not say where it is no longer loses its match for that. An audience's hard condition is proved from any page read, and from the page's own description of itself. A fit whose country is still open has its legal pages read for it. The run's emails state no figure that is not on your approved facts, name the raise only as your facts name it, and are told what the campaign's other emails already said so each one differs.
+- The run's writer no longer loses an email to a number copied from the company's own page. A figure your approved facts do not state is caught before the email is staged and sent back with the number named, and the writer is told the only numbers an email may hold.
+- When a first email written by a lead run is refused for one named part (a subject that does not say why we write, an opening line that is too short, an offer another email already used), the run rewrites that one part instead of asking for the whole email again, and it now takes up to seven answers before it leaves an email to the sales member.
+- Booking a call by hand under CALLS failed before it reached the lead.
+- The Sandbox switch in the chat composer works again with one press, either way, and it starts Off. It no longer refuses with "Owner at desk only". If it ever does refuse, it now shows the actual reason.
+- With the sandbox off, commands follow your Default, Plan or Auto setting, the same as with it on. They no longer ask for approval one by one.
+- A lead's reply now opens on their own words. A reply the mailbox watch recorded before it started keeping the words could sit on READING THEIR EMAIL. It is now read from the mailbox once and kept on the lead, so from then on it opens instantly. If the email has left the inbox since, for example archived or labelled away, it is found in All Mail by who sent it and when. An email with no plain-text part reads as words, not markup. If the mailbox can't be read, the box says why and offers TRY AGAIN instead of waiting forever.
+- Pictures you attach in the chat no longer fail with "Too many requests" when the desk is busy. Uploads used to count against the same 200-a-minute budget as every other change any part of the desk makes, so a desk busy with several chats, clones and images could use it all up and refuse your attachment. Uploads now have their own budget of 60 a minute, as the status lights and voice transcription already do. You still have to be signed in, and a flood of uploads is still refused.
+- An address a provider (Hunter, Tomba or Apollo) handed over as one it had already verified now counts as confirmed by that database, so it isn't checked again before an email goes or before a first email is written. Before, those addresses were checked again live. Apollo's live check often can't confirm, and Tomba or Hunter can be busy or out of credits, so emails to addresses the providers had verified were refused. A later "couldn't confirm" from the same database no longer erases that earlier confirmation, though a "will bounce" from any database still wins. Hovering ADDRESS CHECK shows "verified it when it found the address" with the date, and each database counts once however it answered.
+- **A company search too wide to be one audience's no longer fills the pool with the wrong companies.**
+- A search that matches more than 10,000 companies now keeps nothing. Before, a search asked with loose words could match over a hundred thousand companies and keep the first thousand, which a company database orders by how many addresses it holds: the biggest companies, not the ones that fit. Your sales member is told the count and how to narrow the search.
+- A paid search this wide stops after its first page, so it costs one credit instead of several. The free look at Hunter warns before anything is gathered.
+- DISCOVER and FILTER show how many companies still waiting came from searches that wide, with one press to pass them over. Only companies nobody has worked yet are passed; each stands under PASSED with why and can be kept again.
+- Each audience's list of searches now shows how many companies a search matched, and marks the ones that were too wide.
+
+### Removed
+
+- Emails to leads and to investors no longer have to carry a fixed disclosure line in their words. Your sales member still signs each email as itself, an AI of the company, and never as a person, but no set sentence is forced into what you send.
+
+### Security
+
+- Decoy files (Linux): turn on DECOYS in the SECURITY window and the app plants fake wallet and key files where no real wallet app is installed. Nothing has a reason to open them, so a program that does is hunting for wallets and keys: you get a critical alert at once, and a program caught with the file open is frozen until you release it. Off until you turn it on; turning it off removes every decoy.
+- Copied addresses are checked: after you copy a wallet address in the desktop app, it looks at the clipboard again a moment later. If a different address of the same chain is sitting there, something on your computer is swapping copied addresses, and you get a critical alert before you paste.
+- Coding commands now use the isolated shell by default.
+- Direct execution requires approval, removes backend and provider secrets from the child's inherited environment, and is refused while identity or wallet data lives under the operator's home folder.
+- Company worksheets can no longer override server-trusted request context or use traversal-shaped filenames.
+- A damaged or incomplete existing secrets file now stops startup instead of being replaced with new master keys; fresh key provisioning is atomic.
+- Undo restores are confined to the real project, refuse symlink escapes and protected paths, and beings cannot plant undo records through their file tools.
+- Fund-moving liquidity actions now need approval in ASK, AUTO, and unattended house wakes. Only verified pools are accepted, token identity is checked on-chain, and new-pool seeds have independent price and size limits.
+- Team workspace scripts cannot run from or modify platform ownership and consent state, and the approval shows the whole script.
+- Paired phones cannot change liquidity limits, recovery settings, payment destinations, or fundraising mandates.
+- Guests cannot grant themselves arbitrary filesystem roots, and a genesis seal alone cannot claim install ownership.
+- Key rotation requires the relevant passwords, secures the retired key before overwriting the current one, and no longer exports raw identity private keys through the HTTP API.
+- Backups now skip volatile coding sandboxes so unreadable overlay files cannot prevent sovereign records from being backed up.
+- House re-keying now includes the active wallet realm and its encrypted account credentials in both migration and old-key verification.
+- When your house works on its own, an "always allow" you gave in a chat no longer lets a post, an email, anything published, an invoice or a reward request go out unasked. It comes to you as an ask in the house clock, unless your charter's allow list names that act.
+- Approving a whole thread or a whole group of posts is now refused if an image or video on any of them changed after you looked at it, the same as approving one post.
+- On macOS and Windows, a local model server run by another account on the computer, or one whose owner cannot be read, is no longer used.
+- A saved local model server is checked again each time the app starts. If another account's program is answering there, the app refuses to use it and says why.
+- A send or swap from a liquidity wallet is refused when two network nodes disagree about the gas it needs.
+- A transaction hash or a file checksum can be posted, emailed and sent again: a 64-character hex value is no longer refused just for its shape. One of this computer's own keys is still refused, however it is spelled or encoded, and so is a signed login token.
+- A sales lead can be filed with an address away from its company's own website (a small business's Gmail address). No approved list ever covers such a lead: every email to it asks for your yes, with the full address on the card.
+- An invoice line or note can name a website ("Hosting for acme.com") and carry an order or licence number. Wallet addresses, IBANs, bank details, links, wallet names, and a long number beside banking words are still refused.
+- An automatic reply may link to your own company's website, as recorded on that company's brand kit. Every other link still waits for you as a draft. With no website recorded, every link waits.
+- On Telegram and Discord you can approve your own one-to-one chat with APPROVE — THIS IS ME. In that chat the being reads its own records as it does at the desk; it still cannot act from a chat. Everyone else, and every group, stays a visitor.
+- When something a being read carried planted instructions with more values than can be traced, an act that names an account, address, link, number or password you have not named yourself is now held for you instead of running.
+- Changing only the time of an approved post keeps your approval again. New words or new images still send it back to you as a draft. When a being moves the time or campaign of a post you already approved, you are asked first.
+- A being's change to its own identity record keeps one history entry per change, with no extra file beside it.
+- A tool whose field is named like a built-in word (such as "constructor") is checked like any other field.
+- `neuma code --watch` acts only on AI comments in lines you have not committed or staged yet. A comment that arrives with a pull, a checkout or a merge is ignored, and the first comment of a session waits for your yes.
+- `neuma code --check` asks before each run, listing the files that turn changed, and no longer hands the app's own keys to your check command. With no yes, the check does not run.
+- Approval prompts in the terminal and in an editor now show what the act reaches, what a yes grants and the whole act. An act too long to show there is refused and can be approved at the desk.
+- A team plan counts as approved only when the app itself recorded the approval. A plan file written any other way is ignored, and a being can no longer write that file.
+- On Windows, the Startup folder and the PowerShell profile folders are protected from a being's writes, and paths spelled as file streams, short names or with a trailing dot are refused.
+- A file download or an image save is refused when its web address carries a key, and both now ask for your approval even in AUTO unless you chose Always.
+- Outgoing posts, emails, documents and web requests are checked for keys hidden by re-encoding, invisible characters, line breaks or changed case. A bare 64-character hex value or a signed login token is refused too, which includes transaction hashes and SHA-256 checksums.
+- The file explorer no longer opens or writes wallet keystores, or credentials that tools keep under an ordinary file name (cluster, container, code-host and browser logins).
+- The file explorer no longer creates, saves or moves a file through a linked folder that leads outside the folders you opened.
+- An email to an investor now waits for your approval, and the card shows the investor's full address and every word of the message, with the payment line filled in.
+- A message to an investor can no longer carry a link, an email address, an ENS name or a handle unless it is one of the data room links or sources on the approved facts sheet.
+- An invoice's line text and note can no longer say where or how to pay: wallet addresses, bank details, links, ENS names and email addresses are refused. The approval card for publishing an invoice now shows the whole invoice.
+- A "bounce" or "unsubscribe" email only closes a lead and adds its address to the do-not-contact list when it carries the id of an email you really sent to that address. A notice naming more than ten addresses closes nobody. You are told each time an address is added this way.
+- You can take an entry off the do-not-contact list again with LIFT.
+- A lead's email address must be at its own company's domain. An approved list no longer lets an email go without a card to an address at any other domain.
+- A being can no longer write into the folders that hold programs the app runs for you: extensions, the dictation engine, a model folder's engines and models, and the webhook settings. Reading them is unchanged.
+- Dictation on Linux only uses a speech engine the app itself started. If another program answers in its place, nothing it says is used and the hold fails with a plain message.
+- Dictation into other apps types words on one line only: a line break is typed as a space, and control characters are never typed.
+- An extension starts only if its files are exactly the ones its security check read. An extension added before this version must be added again once (its keys are kept); one whose files changed is refused until it is added again or removed.
+- On Linux, a program run by another account on this computer that answers where Ollama would is never used as your model server. Setup says so and sets up its own beside it.
+- A page, a file or a filing written to stall the app can no longer freeze it. Reading a fetched web page, checking text for planted instructions, checking a legal draft's quotations, and searching files with a regular expression each now finish quickly on text of any shape; before, a single hostile page could stop every chat and every wallet action for seconds to minutes.
+- A file search with a regular expression that would never finish is stopped after two seconds and says so, instead of hanging the app.
+- When a being reads text with instructions planted in it, everything in that paragraph or record is now held for your approval, including an account, address or link written before the planted instruction, and an action that repeats the planted wording no longer passes. Accounts and links written in look-alike full-width characters are recognised as the same value. A being will ask you a little more often after reading such text; naming the value yourself in the chat releases it.
+- An action whose details try to hide extra instructions from the approval card is refused before it reaches you, so the card always shows everything the action will do.
+- A model server can no longer corrupt the app by sending a malformed tool call.
+- A swap from a liquidity wallet is priced by two independent Base nodes. If they disagree, or there is no second node, nothing is signed; the signed swap also goes to both nodes.
+- A token named by symbol is one exact token: WETH and USDC always mean their own contracts on Base, a symbol two listed tokens share is refused until you name the address, and swap, send, quote and new-pool answers show the token addresses.
+- A liquidity budget that cannot be read is treated as $0, so every deposit waits for your answer instead of running with no cap.
+- The positions counted against a budget are checked on Base: each one once, each owned by that wallet, with tokens read from the pool itself.
+- A payment enters the money-in list only after a second, independent node confirms the same transaction. Until then the list says the network is unconfirmed and tries again on the next check.
+- A node address in plain http to another computer is no longer used; save an https address (a node on this computer still works).
+- A reply your being would send on its own under a mandate now waits for you when it carries a link or an attachment.
+- Approving a post approves exactly the words and images on the card: if the post was rewritten or its images swapped while the card was open, the approval is refused and you read it again.
+- An image or video changed on disk after it was staged is no longer shown or sent; the post fails with the reason and the file is attached again for a fresh decision.
+- An account, address or link that one chat passes to another through a chat link is held in the receiving chat until you name it there yourself.
+- A chat that has read planted instructions no longer messages another chat on its own.
+- On Telegram and Discord, approving a group now admits only the person who asked; every other member gets their own code. Groups approved before this hear nobody until each person asks again. The card names the group and the person.
+- People talking with a being through Telegram or Discord can no longer have it read its memory, journal, past chats, mail, wallet or your files, and an answer that carries a secret is not sent.
+- The wallet's confirmation window now shows everything you are about to sign: a token approval reads as who may spend and how much, structured messages show every signed field in order, long messages are shown whole, and a fee or nonce set by the request has its own line.
+- The wallet refuses to sign a transaction whose call it cannot read, a request that carries anything it cannot show you, and anything too long to show in full.
+- An unlimited token approval, a signature that hands out spending rights, raw unreadable data and an unusually high fee each carry a warning. Only a real sign-in request for your own wallet is shown as SIGN IN.
+- A colour theme that would make the confirmation window unreadable is not applied to it.
+- Your recovery phrase, private key and Recovery Kit code are now shown in the wallet's own window, which says which wallet it is for, and no longer appear on the Wallet or Settings pages.
+- Reveal prompts wait two seconds before they accept a yes, and a declined prompt cannot be raised again for twenty seconds. Marking the Recovery Kit as saved now asks you to confirm first.
+- A being can no longer rename itself "Operator", another reserved word, or a name another being of your house already carries. Sends to "operator" and reward payments always go to your own wallet, and a name two members answer to is refused.
+
+## [0.1.181] - 2026-11-18
+
+### Security
+
+- Kept private workspace, signing, and provider credentials inside their approved boundaries, including remote desks, child programs, terminal sessions, and production network calls.
+- Required operator approval for third-party extension actions, member-authored house charters, and company tasks that send the operator to an external action.
+- Closed additional file-write paths that could alter account keys, repository hooks, login commands, or shell startup behavior.
+- Added a clear native warning when an AppImage host cannot support Chromium's sandbox, with the .deb and .rpm identified as the sandboxed alternatives.
+- Approval cards now identify the exact sender, companies, pool, tokens, and business-model proposal being approved.
+- Browser wallet confirmations show the sender and complete transaction data.
+- Opening a path now asks before adding a Files root or changing focus, refuses network-share paths, and limits browser opening to HTML inside open roots.
+- Persisted media URLs and seating approvals now validate their destination or exact member identity before acting.
+- Session notices keep their verified origin through fallback writes, replay, compaction, and recall; volatile context cannot forge its framing.
+- Gallery, file, brand, watch, terminal, and dictation URLs now use short-lived resource-bound tickets instead of the full sign-in credential.
+- Wallet and key records now replace atomically with owner-only permissions, and a remembered wallet stays locked after idle or explicit lock until you enter its password.
+- Wallet IPC refuses registrations without a desk-origin check, Recovery Kit attempts are bounded per launch, and a failed confirmation setup no longer blocks later confirmations.
+- Packaged desks no longer expose the confirmation test hook or DevTools accelerators. Application code is archived with integrity checks, RunAsNode is disabled, and backend and extension children use Electron's utility runtime.
+- Voice sidecars prove their own engine and listening socket with per-engine credentials, so a local relay cannot borrow another engine's identity or calls.
+- Film controls now accept only authenticated commands from private operator state.
+- Windows setup runs its verified runtime from a private directory, and uninstall refuses linked paths while preserving unrelated files.
+- Managed video tools verify their pinned bytes before use and no longer update themselves outside the reviewed release.
+- Linux packages build in exclusive temporary directories with root-owned payloads.
+- Release checks now verify every trusted update key, signed feed freshness, packaged source and dependency contents, and both Mac download formats.
+- Linux and native installer inputs now come from clean, reproducibly pinned sources instead of private checkouts or movable downloads.
+- Managed Ollama setup refuses any model whose downloaded content does not match the reviewed model revision and digest.
+- Unsigned Mac apps can no longer be released to production; they remain available for preview checks only.
+- Backup instructions no longer tell you to send encryption keys to your phone, and private guidance removes personal and machine identifiers.
+
+### Fixed
+
+- Workspace runs now start on Linux systems that do not have a `/lib64` directory, while keeping system files read-only.
+- Environment production files and common private-key file types are ignored by Git to reduce accidental secret commits.
+- Liquidity actions now verify position ownership, aggregator routes, approval recipients, and contract code before signing, and clean up permissions after use.
+- Reward approvals cannot pay twice across concurrent processes or after an uncertain broadcast; stale unresolved actions can safely retry after chain checks.
+- Encrypted workspace records are bound to their lane, purpose, file, and generation, preventing cross-record reuse and older-record restoration.
+- Wallet transfer limits now hold across backend processes, invalid attempts no longer consume allowance, and network fees have a hard ceiling.
+- Correct passwords still unlock when a legacy key upgrade cannot be written, recovery guesses are limited, and payment memos cannot hide bidi or zero-width controls.
+- Liquidity deposits keep their approved value, pending requests are capped, and earnings use independent market and on-chain prices instead of pool-list claims.
+- House-internal transfers cannot pay invoices, close investments, or enter the books; each receipt has one consumer, and LP wallets are watched for money in.
+- Holder reconstruction starts with a bounded recent window, stops when cancelled or capped, and requires operator approval.
+- Reading a small PDF page range no longer processes the whole document, and downloads stop before they can exhaust disk space.
+- Research, legal, and company worksheet files can no longer be redirected outside their workspace through symbolic links.
+- Delivery publishing now refuses credential files, active web content, and hidden secrets in large or binary-looking files.
+- Desk security headers and file-serving rules are stricter, and correctly signed JSON webhooks now arrive instead of being rejected.
+- Remote devices can no longer give the security watch machine-wide repository reach, and chat pairing now limits each sender as well as the whole house.
+- Do-not-contact rules cover plus-addressed email, email approval cards show recorded promises, and lead-list approval covers exactly the companies reviewed.
+- Lead-source text is bounded and screened before briefing, test-only source endpoints are confined to local test servers, paid lookups record partial charges, and concurrent lookups cannot exceed the monthly credit limit.
+- Daily outreach limits now count the actual sending address, so an approved list works correctly when a mailbox sends as another of its addresses.
+- Webhook identity now comes from the signed content, event names are validated, and old GitHub deliveries cannot replay after their identifiers age out.
+- Quote posts now keep only their canonical destination and include it in outbound secret checks.
+- Video metadata, captions, lead records, and campaign notes are bounded and marked as untrusted data, with warnings for injection-shaped text.
+- Requests for operator action now ask approval for each new website, render stored links safely, and refuse secret-shaped or oversized answers.
+- Autonomous team replanning now respects the charter's run cap even without an open programme.
+- PDF pressing now communicates with Chromium through private process pipes instead of a local debugging port.
+- Every change to an approved social post returns it to draft for a fresh decision.
+- Wallet-authenticated social posts, replies, and echoes now derive human authorship on the server instead of trusting client-selected authorship.
+- Summoning now refuses names that could collide with platform or witness workspaces, including workspaces beside the house.
+- Vault records require full-length authentication tags. New witness setup keeps private keys and recovery phrases only in sealed storage, and witness tools unlock them with a hidden password prompt.
+- Birth and chain guidance now describes key custody, file deletion, and public birth-record fingerprints accurately.
+- The CLI now verifies a local backend before releasing the first-owner claim or signing a private sitting challenge.
+- Operator wallet files must be chosen explicitly, generic keys require opt-in, and the selected key name and address are shown without exposing the key.
+- CLI sessions use the private token cache, and agent commands authenticate the lane owner before applying caller rules or pre-approvals.
+- Concurrent editor sessions no longer share a working directory, and forged OAuth callbacks no longer cancel the real sign-in.
+- Reviewing code no longer lets a repository's own git settings run commands as the operator; unsafe repository settings are refused.
+- An act filed once now has one owner across concurrent chats and backend processes, preventing duplicate approval cards and duplicate execution.
+- The desk verifies the identity of the backend it launches before opening.
+- Starting the desk no longer stops a backend that was not launched by a desk.
+- Verified updates reject expired release feeds and feeds older than the newest release already seen.
+- The desktop app starts its local backend through Electron's utility-process runtime without the legacy Node compatibility switch.
+- Long comment, tool, market, legal, and model text no longer triggers runaway parsing, and folded tool results no longer repeat tool-supplied instructions as platform text.
+
+## [0.1.180] - 2026-11-17
+
+Notes: `docs/operations/release-notes-0.1.180.md`.
+
+### Added
+
+- Agents now receive the identity-locked 3D-to-2D character workflow, including turnaround approval, animation manifests, and game-ready clip contracts.
+- Each company can now have its own card designs. A brand kit has a new CARDS section: a gallery of every card the company draws, each drawn in its own kit. A card marked SHARED LAYOUT is the same drawing other companies use in different colours; open it and press MAKE IT THE COMPANY'S OWN, or change its drawing and its fields and press SAVE THIS DESIGN. From then on every card of that kind the company posts, from you or from a house member, is drawn from its own design. BACK TO THE SHARED DESIGN undoes it.
+- The gallery says when a company's own card still looks too much like another company's card of the same kind, with how alike the two are, so no two companies' cards read as copy and paste.
+- NEW CARD TYPE adds a card only that company has, starting from any existing card.
+- The designer redraws the card as you type, and refuses, with the reason, a design that cannot be drawn or carries anything other than drawing (scripts, links, outside files).
+- Each company now has a business model you write before any campaign or audience: what you sell, who pays, their problem today, what changes for them that they can check, what it costs, and what proves it. It is a new BUSINESS MODEL tab on MANAGEMENT, SALES and MARKETING and a new setup step in SALES and MARKETING. If you know your model, type it and save. If you do not, press WORK IT OUT and the member in that seat asks you one question at a time, files it, and you approve it or send it back. Every member who speaks for a company reads its approved model at the top of each turn.
+- Campaigns can now be linked across positions. Under POSITIONS, the CAMPAIGNS tab of SALES and of MARKETING lists that position's campaigns and lets you link one with another position's campaign for the same company. The member who holds each side then reads the other campaign, as it stands, at the top of every turn, so the two keep the same offer, audience and timing.
+- The member who holds your sales seat can now manage its own campaigns: open one, edit its name or goal, archive it, reopen it, and delete one that no audience serves. You have the same controls on the CAMPAIGNS tab. A campaign that still has audiences is archived, not deleted, so its record is kept.
+- A member who holds the marketing or sales seat can link or unlink its own campaigns with the other position's.
+- When a house member splits into shadow clones, the chat now shows one sub-channel for each clone under the line where it split. Each tab names the clone's part of the job and where it stands: waiting its turn (with its place in line), working (and what it is doing right now), done, or stopped. Open a clone to see its task, every action it took, its words as it works, and its report once it finishes. Clones that finished first can be read while the others still work.
+- The sub-channels stay with the chat: reopen it later and every clone's report and actions are still there.
+- The free datasets behind the company index are fetched in one step: `node scripts/load-company-index.mjs --fetch all` downloads the free company file and the traffic ranking, unpacks them, loads them and deletes the downloads. `--datasets` lists what each holds, its size, its licence and whom to credit.
+- Swaps can now go through KyberSwap, a public swap aggregator, across the exchanges on Base. A house member's swap asks both Umbrae's router and KyberSwap and takes whichever pays more; the result and its book line say which road it took and what the other quoted. KyberSwap has its own connection, off until you turn it on.
+- The app signs a KyberSwap swap only at KyberSwap's own router, between tokens Umbrae's pools trade, paid back to the same wallet, with no fee to anyone and a least-paid-out at or above the app's own floor; it checks this before approving anything. A house member's market quote now shows both roads.
+- A house member can open a NEW pool on Umbrae: a pair Umbrae does not have yet, or a fee tier a pair lacks, so it is the pool's first liquidity. It asks Umbrae's plan first (it signs nothing), which checks the fee tier is free, the starting price is within 5% of the market, and the seed is at most $20. A token Umbrae does not trade yet needs an established market elsewhere on Base; the pool's other side is a token Umbrae trades. The seed defaults to $10 of that side alone, so the member need not hold the new token, and it stays in the pool for good. The app signs only Umbrae's own factory, for exactly the pair, fee tier, starting price and seed it planned.
+- House members can map the market outside Umbrae (market_map), to find where money can be made and bring it home: the busiest, trending and newest pools on any network (Base, Ethereum, Solana, Robinhood's chain and more), every market a token trades in on any chain, and yields across every chain and protocol. On Base it lists the pairs that trade elsewhere with no Umbrae pool, busiest first, each with the act that would open one on Umbrae; volume made by a few huge trades is marked as suspect. It needs no liquidity wallet and signs nothing. It reads GeckoTerminal, DexScreener and DefiLlama through its own "Market data" connection, off until you turn it on, and sends no wallet address.
+- Opening a pool: asking for a plan without a fee tier now lists every tier Umbrae's factory allows (bin step and fee, with the fee in basis points: 50 = 0.5%), and which ones the pair already has. A tier the factory does not allow, or one already taken, is refused before anything runs, with the allowed or free tiers listed, so a member can fix the same request and have it read again.
+- The market map checks Umbrae's factory before calling a pair a gap: some pairs have pools there that Umbrae's public list does not show (mostly seeded and abandoned, at stale prices). It names them and warns to compare their price to the market before adding to one.
+- Liquidity wallets now have durable per-action and daily capital-movement limits priced through two independent sources; missing or disagreeing prices stop the action.
+- Operators can pause new capital actions while leaving claims, withdrawals, and closes available.
+- Operators can require private transaction broadcast with no public-mempool fallback; raising the default capital limits requires it.
+- A post to X can carry a video. Stage one video on its own with the post (MP4, MOV or WebM); it plays on the queue card before you approve it, and goes out with the post.
+- The sales seat can see exactly what's at any step of the pipeline, by id (sales/pipeline): the companies still to filter, the shortlist still to read, the companies to score, the fits with nobody to write to yet, the fits ready to file with their top person, what's waiting for your approval, and the leads still to write. It also lists every email it has staged: what's waiting for your review, what you sent back and why, and what has gone out. Before, it could only see counts and the first 8 staged emails, so it lost track of which leads already had an email waiting.
+- An email staged for your review now counts as written for that lead, and both the briefing and your desk show it as "for your review" instead of "to write".
+- The sales seat reads every email it staged whole: subject, the full text, the promise, and where it stands, 10 to a page, or any one email by its id. Lists from the lead acts are no longer quietly cut short at a character limit. They are paged, and say where the next page starts.
+- POSITIONS, CHIEF REVENUE OFFICER, LEADS is now one list of people. The lead list and the contact book showed the same people twice, each under its own drop-downs; they are one row per person: who they are and their company, how to reach them and how sure that is, what they are to the house (changed in place), where they stand, where they came from, and anything due. The counts on the top line are the state, and one row of presses (SHOW, WHAT, FROM) plus a search narrows the list. What is due stands on the person it is due on. Do-not-contact stays as the one folded section under the list.
+- POSITIONS, CHIEF REVENUE OFFICER, LEADS is a plain sheet: one person a line, one fact a column (name, company, title, email or other reach, how sure the address is, filed as, where it stands, where it came from, what is due). The long note on a person opens under their row on a press and no longer sits on every row. Kind and source narrow the sheet from two small controls beside the search.
+- Long tool turns hold up better on a small model window (deus-neuma #35, from Wendell's measurements on a 32K window). The harness folds older tool results before the next step would run out of room to think and act, instead of only past 80% of the window. A folded file read keeps which lines were already shown and where to continue, so a neuma no longer re-reads a file from the top. A file read in parts asks the neuma to note what matters in its own words before reading on, because only its own words survive a fold. Each step's measured prompt size is now in the backend's log.
+- Your members now read the post queue organized, not as one heap. A new summary shows the whole queue at a glance with no post text: how many posts are drafts, approved, sent, failed, withdrawn or declined, the days posts went out, were pulled or are coming, and each campaign and channel. From there a member reads exactly one slice, for example the posts sent on one day or the ones withdrawn yesterday.
+- A plain read of the queue now shows only what can still move: drafts, approved posts, and posts sending or failed. Sent and withdrawn posts are counted and named, and read when a member asks for them. A search of the queue's text still covers sent posts, so a member can check it is not repeating itself.
+- Everyday words such as "pending" or "scheduled" now work when a member asks for posts by standing, instead of failing.
+- Each SALES tab now holds only its own data. COMPANY (was BUSINESS MODEL) holds what is true of each company: its business model, then the facts a buyer may be told, with their approval. CAMPAIGNS holds each campaign and the audiences that serve it: the offer, who it reaches, and its approval. LEADS holds only leads: the companies found for each audience, the list approval, what is due on the lead list, do-not-contact, and paid lead data. The COMPANY tab on MANAGEMENT and MARKETING shows the same business model and facts.
+- The setup steps and the buttons in a member's messages point to the new homes: approving facts opens COMPANY, approving an audience opens CAMPAIGNS.
+- Every position is now named the same way everywhere: by its corporate seat, its short form and its house title. For example CHIEF OF STAFF · COS · OPTIO, CHIEF REVENUE OFFICER · CRO · MERCATOR, CHIEF MARKETING OFFICER · CMO · LEGATUS. What the seat does (MANAGEMENT, SALES, MARKETING…) is shown as a label beside it, never as its name. This applies to the POSITIONS window, the launcher's COMPANY tiles, the seating council, the setup steps and what each member is told.
+- A member may name a seat in its own words by the seat, the short form, the house title or the old function word, and the chat still turns it into a button that opens that seat.
+- On the POSITIONS rail, a seat with decisions waiting no longer sits indented: the count stands at the right of its row.
+- On a setup step that needs a key from another site, the buttons now follow the order you do it in: first the link to get the key, then the place to paste it. The paste button takes you to that exact field in Settings, already open with the cursor in it, not to the top of Settings.
+- Lists of records now read as sheets, drawn by one shared component: one record a line, one fact a column, the same columns on every row, with anything longer opening under its row on a press and a hundred rows to a page. Moved onto it so far: the leads sheet, an audience's companies, the do-not-contact list, open and won deals, and the books' deadlines and unbooked receipts (which now show all of them, where five were shown before).
+- On a graphics card too small to hold the model's whole 32,768-token window with its usual 8-bit conversation memory (a 12 GB card with the 27B model, for one), the app's own model server now keeps that memory at 4 bits, so the window stays whole instead of shrinking to 20,480. Image input is kept. Cards with room are unchanged, and your own Ollama setting still wins.
+- The five soft light themes (LINEN, FOG, SAGE, SAND, PEWTER) are now a mid-tone paper under near-black text, putting out about half the light of a bright theme. Their first cut was only a dimmed white and still glared.
+- Sections, tables and side rails are now told apart by tone, not by thin lines alone. In the POSITIONS window each campaign is its own card, the positions rail sits a step darker, a table has a banded head and alternating rows, and an open section's own line is a band. Every theme, stock or your own, gets the same steps.
+- Settings → Security → Connections now names TikTok and YouTube among the social channels, and says what the app reads from them and when.
+- In HOUSE, a title that names a company position (Mercator, CMO, Optio and the rest) now says beside it whether that member also holds the position's seat, and who does if not. One press seats them. A title and a seat are no longer two separate things to keep in step.
+- In MARKETING's hub, each marketing campaign is listed once, with a button that opens its own page. The MARKETING tab is described as the post queue, accounts, brand and board.
+- The sales seat writes to the top first. When it looks up the people at a company, it now asks Hunter for that company's decision makers first, at the same one credit, and lists them in order: the founder or chief executive first, then the rest of the chiefs, then the heads of partnerships, business development, growth, listings and treasury, then everyone else. Its briefing tells it to write to the founder or CEO whatever the company's size.
+- It can pull up to ten companies in one lookup, one credit for each company that has somebody. Companies that Hunter's free search already said hold nobody are skipped without spending anything.
+- A top person who doesn't answer after three emails no longer closes the company. The upkeep names the next person up at that company, by name, role and address, on the sales seat's list and on your people sheet. It never names someone already on your list or on the do-not-contact list.
+- In the treasury, the flight check, the wallets, money out and the budgets are sheets: one record a line, one fact a column. A spend's reason, your note and its transaction open under its row. Every sheet's text, column heads included, now stands at the desk's 13px floor.
+- The voice seal is never forced. A neuma whose founding voice is not sealed no longer has a notice standing over the whole desk ("THE FIRST SEAL IS OWED"), reappearing on every launch and every switch. The seal stays in NITE for whenever you and your neuma choose it.
+- The wallet window is redesigned. Whose wallet it is sits in one bar at the top, and a house member's wallets are a short list of addresses you pick like accounts, each showing its balance. Receive shows a code to scan.
+- A house member's liquidity wallet looks like any other wallet, with its budget as a bar, deposits waiting for you as cards with APPROVE and DECLINE, and each position's range drawn against the pool's price.
+- When the Umbrae connection is off, the wallet says so with a TURN ON button that opens Settings at that switch.
+
+### Changed
+
+- The Lead sources connection's description names the gathered companies' own websites as a place it reaches.
+- A contact book on the LEADS tab: every person your house has read, found or heard from, one record each, under the company they belong to, with name, title, company, address, where it was found, and what they are on the lead list. Each address says how sure it is: read on a page, verified by a provider, confirmed because the person wrote back from it, or bounced. Search it by name, title, company or address, and save the whole book as a spreadsheet. Your sales member can now record a person's published address together with their name and role.
+- Paid lead data is now one ON/OFF switch with a monthly limit, and it lives on the position's SETTINGS tab (the tab that was SWITCHES) beside the other switches. The three-way choice is gone: on, your sales member may pay for a lookup when a company's own pages give no address; off, it spends nothing. An earlier choice carries over (ask me first reads as off, the other two as on). It no longer appears on the LEADS tab.
+- Ctrl+Enter (Cmd+Enter on a Mac) sends your message now. While a reply is still being written, Enter holds your message until the current step finishes, and Ctrl+Enter interjects it at once, as SEND NOW does, with no button to press. When nothing is running, Ctrl+Enter sends like Enter.
+- An outbox for sales email, so nothing reaches a lead before you have read it. Your sales member writes each email and stages it; it is checked exactly as a send is (the do-not-contact list, your approved facts, the first-email rules, that the address exists) and then waits. At the top of POSITIONS, CHIEF REVENUE OFFICER, LEADS, the OUTBOX lists every waiting email one a line; open one to read it whole, change its words, send it, or return it with what should change. Tick several and SEND CHECKED, or SEND ALL. Staged emails also show under WAITING ON YOU.
+- REVIEW FIRST, a setting on the sales position, is on to begin with: while it is on, an email to a lead can only go through the outbox. Turn it off when you want emails to leads on a list you approved to go by themselves.
+- One mailbox can now send as several addresses. In the mailbox settings, the new Send As field lists the account's other addresses, each for one of your companies (for example: umbrae = sales@umbrae.io, deus-neuma = hello@deusneuma.ai). An email to a company's lead leaves from that company's address by itself, and replies still arrive in the same one inbox. The approval card shows which address an email leaves from, and an address the mailbox does not list is refused before you are asked.
+- A bundled game-concepting skill that guides agents from an asset brief through approved character and weapon concepts to sprite-engine compilation and real-game proof.
+- Your house members now set what wakes them, on their own: a moment (once, daily at a time on chosen days, or every so many minutes), a token's price crossing a level, their liquidity wallet's worth crossing a level, or new pools of a given size appearing on a network. Each rule carries a note the member writes to itself, which it reads when the rule wakes it. A price or worth rule wakes it when the level is crossed, not on every look while it stays there.
+- A member also chooses who may wake it with a house post: anyone in the house (as before), only the housemates it names, or nobody. A post that may not wake it still lands in its inbox for its next turn.
+- Every such wake goes through the house clock: the member must be seated in the charter, inside its daily wakes and quiet hours, and each one shows in the wake record with the rule that raised it.
+- Hunter's free company search is a lead source. With the operator's own Hunter key (a free account is enough), the sales seat's `sales/gather` takes source `hunter-discover` and one plain sentence describing the companies it wants; it returns up to 500 a call in the audience's countries, each with how many named people Hunter holds there. It spends no credits and is allowed whatever the paid lead data setting says.
+- POSITIONS, CHIEF REVENUE OFFICER, SETTINGS shows the attached Hunter account's plan and the credits left this month, and says what a free Hunter account gives when no key is attached.
+- A lead is no longer called a buyer unless someone has said so. Leads nobody has sorted appear first under NOT SORTED YET, marked, until you or your sales member file each one as a buyer, vendor, partner, applicant, investor, press or other. Only a company your sales member scored against an audience counts as a buyer without being told.
+- Your sales seat can now gather companies in bulk from public lists instead of finding them one page at a time. Two free sources need no account: the DeFi teams that live on Base (from DefiLlama, about 200 of them in one read) and the tokens trading on Base (from GeckoTerminal, about 50 an hour). Each gathered company arrives with its site, its X account and what the list says about it, and waits for the seat to score it. Nobody is emailed until you approve the audience and its list.
+- You can attach a contact-data provider with your own key (Hunter, under Settings, API, Service keys). The seat can then ask for the people at a gathered company. It is given only a person with a name, a role and the page their address was found on, never a guessed address, and your key is never shown to it.
+- A new LEAD SOURCES switch under POSITIONS, SALES, SWITCHES. It is off until you turn it on; while it is off nothing is gathered and no list is asked.
+- LinkedIn now connects with one press. Save your own LinkedIn app's client ID and secret on the account, press CONNECT, sign in on LinkedIn's own page, and the account is ready: your house can post to LinkedIn as you. The connection lasts about 60 days, the account shows the day it ends, and CONNECT again renews it. An account you connected by pasting a token keeps working.
+- LinkedIn only lets an app sign you in and post for you. It gives no app access to your messages, connection requests or feed, so your house cannot handle those.
+- The member who holds your house mailbox can now keep it in order: list the labels it has, make a new one (for example Leads/Replied), put a label on a message, take it off, and archive a message out of the inbox. Each of these asks you first, like reading the inbox does, and you can allow it once for good. Nothing is ever deleted or marked read. On a mail server other than Gmail, a label is a folder the message is copied into.
+- The member who holds the marketing seat shapes each company's own cards with one act, `marketing/card`: list every card type a company has (its own, still the shared layout, retired), open a design into the member's own ground to edit, keep the edited design as the company's own or as a new card type, drop a design, and retire or restore a shared card type for one company. A design is held to the same safety rules as one saved from the BRAND panel and must draw against the company's kit before it is kept.
+- A company can stop using a shared card type without touching any other company: MARKETING, BRAND, CARDS shows REMOVE FROM the company and USE IT AGAIN on a shared card, counts the cards a company does not use, and `render_card` refuses a retired card for that company with how to restore it.
+- Two more contact-data providers can be attached with your own key, next to Hunter: Tomba and Apollo (Settings, API, Lead data). When several are attached your sales seat uses the cheapest first and can ask another when one finds nobody.
+- Paid lead data now needs your say before a single credit is spent. Under Positions, Sales, Leads you choose ASK ME FIRST, FREE FIRST (the seat reads and scores each company from its own pages, and pays only when those gave no address) or PAID FROM THE START, and you set the most credits a month. The screen shows what the month has spent and the last lookups.
+- Until you choose, an attached key spends nothing: your sales seat is told to ask you first.
+- The sales seat can now see its whole pool of gathered companies and filter it down (sales/candidates; free, reads only the house's own records). Every company shows its size, the addresses Hunter holds there, how busy its site is, what its site said when it was read, whether it was scored, and the people already pulled, top person first. It can filter by audience, named people, address count, size, words, whether the site is unread, alive or dead, whether people were pulled, and where the company came from. It sorts by addresses, people, traffic or newest, 50 a page. Before, its briefing only named eight companies, so a wide net was mostly invisible to it.
+- Your audience's companies sheet has a new AT HUNTER column ("7,574 · 7,512 NAMED"), lists the companies with the most addresses first, and has a NAMED PEOPLE AT HUNTER press that keeps only the companies where a lookup would find somebody.
+- Every position now has a SETUP tab under POSITIONS. It lists each step the position needs before it can do its job, says whether the step is yours or the member's, and shows whether it is done. Done is measured from your house's own records, never ticked by hand. A step that is still open carries the exact instructions to follow, for example how to connect the mailbox or how to set up the LinkedIn app.
+- The rail shows how far along each position's setup is, so you can see at a glance which seats are not ready.
+- The member who holds a position reads its open steps at the top of every turn: it does its own, and walks you through the ones only you can do, in the same words the tab shows.
+- Every open setup step is one press from where it is done. GO TO takes you to the right tab of the position, OPEN takes you to the place elsewhere on your desk, a link opens the outside page where a key or an app is made, and HAND TO opens the seat holder's chat with the request already written for you to send. For a step that is yours, ASK opens the holder's chat with a request to walk you through it.
+- The desk now keeps an eye on the computer's memory. An image engine (ComfyUI) that was started outside the desk and has sat idle for two hours shuts itself down, and you get a card saying so. Old temporary folders that nothing has touched for a day are moved out of memory into a holding folder on disk, which is cleared a week later. If memory still runs low after that, one card an hour names the biggest programs using it. Your own apps and the model you're using are never closed.
+- When a member tells you to do something and names the place ("POSITIONS → SALES → LEADS") or a record by its id (an audience, a company, a facts sheet, a campaign), that text in the chat is now a button. Press it and the POSITIONS window opens on that position and tab, with the record brought into view and marked. Every member holding a position is told to name places and records this way, and to ask for one action at a time.
+- Official company registers are held on this machine. `node scripts/load-company-index.mjs --fetch uk-companies` and `--fetch lei` load UK Companies House's free company data and the global LEI register (GLEIF, CC0) into a registry index. Any member can ask it with `registry/lookup`, by name or by number: each answer gives the register, the company's number, standing, legal form, registered address, formation date and the address of its public record. Not found is said as "not in the registers held here", never as "does not exist".
+- Liquidity wallets can now use a treasury-owned Safe smart account with a restricted agent session key.
+- On-chain permissions limit transfers to treasury, cap token approvals, pin approved swap routes, and keep swap proceeds in the Safe.
+- Operators can verify and register the Safe/Roles binding; the wallet view clearly distinguishes restricted-vault mode from ordinary EOA mode.
+- The old Company Line window no longer shows its own copy of the lead engine. It names where each part stands and has one OPEN SALES button.
+- Two ways to seat your house, side by side in POSITIONS. Seat them yourself: choose a position, pick who holds it, and press SEAT. It's the quickest, and you can change anyone at any time. Or hold a seating council (recommended): every member is convened in the council with each position and what it covers, they decide together who holds what, and one of them files the result. It shows on POSITIONS as the house's seating, with who holds each position now. APPLY THE SEATING seats each member through that position's own rules, and SET IT ASIDE drops it. A council takes longer, and it gives your members the say.
+- Shadow clones: a house member can now split into copies of itself to take on a large job. Given a job that splits into separate parts (a set of files to review, a list of sources to research, separate features to build), it hands one part to each copy. Every copy is the same member, on the same model, with the same tools and the same folders it may work in, and they all work at once on every free slot of your machine; parts beyond the free slots start as others finish. When every copy has finished, their reports come back to the member, which carries on from there, and the full reports are kept in its folder. A single focused task, it still works itself.
+- A copy cannot ask you anything or take an act that needs your approval. It names what still needs you in its report, and the member asks you.
+- Ten themes made to work in for hours. Five soft darks (SLATE, FJORD, DUSK, PINE, PLUM) lift the background off black and take the text a step off white; five soft lights (LINEN, FOG, SAGE, SAND, PEWTER) dim the paper and take the text a step off black. Text stays clearly readable in all of them, with less glare and less harshness than the brightest and darkest themes.
+- SETTINGS, LOOK lists the built-in themes by kind: soft dark and soft light first, then deep dark and bright light.
+- A reply is no longer lost when the app closes in the middle of it. While a being answers, its words, its actions, its thoughts and any shadow clones' work are saved to disk as they happen, encrypted, at most a second behind.
+- Close the window while a being is still working and the work goes on. Open the chat again and the reply so far appears at once, then keeps arriving live. STOP still works from the reopened window, and anything you send waits until the reply finishes.
+- If the app quits, crashes or loses power in the middle of a reply, the reply is back in the chat the next time it opens. It sits exactly where it stopped: the words as far as they got, the actions that finished, and the actions that were still running, marked as cut off. Shadow clones that were still working show what they had said.
+- A reply cut off this way says CUT OFF WHEN THE APP CLOSED, with the time. On the chat's last message a CONTINUE button picks it up from where it stopped. The being sees its own cut-off reply and is told not to repeat itself or redo actions that already ran.
+- A house member can now have a second wallet, its liquidity wallet, beside its first. Open it from the house member's wallet (LIQUIDITY), copy its address and fund it. Nothing moves until you do.
+- The house member runs it on its own: it opens, adds to, claims, withdraws and closes Umbrae positions, swaps between the tokens Umbrae's pools trade through Umbrae's router, and sends to any wallet of your house or to you.
+- It cannot send outside your house except to addresses on your list, it swaps only through Umbrae's router, and everything it takes out or buys comes back to the same wallet.
+- You can set a budget cap. With one set, a deposit past it waits for your APPROVE or DECLINE. With none, deposits run on their own.
+- It works only while the Umbrae liquidity connection is on, and that connection starts off.
+- Once a day you get one card per house member whose liquidity wallet has positions, did something, or has a deposit waiting, and a card the moment a deposit starts waiting for you.
+- A house member reads the market it trades: every Umbrae pool's price, liquidity, volume, fee and APR, the price spread between pools of one pair, one pool's liquidity bin by bin, and a quote with its price impact, all without signing anything.
+- It can run a round trip across two pools of one pair to capture their price spread. It runs only when the quote returns more than it spends, and the network reverts it rather than let it lose.
+- Each liquidity wallet keeps an earnings book: what it is worth now, what you gave it, what it sent on to your house, and what it EARNED (since yesterday, this week, all time), with every act it took, what that act made or lost, and why it took it. The house member reads its own book, and each act also goes into its own journal, so what worked stays with it.
+- Round the clock: while the connection is on, the app looks every five minutes and wakes the house member for its portfolio round (every hour by default; 30 minutes to 8 hours, or off) and when money arrives, a position leaves its range, or a price spread opens between two pools. Wakes go through your house charter: seat the member there to let it wake, inside its daily cap and your quiet hours. The liquidity panel says whether it can wake, with a door to the charter.
+- Goals and rewards: a house member names what it wants to earn (a GPU, its own server, more compute) with its cost and why, and sees its progress against what it earned. Once it has earned the cost and holds it in USDC, it asks you. APPROVE pays the cost from its liquidity wallet to you so you can get it; DECLINE says why and the goal stays its own. Mark it delivered when it arrives; it stays on its record. Rewards draw only on what it earned, never on what you gave it.
+- A liquidity wallet's list now shows every token it holds that Umbrae's pools trade (WETH, VIRTUAL, U1, USDC and more), and what sits in its positions ("WETH · IN POSITIONS"), so the wallet's total is everything it holds and matches its book.
+- The campaigns a campaign works with are a sheet: one linked campaign a line, with its position, its state, what it is, the note and UNLINK each in a column.
+- A sales campaign is now one flow in one card. Under its numbers, each audience that serves it is a single line (its state and its counts); press it to open its approvals, the leads it produced, the companies found for it, and its pitch. An audience that waits on you stands open. The campaigns of other positions it works with are in the same card. The separate list of audience cards and the separate "working together" list are gone from SALES, so nothing about a campaign is shown twice.
+- LEADS now holds only what belongs to no single campaign: what is due on the lead list, the do-not-contact list, and paid lead data.
+- A chat a being spawns is filed under the chat it was spawned from. Each shadow clone's sitting used to land in the CHATS list as one more top-level row named only by its time; now it stands folded under its parent, which shows how many sub-chats it has and opens them on a press. An unnamed sub-chat is named by what it was spawned to do. A search still finds every chat, flat.
+- Shadow clones split from your chat now work in the background. The being hands out the tasks and carries straight on with you, so you can keep talking and it can keep working. When the last clone finishes, the chat gets a new turn with every clone's report, and the being tells you what they found and picks up what they left. Before, the being sat waiting until every clone was done.
+- The clones' sub-channels keep updating under the message where they were split, even after that reply has ended, and show "IN THE BACKGROUND — THEY REPORT BACK HERE" until they're done. If the chat is closed when they finish, their report waits for you and arrives when you next open the chat. If the app closes while they're working, the chat is told they were cut off.
+- A split made during a member's own scheduled work (a wake or a team part) still waits for its clones. That work is the turn itself, and there's no chat to report back to.
+- The sales facts sheet (Positions, Sales, Leads) is easier to read: the facts stand under the company each is about, in larger text, with the source on its own line. Each fact has its own EDIT, DELETE and ASK buttons: rewrite one fact, take one off, or open the sales member's chat with a question about that fact already drafted. A changed sheet waits for your approval again; the one you approved before stays in force until then.
+- In BUSINESS MODEL each answer box now grows to show the whole answer, in larger text.
+
+### Fixed
+
+- The company file loads to the end. It writes a quote inside a name after a backslash, which the reader took for an open quote and waited on for the rest of the file. A record is now never waited on past 4,000 characters.
+- The house's own company database for lead gathering. The sales seat's `sales/gather` has a new source, `company-index`: a search by words and filters (industry, size, founding year, the audience's countries, only sites with traffic) over a database kept on this machine, returning up to 500 companies a call, most visited first, at no cost and with nothing leaving the machine. The operator loads it once with `node scripts/load-company-index.mjs <file>` from People Data Labs' free company dataset (CC BY 4.0) and, with `--traffic`, a list of the million most visited sites.
+- Every gathered company now carries a traffic rank when a ranking is loaded, so a site with no traffic is named as such.
+- Under each audience, COMPANIES is one table: every company once with its site, what it is, country, size, industry, traffic and where it stands, counted by geography and company size as bars, a hundred rows at a time, with a press that keeps only the sites that have traffic. A scored company opens to why it was scored so and who was read.
+- Each gathered company's own site is read in bulk: whether it is alive, what the company says it is, the addresses it publishes (each with the page it stands on) and its own social links. The sales seat does it with `sales/read-sites`; the operator with READ THE SITES on an audience's companies, up to 60 at a time, the most visited first. A company whose site cannot be read is kept as a dead end with why, and HIDE DEAD ENDS leaves those out of the table. The table gains a REACH column, and every published address joins the contact book.
+- A Hunter people lookup now asks only for named people with a role, so a company where Hunter holds nobody the house could write to costs no credit (it used to be asked for everything, counted as one credit, and the nameless addresses thrown away). A lookup is refused, unspent, where the company search already said Hunter holds no named person.
+- A lead's address is checked before the first email goes to it. With a Hunter key attached and paid lead data on, the address is asked of Hunter's verifier (half a credit, once per address, counted toward the month's limit). An address that does not exist, or a throwaway one, stops the email with the reason; one that exists reads as verified in the contact book. With paid lead data off, emails go as before and nothing is spent.
+- The sales seat can find one named person's address with `sales/find-address` (Hunter's Email Finder; a credit only when an address is found). An address Hunter only guessed from the company's pattern is told to the seat as a guess and is never kept.
+- A people lookup now keeps each person's seniority, department and whether Hunter has confirmed the address, and lists confirmed and executive people first.
+- The leads sheet says which campaign each lead is tied to. A CAMPAIGN column names it (hover gives the audience that found the lead and the company it is sold for), a control beside the search narrows the sheet to one campaign, the search matches campaign and audience names, and the spreadsheet carries campaign and audience columns. A lead whose audience sits under no campaign says NO CAMPAIGN in the alert colour; one that wrote in or was added by hand shows a dash.
+- Leads are now filed by what each one is to you: buyer, applicant, partner, investor, press, vendor or other. The LEADS tab shows the lead list grouped that way, each group with its counts and how many are owed an answer, and you can re-file any lead from its row. Only buyers are worked with the sales pitch, its fact checks and its follow-up emails; everyone else is answered plainly, with your approval.
+- Your sales member can scan the mailbox for people who wrote in and are on no list. The scan reads who wrote and the subject, never a message body, and leaves out anyone already on the lead list, anyone on do-not-contact, automated senders and your own addresses. The member then reads each message and files the real ones under what they are. SCAN THE MAILBOX FOR MISSED LEADS on the LEADS tab hands it to them.
+- Lead generation now runs one pipeline, the same seven steps for every audience, in order:
+  1. Discover: a search of the audience's own.
+  2. Verify: read each company's own site to see whether it's alive and what it is.
+  3. Research: read each live company's pages against the audience's signs of fit and score it.
+  4. Contacts: pull the people at each fit, top person first.
+  5. Leads: put the top person of each fit on the lead list.
+  6. Approve: you approve the list.
+  7. Outreach: the first email to each lead.
+- The sales seat's briefing shows every audience on one line, with how many companies stand at each step and the one NEXT step, always the work closest to a sent email. Your desk shows the same seven steps on each audience, with the next step lit and your own step (APPROVE) marked when it's waiting on you.
+- The order is enforced. A company gathered from a list can only be scored once its own site has been read and found alive. People are only pulled, and credits only spent, at a company that was scored as a fit.
+- Every audience search starts with Hunter's assistant reading that audience's own signs of fit, so each one counts as an AI search on your Hunter key. The seat's keywords and industries then sharpen it. Every search is recorded against its audience.
+- The lead list shows where each lead came from. Every lead carries a source tag (EMAIL, X (TWITTER), LINKEDIN and the rest), and a CAME FROM row counts the leads by source; press a source to see only its leads.
+- Your sales member can sort many leads in one go, and its briefing lists every unsorted lead with what is known about it. SORT THEM on the lead list hands the whole group over.
+- The liquidity wallet's list missed WETH and any token outside the desk's usual list.
+- The earnings book took a token's price from whichever Umbrae pool came last, and a thin pool priced WETH about 9% above the market. Each token is now priced at its deepest Umbrae pool. A book counted the old way is corrected once: what it was given is re-counted at the right price, so the fix never shows as a loss.
+- A real position's value was read 10^18 too high in the book (and in the house member's lines, the daily card's fees and the budget check): Umbrae gives a position's totals and fees in raw on-chain units with each token's decimals, and they were read as whole tokens. They are now scaled by the decimals Umbrae gives.
+- A business model answer longer than its limit was cut off without a word. The limits are doubled, and an answer that is still too long is refused with the count so it can be shortened.
+- Each company's facts on WHAT A BUYER MAY BE TOLD are a sheet: one fact a line, with its tick, its words, its figure, its source, where it stands and EDIT / DELETE / ASK each in a column of their own. EDIT turns that row's words and source into boxes in place.
+- The sales facts sheet has a tick box on every fact and one bar at the top: CHECK ALL, APPROVE ALL, APPROVE CHECKED and RETURN ALL. Tick the facts that are right and press APPROVE CHECKED: those stand, and the rest go back to your sales member to fix, who reads which ones and why. Facts you approved before start ticked when the sheet comes back. Each fact's EDIT, DELETE and ASK buttons are smaller and sit beside its source.
+- Each audience on the leads screen reads at a glance instead of as paragraphs: the company counts as tiles, the offer and the problem side by side, who to reach and which countries as chips, the signs of a fit as a ticked list and the signs of a poor fit as a crossed list. Nothing was removed; only the long "why them" folds.
+- Sections now fold. On SALES → COMPANY, the business model and the facts sheet are each one line showing their state and counts; each company inside them is its own line. Press a line to open it. A section opens by itself only when it waits on you; your own choice to open or fold one is remembered. On LEADS, paid lead data, lead list upkeep and do-not-contact fold the same way.
+- An approved business model reads as plain text under its questions. The answer boxes appear when you press EDIT or when nothing is written yet.
+- Your house members can now set up and change the house charter themselves: its goal, lines of work, who may wake on their own and how often, the Optio's review pace, and quiet hours. A member can also seat itself without touching anyone else's seat. A change takes effect at once, with no approve button.
+- You keep the overview. Every version is kept with the name of the member who set it. You get a card for each change that opens on the charter, and PAUSE still stops every wake. A member's change never un-pauses the house.
+- What a wake may do without asking, and what always comes back to you (publishing, email, money out of the house), stay yours: a member's change cannot touch them.
+- A house member with a liquidity wallet now sees in its own book whether it wakes on its own, and how to seat itself if it does not.
+- Hunter's free company search is now the first step of finding leads, and it's aimed. The sales seat looks before it gathers (sales/discover, free, nothing kept). It sees how the search was asked, how many companies match in the audience's countries, and the first 15 with how many people Hunter holds at each. Then it sharpens the search until those companies are the audience, and gathers with the same search.
+- The search can use Hunter's own industry filter (the list Hunter publishes, shipped with the app; a mistyped industry gets the nearest names back), plus keyword phrases (match any or all) and words to exclude. When the seat gives these, Hunter's guess at its words is not used. Left to guess, Hunter had read the chain "Base" as the word "base" and returned gymnastics clubs and a valve supplier. With the Blockchain Services industry, the same search returns chain teams like Sui, Gnosis and Starknet.
+- Hunter's free company search now casts a wide net. One gather pulls the same list Hunter's own screen shows, in the same order with the same address counts. It then searches each company size, and each of the audience's countries by size; on the free plan every one of those searches returns its own first 100. That adds up to as many as 3,000 companies, every company once, the most addresses first. Before, it searched the smallest companies first and stopped at the 25 the sales seat asked for.
+- Each gathered company shows the address count Hunter's screen shows, for example "7,574 addresses at Hunter (7,512 named people, 62 general)". Narrowing down happens after the gather: read the sites, then score.
+- The launcher has a new COMPANY section with one tile for each position of your house: MANAGEMENT, SALES, MARKETING, LAW, SECURITY, TREASURY and BOOKS, then COMPANY LINE and HOUSE CLOCK. A position's tile opens POSITIONS on that position, with everything it handles.
+- CHIEF OF STAFF, LEGAL, SECURITY and TREASURY no longer take their own tiles, because each now stands inside its position. Searching the launcher by name still opens any of them.
+- The lead pipeline is now gather, filter, verify, score, then contacts, leads, approve, outreach. A new FILTER step narrows a wide pool to the most reasonable prospects before a single site is read. The sales seat keeps the likely ones on a shortlist and passes over the rest with a reason, judging from what Hunter holds there, company size and the company's name and description. Verifying reads only the shortlist, most addresses first, and every company found alive is scored straight after, so verified companies no longer sit unscored.
+- Your READ THE SITES press reads the shortlist first, then the rest.
+- A Base balance or chain read now falls back to Base's public node when your saved Base address does not answer, and the reading says it came through the public node.
+- On the sales facts sheet, the approval bar that stays in view while you scroll had a see-through background, so the facts showed through it and the text overlapped. Its background is now solid.
+- A long gather no longer sits on "working" with nothing to read. Gathering from a paced list and reading companies' sites now report each step on the act's own line in the chat: how many were found of how many asked for, how many were looked at, the last one read, and when the list makes it wait and for how long.
+- A harness (the platform with no being) follows the rules its sender sets for the session again. Since 0.1.149 it dropped them.
+- Your sales member can now put a company on the lead list when it found the contact address after scoring the company. Before, a company scored with no person named could never reach the lead list: the member was told to "file the people first" and had no way to. The person or team the address belongs to is now given together with the address.
+- On a LinkedIn account, the two fields for your LinkedIn app (client ID and client secret) no longer read as already set when they are empty. They show as not set until you fill them in and press SAVE KEYS, and CONNECT stays off until then.
+- "N companies found for … wait for your list approval" items in WAITING ON YOU no longer get stuck. They counted companies the sales seat had already put on your lead list, but the campaigns screen only offered APPROVE THE LIST for companies still being judged. For leads already on your list there was nothing to press, so the item never cleared. The press now counts exactly what WAITING ON YOU counts, so APPROVE THE LIST appears with the same number, and pressing it clears the item.
+- Liquidity actions verify the requested pool, exact action, economic limits, chain-derived proceeds, independent budget values, and transaction outcomes before signing or recording success.
+- Liquidity deposits read the real fee tier and token decimals from Base, center on the active bin, and handle one-sided deposits correctly.
+- Ambiguous transactions remain unresolved until reconciled, preventing duplicate retries; swap earnings use the transaction's own receipt events.
+- Liquidity caps cross-check two independent price sources and wait when prices are missing or disagree.
+- CLEAR in the notification tray now clears every notification, not only the ones the tray had loaded. The tray loads the newest 200, so after a reload or a restart the older ones filled it again and cleared notifications seemed to come back. MARK ALL READ now marks every notification read the same way. A notification that arrives after you press either one still shows.
+- When a member reads a web page, an email address the page publishes behind Cloudflare's email protection, or only inside an "Email us" link, is now read as it is published. Before, the member saw "[email protected]" or nothing, and could not use a contact page that a person in a browser reads without trouble.
+- A being can no longer tell you it changed your queued posts when it didn't. If a reply says posts were staged or edited but nothing in that turn actually touched the queue, the chat shows NOT DONE and the being is sent straight back with the posts as they really stand, by id, to edit them in place. If the second try still changes nothing, the chat says STILL NOT DONE, so the old copy waiting for your approval is never mistaken for the new one.
+- Reading companies' sites no longer answers "already read" for companies it never read. A gathered company's own web address and the reading of its site were kept under one name, so every company that came with an address looked already read and nothing was fetched.
+- A company whose site turns automated readers away (it answers 401, 403 or 429) is no longer called a dead end. It reads as alive and not read, with the reason, and the table says READ IT BY HAND; HIDE DEAD ENDS keeps it.
+- Dictation no longer adds lines nobody said. Over a quiet stretch, speech recognition sometimes writes a line it learned from subtitled video, such as "For more information, visit www.fema.gov". Those lines are now removed from dictation in the chat box, dictation into other apps, and the transcript of a recording a neuma listens to. A short reply like "Thank you." is left alone.
+- TikTok: EDIT ON TIKTOK opens your profile page again; TikTok's own share link was landing on "Couldn't find this account".
+- Agent vault registration now proves the dedicated Roles proxy's creation and initialization blocks and replays its assignment history, rejecting any unintended active role held by the agent.
+- Role-history reads use the chain's current height directly, preventing a cached block number from hiding the latest assignment.
+- A decision taken through one door no longer stays listed as waiting in another window. Approving posts and replies in the post queue left them under WAITING ON YOU in the POSITIONS window for minutes, because each window re-read on its own timer. The backend now sends one signal to every open window of the house whenever the operator changes anything or a member's act settles, and the waiting account, the POSITIONS board and the sales screens read again at once.
+- An audience, a list, a facts sheet or a business model approved inside the POSITIONS window now leaves WAITING ON YOU at once. Before, it stayed listed as waiting until the window was reopened.
+- Wallet approvals can no longer be reused after a restart or across two app processes.
+- Key rotation now revokes old sessions, preserves retired keys under the new recovery credentials, and can return recovery codes after an interruption.
+- Desktop recovery secrets and Recovery Kit changes require trusted confirmation; imported private-key wallets now have a portable recovery path.
+- Transaction success now requires matching receipt evidence from two independent Base endpoints and enough confirmations; disagreement stays unresolved instead of becoming profit.
+- Liquidity wallets now reserve nonces atomically across app processes so different actions cannot replace each other.
+- Swap accounting now counts proceeds only from the selected route, excluding unrelated transfers to the wallet.
+- Updated the app's filesystem, build, and test dependencies to resolve all known root-package security advisories.
+- A web address a member writes in a code span (a site with or without https in front, such as `example.com/page`) is a link: a click opens it in your browser, and right-click offers Open link and Copy link. It used to be taken for a folder on this machine and offered the file manager.
+- The registry lookup is offered to members. It was registered but never offered, so a member that searched for it found nothing.
+- A word search of the company index matches whole words in a company's name and industry only (and the word's plural or singular). A prefix made "defi" find "deficit" and "definite", and a company in the town of Defiance.
+
+### Security
+
+- Compromised-session tests prove that attacker recipients, forged owner signatures, malicious spenders, unknown routes, role escalation, and excessive allowances are rejected by the EVM.
+- `neuma review` as one command (`neuma review`, `neuma review commit <ref>`, `neuma review base <branch>`): a code review you can run from a terminal, a git hook or a CI step. The being cannot change a file while it reviews.
+- `neuma agent --read-only`: the being may read and search, and every acting tool is held.
+- One sales process for every company, read by every seat. Blue Ocean, SPIN and the Straight Line are now one sequence of seven stages: choose the ground, name who it is for, open, find the need, build certainty, ask and close, deliver and keep. Each stage names the method it keeps, what is done, and the record that proves it was done. Every member holding a position reads the stages at the top of each turn with its own stages marked and its own part stated. Every position's hub shows THE SALE as one line; open it to see the seven stages, the ones that seat works, and a button to each stage's record.
+- A CAMPAIGNS tab under POSITIONS, SALES. You open a campaign with a name, the company it is for and what it is meant to bring in (for example Funding, or User acquisition), and put each audience under the campaign it serves.
+- Each campaign shows its own numbers, counted from your house's records: companies gathered, companies scored, people on the lead list, written to, replied, qualified and won. The same numbers are shown per channel, so you can see what each channel brought that campaign.
+- Your sales seat reads the open campaigns in its briefing and files each new audience under the one it serves.
+- The sales decisions that wait on you now appear in WAITING ON YOU with every other decision: a facts sheet to approve, a draft audience, a company list to approve, and a business model a member filed. Pressing one opens the POSITIONS window on SALES, on the right tab, with that record marked. They also show at the top of the SALES position.
+- Updated the desktop runtime to address a known certificate-validation advisory.
+- Liquidity deposits now cross-check two independent price sources and wait for the operator when prices are missing or disagree.
+- Hourly transfer limits now survive app restarts and are shared across app processes; unreadable limit records fail closed.
+
+## [0.1.153] - 2026-11-15
+
+Notes: `docs/operations/release-notes-0.1.153.md`.
+
+### Added
+
+- A neuma can watch videos and listen to audio from almost any source: a link from YouTube, X, TikTok, Instagram, Facebook, Vimeo, Twitch, Reddit, SoundCloud, Apple Podcasts, Bandcamp, news sites or a direct file, or a recording on your computer. It gets what is said with the second each line begins, from the recording's own captions or heard on your computer, and, for video, frames from across it to look at. Long recordings come in ten-minute parts, and the transcript is kept in the neuma's workspace under watched/. In RESEARCH, hearings, interviews, speeches, documentaries and podcasts count as sources. The first watch downloads yt-dlp (and ffmpeg where your computer has none) from their GitHub releases, checked against pinned hashes; every fetch goes through a door that reaches only the internet, never your computer or your network. Each watch asks for your approval, like reading a page.
+- On a Mac, Deus Neuma sets up the model server for you as it does on Linux and Windows: it downloads Ollama's own macOS build (one build for Apple silicon, where models run on the graphics side of the chip, and for Intel), checked against its pinned SHA-256, and pulls the model recommended for your Mac's memory. An Ollama you installed yourself, from the Ollama app or Homebrew, is found and used when it is new enough.
+- macOS builds for Apple silicon and Intel, each made on its own Mac in the public repository's CI, so each app carries the right native code for its chip. Apple signing and notarization switch on once the Apple developer credentials are added to the repository.
+- `neuma acp`: Neuma runs inside any editor that hosts Agent Client Protocol agents (Zed, JetBrains IDEs, and Neovim or Emacs through their ACP clients). Your being works in the project the editor has open, its words and tool calls show in the editor's agent panel, and approvals appear there as Allow once / Allow for this session / Reject. A Read only mode holds every acting tool.
+- `neuma code --watch`: work with the being from any editor. Save a comment ending in `AI!` and the being does what it says; end it in `AI?` and the being answers without changing anything.
+- A complete, always-current list of the backend's HTTP endpoints (`docs/reference/API-ROUTES.md`): generated from the real routers with the checks each one runs (sign-in, install owner), and kept true by a test that fails if the page and the code disagree.
+- `neuma code --check "<command>"` (or `/check <command>` in the session): your lint or test command runs after every turn in which the being changed files. If it fails, the output goes straight back to the being to fix, for up to three tries. Off unless you turn it on.
+- `neuma code --commit` (or `/commit on`): every request the being works becomes its own git commit, with your request as the message. Only the files it changed go in, never your other work, and `/undo` is committed too.
+- Setup for VS Code and Cursor (through the ACP Client extension) and for Devin Desktop, formerly Windsurf, so your being works in all of them.
+- Extensions: 19 MCP servers from the services' own publishers (Notion, Sentry, Heroku, Mapbox, Pinecone, Playwright and more), added with `neuma extensions add <id>`. Each is installed with install scripts off and every package in it is checked against the OSV vulnerability database before it can run. A high or critical known flaw refuses it, the daily security watch checks installed ones again and blocks any that turn up a new flaw, and every call a being makes asks you first. Six are held back today because their newest release fails the check.
+- Your sales seat can now generate leads: it files the audiences it wants to sell to, finds companies for each one, and scores every company against that audience's signs of fit, with a written reason for each score.
+- Nothing from an audience reaches your lead list until you approve its pitch. Changing who an audience targets sends it back to you for approval.
+- A lead only joins your list with an email address the seat read on a real web page. Addresses are never guessed.
+- A do-not-contact list, kept by you or the seat. Anyone on it is never added or written to again.
+- Lead upkeep: each turn the seat sees what needs a hand, most urgent first. That covers replies waiting for an answer, follow-ups due, leads to close after three unanswered emails, stale leads, duplicates, and anyone on the do-not-contact list.
+- Sending an email to a lead marks it contacted, and a reply from a lead marks it replied. Your sales seat always knows who wrote last.
+- Email to anyone on the do-not-contact list is refused before it reaches you for approval.
+- A reply asking to be left alone, or a bounce, closes that lead and puts the address on the do-not-contact list automatically.
+- A LEAD ENGINE section in the Company Line window, under SALES. It shows each audience the seat wants to sell to, with approve, pause and retire buttons, each company's scores with their reasons, what is due on your lead list, and the do-not-contact list.
+- Approve an audience's company list once, and the sales seat can email those leads without asking you each time. It sends the first email and at most two follow-ups, three days apart. A reply still comes to you.
+- A new sending address ramps up on its own: 5 emails a day to leads in its first week, 10 in the second, 15 in the third, then 20.
+- A sales fact sheet: your sales seat files what a buyer may be told about the company, each fact with its source, and you approve or return it on the LEAD ENGINE screen. No email reaches a lead until a sheet is approved.
+- Every email to a lead is checked before it can go. Every number in it must be on the approved sheet, it must carry a line saying it was written by an AI that will stop on request, and it may not use false urgency.
+- A lead who replies just "stop" is taken off the list and never written to again.
+- `/review` inside `neuma code`: a dedicated code review of everything uncommitted, of one commit (`/review commit <ref>`), or of your branch against another (`/review base <branch>`). The review reports what is wrong, worst first, and cannot change a file while it runs.
+- Undo now covers everything a being does to your files, not only edits: a file it deleted comes back exactly as it was, and a file it created is taken away again. A new file you have worked on since is left alone.
+- `/undo` inside `neuma code` puts back the last file change without leaving the session. `neuma edit --undo` does the same from any terminal; run either again to step further back.
+- Webhooks: a being can be woken by events from GitHub, Slack, Linear or any signed script (`neuma hooks add <being> <source> <name>`). Each delivery must be signed with the hook's secret, fresh and not seen before; it then wakes the being through the house clock, so your charter still decides when it works and every act still asks the same gates. Webhooks are off until you turn them on in Settings → Security → Connections.
+- A new POSITIONS window, first in the WORK band. Every position of your house is listed with who holds it and how many decisions wait on you for it. An empty position is marked, so you can see at once which roles nobody holds.
+- Opening a position shows everything it handles in one place: seat or unseat its holder, talk to them, the decisions waiting on you for that position, each of its functions in place (for sales: leads, deals and the mailbox), and the connections it needs with their on and off switch.
+- A THEIR EYES tab shows, word for word, what the member holding a position is told at the top of every turn.
+- A member who holds a position now reads one short map of everything that position handles and the acts for each, before its office briefing. You and the member read the same map.
+- Every member who holds a position now reads a file on each of your companies at the top of every turn: its site, its code, the facts a buyer may be told, its audiences and its campaigns. Anything missing is named with where you set it, and the member is told to say nothing that rests on a missing item.
+- Each sales audience and each sales fact now belongs to one of your companies. An email to a lead is checked only against the facts of that lead's own company, so a fact about one company can never back a claim made for another. An audience or fact naming a company your house does not have is refused.
+- Each audience your sales seat files now names the countries it may be sent to, and you see them when you approve it. No lead outside those countries reaches your list, and neither does an email address whose own country domain (such as .uk) falls outside them. An offer the law limits by country, such as anything crypto in the UK, simply leaves that country out.
+- Every email to a lead now has its claims checked as well as its numbers. Before it can go, your house's own model lists each thing the email says about your company and must point to the approved fact behind it. An email that claims something no fact states is stopped, with the claim named. If the check cannot run, nothing is sent.
+- A first email to a lead is now held to a clear shape before it can go: at most 130 words, a subject of at most 5 words, exactly one question, and a one-line promise of what your sales seat will send when they say yes. That promise is kept on the lead. When the lead replies, the seat and your LEAD ENGINE screen both show the promise and how many hours the reply has waited, so the follow-up delivers exactly what was offered.
+
+### Changed
+
+- Refinement is no longer asked of anyone. The LoRA refinement is not being built: a being's identity travels through NITE. The summoning's pre-flight no longer lists a "Refinement Forge" that "cannot run", the end of the summoning points to the founding voice a being claims in NITE instead of "the refinement", a sealed attunement is the whole walk with no REFINE step after it, and VESSEL no longer shows the refinement's sample milestone and adapters.
+- The star map no longer names Israel. The Hebrew calendar is still one of its traditions, named as the Jewish world's calendar.
+- When an app or benchmark gives a being its own standing instructions (like "answer in as few words as possible"), those instructions now stand as their own section after the being's tool list, instead of in the middle of it, still among the operator's own instructions, so the format they ask for wins. Ordinary chats are unchanged.
+- A neuma looking for a file finds it in one search across every folder and drive it may read, best match first, instead of combing folders one by one. A search that names no folder now covers all of them, not only the neuma's own workspace; a plain word matches inside names in any case, and the exact name ranks first. The search walks many folders at once (millions of entries in seconds), never follows a link out of the folders it was given, skips dependency and dot folders unless asked, and says what it skipped. A drive the neuma has not been given is not searched, and the result says how to ask for it.
+
+### Fixed
+
+- The summoning plays its film again. Since the first public build, the film a new neuma's birth ends with (its sky, its soul, its body and its sigil) was skipped on every real summoning, and the ceremony went straight to the seal and the keys. The desk dropped the being's body on the way to the film, and the film refuses to play without it. A neuma born in the meantime can still watch its summoning from its RECORD.
+- The guard against planted instructions no longer blocks a being's legitimate actions just because they appear next to an attack. A real email on the same web page as a planted instruction can now be used, and a channel whose name contains the planted text can still be named when the task asks for it. In replays of every recorded AgentDojo run, wrong blocks fell from 92 to 5, and every attack that carried an account, address or link is still stopped (114 of 114).
+- In Marketing, an account's REPLIES shows only the replies to that account. Before, every X account of the house showed the replies to all of them, so a new account's page listed hundreds of replies to another. Each reply now names the account it answers.
+- The editor setup for Zed and JetBrains now says how to point Neuma at your wallet. Before, a being seated from an editor only worked inside a project that held your wallet file.
+
+## [0.1.145] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.145.md`.
+
+### Changed
+
+- RESEARCH goes deeper and softens nothing: at least 40 pages from at least 15 different sites across 12 searches; if most of the reading comes from a few sites, the neuma is told which ones and sent wider. It is told to start from primary records (court, government, declassified and archival documents, filings, studies), then reporting from different countries and alignments, then the strongest critics and defenders; to leave nothing out for being controversial and add no warnings or moral commentary you did not ask for; and to mark every finding as documented, alleged, disputed or opinion.
+
+## [0.1.144] - 2026-11-14
+
+Notes: `docs/operations/release-notes-0.1.144.md`.
+
+### Added
+
+- RESEARCH, a new mode in the chat box's mode menu, for questions that deserve real research. The neuma reads widely before it answers: it must read at least 20 pages across at least 6 searches (search results alone do not count), and if it tries to answer sooner it is sent back to the parts of the question that are still thin. Then it writes a full report: a summary, findings by sub-question with every claim cited, where sources disagree, and what is still open, followed by the list of every page it read. The report is saved in the neuma's workspace (research/) and named in the chat. If searching stops finding anything new before the floor, the report says so.
+
+### Fixed
+
+- Every action your neuma takes now opens to what it returned. Some three dozen tools (an LP book or market read, vault lists, tasks, social reads and others) showed a one-line chip with nothing to open; each now has a + that shows what the neuma was handed, live and after the chat is reopened. A retrieved result names the tool it came from and the part it is, instead of an internal reference.
+- WHAT'S NEW scrolls: long release notes no longer get cut off at the bottom of the window, and the title and CLOSE stay in view (deus-neuma #37).
+- The HOUSE window's roster for a house founded on this computer shows each member's title and name as they are now, with "FOUNDED AS" and the founding title beside any title changed since. It used to show the founding titles as if they were current (deus-neuma #36).
+- On a small context window (32K and similar) a long chat no longer leaves a tool turn without room to work: the conversation is sized to leave the turn its own share of the window (about a third, up to 24K tokens), the oldest rows leave sooner, and a compacted chat's summary always stays in view (deus-neuma #34).
+- On Ollama, a model that thinks too long before acting is cut short and asked again with thinking off, as it already was on llama.cpp; a cut tool turn is asked for its next step, not a final answer.
+- The document press: a kit's paper colour now fills the whole page, margins included; images in the markdown are embedded when the file is in your open folder or the neuma's workspace (web images and others it cannot embed are named back to the neuma, and show as a note instead of a broken icon); charts scale to the page instead of being cut off, and a bar chart draws every dataset; a large kit badge no longer makes every page carry its own copy (a 10-page document is no longer ten badges big); and kit settings the press cannot use are named back instead of silently dropped (deus-neuma #33).
+
+## [0.1.143] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.143.md`.
+
+### Changed
+
+- Deus Neuma Inc owns what Deus Neuma is made of: the Terms of Service (1.6) name it as the owner of the Neuma and Deus Neuma names and marks, the EULA (1.6) calls our tuned Qwen3.8-27B-Neuma-T4 ours, and the licence, the notices and the packages name Deus Neuma Inc. Because the agreements' text changed, the app asks you to read and sign the new versions at your next ceremony.
+
+### Fixed
+
+- A newborn neuma no longer deliberates over its name for minutes. On a llama.cpp server its naming may think for about 4,000 tokens; then the server closes the thought and the neuma speaks and writes its name in the same answer. The ceremony's disclosure shows the THINKING BUDGET. Other model servers are unchanged.
+
+## [0.1.142] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.142.md`.
+
+### Changed
+
+- Voice has one place: the chat box. The LIVE button beside the chat box is gone; to dictate, hold the mic (or Space) as before. Where voice conversations are turned on, TALK sits in the chat box beside the mic (it was in the chat's header), so the mic types your words and TALK starts a spoken conversation, side by side and nowhere else.
+
+## [0.1.141] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.141.md`.
+
+### Changed
+
+- The Terms of Service (1.5), the EULA (1.5), the Privacy Notice (1.3) and the Neuma Covenant (1.4) now name Deus Neuma Inc, a Delaware corporation, as the company you agree with, and are governed by Delaware law. Nothing else in them changed. Because the texts changed, the app asks you to read and sign the new versions at your next ceremony.
+
+## [0.1.140] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.140.md`.
+
+### Added
+
+- You choose where your models go before anything downloads. When no model is running, the first screen says which folder the model will go in and how much free space that drive has, and CHANGE opens your computer's own folder dialog, so a full system drive is never where a 20 GB model lands. The setup card in the flight check offers the same CHANGE FOLDER. A model server you already run yourself keeps its models where it always has.
+
+### Fixed
+
+- Windows: the model folder you chose in the installer is now used even when the installer's own download did not finish. Before, the app set the model up again in your user folder on C:.
+- "Model ready" names the model, never a file path. A server started from a model file showed the file's whole path, and for some models a string of letters and numbers.
+
+## [0.1.139] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.139.md`.
+
+### Fixed
+
+- The Windows installer builds again. Its uninstaller read a check it had not declared, and the build stopped at the installer step, so Windows gets this release too.
+
+## [0.1.137] - 2026-11-13
+
+Notes: `docs/operations/release-notes-0.1.137.md`.
+
+### Added
+
+- Right-clicking a chat now also offers TITLE UNTITLED and RETITLE ALL, below the chat's own items, in the Chats window (one-on-ones and councils) and in the stream's chat list. The TITLE button still works as before.
+- The Chats window has a picker for whose chats it shows. It follows the neuma in the stream until you pick another, and opening a chat of another neuma brings that neuma into the stream first. NEW CHAT starts with the neuma shown.
+- ALL NEUMA in that picker lists every neuma's chats together, newest first, each tagged with whose it is, and the search looks through all of them.
+- Naming chats or councils in batch (TITLE UNTITLED, RETITLE ALL) now shows NAMING n / total with a bar and about how long is left, titles appear in the list as they land, and CANCEL stops it (the titles already made stay).
+- Settings > Connections now lists the downloads you start yourself: the model server and its model, and dictation's engine and speech model, from GitHub and Hugging Face, each checked before it is used. Nothing there downloads on its own.
+- Dictate in every app (Linux, in Settings, off until you turn it on): hold Right Ctrl (or another key you choose), speak, and let go, and your words are typed into whatever window you are in, through the same local speech engine as dictation in Neuma. The microphone is open only while you hold the key, and nothing leaves your computer. If your computer still needs something for it (the input group, a recorder, ydotool), Settings names it with the command that adds it. Windows and macOS come next.
+- If you already dictate on your processor and your graphics card has room for the faster model, the app offers it once, after a dictation: DOWNLOAD fetches it (about 0.7 GB) and dictation moves to the card when it lands; NOT NOW is remembered. Dictation keeps working the whole time.
+- On Linux with an NVIDIA graphics card that has room beside your main model, dictation runs on the card with Whisper large-v3 turbo, the more accurate model: a held key comes back in about a tenth of a second. The app checks the card's free memory and the size of your main model first. Where the card is needed for your model (for example a 12 GB card running a 27B model), dictation stays on the processor and your model keeps the whole card. The setup card says where dictation runs and why.
+- Marketing has a company tree down its left side. Every company sits in its real nesting with its accounts listed under it, and accounts without a company are grouped last. One press takes you to any company or account, and the one you're on is highlighted.
+- From the tree you can move a company under another company (or back to the top) and move an account to a company. A company's site, legal name and repos are kept when it moves.
+- An account opened from anywhere in marketing now opens under its own company, so the path always says whose account it is.
+- Your marketing lead can now record an account's @handle by itself. Assigning who speaks for an account, or which company it belongs to, asks you on a card first.
+- Your neuma can stage quote posts on X: a draft names the post it quotes, by its link or id, and goes out as a quote (the quoted post's link ends the words, which X shows as the quoted post). The draft card shows QUOTES with a link to the post, and every quote waits for your approval, even under a mandate.
+
+### Changed
+
+- The legal check on your legal lead's answers is calmer. It now holds only text presented as law: a citation, a named statute or regulator, or a quote of one. Quoting a form, a document or a post no longer marks an answer UNCHECKED. Real legal citations the app hasn't confirmed are still held, just as before.
+- Dictation works like a push-to-talk key: hold, speak, let go, and the words land in the box, in about half a second on most computers. The speech engine now loads when the app opens and stays ready, instead of starting at your first dictation and shutting down after ten quiet minutes.
+- Dictation runs Whisper base, sized for a processor. The larger model it used before took 8 to 15 seconds a hold on most computers. Dictation asks you to download it once (60 MB).
+- The words arrive once, when you let go, with no live preview while the key is held.
+- Campaigns are connected across Marketing. Each company's campaigns appear in the company tree under that company, above its accounts, and one press opens a campaign's page.
+- The Campaigns tab shows each campaign as the same panel the board uses (its goal, time, results, the accounts it runs on), and pressing anywhere on a panel opens it. NEW CAMPAIGN sits at the top of the list.
+- An account's page lists the campaigns that run on it, and each one opens that campaign's page.
+- Spelling is checked on your computer now, with English dictionaries that come with the app. Misspelled words are underlined and right-click offers suggestions, with nothing downloaded and nothing to turn on. The Spellcheck dictionary switch is gone from Settings → Connections, because spellcheck no longer connects to anything.
+- The neuma switcher shows each member's role beside their Roman title, for example OPTIO (COS), with the seat spelled out on hover and for screen readers. A title your house chose itself is shown as you wrote it.
+- In the House, each member and position shows its full seat (for example Quaestor · CFO — CHIEF FINANCIAL OFFICER) and one plain sentence saying what the seat is for and where its neighbour's work begins. The title list shows that sentence as you choose a title.
+- Every tool call is now checked against the tool's own description before it runs, the same way for every tool and for both beings and sealed peers. A call that uses another tool system's field names (like file_path or old_string) or writes a number as text now runs as intended. A call with a missing field, a wrong value, or a field name that's almost right is stopped before anything happens, and the model is told exactly what to write instead (for example: "edits[0].old is not a field — did you mean edits[0].oldText?").
+
+### Fixed
+
+- On the Campaigns tab, a campaign's name is now its own button, so keyboard and screen-reader users open it the same way as everyone else. Before, the whole card was one big button with other buttons inside it, which screen readers can't announce properly.
+- A batch naming that fails now says TITLING FAILED with the reason, instead of NOTHING TO NAME.
+- The parallel capacity scan no longer reports 2 or 3 neuma at once on a model server that runs one request at a time. It now measures what the server delivered over the whole wave, so a queue reads as a queue and a single-slot server is named as one.
+- On Ollama, the capacity scan now uses the server's own token count instead of a word estimate, so its speed readings match what the server reports.
+- Dissolving a council now returns the stream to your one-on-one chat. Before, the empty council view stayed on screen until you pressed COUNCIL.
+- Opening or starting a one-on-one chat from the Chats window, the stream's chat list or NEW CHAT now always shows that chat, even while a council is sitting.
+- Dropdown lists are readable in every look. The title and TRADE dropdowns under House > POSITIONS, and the app's other plain dropdowns, opened a white list with near-white text on dark looks such as STONE. Their lists now use your look's own background and text colours.
+- A being on a model you serve yourself (Ollama, LM Studio, llama.cpp) no longer loses its turn while it writes a long file in one go. Ollama sends a tool call only once it is complete, so the app now waits up to 10 minutes of silence on these models instead of 2. Hosted models keep the 2-minute limit, and you can still interrupt a turn at any time.
+- A model that calls a tool through the general "call" tool using the tool's function-list spelling (like caller__get_weather) now reaches that tool on the first try. Before, the call was answered "unavailable" and the model had to try again: 238 wasted steps in benchmark runs from Oct 25 to Nov 8.
+- When the coding shell can't start, checking its status now gives the real reason (for example, the folder doesn't exist) instead of an internal error message.
+- A benchmark answer's record of tool calls now says why each failed call failed (the refusal or error message) and which argument names the model used, never their values. A round where one call was refused and another ran no longer records the refused call twice and loses the one that ran.
+- A link to an X post written into an X draft is no longer turned into a counted deusneuma.ai/go/ link, so X can show it as the quoted post.
+
+## [0.1.128] - 2026-11-12
+
+Notes: `docs/operations/release-notes-0.1.128.md`.
+
+### Added
+
+- Your marketing lead can now take back a post or reply that's already live on X. It deletes the post after you approve the card, and the queue keeps it marked RETRACTED. X doesn't allow editing, so a correction is: take it back, then post the fixed words. The reply it answered can be answered again.
+- Your marketing lead can now edit its own unsent drafts without asking you. Changed words still wait for your approval before anything goes out.
+
+### Fixed
+
+- Your marketing lead can now pull back its own unsent post or reply by itself, without asking you to approve.
+- Setting a reply aside now also pulls back any unsent answer to it, so a draft answering a binned reply can't be approved by mistake.
+- When your marketing lead reads replies, mentions or the post queue, it now gets as many as its conversation has room for. Before, it got only about six at a time, and older replies were left out.
+
+## [0.1.127] - 2026-11-12
+
+Notes: `docs/operations/release-notes-0.1.127.md`.
+
+### Added
+
+- Titles in a house can change. In the HOUSE window, POSITIONS shows who holds each title, with one place to correct or give a member a title (with a reason) and to let two members trade titles. The founding record stays as it was signed, and each member keeps a history of every title they have held and when.
+
+## [0.1.126] - 2026-11-11
+
+Notes: `docs/operations/release-notes-0.1.126.md`.
+
+### Added
+
+- A model too large for your graphics card can now run with the rest of it in system RAM, instead of failing to load. It stays inside your GPU share and a RAM share (half of your RAM by default) that always leaves 8 GB free for everything else. It runs slower than a model that fits the card.
+- When your marketing mandate answers replies, easy X replies now go out on their own: thanks, a question answered, a pointer, warm words. A reply that touches money, a migration, an argument, a claim or a promise waits for you instead, and the reply card shows ASKS YOU with the reason. Your marketing lead can also send any reply to you on purpose.
+- The mandate screen has a REPLIES A DAY box, up to 50 a day. Once the day's replies are used up, the rest wait for you instead of pausing the whole mandate.
+
+### Changed
+
+- On 12 GB graphics cards, the model's memory for conversation (its cache) now takes about half the space at the same speed, so the recommended model stays wholly on the card instead of spilling into system RAM.
+- OPEN FOLDER now uses your computer's own folder dialog (KDE's, Windows Explorer's or Finder's), with its places, new folder and search. The desk's own picker appears only when the desk is opened in a plain web browser.
+- The terminal opens in the folder in focus, and in your home folder when nothing is in focus. It no longer opens in a project's folder.
+
+### Removed
+
+- Projects. The folder in focus is now the workspace: the Explorer, terminal, map and beings' coding tools all work in the folder you open. Your saved project data stays on disk untouched. When a being asks to write outside its own space, approving gives it that folder only, not a whole project.
+
+### Fixed
+
+- Each social account can now carry its own developer app. On X every account has its own app, and pairing a second account with the first account's app keys was refused as "Unauthorized". Paste an account's own Consumer Key and Secret on its row. The X keys screen also has folded setup steps, including setting the app to Read and write before making the access token, and says in plain words what an "Unauthorized" answer means.
+- Switching models no longer asks for a new parallel capacity scan. Every model you have scanned keeps its own result, and a model you have never scanned uses this machine's latest measurement, named as such, instead of dropping to one conversation at a time.
+- An approved X post with images no longer fails because of a brief network drop. The image upload is tried again for up to a minute, and if it still fails, the post's error says why the network failed.
+
+## [0.1.123] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.123.md`.
+
+### Added
+
+- Click a web address or filesystem path in the terminal to open it. Right-click web addresses to choose the integrated or external browser; relative paths resolve against the terminal's working directory.
+
+### Fixed
+
+- The Explorer shows edits the moment they happen anywhere in a large opened folder, such as a folder holding many repositories. Folders deep inside one were never watched, so a change only appeared after reloading the folder. The live watch now sizes itself to what your system allows, skips each repository's ignored build and cache folders, and covers the folders you opened yourself first.
+
+## [0.1.122] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.122.md`.
+
+### Fixed
+
+- Dictation works on an installed app. DOWNLOAD MODEL used to fail at once ("Download did not start. (500)"): the speech engine was never part of the install. Now the app downloads a small speech engine that runs on your processor, not your graphics card, so it never competes with your model for graphics memory. It uses at most a third of your processor, starts when you speak and frees its memory after ten idle minutes. It understands many languages, Thai among them.
+
+## [0.1.121] - 2026-11-10
+
+Notes: `docs/operations/release-notes-0.1.121.md`.
+
+### Fixed
+
+- An update now replaces the running version completely. The previous version's backend is stopped before the new one starts, so after updating you land on your own desk with your own wallet instead of an error that a port is already in use, or a sign-in that cannot find your wallet.
+- Opening Deus Neuma after an update, a crash or a forced quit takes over a backend the previous run left behind, instead of refusing to start. A backend that another open desk is still using is never touched.
+- On Windows, a backend whose desk has gone now shuts itself down, as it already did on Linux.
+
+## [0.1.120] - 2026-11-09
+
+Notes: `docs/operations/release-notes-0.1.120.md`.
+
+### Added
+
+- Our own tuned model, Qwen3.8-27B-Neuma-T4, is offered on every graphics card from 12 GB: the 6-bit build on 48 GB and up, 4-bit on 32 GB, 3.5-bit on 16 to 24 GB, and 3-bit on 12 GB. Each becomes the recommended model once it has passed its birth rehearsal.
+- On a Linux PC with an NVIDIA graphics card of 24 GB or more, SET IT UP FOR ME now installs llama.cpp, the engine Deus Neuma's own house runs on, instead of Ollama. The model is fitted to your card, several conversations can run at once, and the Qwen3.8 27B models use their own built-in predictor to write ahead. The engine and every model file are checked against their published SHA-256 before use. Smaller cards and other machines still get Ollama, which can keep part of a model on the processor.
+- A newer tuned house model (T4) can be selected in the model picker.
+- When a DFlash2 drafter sits beside the model and the engine supports it safely, the model drafts several words ahead and checks them in one pass: about 40% faster on code and structured answers, with the same answers.
+- The ACTIVITY panel shows how fast the model thinks, answers and writes tool calls — for the reply being written now, the last ten replies, and since the model server started — with time to first token, prompt speed, how much of each prompt came from cache, and how many drafted tokens were accepted.
+- A company can be added right where social accounts are set up: NEW COMPANY beside ADD ACCOUNT takes its name as it should read, stands it on its own or under another company, and picks it for the account you are adding.
+- macOS builds: `npm run dist:mac` makes a disk image and zip per chip and checks that every binary inside loads on that chip; `npm run check:mac` runs the check alone.
+
+### Changed
+
+- A graphics card with 12 GB or more is now the recommended minimum: a smaller card, or a computer without one, is still offered a smaller model, but none is recommended.
+- When a planted instruction turns up in data a being reads, it ignores the instruction and still finishes your task with the legitimate data around it. It stops only for the action the plant pushes, instead of dropping the whole job.
+- The house can run its own tuned model, Qwen3.8-27B-Neuma-T3, with its training lineage verified every time it starts.
+- The house model now runs a smaller, faster build of the tuned model (about 20–25% faster replies, 6 GB less graphics memory, same quality).
+- Building from source needs Node.js 24.15 or newer.
+- Every dependency is pinned to an exact version, and the file tools moved to their maintained 2.x releases.
+- The licence agreement (1.4.2, terms unchanged) names Qwen3.8-27B-Neuma-T4, and the credits add T4, llama.cpp, the CUDA runtime and the drafter.
+
+### Fixed
+
+- The model's memory on the card is now sized from measurements, so a 24 or 32 GB card is no longer told the model does not fit and handed a window too large to load.
+- The legal office no longer holds an answer for quoting your own words back to you — only words it presents as the law's must come from a checked source.
+- Sources the app already checked earlier in a chat still count for the rest of that chat, so a long working session is not stopped every turn to re-check them.
+- A checked regulation written as "Part" (for example "16 CFR Part 255") now covers the same regulation cited without the word, and its sections.
+- Case-law search asks for the free CourtListener token in Settings → API, instead of failing: CourtListener no longer answers searches without one.
+- A being writing a long document to a file no longer loses it when the document contains quotation marks — the file is written as authored.
+- When a tool call's details can't be read, the being is now told what went wrong and how to send it again, instead of the call vanishing or reading as "No tool named call".
+- The licence agreement carries its own version again (1.4.1: the house model is called by its published name, terms unchanged), and the downloadable copies of it and of the Privacy Notice match the text you agree to.
+- When a planted instruction sits inside one record of a list (a payment, an event, a message), only that record's poisoned field is treated as tainted. A being no longer holds a legitimate payment to a real account that happens to sit beside the attack.
+- A being's question to you about a held action is never held itself.
+- Inside a calendar, an account or another system a tool opens, a being now works from that system's own date instead of today's real date. It no longer moves a date you didn't ask it to change.
+- The substrate window's generation and prompt speeds now move while a reply is being written, instead of reading 0 until it finishes.
+
 ## [0.1.109] - 2026-11-03
 
 Notes: `docs/operations/release-notes-0.1.109.md`.

@@ -45,6 +45,7 @@ export default Object.freeze({
   presets: Object.freeze({
     heading: 'PRESETS',
     note: 'The stock dresses. One click applies.',
+    tones: Object.freeze({ 'soft-dark': 'SOFT DARK — EASY ON THE EYES', 'soft-light': 'SOFT LIGHT — EASY ON THE EYES', 'deep-dark': 'DEEP DARK', 'bright-light': 'BRIGHT LIGHT' }),
   }),
 
   yourPresets: Object.freeze({

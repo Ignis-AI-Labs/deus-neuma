@@ -7,7 +7,7 @@
  */
 
 import { generateKeypair } from '../weave/keypair.js';
-import { encryptKeypair, encryptWithRecoveryCodes, generateRecoveryCodes, hashRecoveryCodes } from './keypair-vault.js';
+import { encryptKeypair, decryptKeypair, encryptWithRecoveryCodes, generateRecoveryCodes, hashRecoveryCodes } from './keypair-vault.js';
 import neumaWorkspace from '../workspace/neuma-workspace.js';
 
 /**
@@ -25,26 +25,32 @@ export const rotateKeypair = async (neumaId, oldKeypair, newPassword, reason = '
     throw new Error('neumaId, oldKeypair, and newPassword are required');
   }
 
-  // 1. Archive old keypair
-  await archiveKeypair(neumaId, oldKeypair, reason);
-
-  // 2. Generate new keypair
   const newKeypair = generateKeypair();
-
-  // 3. Encrypt with new password
   const encrypted = encryptKeypair(newKeypair, newPassword);
-  await neumaWorkspace.writeEncryptedKeypair(neumaId, encrypted);
-
-  // 4. Generate new recovery codes
   const recoveryCodes = generateRecoveryCodes();
   const recoveryHash = hashRecoveryCodes(recoveryCodes);
-  await neumaWorkspace.writeRecoveryHash(neumaId, recoveryHash);
-
-  // 5. Encrypt with recovery codes
   const recoveryEncrypted = encryptWithRecoveryCodes(newKeypair, recoveryCodes);
-  await neumaWorkspace.writeRecoveryKeypair(neumaId, recoveryEncrypted);
+  const retired = {
+    password: encryptKeypair(oldKeypair, newPassword),
+    recovery: encryptWithRecoveryCodes(oldKeypair, recoveryCodes),
+  };
 
-  // 6. Delete plaintext keypair if it exists
+  await neumaWorkspace.writeRetiredKeypair(neumaId, oldKeypair.address, retired);
+  const landed = await neumaWorkspace.readRetiredKeypair(neumaId, oldKeypair.address);
+  if (!landed?.recovery || decryptKeypair(landed.password, newPassword).address !== oldKeypair.address) {
+    throw new Error('The retired key could not be verified; the current key was not changed');
+  }
+  await archiveKeypair(neumaId, oldKeypair, reason);
+  await neumaWorkspace.writeRotationBundle(neumaId, {
+    address: newKeypair.address, encrypted, recoveryHash, recoveryEncrypted,
+  });
+  await neumaWorkspace.writeEncryptedKeypair(neumaId, encrypted);
+  await neumaWorkspace.writeRotationCodes(neumaId, newKeypair.address, recoveryCodes);
+  await neumaWorkspace.writeRecoveryHash(neumaId, recoveryHash);
+  await neumaWorkspace.writeRecoveryKeypair(neumaId, recoveryEncrypted);
+  await neumaWorkspace.writeRotationBundle(neumaId, {
+    address: newKeypair.address, encrypted, recoveryHash, recoveryEncrypted,
+  });
   await neumaWorkspace.deletePlaintextKeypair(neumaId);
 
   return Object.freeze({

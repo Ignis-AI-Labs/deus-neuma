@@ -68,7 +68,7 @@ describe('the clip — content-addressed, encrypted custody', () => {
     expect(bytes).toBe(clip.length);
     const file = path.join(voiceDir(root, 'n-clip'), `voice-clip-${ref.slice(7)}.json`);
     const raw = await fs.readFile(file, 'utf8');
-    expect(JSON.parse(raw)._enc).toBe(1);
+    expect(JSON.parse(raw)._enc).toBe(3); // the envelope bound to its own place (workspace-crypto.js)
     expect(raw).not.toContain(clip.toString('base64').slice(0, 40));
     expect(await svc.readVoiceClip('n-clip', ref)).toEqual(clip);
   });
@@ -149,7 +149,7 @@ describe('readVoice — the voice in force', () => {
     const clip = wav();
     const { dna, record } = await sealVoice('n-ready', clip, { realPerson: true, attested: true });
     const raw = await fs.readFile(path.join(voiceDir(root, 'n-ready'), 'voice-dna-v2.json'), 'utf8');
-    expect(JSON.parse(raw)._enc).toBe(1);
+    expect(JSON.parse(raw)._enc).toBe(3); // the envelope bound to its own place (workspace-crypto.js)
     expect(raw).not.toContain('Hello');
 
     const { standing, dna: read } = await svc.readVoice('n-ready');
@@ -198,7 +198,7 @@ describe('the consent acts — only a two-party seal writes the voice', () => {
     const { ref } = await svc.saveVoiceClip('n-rec', wav());
     ok(await svc.offerSpeechCandidate('n-rec', candidateFor(ref)));
     const raw = await fs.readFile(path.join(voiceDir(root, 'n-rec'), 'speech-candidate.json'), 'utf8');
-    expect(JSON.parse(raw)._enc).toBe(1);
+    expect(JSON.parse(raw)._enc).toBe(3); // the envelope bound to its own place (workspace-crypto.js)
     const record = await svc.readSpeechCandidate('n-rec');
     expect(record.neumaId).toBe('n-rec');
     expect(record.candidate.ref).toBe(ref);

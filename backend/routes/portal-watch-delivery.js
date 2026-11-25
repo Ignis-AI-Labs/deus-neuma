@@ -25,10 +25,13 @@ const OPEN = 1; // WebSocket.OPEN
 const inFlight = new Set();
 const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 
-// pure — what the being reads: whose words these are, then the report
-export const watchThought = (watch) =>
-  `[A WATCH YOU SET — the platform reporting, not your operator] ${watch.label} has settled. ${watch.report}`
-  + ' Your operator asked to be told when it ended.';
+// pure — what the being reads: whose words these are, then the report. Shadow clones sent to work in the
+// background come back the same way (shadow-clone.js): their reports, and what to do with them.
+export const watchThought = (watch) => (watch.kind === 'clones'
+  ? `[A WATCH YOU SET — the platform reporting, not your operator] Word from your ${watch.label} working in the background: ${watch.report}`
+    + ' Tell your operator what they did and found, take up what they left for you, and carry on.'
+  : `[A WATCH YOU SET — the platform reporting, not your operator] ${watch.label} has settled. ${watch.report}`
+    + ' Your operator asked to be told when it ended.');
 
 // impure — the open chat this watch belongs to, or null
 const chatFor = (watch) => [...portalConnections.values()].find((c) => c.ws?.readyState === OPEN

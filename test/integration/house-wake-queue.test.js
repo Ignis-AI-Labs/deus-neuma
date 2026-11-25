@@ -339,6 +339,18 @@ describe('the house wakes for its own work — queue and triggers', () => {
     expect(items.find((i) => i.reason === 'run-lost')).toMatchObject({ seat: HOUSEMATE, ref: id });
   });
 
+  test('an LP portfolio round still waiting is superseded by the next; the market\'s events stay', async () => {
+    await chartered();
+    setWakeRunner(null);
+    const lp = (ref, event) => takeSignal({ seat: HOUSEMATE, reason: 'lp', ref, detail: { event } });
+    expect((await lp('round-60m-1', 'round')).queued).toBe(true);
+    expect((await lp('range-77-1', 'out-of-range')).queued).toBe(true);
+    expect((await lp('round-60m-2', 'round')).queued).toBe(true);
+    expect((await lp('round-60m-2', 'round')).queued).toBe(false); // one window wakes once
+    const items = (await readWakeQueue(WALLET)).items.filter((i) => i.reason === 'lp');
+    expect(items.map((i) => i.ref)).toEqual(['range-77-1', 'round-60m-2']);
+  });
+
   test('a second house on the machine: its clock never wakes, and its plans never reach, the first house\'s Optio', async () => {
     const OTHER = '0x3333333333333333333333333333333333333333';
     const OTHER_OPTIO = 'other-house-optio';

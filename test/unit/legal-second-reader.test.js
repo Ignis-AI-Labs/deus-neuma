@@ -35,8 +35,12 @@ describe('the reader\'s answer, read', () => {
     expect(parseReading('1 | probably fine | looks ok', ROWS).get(1).verdict).toBe('cannot_tell');
   });
 
-  it('only a passage that does not support its claim, or is the wrong provision, blocks', () => {
-    expect([...BLOCKING].sort()).toEqual(['does_not_support', 'wrong_provision']);
+  it('an unclear, empty, malformed, or skipped answer blocks just like a rejected citation', () => {
+    expect([...BLOCKING].sort()).toEqual(['cannot_tell', 'does_not_support', 'wrong_provision']);
+    for (const answer of ['', 'not a verdict', '1 | cannot_tell | the passage is incomplete']) {
+      const readings = parseReading(answer, ROWS);
+      expect(ROWS.filter((row) => BLOCKING.includes(readings.get(row.n).verdict))).toHaveLength(3);
+    }
   });
 });
 
@@ -58,7 +62,7 @@ describe('the reading, as the office reads it', () => {
     expect(text).toContain('SECOND READER — the house\'s own model (local-model) read each passage against its claim:');
     expect(text).toContain('2. WRONG PROVISION · 15 U.S.C. § 77b, (a)(10) — prospectus');
     expect(text).toContain('3. DOES NOT SUPPORT · FINRA Rule 5310, Rule 5310');
-    expect(text).toMatch(/may land: fix the claim or the pin cite/);
+    expect(text).toMatch(/Nothing may land unless every row is affirmed SUPPORTS/);
   });
 
   it('a reader that could not be had says so — no reading lands on it', () => {

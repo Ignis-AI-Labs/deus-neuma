@@ -86,7 +86,7 @@ export const ApprovalChip = ({ segment, onRespond }) => {
         ) : null}
         <div className="approval-actions">
           <button type="button" disabled={sent} onClick={() => answer('allow')}>ALLOW ONCE</button>
-          <button type="button" disabled={sent} onClick={() => answer('always')}>ALWAYS ALLOW</button>
+          {!/^intents\/(?:wallet\.send|lp\.)/.test(name) ? <button type="button" disabled={sent} onClick={() => answer('always')}>ALWAYS ALLOW</button> : null}
           <button type="button" disabled={sent} className="approval-deny" onClick={() => answer('deny')}>DENY</button>
         </div>
       </div>

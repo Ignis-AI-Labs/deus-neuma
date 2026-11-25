@@ -35,6 +35,7 @@ import { getAppConfig, isProduction } from '../config.js';
 import { requireLocalScope } from '../services/remote/access-guard.js';
 import { requireInstallOwner } from '../services/install-owner.js';
 import { remoteStore, EMPTY_REMOTE_STATE } from '../services/remote/remote-store.js';
+import { accessLog } from '../services/remote/access-log.js';
 import {
   createPairing, hasPairing, claimPairing, mintDevice, mintNativeDevice,
   deviceLabel, withDeviceSeen, withoutDevice, publicDevice, deviceCookie,
@@ -89,10 +90,12 @@ export const pairingDocument = (identity, { lanAddresses: lan, lanPort, pairPort
 };
 
 /**
- * @param {{ store?: typeof remoteStore, tailscale?: { status: typeof tailscaleStatus, serve: typeof serveStatus, enable: typeof enableServe, disable: typeof disableServe } }} [deps]
+ * @param {{ store?: typeof remoteStore, journal?: typeof accessLog, tailscale?: { status: typeof tailscaleStatus, serve: typeof serveStatus, enable: typeof enableServe, disable: typeof disableServe } }} [deps]
+ *   journal: the access log every reach of this desk from outside is kept in (remote/access-log.js)
  */
 export const createRemoteRouter = ({
   store = remoteStore,
+  journal = accessLog,
   tailscale = { status: tailscaleStatus, serve: serveStatus, enable: enableServe, disable: disableServe },
 } = {}) => {
   const router = Router();
@@ -144,6 +147,7 @@ export const createRemoteRouter = ({
     const expiresAt = verifySessionToken(token)?.expiresAt ?? Date.now();
     const state = store.get();
     await store.save({ ...state, devices: withDeviceSeen(state.devices, device.id) });
+    await journal.note('session', { device: device.id, label: device.label, address: device.address });
     res.json({ token, address: device.address, expiresIn: expiresAt - Date.now(), device: publicDevice(device) });
   });
 
@@ -159,18 +163,21 @@ export const createRemoteRouter = ({
     }
     await store.save({ ...store.get(), enabled: true, origin: ts.dnsName });
     log.info('remote access enabled', { origin: ts.dnsName });
+    await journal.note('enabled', { road: 'tailnet', address: req.walletAddress });
     res.json(await status(req.walletAddress));
   });
 
   router.post('/disable', ...machineOnly, async (req, res) => {
     await store.save(EMPTY_REMOTE_STATE);
     log.info('remote access disabled — every device cut');
+    await journal.note('disabled', { road: 'every road', address: req.walletAddress });
     res.json(await status(req.walletAddress));
   });
 
   router.post('/rotate', ...machineOnly, async (req, res) => {
     await store.save({ ...store.get(), devices: [], rotatedAt: new Date().toISOString() });
     log.info('remote devices rotated — every device cut');
+    await journal.note('rotated', { address: req.walletAddress });
     res.json(await status(req.walletAddress));
   });
 
@@ -231,6 +238,7 @@ export const createRemoteRouter = ({
     try {
       await enableLanRoad({ port: req.body?.port });
       log.info('native LAN road enabled', { native: lanStatus() });
+      await journal.note('enabled', { road: 'native LAN', address: req.walletAddress });
       res.json(await status(req.walletAddress));
     } catch (error) {
       log.error('LAN road enable failed', { error: error.message });
@@ -241,6 +249,7 @@ export const createRemoteRouter = ({
   router.post('/lan/disable', ...machineOnly, async (req, res) => {
     await disableLanRoad();
     log.info('native LAN road disabled — tunnel sockets cut');
+    await journal.note('disabled', { road: 'native LAN', address: req.walletAddress });
     res.json(await status(req.walletAddress));
   });
 
@@ -248,6 +257,7 @@ export const createRemoteRouter = ({
     try {
       await enableRelayRoad({ url: req.body?.url, token: req.body?.token });
       log.info('relay road enabled', { relay: relayStatus() });
+      await journal.note('enabled', { road: 'relay', address: req.walletAddress });
       res.json(await status(req.walletAddress));
     } catch (error) {
       log.warn('relay road enable refused', { error: error.message });
@@ -258,6 +268,7 @@ export const createRemoteRouter = ({
   router.post('/relay/disable', ...machineOnly, async (req, res) => {
     await disableRelayRoad();
     log.info('relay road disabled');
+    await journal.note('disabled', { road: 'relay', address: req.walletAddress });
     res.json(await status(req.walletAddress));
   });
 
@@ -272,6 +283,7 @@ export const createRemoteRouter = ({
       res.status(502).json({ error: result.detail });
       return;
     }
+    await journal.note('enabled', { road: 'tailnet HTTPS', address: req.walletAddress });
     res.json(await status(req.walletAddress));
   });
 
@@ -286,6 +298,7 @@ export const createRemoteRouter = ({
       res.status(502).json({ error: result.detail });
       return;
     }
+    await journal.note('disabled', { road: 'tailnet HTTPS', address: req.walletAddress });
     res.json(await status(req.walletAddress));
   });
 
@@ -296,8 +309,16 @@ export const createRemoteRouter = ({
       res.status(404).json({ error: 'no such paired device' });
       return;
     }
+    const cut = state.devices.find((d) => d.id === id);
     await store.save({ ...state, devices: withoutDevice(state.devices, id) });
+    await journal.note('revoked', { device: id, label: cut?.label, address: req.walletAddress });
     res.json(await status(req.walletAddress));
+  });
+
+  // The access log, newest first, a page at a time (before: the `at` of the last line shown). The machine's own: it
+  // names every house's phones, so it is the install owner's to read, at the desk.
+  router.get('/access-log', ...machineOnly, async (req, res) => {
+    res.json(await journal.read({ limit: req.query.limit, before: typeof req.query.before === 'string' ? req.query.before : null }));
   });
 
   return router;
@@ -317,9 +338,9 @@ export const createRemoteRouter = ({
  * naming an attacker's desk is refused here, which closes the poisoned-QR
  * MITM. The code is then consumed whether or not it was valid: one claim,
  * one answer.
- * @param {{ store?: typeof remoteStore }} [deps]
+ * @param {{ store?: typeof remoteStore, journal?: typeof accessLog }} [deps]
  */
-export const createEnrollRouter = ({ store = remoteStore } = {}) => {
+export const createEnrollRouter = ({ store = remoteStore, journal = accessLog } = {}) => {
   const router = Router();
   router.get('/:code', bridgeLimiter, async (req, res) => {
     if (req.accessScope !== 'remote') {
@@ -335,6 +356,7 @@ export const createEnrollRouter = ({ store = remoteStore } = {}) => {
     const state = store.get();
     await store.save({ ...state, devices: [...state.devices, device] });
     log.info('device paired', { device: device.id, label: device.label, road: 'tailnet' });
+    await journal.note('paired', { device: device.id, label: device.label, address: device.address, road: 'tailnet' });
     res.setHeader('Set-Cookie', deviceCookie(secret));
     res.redirect(302, '/');
   });
@@ -350,6 +372,7 @@ export const createEnrollRouter = ({ store = remoteStore } = {}) => {
     // Refuse before consuming anything, loudly.
     if (String(fp ?? '') !== identity.fingerprint) {
       log.warn('claim named a foreign desk fingerprint — poisoned QR?', { peer: req.socket?.remoteAddress });
+      await journal.refused({ peer: req.socket?.remoteAddress, reason: 'a pairing claim named another desk (a substituted QR?)', method: 'POST', path: '/r/claim' });
       res.status(403).json({ error: 'this claim names another desk' });
       return;
     }
@@ -376,6 +399,7 @@ export const createEnrollRouter = ({ store = remoteStore } = {}) => {
     const state = store.get();
     await store.save({ ...state, devices: [...state.devices, device] });
     log.info('device paired', { device: device.id, label: device.label, road: 'native' });
+    await journal.note('paired', { device: device.id, label: device.label, address: device.address, road: 'native' });
     res.json({ deviceId: device.id, fp: identity.fingerprint });
   });
 

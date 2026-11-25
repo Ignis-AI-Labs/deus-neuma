@@ -1,5 +1,7 @@
 // MarketingOffice — the MARKETING window: the CMO's office, zoomed down the
-// company tree (marketing-panel-plan.md §2, slice 1). The path at the head
+// company tree (marketing-panel-plan.md §2, slice 1). Down its left, the HOUSE
+// RAIL (HouseRail.jsx, Design note, 2026-11-12: every company and its accounts, where
+// you stand lit, one press to any of them, and each one's ⋯ to move it. The path at the head
 // says where the operator stands (HOUSE › company › subsidiary …) and takes
 // them back up; one level shows at a time, on the same tabs at every level,
 // each narrowed to that level's subtree:
@@ -53,6 +55,7 @@ import { ZoomPath, OfficeTabs } from './ZoomPath.jsx';
 import { CmoRow } from './CmoRow.jsx';
 import { platformRow } from './platform-row.js';
 import { PlatformRow, LockedKeys } from './PlatformRow.jsx';
+import { HouseRail } from './HouseRail.jsx';
 import './MarketingOffice.css';
 
 const sameIds = (a, b) => Boolean(a && b) && a.length === b.length && a.every((id) => b.includes(id));
@@ -98,6 +101,9 @@ export const MarketingOffice = () => {
   const row = useMemo(() => platformRow({ accounts, check: data?.check ?? null, scope, locked }), [accounts, data, scope, locked]);
 
   const go = (next) => { uiSound('toggle'); setPlace(next); setFilter({}); };
+  // An account opens under its OWN company, so the path always names whose account it is.
+  const companyOfAccount = (at) => (accounts || []).find((a) => a.id === at?.accountId)?.companyId || null;
+  const openAccount = (at) => go({ companyId: companyOfAccount(at) || here.companyId, tab: 'board', campaignId: null, account: at });
   const zoom = (companyId) => go({ companyId, tab: 'board', campaignId: null });
   const openCampaign = (campaignId) => setLanding({ campaignId });
   const narrow = (accountIds) => { uiSound('toggle'); setFilter((f) => (sameIds(f.accountIds, accountIds) ? {} : { accountIds })); };
@@ -134,29 +140,36 @@ export const MarketingOffice = () => {
   return (
     <div className="mkt" data-marketing-office {...calm.handlers}>
       {houseError ? <p className="settings-err">Could not read the house&rsquo;s companies: {houseError}</p> : null}
-      <div className="mkt-head">
-        <div className="mkt-pathrow">
-          <ZoomPath crumbs={pathOf(companies, here.companyId)} onGo={(id) => (id ? zoom(id) : go(HOUSE))}
-            account={account ? accountCrumb(account, accounts) : null} />
-          {here.tab === 'board' && !account ? (
-            <button type="button" className="settings-set mkt-read" disabled={reading.busy || read.loading} onClick={reading.run}
-              title="read every due post's numbers from its platform now">{reading.busy ? 'READING…' : 'READ NOW'}</button>
-          ) : null}
+      <div className="mkt-split">
+        <HouseRail companies={companies} accounts={accounts} campaigns={data?.campaigns ?? []} here={here}
+          onHouse={() => go(HOUSE)} onCompany={zoom} onCampaign={openCampaign} onAccount={openAccount} onMoved={() => read.refresh()} />
+        <div className="mkt-main">
+          <div className="mkt-head">
+            <div className="mkt-pathrow">
+              <ZoomPath crumbs={pathOf(companies, here.companyId)} onGo={(id) => (id ? zoom(id) : go(HOUSE))}
+                account={account ? accountCrumb(account, accounts) : null} />
+              {here.tab === 'board' && !account ? (
+                <button type="button" className="settings-set mkt-read" disabled={reading.busy || read.loading} onClick={reading.run}
+                  title="read every due post's numbers from its platform now">{reading.busy ? 'READING…' : 'READ NOW'}</button>
+              ) : null}
+            </div>
+            {reading.error ? <p className="settings-err">{reading.error}</p> : null}
+            {account ? null : <OfficeTabs tabs={here.companyId ? TABS.company : TABS.house} on={here.tab} onTab={tab} />}
+            {locked ? <LockedKeys locked={locked} onUnlocked={() => read.refresh()} /> : null}
+            <PlatformRow row={row} onOpen={openAccount} />
+          </div>
+          {account ? (
+            <div className="mkt-body" data-mkt-level="account" data-mkt-account={accountKey}>
+              <PlatformSpace key={accountKey} channelId={account.channelId} accountId={account.accountId} landing={focus} companyId={here.companyId}
+                campaigns={data?.campaigns ?? null} onCampaign={openCampaign} />
+            </div>
+          ) : (
+            <div className="mkt-body" data-mkt-level={here.companyId || 'house'} data-mkt-tab={here.tab}>
+              {body[here.tab] || body.board}
+            </div>
+          )}
         </div>
-        {reading.error ? <p className="settings-err">{reading.error}</p> : null}
-        {account ? null : <OfficeTabs tabs={here.companyId ? TABS.company : TABS.house} on={here.tab} onTab={tab} />}
-        {locked ? <LockedKeys locked={locked} onUnlocked={() => read.refresh()} /> : null}
-        <PlatformRow row={row} onOpen={(at) => go({ companyId: here.companyId, tab: 'board', campaignId: null, account: at })} />
       </div>
-      {account ? (
-        <div className="mkt-body" data-mkt-level="account" data-mkt-account={accountKey}>
-          <PlatformSpace key={accountKey} channelId={account.channelId} accountId={account.accountId} landing={focus} companyId={here.companyId} />
-        </div>
-      ) : (
-        <div className="mkt-body" data-mkt-level={here.companyId || 'house'} data-mkt-tab={here.tab}>
-          {body[here.tab] || body.board}
-        </div>
-      )}
     </div>
   );
 };

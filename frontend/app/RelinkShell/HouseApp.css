@@ -82,6 +82,14 @@
   white-space: nowrap;
 }
 
+/* the founding title beside a changed one (founding-register.jsx LocalRegister) — the record, quieter than the seat held now */
+.house-anchor-founded {
+  font-family: var(--font-data);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-text-tertiary);
+}
+
 .house-anchor-addr { color: var(--color-text-tertiary); }
 
 /* THE FOUNDING RITE — four movements in the anchor register. The rite

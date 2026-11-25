@@ -50,6 +50,7 @@
  * @returns {string|null} absolute, symlink-resolved directory, or null
  */
 export const focusGroundOf = (connection) => {
+  if (connection?._scopeGrantsAllowed === false) return null;
   const ground = connection?.toolWorkspace;
   return typeof ground === 'string' && ground.length > 0 ? ground : null;
 };

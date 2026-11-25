@@ -16,12 +16,16 @@ export const MAX_HELD_THOUGHTS = 8;
 // the queue ack so the desk can address THIS word later.
 export const HOLD_ID_PATTERN = /^[a-zA-Z0-9-]{1,40}$/;
 
-export const queueThought = (connection, message) => {
+/** @param {object} connection @param {object} message @param {{now?: boolean}} [o] - now: sent NOW — the round in
+ *  flight is cut to hear it even when it is already speaking (heard-mid-thought.js) */
+export const queueThought = (connection, message, { now = false } = {}) => {
   connection.pendingThoughts ||= [];
   if (connection.pendingThoughts.length >= MAX_HELD_THOUGHTS) {
     connection.pendingThoughts.shift(); // oldest falls out; the newest intent wins
   }
   connection.pendingThoughts.push(message);
+  // A round still thinking hears them now (heard-mid-thought.js); otherwise they ride at the next action boundary.
+  connection.onHeldWord?.(now);
 };
 
 /** Remove and return one held word — by handle, or the newest WORDED one
@@ -47,12 +51,14 @@ export const editHeldThought = (connection, holdId, thought) => {
 const validHoldId = (raw) => (HOLD_ID_PATTERN.test(String(raw ?? '')) ? raw : null);
 
 /** The drain took a held word — its bubble stops offering queue controls. */
-export const announceTakenThought = (connection, taken) => {
+export const announceTakenThought = (connection, taken, heard = null) => {
   if (!taken?.holdId) return;
   connection.ws?.send(JSON.stringify({
     type: 'consciousness:queue_taken',
     holdId: taken.holdId,
     held: connection.pendingThoughts.length,
+    // heard: the words joined the turn in flight — the desk sets them into the reply where they were picked up.
+    ...(heard ? { heard: true, thought: String(taken.thought ?? ''), at: heard } : {}),
   }));
 };
 
@@ -85,6 +91,11 @@ export const handleHeldQueueOp = async (connection, ws, message, doors) => {
       // Promote: the held word leaves the queue and INTERJECTS. Already
       // drained? The taken ack stands the bubble down; nothing runs twice.
       if (doors.rateLimited()) return;
+      // A turn in flight HEARS it now instead of being cut for it (heard-mid-thought.js): the word stays held for the
+      // moment it takes the round to stop, is taken there, and its bubble stands down on that ack. Only plain words
+      // ride; a word with something attached still takes the floor.
+      const waiting = holdId ? (connection.pendingThoughts || []).find((entry) => entry.holdId === holdId) : null;
+      if (connection.turnPromise && waiting && doors.canRide?.(waiting) && connection.onHeldWord) { connection.onHeldWord(true); return; }
       const taken = holdId ? takeHeldThought(connection, holdId) : null;
       ws.send(JSON.stringify({ type: 'consciousness:queue_taken', holdId, held: held() }));
       if (!taken) return;

@@ -21,6 +21,8 @@ import { isWriteOperation } from './tool-sandbox.js';
 import { sendToolEvent } from './witness-tool-events.js';
 import { capturePolicyGrant } from './policy-grant-context.js';
 import { createLogger } from './logger.js';
+import { refreshPortalScopeStanding } from './portal-install-standing.js';
+import { autoReadGrantAllowed } from './portal-auto-read-scope.js';
 
 const log = createLogger('WitnessPathGrants');
 
@@ -38,6 +40,13 @@ const log = createLogger('WitnessPathGrants');
 // this a witness's ALWAYS from a previous session is on disk and nowhere else,
 // so it asks again for a folder already granted.
 export const hydrateWitnessPathGrants = async (connection, lanePolicy) => {
+  if (!(await refreshPortalScopeStanding(connection))) {
+    connection._grantedReadRoots = [];
+    connection._grantedWriteRoots = [];
+    connection._sensitiveGrants = {};
+    connection._pathGrantsHydrated = true;
+    return;
+  }
   if (connection._pathGrantsHydrated) return;
   connection._pathGrantsHydrated = true;
   const read = Array.isArray(lanePolicy?.pathGrants?.read) ? lanePolicy.pathGrants.read : [];
@@ -80,6 +89,7 @@ const grantPathScope = async (connection, dirs, { write, persist, origin }) => {
  */
 export const witnessPathScopeGate = async (ws, connection, identity, args) => {
   const origin = capturePolicyGrant(connection);
+  const scopeGrantsAllowed = await refreshPortalScopeStanding(connection);
   const laneId = connection.companion?.neumaId;
   if (!laneId) return true;
   const write = isWriteOperation(identity.toolName);
@@ -98,6 +108,13 @@ export const witnessPathScopeGate = async (ws, connection, identity, args) => {
     ? findUngrantedWritePaths(normalized, roots)
     : findUngrantedReadPaths(normalized, roots);
   if (gaps.length === 0) return true;
+  if (!scopeGrantsAllowed) {
+    const error = 'Filesystem scope is the install owner\'s or a co-owner\'s to grant; a guest house stays in its own ground.';
+    sendToolEvent(ws, connection.companion, {
+      tool: `${identity.server}/${identity.toolName}`, status: 'denied', summary: `${identity.toolName} — ${error}`,
+    });
+    return false;
+  }
 
   const scopeDirs = [...new Set(await Promise.all(
     gaps.map((p) => resolveGrantDir(identity.toolName, p)),
@@ -105,12 +122,10 @@ export const witnessPathScopeGate = async (ws, connection, identity, args) => {
   const tool = `${identity.server}/${identity.toolName}`;
   const scope = `${write ? 'write' : 'read'} access to ${scopeDirs.join(', ')}`;
 
-  // A READ widening follows the mode: `auto` is the operator's standing yes, so
-  // it grants for the session and SAYS so (a widened reach is never silent). A
-  // WRITE widening always asks, even on auto — auto governs acting on reach
-  // already held, never the acquisition of new write reach into the operator's
-  // own files. Inside the focus ground none of this runs at all.
-  if (!write && normalizeToolMode(connection.toolMode) === 'auto') {
+  // AUTO widens READ scope only inside the lane or the operator's open folder;
+  // every other new root asks explicitly. WRITE widening always asks. Inside
+  // the focus ground none of this runs at all.
+  if (!write && normalizeToolMode(connection.toolMode) === 'auto' && autoReadGrantAllowed(connection, scopeDirs)) {
     await grantPathScope(connection, scopeDirs, { write: false, persist: false, origin });
     sendToolEvent(ws, connection.companion, {
       tool, status: 'ok', summary: `${scope} — granted (auto mode)`,

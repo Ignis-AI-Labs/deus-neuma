@@ -1,0 +1,48 @@
+/* token-performance — the ACTIVITY panel's columns (token-performance.jsx):
+   live instruments first, then this reply, the last replies, and the server
+   since it started. Mono data register; the phase a reply is in now is lit. */
+
+.tok-cols {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) repeat(3, minmax(190px, 1fr));
+  gap: var(--space-3) var(--space-5);
+  align-items: stretch; /* the dividers run the panel's height */
+}
+@container (max-width: 1180px) {
+  .tok-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 720px) {
+  .tok-cols { grid-template-columns: minmax(0, 1fr); }
+}
+
+.tok-col { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.tok-col + .tok-col { border-left: var(--border-width-thin) solid var(--line); padding-left: var(--space-4); }
+/* the trace is a row instrument (flex-basis 200px): in a column it would stand 200px tall */
+.tok-col > .hud-trace { flex: 0 0 auto; }
+
+.tok-head { margin: 0; display: flex; align-items: center; gap: 6px; }
+.tok-live {
+  width: 6px;
+  height: 6px;
+  background: var(--signal);
+  box-shadow: 0 0 6px var(--signal);
+}
+
+.tok-facts { margin: 0; display: grid; gap: 4px; }
+.tok-fact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.tok-fact dd {
+  margin: 0;
+  text-align: right;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+.tok-fact dd b { font-weight: 300; font-size: var(--text-lg); }
+.tok-fact .hud-unit { margin-left: 4px; }
+.tok-fact.is-active dt, .tok-fact.is-active dd b { color: var(--signal); }
+.tok-sub { display: block; font-size: var(--text-xs); color: var(--color-text-tertiary); }

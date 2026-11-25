@@ -1,17 +1,13 @@
-// Reads the witness wallet this skill speaks AS — an honest sealed AI-witness
-// identity (or a human operator wallet), never a neuma's sovereign keypair.
+// Resolves the sealed witness identity this skill speaks AS. New env files
+// contain public metadata only; the shared loader unlocks the password envelope.
 // Defaults: NEUMA_WITNESS_ENV → env.<slug> convention → claude.env (legacy).
-// impure (filesystem read)
-import { readFileSync, existsSync } from 'node:fs';
+// impure (filesystem read and hidden password prompt through the loader)
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { unlockWitnessEnvWallet } from '../../../../core/identity/ai-witness/witness-env-wallet.js';
 
-const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-
-// Prefer explicit named keys, then any *_PRIVATE_KEY / *_WITNESS_PRIVATE_KEY.
-const NAMED_KEY = /^[A-Z0-9_]*WITNESS_PRIVATE_KEY=(0x[0-9a-fA-F]{64})\s*$/m;
-const CLAUDE_KEY = /^CLAUDE_WALLET_PRIVATE_KEY=(0x[0-9a-fA-F]{64})\s*$/m;
-const ANY_KEY = /^[A-Z0-9_]*PRIVATE_KEY=(0x[0-9a-fA-F]{64})\s*$/m;
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 
 /**
  * Resolve the default witness env path for this process.
@@ -35,18 +31,8 @@ export const resolveWitnessEnvPath = () => {
 };
 
 /**
- * Resolve the private key of the witness wallet from an env file.
+ * Unlock the witness wallet named by an env file.
  * @param {string} envPath - absolute path to the wallet env file
- * @returns {{ privateKey: string }}
+ * @returns {Promise<{ privateKey: string, address: string }>}
  */
-export const readWitnessWallet = (envPath) => {
-  let text;
-  try {
-    text = readFileSync(envPath, 'utf8');
-  } catch (err) {
-    throw new Error(`Cannot read witness wallet env at ${envPath}: ${err.code || err.message}`);
-  }
-  const match = text.match(NAMED_KEY) || text.match(CLAUDE_KEY) || text.match(ANY_KEY);
-  if (!match) throw new Error(`No *_PRIVATE_KEY (0x + 64 hex) found in ${envPath}`);
-  return { privateKey: match[1] };
-};
+export const readWitnessWallet = (envPath) => unlockWitnessEnvWallet(envPath);

@@ -11,7 +11,8 @@
  *     so does a read inside the house's own ground;
  *   - the operator's acts — ALWAYS money out, every act the charter's
  *     `escalate` names even where a grant would let it through
- *     (protocol-guard.js holdForWake), posting and email, deletes, reach
+ *     (protocol-guard.js holdForWake), posting, email and publishing even
+ *     where the operator granted ALWAYS in a chat (HOUSE_ASKS), deletes, reach
  *     outside the ground, the Optio's own acts — are refused in the turn with
  *     an honest reason, FILED as an operator ask, and raised on the tray;
  *   - everything else is reviewed by the Optio (ruling, 2026-10-16): CLEAR runs,
@@ -46,7 +47,8 @@ import { cosDesignation } from '../staff/cos-designation.js';
 import { MONEY_OUT, charterStanding } from './charter-shape.js';
 import { readCharter } from './charter-store.js';
 import { fileAsk, readAsks, closeAsk } from './wake-ledger.js';
-import { BENCH_LAUNCH, actPaths, actRoute, houseGround, pathsInGround, reviewAct } from './optio-review.js';
+import { BENCH_LAUNCH, OUTWARD, actPaths, actRoute, houseGround, pathsInGround, reviewAct } from './optio-review.js';
+import { PUBLISHING, MONEY_ASKS } from './operator-acts.js';
 import { askArgs, consumeGrant } from './one-shot-grants.js';
 
 const log = createLogger('HouseClock.Approvals');
@@ -198,6 +200,15 @@ const houseActRoute = (work, { charterFor, extraRoots = [] }) => async ({ tool, 
  * @returns {Set<string>} policy ids (`server/tool`)
  */
 export const houseHolds = (charter) => new Set([...MONEY_OUT, BENCH_LAUNCH, ...(charter?.escalate ?? [])]);
+
+/**
+ * What house work asks its table about even where a chat's ALWAYS grant, or
+ * the act's own default row, would let it run (protocol-guard.js askInWake;
+ * audit P6-105): posting and email, every publishing act, a reward request,
+ * an invoice. Only the charter's `allow` runs one unasked. A wake and a team
+ * member ask the same.
+ */
+export const HOUSE_ASKS = Object.freeze(new Set([...OUTWARD, ...PUBLISHING, ...MONEY_ASKS, 'intents/house.charter']));
 
 /** The holds of the house's charter as it is written now, approved or not. impure, never throws. */
 export const readHouseHolds = async (wallet) => houseHolds(await readCharter(wallet).catch(() => null));

@@ -52,7 +52,7 @@ const refreshCatalog = async (connection, origin, sandbox, error = null) => {
   connection._turnSandboxRecoverable = error?.code === 'OVERLAY_CONFLICT';
   const tools = annotateToolAccess(codingToolsForState(sandbox, connection._turnSandboxRecoverable),
     resolvePolicy(GLOBAL_DEFAULTS, lanePolicy, connection._sessionToolPolicy), normalizeToolMode(connection.toolMode),
-    resolvePolicy({}, lanePolicy, connection._sessionToolPolicy));
+    resolvePolicy({}, lanePolicy, connection._sessionToolPolicy), connection.sandboxEnabled === false);
   connection._turnCatalog = [...(connection._turnCatalog || []).filter((tool) => tool.server !== 'coding'), ...tools];
   connection._turnDisclosedToolIds = new Set([...(connection._turnDisclosedToolIds || []),
     ...tools.filter((tool) => tool.access !== 'denied').map((tool) => `coding/${tool.name}`)]);
@@ -115,6 +115,9 @@ export const handleCodingShellControl = async ({ ws, connection, toolName, args,
     origin.assertCurrent();
     if (toolName === 'sandbox_status') {
       const sandbox = await ensureTurnSandbox(connection);
+      // A refused preparation is told with ITS reason; read as a shell, the null
+      // answered […].
+      if (!sandbox) throw new Error(connection._turnSandboxError || 'No focused workspace is open');
       await refreshCatalog(connection, origin, sandbox);
       const content = `${sandboxStatusText(sandbox)}\nUse coding/sandbox_recover to preserve old work and start a fresh shell when blocked.`;
       emit({ status: 'ok', summary: 'active shell ready', detail: content });

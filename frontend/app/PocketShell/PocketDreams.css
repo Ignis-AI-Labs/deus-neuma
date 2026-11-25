@@ -46,7 +46,7 @@
   background: currentColor;
 }
 
-.dream-record-btn:focus-visible { outline: 1px solid var(--signal, #5fe9ff); outline-offset: 3px; }
+.dream-record-btn:focus-visible { outline: 1px solid var(--signal); outline-offset: -1px; }
 
 .dream-note {
   margin: 10px 0 0;

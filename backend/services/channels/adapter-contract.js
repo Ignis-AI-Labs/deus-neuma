@@ -36,6 +36,8 @@ export const makeMessageEvent = (raw) => {
       id: String(chat.id),
       type: chat.type,
       ...(chat.threadId != null ? { threadId: String(chat.threadId) } : {}),
+      // A group's own title, so the operator's card names the group it approves (P6-42).
+      ...(typeof chat.title === 'string' && chat.title.trim() ? { title: chat.title.trim().slice(0, 80) } : {}),
     }),
     user: Object.freeze({ id: String(user.id), name: typeof user.name === 'string' ? user.name : '' }),
     text,

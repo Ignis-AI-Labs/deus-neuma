@@ -25,6 +25,7 @@ export const resumedSession = (data, companion) => {
 export const lifecycleAction = (channel, data) => {
   switch (channel) {
     case 'tool:usage': return { type: 'TOOL_RESULT', data };
+    case 'tool:detail': return { type: 'TOOL_DETAIL', data };
     case 'substrate:activity': return { type: 'ACTIVITY', local: data?.local };
     case 'connection': return { type: 'LINK', connected: true };
     case 'disconnection': return { type: 'LINK', connected: false };

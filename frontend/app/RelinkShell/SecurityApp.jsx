@@ -18,6 +18,7 @@ import {
 } from '../../services/cso-client.js';
 import { filterThreats } from './security-view.js';
 import { SecurityBody, SecurityIcon } from './SecurityBody.jsx';
+import { DecoyWatch } from './DecoyWatch.jsx';
 
 const SecurityAppBody = () => {
   const [posture, setPosture] = useState(null);
@@ -95,6 +96,7 @@ const SecurityAppBody = () => {
       onReopenThreat={onReopenThreat}
       filters={filters}
       onFilter={(f) => { uiSound('open'); setFilters(f); }}
+      decoys={<DecoyWatch />}
     />
   );
 };
