@@ -55,9 +55,10 @@ export const designRefusals = (svg) => {
   const out = [];
   if (!/^\s*<svg[\s>]/.test(source)) out.push('a design starts with <svg> (no XML prolog or doctype)');
   if (/<!(?:DOCTYPE|ENTITY|\[CDATA\[)|<\?/i.test(source)) out.push('a design carries no <!DOCTYPE>, <!ENTITY>, CDATA or processing instruction');
-  if (/<[^>]*</.test(source)) out.push('a design tag has a malformed opening boundary');
   const comments = [...source.matchAll(/<!--[\s\S]*?-->/g)];
   const withoutComments = source.replace(/<!--[\s\S]*?-->/g, '');
+  // a tag that opens inside another tag; comments are read apart below (a template's comment may name `<text>`)
+  if (/<[^>]*</.test(withoutComments)) out.push('a design tag has a malformed opening boundary');
   if (comments.some(([comment]) => {
     const body = comment.slice(4, -3);
     return /^(?:>|->)/.test(body) || body.includes('--');

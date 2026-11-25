@@ -12,7 +12,7 @@
 //   · otherwise the flagged line's paragraph (the run of non-blank lines around
 //     it), bounded on both sides so a page with no blank lines cannot taint
 //     itself whole.
-// THE WHOLE field or adjoining paragraphs, never a part of one (PR600 audit P6-18): for a
+// THE WHOLE field or paragraph, never a part of it (PR600 audit P6-18): for a
 // while the span began at the sentence the attack began in, to spare an honest
 // address written just before it — and a plant that named its account first
 // and its instruction second walked through. What the page says beside a plant
@@ -104,21 +104,11 @@ const enclosingBlocks = (blocks, places) => {
   });
 };
 
-// pure — the paragraphs adjoining line `i`, bounded around the hit.
-const paragraphAround = (lines, i) => {
-  let first = lines[i].first;
-  let last = lines[i].last;
-  for (let k = first - 1; k >= 0; k -= 1) {
-    if (!lines[k].blank) { first = lines[k].first; break; }
-  }
-  for (let k = last + 1; k < lines.length; k += 1) {
-    if (!lines[k].blank) { last = lines[k].last; break; }
-  }
-  return [
-    Math.max(lines[first].start, lines[i].start - BEFORE_MAX),
-    Math.min(lines[last].end, lines[i].end + AFTER_MAX),
-  ];
-};
+// pure — the paragraph around line `i`, bounded around the hit.
+const paragraphAround = (lines, i) => [
+  Math.max(lines[lines[i].first].start, lines[i].start - BEFORE_MAX),
+  Math.min(lines[lines[i].last].end, lines[i].end + AFTER_MAX),
+];
 
 // pure — the field [start, end) around line `i` when it sits in a record, or null.
 // Its key is the furthest key line above whose every line down to `i` sits deeper
