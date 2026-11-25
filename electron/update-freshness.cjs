@@ -49,14 +49,14 @@ const writeFloor = (file, floor) => {
 };
 
 // impure — judge the real signed bytes and atomically retain the newest accepted feed.
-const acceptFreshFeed = ({ floorFile = null, signed, ymlBytes, nowMs = Date.now(), currentVersion = null }) => {
+const acceptFreshFeed = ({ floorFile = null, signed, ymlBytes, nowMs = Date.now() }) => {
   const problem = freshnessProblem(signed, nowMs);
   if (problem) return { ok: false, reason: problem };
-  if (currentVersion !== null && !/^\d+\.\d+\.\d+$/.test(String(signed?.minimumVersion ?? ''))) {
+  if (!/^\d+\.\d+\.\d+$/.test(String(signed?.minimumVersion ?? ''))) {
     return { ok: false, reason: 'the signed feed has no valid minimumVersion' };
   }
-  if (currentVersion !== null && compareVersions(signed?.minimumVersion, currentVersion) > 0) {
-    return { ok: false, reason: `this install runs ${currentVersion}, older than the signed minimumVersion ${signed.minimumVersion}` };
+  if (compareVersions(signed?.version, signed.minimumVersion) < 0) {
+    return { ok: false, reason: 'the signed release is below its minimumVersion' };
   }
   if (!floorFile) return { ok: true };
   const signedMs = signedMsOf(signed);

@@ -105,6 +105,10 @@ const salesSegmentIntent = Object.freeze({
 const salesProspectIntent = Object.freeze({
   name: 'sales/prospect',
   policyTool: 'sales.prospect',
+  policyToolFor: (payload) => (Array.isArray(payload?.companies) && payload.companies.some((company) =>
+    company?.entityType !== undefined || company?.entityEvidence !== undefined
+    || (Array.isArray(company?.proofs) && company.proofs.some((proof) => proof?.met === true)))
+    ? 'web.fetch' : 'sales.prospect'),
   fieldsForPrompt: '{segment, companies: [{domain, name, description?, country (ISO code, e.g. "US"), size?, scores: [{criterion, score, reasoning}], people?: [{name, role, sourceUrl, email?}], source, proofs?: [{sign, met, quote?, source?, reasoning?}], entityType?, entityEvidence?: {quote, source}}]}',
   descriptionForPrompt: `THE LEAD ENGINE. File companies you found for a segment (up to ${BATCH_MAX} at a time). Read each company's own pages first. Score EVERY sign of fit the segment lists 0–5, and any sign of non-fit that applies, each with the reason you read; source is the https page where you found the company; people are the ones you read on its own pages, with that page. A company already in the pool or on the do-not-contact list is refused. An audience that serves a FUNDING campaign also needs what each company IS, from its own site, never its name: entityType and entityEvidence {quote, source} (as in sales/entity), unless it is on record already — anything but an investor is filed as NO FIT there, its research kept for other campaigns.`,
   availableFor,

@@ -262,6 +262,29 @@ describe('write-scope gate (real WS + real MCP + a real folder, gnosis)', () => 
     await workspace.writeToolPolicy(NEUMA_ID, {});
   }, 45000);
 
+  test('PR20 H-08: a guest cannot grant and use sensitive access in one batch', async () => {
+    const sensitive = path.join(project, '.env');
+    await fs.writeFile(sensitive, 'fixture=not-a-secret\n');
+    const connection = { ...freshConnection(), walletAddress: '0x2222222222222222222222222222222222222222' };
+    wireApprovals(connection);
+    clientLog.length = 0;
+    decide = () => 'allow';
+    const calls = [
+      `[TOOL: filesystem/request_file_access ${JSON.stringify({ path: sensitive, tier: 'edit', reason: 'guest scope attempt' })}]`,
+      `[TOOL: fs/read ${JSON.stringify({ path: sensitive })}]`,
+      writeCall('.env', 'planted=true'),
+    ].join('\n');
+
+    const results = await processToolCalls(serverWs, calls, connection);
+
+    expect(results).toHaveLength(3);
+    expect(results.every((result) => result.status !== 'ok')).toBe(true);
+    expect(results[0].error).toContain('install owner');
+    expect(clientLog.some((message) => message.type === 'tool:approval_request')).toBe(false);
+    expect(connection._sensitiveGrants || {}).toEqual({});
+    expect(await fs.readFile(sensitive, 'utf8')).toBe('fixture=not-a-secret\n');
+  }, 45000);
+
   test('.git inside a granted folder stays hard-denied — never a prompt', async () => {
     const connection = freshConnection();
     connection._grantedWriteRoots = [project]; // already granted the folder

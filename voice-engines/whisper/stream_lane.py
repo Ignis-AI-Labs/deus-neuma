@@ -165,7 +165,9 @@ def stream_pump(proc, frames_q, emit, stop_flag, cadence_s) -> None:
             continue
         if item is FLUSH:
             text = ""
-            if hold and len(hold_audio) > 0:
+            # A hold that outgrew HOLD_AUDIO_MAX was no longer kept whole: reading the kept part would hand back its
+            # first 30 s as the whole hold and lose everything said after (2026-11-25). It takes the incremental line.
+            if hold and 0 < len(hold_audio) < HOLD_AUDIO_MAX:
                 text = decode_whole(proc, hold_audio)
             if not text:
                 # DECODE THE TAIL FIRST, or the audio since the last cadence tick is

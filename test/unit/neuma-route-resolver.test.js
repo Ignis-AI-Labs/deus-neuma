@@ -114,7 +114,7 @@ describe('resolveNeumaRoute', () => {
     const r = await resolveNeumaRoute('legacy', {}); // no substrate.llm on DNA
     expect(r.source).toBe('machine-default');
     expect(r.provider).toBe('lm-studio'); // the test-default machine config
-    expect(r.endpoint).toBe('http://localhost:1234');
+    expect(r.endpoint).toBe('http://127.0.0.1:1234');
   });
 
   test('the stream follows the substrate — an active selection steers the machine default', async () => {

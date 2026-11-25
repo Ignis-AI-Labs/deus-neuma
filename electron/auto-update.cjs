@@ -234,13 +234,13 @@ const fetchSignedFeed = async (fetchImpl, feedUrl, channelFile, fresh = false) =
  * @returns {Promise<{ ok: true, signed: object, refreshed: boolean } | { ok: false, reason: string,
  *   firstReason?: string }>}
  */
-const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered, floorFile = null, currentVersion = null }) => {
+const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered, floorFile = null }) => {
   const read = async (fresh) => {
     try {
       const { ymlBytes, sigText } = await fetchSignedFeed(fetchImpl, feedUrl, channelFile, fresh);
       const verdict = checkSignedFeed({ fileName: channelFile, ymlBytes, sigText, publicKey, offered });
       if (!verdict.ok) return verdict;
-      const freshVerdict = acceptFreshFeed({ floorFile, signed: verdict.signed, ymlBytes, currentVersion });
+      const freshVerdict = acceptFreshFeed({ floorFile, signed: verdict.signed, ymlBytes });
       return freshVerdict.ok ? verdict : freshVerdict;
     } catch (error) {
       return { ok: false, reason: `the signed feed could not be fetched: ${error.message}` };
@@ -267,7 +267,7 @@ const siteVerdict = async ({ fetchImpl, feedUrl, channelFile, publicKey, offered
 // impure
 const wireUpdater = ({
   updater, form, feedUrl, Notification, refreshTray, log, publicKeyText, fetchImpl, channelFile,
-  platform = process.platform, floorFile = null, currentVersion = null,
+  platform = process.platform, floorFile = null,
 }) => {
   const publicKeys = releasePublicKeys(publicKeyText);
   state = { form, ready: false, availableVersion: null, notes: null };
@@ -286,7 +286,7 @@ const wireUpdater = ({
   // impure — the verdict on an offer; without a key there is nothing to fetch
   const verdictOn = async (info) => {
     if (publicKeys.length === 0) return { ok: false, reason: 'no release public key is embedded in this build' };
-    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey: publicKeys, offered: info, floorFile, currentVersion });
+    const verdict = await siteVerdict({ fetchImpl, feedUrl, channelFile, publicKey: publicKeys, offered: info, floorFile });
     if (verdict.refreshed) log.info?.(`[neuma] update ${info.version}: the first read was stale (${verdict.firstReason}); the fresh read verified`);
     return verdict;
   };
@@ -398,7 +398,6 @@ const init = ({
     channelFile: channelFileFor(platform, process.arch),
     platform,
     floorFile: path.join(app.getPath('userData'), 'update-floor.json'),
-    currentVersion: app.getVersion(),
   });
 
   live = { form, updater, shell, check, app, stopBackend };

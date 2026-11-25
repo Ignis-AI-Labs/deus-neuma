@@ -129,7 +129,7 @@ describe('buildProvidersMap', () => {
     });
     expect(map['anthropic']).toEqual({ kind: 'cloud', endpoint: 'https://api.anthropic.com', configured: true });
     expect(map['openai']).toEqual({ kind: 'cloud', endpoint: 'https://api.openai.com', configured: false });
-    expect(map['ollama']).toEqual({ kind: 'local', endpoint: 'http://localhost:11434', configured: true });
+    expect(map['ollama']).toEqual({ kind: 'local', endpoint: 'http://127.0.0.1:11434', configured: true });
     expect(map['custom']).toEqual({ kind: 'cloud', endpoint: 'https://my-llm.example/v1', configured: true });
   });
   test('the returned map and its entries are frozen', () => {

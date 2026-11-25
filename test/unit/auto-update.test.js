@@ -17,6 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
 import { generateKeyPairSync } from 'node:crypto';
 import { createServer } from 'node:http';
+import { prepareFeedForSigning } from '../../scripts/release/feed-policy.mjs';
 
 const require = createRequire(import.meta.url);
 const {
@@ -175,6 +176,23 @@ describe('siteVerdict — a stale .sig is not a forgery, and a forgery still fai
     const { feedUrl, requests } = await cachedFeed({ origin: good, cached: good });
     const verdict = await siteVerdict({ fetchImpl: fetch, feedUrl, channelFile: CHANNEL, publicKey, offered: offered('0.1.32') });
     expect(verdict).toMatchObject({ ok: true, refreshed: false });
+    expect(requests).toEqual([`/${CHANNEL}`, `/${CHANNEL}.sig`]);
+  });
+
+  it('an older install accepts the real publisher\'s newer signed feed', async () => {
+    const prepared = prepareFeedForSigning(`version: 0.1.188\nfiles:\n  - url: Deus-Neuma-0.1.188-x86_64.AppImage\n    sha512: AAAA\n    size: 1\nreleaseDate: 2026-11-25T00:00:00.000Z\n`, new Date());
+    const feed = Buffer.from(prepared);
+    const good = { [CHANNEL]: feed, [`${CHANNEL}.sig`]: signFeed(CHANNEL, feed, key.privateKey) };
+    const { feedUrl, requests } = await cachedFeed({ origin: good, cached: good });
+    const verdict = await siteVerdict({
+      fetchImpl: fetch,
+      feedUrl,
+      channelFile: CHANNEL,
+      publicKey,
+      offered: require('js-yaml').load(prepared),
+      currentVersion: '0.1.187',
+    });
+    expect(verdict).toMatchObject({ ok: true, refreshed: false, signed: { version: '0.1.188', minimumVersion: '0.1.188' } });
     expect(requests).toEqual([`/${CHANNEL}`, `/${CHANNEL}.sig`]);
   });
 

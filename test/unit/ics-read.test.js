@@ -85,6 +85,14 @@ describe('each time an event happens, inside a window', () => {
     expect(times(ev('UID:c', 'DTSTART:20261110T100000Z', 'STATUS:CANCELLED', 'SUMMARY:Off'))).toEqual([]);
   });
 
+  it('bounds recurrence work across a large hostile feed', () => {
+    const many = Array.from({ length: 1000 }, (_, i) => ev(`UID:${i}`, 'DTSTART:20200101T080000Z', 'RRULE:FREQ=DAILY', 'SUMMARY:Daily'));
+    const started = performance.now();
+    const found = occurrencesIn(parseIcs(cal(...many)).events, Date.UTC(2026, 0, 1), Date.UTC(2026, 11, 31));
+    expect(found.length).toBeLessThanOrEqual(400);
+    expect(performance.now() - started).toBeLessThan(5000);
+  });
+
   it('a repeat rule this does not read is SAID, and its first time still shows; a rule with no end is bounded by the window', () => {
     const [odd] = occurrencesIn(parseIcs(cal(ev('UID:o', 'DTSTART:20261110T100000Z', 'RRULE:FREQ=MONTHLY;BYDAY=2TU', 'SUMMARY:Second Tuesday'))).events, ...window);
     expect(odd).toMatchObject({ repeats: true, ruleUnread: true });

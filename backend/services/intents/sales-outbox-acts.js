@@ -86,7 +86,7 @@ const salesDraftEmailIntent = Object.freeze({
     // A follow-up is one because an earlier email is on record: said of someone never written to, it is refused by name.
     if (followUp && lead && needsFormula(lead)) return invalid(`followUp: nothing was ever sent to ${to[0]} — this is a FIRST email, written from its campaign's plan: {to, subject, hook, why, offer, askIndex, ask}`);
     if (needsFormula(lead)) {
-      const built = await formulaEmail(context.wallet, { lead, to: to[0], payload, by: context.laneId });
+      const built = await formulaEmail(context.wallet, { lead, to: to[0], payload, by: context.laneId }, { liveAddressCheck: false });
       if (built.refusal) return invalid(built.refusal);
       ({ subject, text, promise, formula } = built);
     } else if (typeof text !== 'string' || !text.trim()) return invalid('a draft needs {to, subject, text, promise} — the exact words that would leave under the house address');
@@ -99,10 +99,15 @@ const salesDraftEmailIntent = Object.freeze({
       return denied(`the house's do-not-contact list or lead records could not be read (${err.message}) — nothing is staged until they can`);
     }
     if (unchecked) return invalid(unchecked);
-    return { ok: true, value: { context, to, subject, text, promise, formula, id: payload?.id ? String(payload.id).trim() : null, followUp } };
+    return { ok: true, value: { context, to, subject, text, promise, formula, lead, filedPayload: payload, id: payload?.id ? String(payload.id).trim() : null, followUp } };
   },
   summarize: (payload) => `stage an email to ${Array.isArray(payload?.to) ? payload.to.join(', ') : String(payload?.to ?? '?')} for review: "${String(payload?.subject ?? '').slice(0, 100)}"`,
-  execute: async ({ context, to, subject, text, promise, formula, id, followUp }) => {
+  execute: async ({ context, to, subject, text, promise, formula, lead, filedPayload, id, followUp }) => {
+    if (formula) {
+      const checked = await formulaEmail(context.wallet, { lead, to: to[0], payload: filedPayload, by: context.laneId });
+      if (checked.refusal) return { ok: false, reason: checked.refusal };
+      ({ subject, text, promise, formula } = checked);
+    }
     const delivery = await leadEmailRefusal(context.wallet, { to, subject, text, promise, laneId: context.laneId });
     if (delivery) return { ok: false, reason: delivery };
     const staged = await stageDraft(context.wallet, { to, subject, text, promise, by: context.laneId, id, followUp, formula });

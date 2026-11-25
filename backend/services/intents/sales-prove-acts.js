@@ -70,7 +70,7 @@ export const leaveAudience = async (wallet, prospect, why, by, { to = null } = {
 
 const salesProveIntent = Object.freeze({
   name: 'sales/prove',
-  policyTool: 'sales.prove',
+  policyTool: 'web.fetch',
   fieldsForPrompt: '{segment, companies: [{id, proofs: [{sign, met: true, quote, source} | {sign, met: false, reasoning}]}]}',
   descriptionForPrompt: `THE LEAD ENGINE. Prove a company ALREADY in the pool against what its audience REQUIRES (your briefing lists each audience's MUST lines, and the companies still unproved) — up to ${BATCH_MAX} at a time, id is the prospect's [p-…]. For each required sign say whether it is MET, from the company's OWN site, never from its name or from what you assume: met true with quote (its own words, copied exactly) and source (the https page on its own domain) — the quote must hold one of the sign's evidence words and is checked against the page; met false with reasoning (what you read instead, e.g. the chain it is actually on). A company that does not meet a required sign leaves the audience by itself: dropped, or its lead closed and kept as a contact, its waiting emails withdrawn — and you are told the audience it belongs to instead, to score it there. Nothing is written to a company for an audience until every required sign is proved met.`,
   availableFor: async ({ connection }) => ((await seated(connection)) ? {} : null),

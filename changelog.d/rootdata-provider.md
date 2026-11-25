@@ -1,0 +1,2 @@
+Added
+- RootData can be attached as a data provider for crypto companies: add your key under Settings, API, Lead data. Your sales member can then ask it about a company you gathered: what it is, its tags and backers, where it is reached (X, LinkedIn, Discord), and its team members when your RootData plan returns them (its Pro plan). A lead run reads it for a fit that ends with no address, and says who to reach and where. RootData holds no email addresses. Its credits left show beside your other providers.

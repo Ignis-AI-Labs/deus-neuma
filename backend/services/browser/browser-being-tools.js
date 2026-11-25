@@ -109,7 +109,7 @@ export const describeTarget = (view, ref) => {
 export const approvedTarget = (view, ref) => {
   const element = view?.elements?.find((e) => e.ref === Number(ref));
   if (!element || !Number.isSafeInteger(element.identity)) return null;
-  return { ref: element.ref, identity: element.identity, url: view.url };
+  return { ref: element.ref, identity: element.identity, kind: element.kind, name: element.name, url: view.url };
 };
 
 /**

@@ -22,6 +22,8 @@ import { resolveUsableCredential } from '../oauth-token-broker.js';
 import { readContactLookups } from './sales-store.js';
 import { hunterAccount, accountWords } from './hunter-discover.js';
 import { PEOPLE_PROVIDERS } from './lead-providers.js';
+import { rootdataAccount } from './rootdata-api.js';
+import { rootdataKey } from './rootdata-key.js';
 import { tombaAccount } from './tomba-api.js';
 import { apolloAccount } from './apollo-api.js';
 
@@ -73,6 +75,7 @@ export const accountsWords = (accounts = {}) => [
   accountWords(accounts.hunter ?? null),
   accounts.tomba ? `TOMBA · ${String(accounts.tomba.plan).toUpperCase()} PLAN · ${left(accounts.tomba)} OF ${accounts.tomba.available} SEARCH CREDITS LEFT${accounts.tomba.checks ? ` · ${left(accounts.tomba.checks)} OF ${accounts.tomba.checks.available} ADDRESS CHECKS LEFT` : ''}` : null,
   accounts.apollo ? `APOLLO · ${left(accounts.apollo)} OF ${accounts.apollo.available} CREDITS LEFT THIS CYCLE` : null,
+  accounts.rootdata ? `ROOTDATA · ${String(accounts.rootdata.plan).toUpperCase()} PLAN · ${left(accounts.rootdata)} OF ${accounts.rootdata.available} CREDITS LEFT` : null,
 ].filter(Boolean).join(' — ') || null;
 
 /** pure — the setting as the seat reads it. */
@@ -173,7 +176,17 @@ const accountOf = async (a, now = Date.now()) => {
   return value;
 };
 /** impure — { hunter?, tomba?, apollo? }: each attached account's plan and credits, where it can be read. */
-const accountsOf = async (attached) => Object.fromEntries((await Promise.all(attached.map(async (a) => [a.id, await accountOf(a)]))).filter(([, v]) => v));
+// RootData is no people provider (it holds no address), so it is not among `attached`: its count is read beside them.
+const rootdataCount = async (now = Date.now()) => {
+  const apiKey = await rootdataKey();
+  if (!apiKey) return null;
+  const held = counted.get('rootdata');
+  if (held && held.key === apiKey && now - held.at < ACCOUNT_FRESH_MS) return held.value;
+  const value = await rootdataAccount({ apiKey });
+  counted.set('rootdata', { key: apiKey, at: now, value });
+  return value;
+};
+const accountsOf = async (attached) => Object.fromEntries([...(await Promise.all(attached.map(async (a) => [a.id, await accountOf(a)]))), ['rootdata', await rootdataCount().catch(() => null)]].filter(([, v]) => v));
 
 /** impure — where the house stands: the rule, what the month has spent, which providers are attached (ids only). */
 export const spendState = async (wallet) => {

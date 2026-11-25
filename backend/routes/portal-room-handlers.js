@@ -16,7 +16,7 @@ export const councilOpen = async (connection, message) => {
   // THE FOCUS GROUND rides the convene frame — the room works on the
   // folder the operator has open, so the ground the room NAMES is the
   // ground its tools actually reach.
-  updateToolWorkspace(connection, message.toolWorkspace);
+  await updateToolWorkspace(connection, message.toolWorkspace);
   await openCouncil(connection, message, { ownsNeumaLane });
 };
 
@@ -31,7 +31,7 @@ export const councilSpeak = async (connection, message) => {
     return;
   }
   // Focus can move between sittings' turns — the ground follows it.
-  updateToolWorkspace(connection, message.toolWorkspace);
+  await updateToolWorkspace(connection, message.toolWorkspace);
   await councilSay(connection, message);
 };
 

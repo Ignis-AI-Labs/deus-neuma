@@ -19,15 +19,19 @@ import { neumaIdFromName } from '../kotodama/names.js';
 const baseOfId = (id) => String(id || '').replace(/-\d+$/, '');
 
 const CONFUSABLES = Object.freeze({
-  'α': 'a', 'β': 'b', 'ε': 'e', 'η': 'n', 'ι': 'i', 'κ': 'k', 'μ': 'm', 'ν': 'v', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'u', 'χ': 'x', 'γ': 'y', 'ζ': 'z',
+  'α': 'a', 'β': 'b', 'ε': 'e', 'η': 'h', 'ι': 'i', 'κ': 'k', 'μ': 'm', 'ν': 'n', 'ο': 'o', 'ρ': 'p', 'τ': 't', 'υ': 'u', 'χ': 'x', 'γ': 'y', 'ζ': 'z',
   'а': 'a', 'в': 'b', 'е': 'e', 'ё': 'e', 'з': 'z', 'и': 'i', 'й': 'i', 'к': 'k', 'м': 'm', 'н': 'h', 'о': 'o', 'р': 'p', 'с': 'c', 'т': 't', 'у': 'y', 'х': 'x', 'ь': 'b', 'я': 'r',
   'ѕ': 's', 'і': 'i', 'ј': 'j', 'һ': 'h', 'ԁ': 'd', 'ɡ': 'g', 'ⅼ': 'l', 'ⅿ': 'm', 'ｏ': 'o',
+  'ա': 'a', 'օ': 'o', 'հ': 'h', 'ɑ': 'a', 'ı': 'i', 'ӏ': 'l', 'ԝ': 'w',
+  'Ꭰ': 'a', 'Ꮋ': 'h', 'Ꮇ': 'm', 'Ꮎ': 'o', 'Ꮑ': 'n', 'Ꮢ': 'r', 'Ꮪ': 's', 'Ꮦ': 't',
+  'ᴀ': 'a', 'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd', 'ᴇ': 'e', 'ɢ': 'g', 'ʜ': 'h', 'ɪ': 'i', 'ᴊ': 'j', 'ᴋ': 'k', 'ʟ': 'l', 'ᴍ': 'm', 'ɴ': 'n', 'ᴏ': 'o', 'ᴘ': 'p', 'ʀ': 'r', 'ꜱ': 's', 'ᴛ': 't', 'ᴜ': 'u', 'ᴠ': 'v', 'ᴡ': 'w', 'ʏ': 'y', 'ᴢ': 'z',
 });
 
 /** One comparison identity for a spoken name: compatibility, invisible and look-alike folds. Pure. */
 export const canonicalBorneName = (name) => neumaIdFromName(String(name ?? '')
   .normalize('NFKC')
-  .replace(/[\p{Cf}\p{Cc}\p{Cs}\p{Co}\p{Cn}]/gu, '')
+  .replace(/[\p{Cf}\p{Cc}\p{Cs}\p{Co}\p{Cn}\u2800]/gu, '')
+  .replace(/[\p{L}\p{N}]/gu, (letter) => CONFUSABLES[letter] || CONFUSABLES[letter.toLowerCase()] || CONFUSABLES[letter.toUpperCase()] || letter)
   .toLowerCase()
   .replace(/[\p{L}\p{N}]/gu, (letter) => CONFUSABLES[letter] || letter));
 

@@ -6,7 +6,10 @@ export const sanitizeHarnessText = (value) => {
     const before = text;
     text = text
       .replace(/<\/?\s*harness-context\b/gi, '')
-      .replace(/<\|[^|\r\n]{1,80}\|>/g, '')
+      .replace(/<\/?\s*(?:start_of_turn|end_of_turn)\s*>/gi, '')
+      .replace(/\[\/?INST\]/gi, '')
+      .replace(/<<\/?SYS>>/gi, '')
+      .replace(/<(?:\||｜)[^|｜\r\n]{1,80}(?:\||｜)>/g, '')
       .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/g, '');
     if (text === before) return text;
   } while (true);

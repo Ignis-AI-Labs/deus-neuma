@@ -78,7 +78,7 @@ describe('the gates, through the seat\'s acts', () => {
     const intents = path.join(workspace.pathFor(LANE), 'intents');
     await fsp.mkdir(intents, { recursive: true });
     await fsp.writeFile(path.join(intents, `act-${filed}.json`), JSON.stringify({ type, ...payload }));
-    return (await sweepIntents(rigFor(LANE, POSITION_HOUSE).connection, { mode: 'ask', lanePolicy: null, emit: () => {} }))[0];
+    return (await sweepIntents(rigFor(LANE, POSITION_HOUSE).connection, { mode: 'ask', lanePolicy: { intents: { allowed: ['web.fetch'] } }, emit: () => {} }))[0];
   };
   const company = (domain, name, extra = {}) => ({ domain, name, country: 'TH', source: `https://${domain}/`, scores: [{ criterion: 'Invests in AI at seed', score: 5, reasoning: 'its site says so' }], ...extra });
 
@@ -134,6 +134,9 @@ describe('the gates, through the seat\'s acts', () => {
     expect(said.content).toMatch(/NOT CHECKED: the page could not be read/); // a made-up domain has no page to read
     expect((await readProspects(POSITION_HOUSE)).find((p) => p.id === old.id)).toMatchObject({ stage: 'dropped', dropReason: 'not an investor (product-company) — no fit for a funding campaign' });
     expect((await readOutbox(POSITION_HOUSE)).drafts.find((d) => d.id === waiting.id)).toMatchObject({ state: 'withdrawn' });
+    // Validation's local-only formula reaches the funding gate without demanding a live address check first.
+    const unchecked = await formulaEmail(POSITION_HOUSE, { lead, to: 'pat@oldfund.example', payload: {}, by: LANE }, { liveAddressCheck: false });
+    expect(unchecked.refusal).toContain('"Neuma raise" has no email plan');
     // The formula's gate: a funding email to it is refused before a word is written (its address checked, its plan locked in).
     await noteAddressCheck(POSITION_HOUSE, { email: 'pat@oldfund.example', check: { status: 'valid', score: 99, checker: 'Hunter' }, spent: 0, by: 'test' });
     const plan = await actAs('sales/email-plan', { campaign: raiseId, objective: 'funding', need: 'Seed funds backing AI want teams already shipping to users.', offer: 'Neuma runs AI on the user\'s own machine, live today.', asks: [{ ask: 'Shall I send the deck and the round\'s terms?', delivers: 'the deck and the round\'s terms' }], signature: 'The Mercator' });

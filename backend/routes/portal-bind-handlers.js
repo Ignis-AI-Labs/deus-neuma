@@ -117,7 +117,7 @@ export const portalResume = async (connection, message, { connectionId }) => {
 
     // Rejoin the episodic space on reconnect (CORE-005 B1); absent → general.
     connection.space = normalizeSpace(message.space);
-    updateToolWorkspace(connection, message.toolWorkspace);
+    await updateToolWorkspace(connection, message.toolWorkspace);
 
     // Restore tool policy
     try {
@@ -219,7 +219,7 @@ export const portalNewSession = async (connection, message, { connectionId }) =>
   // Sitting purpose rides the same per-sitting reset — client-originated
   // only (threat control #4), fail-closed to 'work' when absent/garbage.
   if (message.purpose !== undefined) connection.purpose = normalizePurpose(message.purpose);
-  updateToolWorkspace(connection, message.toolWorkspace);
+  await updateToolWorkspace(connection, message.toolWorkspace);
   ws.send(JSON.stringify({ type: 'portal:session-reset', connectionId }));
   return true;
 };
@@ -292,7 +292,7 @@ export const companionManifest = async (connection, message) => {
     // Sitting purpose — client-originated only (threat control #4: no
     // being tool may ever write it), default 'work' when absent.
     connection.purpose = normalizePurpose(message.purpose);
-    updateToolWorkspace(connection, message.toolWorkspace);
+    await updateToolWorkspace(connection, message.toolWorkspace);
     connection._neumaToolPolicy = null;
     ws.send(JSON.stringify({
       type: 'companion:anchored',
@@ -349,7 +349,7 @@ export const companionManifest = async (connection, message) => {
   // control #4: no being tool may ever write it) — absent or garbage
   // input fails closed to 'work'.
   connection.purpose = normalizePurpose(message.purpose);
-  updateToolWorkspace(connection, message.toolWorkspace);
+  await updateToolWorkspace(connection, message.toolWorkspace);
 
   // Also store on connection for backward compat
   if (manifestNeumaId) {

@@ -375,3 +375,57 @@ describe('the desk mirror (frontend/app/RelinkShell/branch-view.js) — the SAME
       .toEqual([{ kind: 'takes', turnId: 't9', takes: [take('t9', 1, 'x', { ask: 'orphan words' })], viewed: 1 }]);
   });
 });
+
+// THE TIMELINE (Design note, 2026-11-24: what was said after a take belongs to that take. Go back and retry or edit an
+// earlier point, and a separate flow begins there; the flow that followed the old take is kept, and returns with it.
+describe('the timeline — what follows a take belongs to it', () => {
+  const said = (rows) => rows.filter((r) => r.role !== 'system').map((r) => r.content);
+  const shown = (rows) => foldForDisplay(rows).filter((e) => e.kind !== 'other').map((e) => (e.kind === 'user' ? e.record.content : e.takes[e.viewed - 1].content));
+  // A: asked and answered. B and C follow A's first answer. Then A is retried: take 2. D follows take 2.
+  const base = [
+    user('ask A', { turnId: 'A' }), take('A', 1, 'A1'),
+    user('ask B', { turnId: 'B' }), take('B', 1, 'B1'),
+    user('ask C', { turnId: 'C' }), take('C', 1, 'C1'),
+    take('A', 2, 'A2'),
+    user('ask D', { turnId: 'D' }), take('D', 1, 'D1'),
+  ];
+
+  test('retrying an earlier point opens a flow of its own: what followed the old take leaves the view, what follows the new one shows', () => {
+    expect(said(foldBranchView(base))).toEqual(['ask A', 'A2', 'ask D', 'D1']);
+    expect(shown(base)).toEqual(['ask A', 'A2', 'ask D', 'D1']);
+  });
+
+  test('going back to the first take brings its whole flow back, and hides the other', () => {
+    const back = [...base, viewRow({ A: 1 })];
+    expect(said(foldBranchView(back))).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C1']);
+    expect(shown(back)).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C1']);
+    // …and what is said now joins THAT flow, after C.
+    const on = [...back, user('ask E', { turnId: 'E' }), take('E', 1, 'E1')];
+    expect(said(foldBranchView(on))).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C1', 'ask E', 'E1']);
+    expect(said(foldBranchView([...on, viewRow({ A: 2 })]))).toEqual(['ask A', 'A2', 'ask D', 'D1']);
+  });
+
+  test('a fork inside a fork: each flow keeps only its own', () => {
+    // Under A2: D, then D retried (take 2), then F under D2.
+    const deep = [...base, take('D', 2, 'D2'), user('ask F', { turnId: 'F' }), take('F', 1, 'F1')];
+    expect(said(foldBranchView(deep))).toEqual(['ask A', 'A2', 'ask D', 'D2', 'ask F', 'F1']);
+    expect(said(foldBranchView([...deep, viewRow({ D: 1 })]))).toEqual(['ask A', 'A2', 'ask D', 'D1']);
+    expect(said(foldBranchView([...deep, viewRow({ A: 1 })]))).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C1']);
+    expect(shown([...deep, viewRow({ A: 1 })])).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C1']);
+  });
+
+  test('retrying the LAST point hides nothing, and a chat with no retries folds as it always did', () => {
+    const plain = base.slice(0, 6);
+    expect(said(foldBranchView(plain))).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C1']);
+    expect(said(foldBranchView([...plain, take('C', 2, 'C2')]))).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C2']);
+    expect(shown([...plain, take('C', 2, 'C2')])).toEqual(['ask A', 'A1', 'ask B', 'B1', 'ask C', 'C2']);
+  });
+
+  test('a slice folds by the whole record\'s view: the tail knows which flow its rows belong to', () => {
+    const view = latestBranchView(base);
+    expect([...view.hidden].sort()).toEqual(['B', 'C']);
+    expect(Object.keys(view)).toEqual([]); // the view itself is unchanged: no row named a take
+    // The last five rows alone do not hold A's first take; with the whole record's view, C is still out.
+    expect(said(foldBranchView(base.slice(4), view))).toEqual(['A2', 'ask D', 'D1']);
+  });
+});

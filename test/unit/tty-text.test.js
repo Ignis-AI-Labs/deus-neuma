@@ -20,6 +20,36 @@ describe('PR20 M-14: terminal control bytes are visible, never interpreted', () 
     expect(text).not.toContain('\u001b');
   });
 
+  test('tool summaries and working notes are escaped before an approval', () => {
+    let err = '';
+    const portal = createCliPortal({
+      stdin: null,
+      stdout: { write: () => {} },
+      stderr: { write: (text) => { err += text; } },
+      connection: {},
+      resolveToolApproval: () => {},
+      finalRoundOnly: true,
+    });
+    portal.send(JSON.stringify({ type: 'consciousness:stream', content: concealed }));
+    portal.send(JSON.stringify({ type: 'tool:usage', tool: concealed, status: 'executing', summary: osc }));
+    expect(err).toMatch(escaped);
+    expect(err).not.toContain('\u001b');
+  });
+
+  test('a no-terminal approval refusal escapes the tool name', () => {
+    let err = '';
+    const portal = createCliPortal({
+      stdin: { isTTY: false },
+      stdout: { write: () => {} },
+      stderr: { write: (text) => { err += text; } },
+      connection: {},
+      resolveToolApproval: () => {},
+    });
+    portal.send(JSON.stringify({ type: 'tool:approval_request', id: 'one', tool: concealed, args: '{}' }));
+    expect(err).toMatch(escaped);
+    expect(err).not.toContain('\u001b');
+  });
+
   test('real terminal speech is escaped at stdout', () => {
     let out = '';
     const portal = createCliPortal({ stdin: null, stdout: { write: (text) => { out += text; } }, stderr: { write: () => {} }, connection: {}, resolveToolApproval: () => {} });

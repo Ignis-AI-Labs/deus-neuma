@@ -31,11 +31,14 @@ export const foldName = (text) => String(text).normalize('NFD').toUpperCase().to
  */
 export const wallSpelling = (filePath) => foldName(path.resolve(filePath));
 
-/** APFS firmlinks alias the whole data volume; beings never use that spelling. Pure. */
+const MAC_VOLUME_ALIASES = Object.freeze(['/system/volumes', '/.nofollow', '/.resolve', '/.vol']);
+
+/** Kernel volume aliases bypass lexical walls; beings use ordinary macOS paths. Pure. */
 export const macFirmlinkRefusal = (filePath, platform = process.platform) => {
   if (platform !== 'darwin') return null;
   const normalized = foldName(path.posix.normalize(String(filePath).replace(/\\/g, '/')));
-  return normalized === '/system/volumes' || normalized.startsWith('/system/volumes/')
-    ? 'That /System/Volumes path is another spelling of the data volume on macOS; use its ordinary /Users, /private or /System path instead.'
-    : null;
+  const alias = MAC_VOLUME_ALIASES.find((prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`));
+  if (!alias) return null;
+  const spelling = alias === '/system/volumes' ? '/System/Volumes' : alias;
+  return `That ${spelling} path is another spelling of a macOS volume; use its ordinary /Users, /private or /System path instead.`;
 };

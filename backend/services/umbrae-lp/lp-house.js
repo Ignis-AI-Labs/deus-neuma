@@ -69,7 +69,9 @@ export const resolveRecipient = (recipients, to) => {
   if (key === OPERATOR_ROLE) return recipients.find((r) => r.wallet === OPERATOR_ROLE) ?? null;
   const named = recipients.filter((r) => r.wallet !== OPERATOR_ROLE);
   const answersTo = (word) => named.filter((r) => canonicalBorneName(r.name) === word || canonicalBorneName(r.lane) === word);
-  const [who, which] = key.split(/\s+(?=(?:main|liquidity)$)/);
+  const role = /^(.*?)\s+(main|liquidity)$/i.exec(said);
+  const who = canonicalBorneName(role?.[1] ?? '');
+  const which = role?.[2]?.toLowerCase() ?? null;
   const whole = answersTo(key);
   const part = which ? answersTo(who) : [];
   if (new Set([...whole, ...part].map(holderOf)).size !== 1) return null;

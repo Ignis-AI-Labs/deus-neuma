@@ -109,7 +109,7 @@ const salesEmailPlanIntent = Object.freeze({
 // and the funding email waiting for it is withdrawn.
 const salesEntityIntent = Object.freeze({
   name: 'sales/entity',
-  policyTool: 'sales.entity',
+  policyTool: 'web.fetch',
   fieldsForPrompt: '{domain, name, entityType, quote, source}',
   descriptionForPrompt: `THE LEAD ENGINE. What a company IS, read from its OWN site, never from its name: entityType, one of ${Object.entries(ENTITY_TYPES).map(([k, v]) => `${k} (${v.words})`).join(', ')}; quote: its own words, copied exactly from the page; source: that https page on its own domain; name: the company's name. An investor's quote must say it invests ("we invest", "portfolio", "fund", "AUM", "LPs", "we back", "seed") — a name with Ventures, Capital, Holdings or Partners in it is NOT evidence: if its site shows it builds or sells something, it is a product-company. The page is read again and the quote must be on it. Kept for every campaign. A FUNDING campaign writes only to investors: filed as anything else, the company leaves every funding audience by itself, and the funding email waiting for it is withdrawn — its lead may suit a customer campaign (sales/place).`,
   availableFor: async ({ connection }) => ((await seated(connection)) ? {} : null),

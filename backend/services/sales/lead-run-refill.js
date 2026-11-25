@@ -29,6 +29,13 @@ const LISTS = new Set(['base-protocols', 'base-tokens', 'from-fits']);
  *   waiting: companies of the audience still to be screened · yields: lead-run-shape.js sourceYield · searches: every search of the house
  * @returns {{gather: ?{source: string, keywords?: string[], count: number}, why: string}}
  */
+export const refillGatherWithinCredits = (gather, remainingCredits = null) => {
+  if (!gather || !/-discover$/.test(gather.source) || remainingCredits === null) return gather;
+  return remainingCredits >= 1
+    ? { ...gather, count: Math.min(gather.count, Math.floor(remainingCredits)) }
+    : null;
+};
+
 export const refillPlan = ({ segmentId, want, waiting, yields, searches }) => {
   const floor = want * REFILL_MARGIN;
   if (waiting >= floor) return { gather: null, why: `${waiting} companies wait to be screened, enough for ${want} lead(s)` };

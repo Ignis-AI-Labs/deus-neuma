@@ -1,0 +1,2 @@
+Changed
+- Going back in a chat now starts a separate flow from that point, and keeps the one you left. When you retry or edit an earlier message, everything that followed the old answer leaves the screen and stays with that answer. Use the ‹ 1/2 › switch on the message to go back to it, and its whole continuation returns. What you say next joins whichever flow is on screen, and the being reads only the flow you are looking at.

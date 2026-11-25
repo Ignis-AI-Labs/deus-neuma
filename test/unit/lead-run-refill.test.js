@@ -1,7 +1,7 @@
 // The refill plan (backend/services/sales/lead-run-refill.js): what a run gathers by itself before it begins.
 // RULE 0: the real module, real shapes; nothing mocked.
 import { describe, expect, it } from 'vitest';
-import { refillPlan, REFILL_MARGIN } from '../../backend/services/sales/lead-run-refill.js';
+import { refillPlan, refillGatherWithinCredits, REFILL_MARGIN } from '../../backend/services/sales/lead-run-refill.js';
 
 const S = 's-1';
 const search = (source, asked, matched, gathered, at, segmentId = S) => ({ segmentId, source, asked, matched, gathered, at });
@@ -32,6 +32,14 @@ describe('what a run gathers before it begins', () => {
     const searches = [search('apollo-discover', 'layer 2 blockchain', 400, 100, '2026-11-24T05:00:00Z')];
     expect(refillPlan({ segmentId: S, want: 10, waiting: 0, yields: yields([['apollo-discover', 0, 4]]), searches }).gather).toMatchObject({ source: 'apollo-discover', keywords: ['layer 2 blockchain'], count: 120 });
     expect(refillPlan({ segmentId: S, want: 10, waiting: 0, yields: yields([['apollo-discover', 0, 60]]), searches })).toEqual({ gather: null, why: 'every source this audience gathered from has given no fit (apollo-discover): repeating one would bring more of the same — gather with other words' });
+  });
+
+  it('caps paid refill count by remaining run credits and stops at zero', () => {
+    const paid = { source: 'apollo-discover', keywords: ['defi'], count: 500 };
+    expect(refillGatherWithinCredits(paid, 2.5)).toEqual({ ...paid, count: 2 });
+    expect(refillGatherWithinCredits(paid, 0)).toBeNull();
+    const free = { source: 'base-protocols', count: 500 };
+    expect(refillGatherWithinCredits(free, 0)).toEqual(free);
   });
 
   it('never invents a search: an audience with no search that brought companies is left as it is', () => {

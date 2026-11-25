@@ -93,7 +93,7 @@ router.post('/llm/test', requireAuth, async (req, res) => {
     switch (provider) {
       case 'lm-studio': {
         const client = new LMStudioClient();
-        client.baseUrl = endpoint || 'http://localhost:1234';
+        client.baseUrl = endpoint || 'http://127.0.0.1:1234';
         testResult = await client.testConnection();
         if (testResult) {
           const activeModel = await client.getActiveModel();
@@ -192,7 +192,7 @@ router.post('/llm/models', requireAuth, async (req, res) => {
     switch (provider) {
       case 'lm-studio': {
         const client = new LMStudioClient();
-        client.baseUrl = endpoint || 'http://localhost:1234';
+        client.baseUrl = endpoint || 'http://127.0.0.1:1234';
         const lmModelsResponse = await client.getModels();
         if (lmModelsResponse?.data) {
           models = lmModelsResponse.data.map(m => ({

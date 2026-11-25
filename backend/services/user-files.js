@@ -435,10 +435,12 @@ export const deletePath = async (targetPath) => {
  * neuma sandbox or grants live-write authority (D8). For a sealed witness it
  * may select only the source of a filtered disposable coding snapshot.
  * @param {unknown} rawPath - client-supplied focus path (untrusted)
+ * @param {boolean} scopeGrantsAllowed - refreshed install-owner/co-owner standing
  * @returns {string|null} the canonical real directory path, or null
  */
 // impure — resolves symlinks against the live roots and stats the target
-export const resolveFocusPath = (rawPath) => {
+export const resolveFocusPath = (rawPath, scopeGrantsAllowed = true) => {
+  if (!scopeGrantsAllowed) return null;
   if (typeof rawPath !== 'string' || !path.isAbsolute(rawPath)) return null;
   let real;
   try {

@@ -31,8 +31,8 @@ flowchart TD
 ```
 
 - **Canonical policy:** the sibling coding-standards repository, version 2.0.0
-  at adoption, 2.4.0 now (DESIGN joined the core in 2.2.0; 2.3.0 added the less-to-read rule, which 2.3.1 corrects to […]; 2.4.0 adds "show, don't tell"). Maintain semantic changes there; Neuma consumes an explicit pin.
-- **Packaged copy:** `backend/services/coding-standards/bundle/`. Its 19 Markdown
+  at adoption, 2.5.0 now (DESIGN joined the core in 2.2.0; 2.3.0 added the less-to-read rule, which 2.3.1 corrects to […]; 2.4.0 adds "show, don't tell"; 2.5.0 adds the COMPOSITION module: balance, the golden ratio, the mark). Maintain semantic changes there; Neuma consumes an explicit pin.
+- **Packaged copy:** `backend/services/coding-standards/bundle/`. Its 20 Markdown
   files are byte-identical to the source. `source-manifest.json` preserves the
   original inventory and routing. `manifest.json` records module hashes plus a
   content digest covering the original manifest and ordered module contents.
@@ -161,9 +161,12 @@ report it unavailable; they continue using their verified pin. No network access
 automatic imports, policy rewrites or per-inference freshness reports are added.
 The cadence is followed through harness instructions; it is not a hosted scheduler.
 
-Latest forced upstream comparison: **2026-10-24 16:24**. The pin was
-refreshed from 2.3.1 to **Ignis 2.4.0** (coding-standards `b19298e`) by a staged
-import into a new directory, verified, then installed: all **19 standards**, with
+Latest forced upstream comparison: **2026-11-25 15:29**. The pin was
+refreshed from 2.4.0 to **Ignis 2.5.0** (coding-standards `db22b0a`) by a staged
+import into a new directory, verified, then installed: all **20 standards**, the new one
+COMPOSITION (KINKŌ 均衡 "balance", one golden-ratio scale for every size and distance, the
+brand's mark on every published visual, one declared inspiration), a module loaded for
+anything laid out for the eye. Before that, 2026-10-24 16:24: 2.3.1 to 2.4.0 (`b19298e`), with
 DESIGN (SHINKEI 真計 "true measure", JŌHŌ SEKKEI 情報設計 "information design",
 CHOKKAN 直感 "intuition", […], and "show, don't tell") in the core and
 INSTALLERS among the modules. Upstream passed `check_standards.py`. Earlier the same day:

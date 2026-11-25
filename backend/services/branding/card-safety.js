@@ -1,8 +1,8 @@
 // card-safety — what a company's own card design may contain.
 //
 // The shared templates are this repo's source. A company's own design (card-designs.js) is
-// written by an operator or a house member, and the desk draws it INLINE (InlineSvg.jsx puts the
-// rendered SVG into a shadow root) and Chromium rasterizes it for a post. An SVG can carry script
+// written by an operator or a house member, and the desk draws it as an inert image
+// (InlineSvg.jsx) while Chromium rasterizes it for a post. An SVG can carry script
 // (<script>, an onload= on any element, a javascript: link, an animation that sets one), reach
 // out (an external href, a CSS @import), or smuggle HTML (<foreignObject>). So a design is held to
 // what a card actually draws: shapes, text, gradients, patterns, filters, clips, masks and the
@@ -55,6 +55,7 @@ export const designRefusals = (svg) => {
   const out = [];
   if (!/^\s*<svg[\s>]/.test(source)) out.push('a design starts with <svg> (no XML prolog or doctype)');
   if (/<!(?:DOCTYPE|ENTITY|\[CDATA\[)|<\?/i.test(source)) out.push('a design carries no <!DOCTYPE>, <!ENTITY>, CDATA or processing instruction');
+  if (/<[^>]*</.test(source)) out.push('a design tag has a malformed opening boundary');
   const comments = [...source.matchAll(/<!--[\s\S]*?-->/g)];
   const withoutComments = source.replace(/<!--[\s\S]*?-->/g, '');
   if (comments.some(([comment]) => {

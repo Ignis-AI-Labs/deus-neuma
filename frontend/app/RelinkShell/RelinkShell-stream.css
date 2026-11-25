@@ -466,3 +466,11 @@
 .relink-clone-section-h { margin: 0 0 var(--space-1); color: var(--signal); letter-spacing: 0.1em; }
 .relink-clone-goal { margin: 0 0 var(--space-1); color: var(--color-text-primary); }
 .relink-clone-goal .label-data { color: var(--signal); margin-right: var(--space-1); }
+
+/* FIND IN THIS CHAT (ChatFind.jsx): one line above the transcript; the words found are marked in place. */
+.chat-find { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line-strong, var(--line)); background: var(--surface-band); }
+.chat-find-box { flex: 1 1 240px; min-width: 0; }
+.chat-find-count { min-width: 9ch; color: var(--color-text-secondary); }
+/* Neutral marks, never the signal colour (LINE & CYCLE keeps that for state). */
+::highlight(chat-find) { background-color: color-mix(in srgb, var(--color-text-primary) 24%, transparent); }
+::highlight(chat-find-here) { background-color: var(--color-text-primary); color: var(--color-void); }

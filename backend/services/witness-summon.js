@@ -270,12 +270,10 @@ export const parseGrounding = (reply) => {
   return Object.freeze({ commitments: Object.freeze(commitments), firstUtterance });
 };
 
-// A stored provider key (and the env key behind it) is the machine's, and the
-// machine is its install owner's (install-owner.js). No share of it with a
-// guest exists yet, so a guest's summon on one is refused, naming both ways on.
+// Provider connections, keyless ones included, belong to the install owner.
 const keyNotShared = (providerId) => Object.assign(new Error(
-  `The ${providerId} key stored on this computer is its owner's, and it is not shared with your house — `
-  + 'summon on your own key, or ask the owner to share theirs (a co-owner shares the machine\'s keys).',
+  `The ${providerId} provider connection on this computer is its owner's, and it is not shared with your house — `
+  + 'summon on your own key or provider connection, or ask the owner to share theirs (a co-owner shares the machine\'s providers).',
 ), { code: 'MACHINE_KEY_NOT_SHARED' });
 
 /**
@@ -299,6 +297,10 @@ export const summonWitness = async ({ providerId, walletAddress, keypairPassword
   if (typeof walletAddress !== 'string' || !walletAddress) {
     throw new Error('An authenticated operator wallet is required to ground the witness lane');
   }
+  if (!['owner', 'co-owner'].includes(standing ?? standingIn(await readInstallOwner(), walletAddress))) {
+    log.info('summon refused to a guest', { providerId, wallet: walletAddress.toLowerCase() });
+    throw keyNotShared(providerId);
+  }
   const connection = await getConnection(providerId);
   if (!connection) {
     throw new Error(`No locked connection for ${providerId} — connect the provider first (key/sign-in + live test), then summon`);
@@ -313,10 +315,6 @@ export const summonWitness = async ({ providerId, walletAddress, keypairPassword
   }
   if (!cred.apiKey && getProvider(providerId)?.requiresKey) {
     throw new Error(`${providerId} has no credential — connect it before summoning`);
-  }
-  if (cred.apiKey && !['owner', 'co-owner'].includes(standing ?? standingIn(await readInstallOwner(), walletAddress))) {
-    log.info('summon on the machine\'s key refused to a guest', { providerId, wallet: walletAddress.toLowerCase() });
-    throw keyNotShared(providerId);
   }
   const route = routeForConnection(connection, cred);
   onStage({ type: 'threshold', providerId, model: connection.model });

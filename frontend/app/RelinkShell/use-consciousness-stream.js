@@ -29,6 +29,7 @@ import { readToolModePref, readChatModePref } from './stream-preferences.js';
 import { useVoiceEnabled } from './use-voice-enabled.js';
 import { createStreamHandlers } from './stream-message-handlers.js';
 import { createStreamActions } from './stream-actions.js';
+import { refoldOnTakeView } from './timeline-refold.js';
 
 export { TOOL_MODES, CHAT_MODES } from './stream-preferences.js';
 
@@ -267,6 +268,8 @@ export const useConsciousnessStream = (wsService, {
       turnStartedRef, voiceGenRef, voiceGenFloorRef, lastVoiceTurnRef, cutVoiceTurnRef,
       toolModeRef, chatModeRef, voiceEnabledRef, purposeRef, historyReadyRef, historyFailedRef,
     });
+    // THE TIMELINE: a recorded move of the view is followed by the screen (timeline-refold.js).
+    entries.push(['consciousness:take_view', refoldOnTakeView({ wsService, dispatch, companionRef })]);
     entries.forEach(([channel, on]) => wsService.on(channel, on));
 
     // The portal may already be live before this hook mounts (post-ceremony).

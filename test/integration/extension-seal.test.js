@@ -35,7 +35,9 @@ const record = (seal) => updateInstalled(ID, () => ({ id: ID, enabled: true, blo
 beforeAll(async () => {
   const root = await createTempDir('extension-seal');
   for (const key of ['NEUMA_DATA_ROOT', ...BACKEND_SECRET_KEYS]) saved[key] = process.env[key];
+  saved.HOME = process.env.HOME;
   process.env.NEUMA_DATA_ROOT = root;
+  process.env.HOME = root;
   const entry = extensionById(ID);
   const pkg = path.join(extensionDir(ID), 'node_modules', entry.package);
   entryFile = path.join(pkg, entry.bin);
@@ -93,6 +95,15 @@ describe('an extension starts only as the copy its security check read', () => {
     const parent = path.dirname(extensionDir(ID));
     await fs.mkdir(path.join(parent, 'node_modules', 'planted'), { recursive: true });
     await fs.writeFile(path.join(parent, 'node_modules', 'planted', 'index.js'), 'module.exports = {};\n');
+    await expect(listExtensionTools(ID)).rejects.toThrow(/files changed after its security check/);
+  }, 60_000);
+
+  test('PR20 M-19: a package planted in a Node global module folder breaks the seal', async () => {
+    const parent = path.dirname(extensionDir(ID));
+    await fs.rm(path.join(parent, 'node_modules', 'planted'), { recursive: true, force: true });
+    await record(await sealOf(extensionDir(ID)));
+    await fs.mkdir(path.join(process.env.HOME, '.node_modules', 'supports-color'), { recursive: true });
+    await fs.writeFile(path.join(process.env.HOME, '.node_modules', 'supports-color', 'index.js'), 'module.exports = {};\n');
     await expect(listExtensionTools(ID)).rejects.toThrow(/files changed after its security check/);
   }, 60_000);
 });

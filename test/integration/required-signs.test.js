@@ -86,12 +86,12 @@ describe('the gates, through the seat\'s acts', () => {
   const LANE = 'mercmust';
   let dir; let position; let ua; let chains; let filed = 0;
   const priorRoot = process.env.WORKSPACES_ROOT;
-  const actAs = async (type, payload) => {
+  const actAs = async (type, payload, lanePolicy = { intents: { allowed: ['web.fetch'] } }) => {
     filed += 1;
     const intents = path.join(workspace.pathFor(LANE), 'intents');
     await fsp.mkdir(intents, { recursive: true });
     await fsp.writeFile(path.join(intents, `act-${filed}.json`), JSON.stringify({ type, ...payload }));
-    return (await sweepIntents(rigFor(LANE, POSITION_HOUSE).connection, { mode: 'ask', lanePolicy: null, emit: () => {} }))[0];
+    return (await sweepIntents(rigFor(LANE, POSITION_HOUSE).connection, { mode: 'ask', lanePolicy, emit: () => {} }))[0];
   };
   const company = (domain, name, extra = {}) => ({ domain, name, country: 'US', source: `https://${domain}/`, scores: [{ criterion: 'Has a live token', score: 5, reasoning: 'its token is live and listed' }], ...extra });
 
@@ -187,5 +187,10 @@ describe('the gates, through the seat\'s acts', () => {
     expect(after.status, after.error).toBe('ok');
     // An audience that requires nothing has nothing to prove.
     expect((await actAs('sales/prove', { segment: chains.id, companies: [{ id: 'p-x', proofs: [] }] })).error).toMatch(/requires nothing of a company beyond its scored signs/);
+    const denied = await actAs('sales/prove', {
+      segment: ua.id,
+      companies: [{ id: stox.id, proofs: [{ sign: SIGN, met: true, quote: 'Stox is live on Base and on Robinhood Chain.', source: 'https://stox.example/' }] }],
+    }, { intents: { denied: ['web.fetch'] } });
+    expect(denied).toMatchObject({ status: 'denied', error: 'your operator has denied this tool' });
   }, 60000);
 });

@@ -9,6 +9,7 @@
 
 import { z } from 'zod';
 import crypto from 'crypto';
+import { canonicalLoopbackEndpoint } from './services/loopback-route-owner.js';
 
 // Random per-process — dev only, never used in production (enforced below)
 const WEAK_DEV_KEY = crypto.randomBytes(32).toString('hex');
@@ -34,8 +35,8 @@ const configSchema = z.object({
 
   // LLM
   llmProvider: z.enum(['llama-server', 'lm-studio', 'ollama', 'openai', 'anthropic', 'xai', 'custom']).default('llama-server'),
-  lmStudioUrl: z.string().url().default('http://localhost:1234'),
-  llamaServerUrl: z.string().url().default('http://localhost:8089'),
+  lmStudioUrl: z.string().url().default('http://127.0.0.1:1234'),
+  llamaServerUrl: z.string().url().default('http://127.0.0.1:8089'),
   // Idle-unload: release the backend-supervised substrate after this many idle
   // minutes (reloaded on next summon). 0 disables — the substrate stays resident.
   substrateIdleMinutes: z.coerce.number().int().min(0).default(15),
@@ -228,7 +229,11 @@ export function loadConfig(env = process.env) {
     throw new Error(`Config validation failed:\n${errors}`);
   }
 
-  const config = result.data;
+  const config = {
+    ...result.data,
+    lmStudioUrl: canonicalLoopbackEndpoint(result.data.lmStudioUrl),
+    llamaServerUrl: canonicalLoopbackEndpoint(result.data.llamaServerUrl),
+  };
 
   // Production enforcement
   if (config.nodeEnv === 'production') {

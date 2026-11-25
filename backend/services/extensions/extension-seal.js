@@ -14,6 +14,7 @@
  */
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { createHash } from 'node:crypto';
 
 const SEALED = Object.freeze(['package.json', 'package-lock.json', 'node_modules']);
@@ -43,6 +44,7 @@ const linesOf = async (root, rel) => {
 export const sealOf = async (dir) => {
   const hash = createHash('sha256');
   for (const rel of SEALED) hash.update(`${(await linesOf(dir, rel)).join('\n')}\n`);
+  for (const rel of ['.node_libraries', '.node_modules']) hash.update(`${(await linesOf(os.homedir(), rel)).join('\n')}\n`);
   let parent = path.dirname(path.resolve(dir));
   for (;;) {
     hash.update(`${(await linesOf(parent, 'node_modules')).join('\n')}\n`);

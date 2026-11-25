@@ -34,7 +34,7 @@ export const previewQueueMedia = async (req, res) => {
       ? entry.media?.[index]
       : null;
     if (!item) return res.status(404).json({ error: 'no such media on that queue entry' });
-    const verified = await verifySealedMedia(item, { requireSeal: false }); // only the sealed bytes are ever shown
+    const verified = await verifySealedMedia(item); // only the sealed bytes are ever shown
     if (!verified.ok) {
       return res.status(404).json({ error: `the staged media no longer stands — ${verified.detail}` });
     }

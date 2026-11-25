@@ -40,6 +40,7 @@ const EMAIL_START = /\b[A-Za-z0-9._%+-]/g;
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,24}\b/y;
 const EMAIL_NAME = /[A-Za-z0-9._%+-]+/y;
 const PHONE = /(?:\+\d{1,3}[\s.-]?)?(?:\(\d{1,4}\)\s?|\d{2,4}[\s.-])(?:\d{2,4}[\s.-]){1,3}\d{2,4}\b/g;
+const BARE_PHONE = /\b\d{7,15}\b/g;
 const DATE = /^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$|^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$/;
 const URL = /\bhttps?:\/\/[^\s"'<>()[\]{}]+/gi;
 const TLDS = 'com|net|org|io|ai|co|info|biz|xyz|dev|app|me|us|uk|de|fr|ru|cn|in|gov|edu|online|site|top|shop|link|live|tech|cc|tv|ly|to|gg';
@@ -139,7 +140,7 @@ const plainValuesIn = (t) => {
   const { found: emails, rest: outsideEmails } = scanFrom(t, EMAIL_START, EMAIL, EMAIL_NAME);
   const urls = [...all(URL, outsideEmails).map((m) => m[0]), ...scanFrom(outsideEmails.replace(URL, ' '), DOMAIN_START, BARE_DOMAIN, DOMAIN_LABELS).found];
   const accounts = all(ACCOUNT, t).map((m) => m[0]).filter((tok) => (tok.match(/\d/g) || []).length >= 6);
-  const phones = all(PHONE, t).map((m) => m[0].trim()).filter((p) => !DATE.test(p) && p.replace(/\D/g, '').length >= 7);
+  const phones = [...all(PHONE, t), ...all(BARE_PHONE, t)].map((m) => m[0].trim()).filter((p) => !DATE.test(p) && p.replace(/\D/g, '').length >= 7);
   const found = [
     // Most specific first: a value matched twice keeps its first class.
     ...all(IBAN, t).map((m) => value('iban', m[0])),
@@ -183,11 +184,12 @@ export const tracedValues = (text) => {
 export const valuesIn = (text) => tracedValues(text).values;
 
 /** pure — every string an act's arguments hold (numbers as written), at any depth. */
-export const argStrings = (args, depth = 0) => {
+export const argStrings = (args, seen = new WeakSet()) => {
   if (typeof args === 'string') return [args];
   if (typeof args === 'number' || typeof args === 'bigint') return [String(args)];
-  if (!args || typeof args !== 'object' || depth > 6) return [];
-  return Object.values(args).flatMap((child) => argStrings(child, depth + 1));
+  if (!args || typeof args !== 'object' || seen.has(args)) return [];
+  seen.add(args);
+  return Object.values(args).flatMap((child) => argStrings(child, seen));
 };
 
 // pure — a reader over fixed texts: does any of them carry a value? Each text is put in a form once.

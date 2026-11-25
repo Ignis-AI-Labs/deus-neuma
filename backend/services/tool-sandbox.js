@@ -88,18 +88,19 @@ export const isWriteOperation = (toolName) =>
 
 /**
  * The SENSITIVE-GRANT DOOR (ruling, 2026-08-18): a denied-pattern refusal is a
- * wall only while no grant covers it. Returns null when the lane's grant
- * covers the path for the direction (read for reads, edit for writes — write
+ * wall only while no grant covers it inside an allowed root. Returns null when
+ * the lane's grant covers the contained path for the direction (read for reads, edit for writes — write
  * tools require edit on every path they touch, source included, because a
  * move is destructive to its source), else the refusal reason — with the
  * recourse named when the pattern is requestable at all. The never-requestable
  * set (another being's state, .git, keys, owner.json, the policy file) stays
  * a wall no grant can lift. Pure over the connection's grant set.
  */
-const sensitiveDeniedReason = (connection, isWrite, filePath, pathCheck) => {
+const sensitiveDeniedReason = (connection, isWrite, filePath, pathCheck, roots) => {
   const tier = isWrite ? 'edit' : 'read';
   const recourse = pathCheck.deniedPattern && requestablePattern(pathCheck.deniedPattern);
-  if (recourse && sensitiveGrantCovers(connection._sensitiveGrants, tier, filePath)) return null;
+  if (recourse && isWithinRoots(filePath, roots)
+    && sensitiveGrantCovers(connection._sensitiveGrants, tier, filePath)) return null;
   return pathCheck.reason + (recourse ? ' — request access with request_file_access' : '');
 };
 
@@ -216,7 +217,7 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       await guardOtherHouse(p, workspaceRoot);
       const pathCheck = checkPathAccess(p, roots, { requireRoot: isWrite });
       if (!pathCheck.allowed) {
-        const reason = sensitiveDeniedReason(connection, isWrite, p, pathCheck);
+        const reason = sensitiveDeniedReason(connection, isWrite, p, pathCheck, roots);
         if (reason === null) {
           await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'granted', `sensitive ${isWrite ? 'edit' : 'read'} grant honored`);
           continue;
@@ -237,9 +238,10 @@ export const createSandboxedCallTool = (mcpService, connection, neumaWorkspace) 
       await guardOtherHouse(real, realLane);
       if (real === path.resolve(p)) continue; // no link in the chain — lexical verdict stands
       const realRoots = await Promise.all(roots.map(realpathOfNearestExisting));
-      const realCheck = checkPathAccess(real, [...new Set([...roots, ...realRoots])], { requireRoot: isWrite });
+      const grantedRoots = [...new Set([...roots, ...realRoots])];
+      const realCheck = checkPathAccess(real, grantedRoots, { requireRoot: isWrite });
       if (!realCheck.allowed) {
-        const granted = sensitiveDeniedReason(connection, isWrite, real, realCheck) === null;
+        const granted = sensitiveDeniedReason(connection, isWrite, real, realCheck, grantedRoots) === null;
         const reason = granted ? null : `Symlink escape: ${realCheck.reason}`;
         if (granted) {
           await logToolCall(neumaWorkspace, neumaId, serverName, toolName, args, 'granted', 'sensitive grant honored (realpath)');

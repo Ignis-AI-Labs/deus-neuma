@@ -90,10 +90,10 @@ describe('translation target invariant', () => {
     const { getProvider } = await import('../../backend/services/provider-registry.js');
     const { resolveEndpoint } = await import('../../backend/services/provider-credentials.js');
     const entry = getProvider('llama-server');
-    expect(entry.endpoint).toBe('http://localhost:8089');
-    expect(resolveEndpoint(undefined, entry)).toBe('http://localhost:8089');
-    expect(resolveEndpoint({}, entry)).toBe('http://localhost:8089');
-    expect(resolveEndpoint({ endpoint: '' }, entry)).toBe('http://localhost:8089');
+    expect(entry.endpoint).toBe('http://127.0.0.1:8089');
+    expect(resolveEndpoint(undefined, entry)).toBe('http://127.0.0.1:8089');
+    expect(resolveEndpoint({}, entry)).toBe('http://127.0.0.1:8089');
+    expect(resolveEndpoint({ endpoint: '' }, entry)).toBe('http://127.0.0.1:8089');
     expect(resolveEndpoint({ endpoint: 'http://127.0.0.1:9099' }, entry)).toBe('http://127.0.0.1:9099');
   });
 });

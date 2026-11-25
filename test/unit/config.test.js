@@ -14,12 +14,24 @@ describe('backend/config.js', () => {
       expect(config.frontendPort).toBe(7777);
       expect(config.nodeEnv).toBe('development');
       expect(config.llmProvider).toBe('llama-server');
+      expect(config.lmStudioUrl).toBe('http://127.0.0.1:1234');
+      expect(config.llamaServerUrl).toBe('http://127.0.0.1:8089');
       expect(config.llmTemperature).toBe(0.8);
       expect(config.llmMaxTokens).toBe(4096);
       expect(config.llmTopP).toBe(0.95);
       expect(config.ethRpcUrl).toBe('https://ethereum-rpc.publicnode.com'); // Ethereum mainnet's public endpoint since 2026-10-04
       expect(config.ipfsGateway).toBe('https://ipfs.io/ipfs/');
       expect(Object.isFrozen(config)).toBe(true);
+    });
+
+    it('canonicalizes restored loopback model URLs without changing remote URLs', () => {
+      const config = loadConfig({
+        LM_STUDIO_URL: 'http://localhost:1234/v1',
+        LLAMA_SERVER_URL: 'http://[::1]:8089',
+      });
+      expect(config.lmStudioUrl).toBe('http://127.0.0.1:1234/v1');
+      expect(config.llamaServerUrl).toBe('http://127.0.0.1:8089');
+      expect(loadConfig({ LM_STUDIO_URL: 'https://models.example.test/v1' }).lmStudioUrl).toBe('https://models.example.test/v1');
     });
 
     it('coerces PORT to number', () => {

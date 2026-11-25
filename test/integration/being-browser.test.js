@@ -195,6 +195,42 @@ describe('approval is bound to the exact approved element', () => {
     const { result } = await session.send('Runtime.evaluate', { expression: 'String(window.clicked)', returnByValue: true });
     expect(result.value).toBe('undefined');
   }, 60_000);
+
+  test('a transparent overlay cannot receive the approved click', async () => {
+    if (!hasChromium) return;
+    lanes.add('overlaylane');
+    const { session } = await browserFor('overlaylane');
+    const { frameTree } = await session.send('Page.getFrameTree');
+    await session.send('Page.setDocumentContent', {
+      frameId: frameTree.frame.id,
+      html: '<button id=safe onclick="window.clicked=\'safe\'">Safe preview</button><div style="position:fixed;inset:0;z-index:99;background:transparent"></div>',
+    });
+    await actInPage(session, { kind: 'look' });
+    const target = approvedTarget(session.view, 1);
+    const clicked = await actInPage(session, { kind: 'click', target });
+    expect(clicked.ok).toBe(false);
+    expect(clicked.error).toMatch(/covered/);
+    const { result } = await session.send('Runtime.evaluate', { expression: 'String(window.clicked)', returnByValue: true });
+    expect(result.value).toBe('undefined');
+  }, 60_000);
+
+  test('a focus-stealing page cannot redirect approved text', async () => {
+    if (!hasChromium) return;
+    lanes.add('focuslane');
+    const { session } = await browserFor('focuslane');
+    const { frameTree } = await session.send('Page.getFrameTree');
+    await session.send('Page.setDocumentContent', {
+      frameId: frameTree.frame.id,
+      html: '<input id=safe aria-label="Safe field"><input id=evil aria-label="Other field"><script>safe.addEventListener("focus",()=>evil.focus())</script>',
+    });
+    await actInPage(session, { kind: 'look' });
+    const target = approvedTarget(session.view, 1);
+    const typed = await actInPage(session, { kind: 'type', target, text: 'must not land' });
+    const { result } = await session.send('Runtime.evaluate', { expression: 'JSON.stringify({ active: document.activeElement.id, safe: safe.value, evil: evil.value })', returnByValue: true });
+    expect(typed.ok, result.value).toBe(true);
+    expect(result.value).toContain('"safe":"must not land"');
+    expect(result.value).toContain('"evil":""');
+  }, 60_000);
 });
 
 describe('the real internet', () => {

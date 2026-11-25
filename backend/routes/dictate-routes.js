@@ -64,7 +64,10 @@ export const setupDictateRoutes = (wss) => {
       else if (frame.type === 'voice:utterance') finish(frame.text);
       else if (frame.type === 'voice:speech_stopped') {
         graceTimer = setTimeout(() => finish(''), FINAL_GRACE_MS);
-      } else if (frame.type === 'voice:error' && frame.code !== 'pcm_flood') {
+      } else if (frame.type === 'voice:error') {
+        // EVERY error ends the lane, a flood included (2026-11-25): audio the bound dropped is words the lane never
+        // heard, and a lane that carried on would hand back a transcript with a hole in it as if it were whole.
+        // Told, the desk finishes the hold from its own recording.
         send(ws, { type: 'error', code: frame.code });
         ws.close(1011, frame.code);
       }
@@ -115,7 +118,9 @@ export const setupDictateRoutes = (wss) => {
     }
     if (ws.readyState !== ws.OPEN) { session.close(); return; }
     open = true;
-    for (const pcm of early) forward(pcm);
+    // What was held while the lane opened goes in as it is: it was spoken in real time and only arrives at once,
+    // so it is not counted against the flood bound (it used to trip it, and the hold's first seconds were dropped).
+    for (const pcm of early) { heard = true; session.sendPcm(pcm, { held: true }); }
     early = [];
     send(ws, { type: 'ready' });
     if (flushOwed) flush();

@@ -141,6 +141,30 @@ describe('one record, kept by the legal office and read by the sales office', ()
     expect((await act(legalIntents, 'praetor', 'legal/never-list', {})).detail).toMatch(/^THE HOUSE'S NEVER-LIST \(reviewed \d{4}-\d\d-\d\d, worked out for an operator in United States\): .*Israel \[IL\] — The operator's own rule\.$/);
   });
 
+  test('the sales seat reads the list and changes it by its own act: places added and taken off, the rest kept as they stood; only the seated member', async () => {
+    const before = await readNeverList(me.address);
+    expect((await act(salesIntents, 'merc', 'sales/never-list', {})).detail).toBe(neverListWords(before));
+    expect(await act(salesIntents, 'praetor', 'sales/never-list', {})).toMatchObject({ ok: false, reason: expect.stringMatching(/by its seated member only/) });
+    const intent = salesIntents.find((i) => i.name === 'sales/never-list');
+    // Reading asks nobody; a change is the operator's card.
+    expect([intent.policyToolFor({}), intent.policyToolFor({ add: ['MM'] }), intent.policyToolFor({ remove: ['IL'] })]).toEqual(['sales.never-list-read', 'sales.never-list', 'sales.never-list']);
+    expect(intent.summarize({ add: [{ code: 'mm', why: 'x' }], remove: ['IL'] })).toBe('change the house\'s never-list: add Myanmar (Burma) [MM]; TAKE OFF Israel [IL]');
+    expect((await act(salesIntents, 'merc', 'sales/never-list', { remove: ['ZZ'] })).reason).toMatch(/^remove: ZZ is not on the list/);
+    expect((await act(salesIntents, 'merc', 'sales/never-list', { add: [{ code: 'Narnia', why: 'the rule' }] })).reason).toMatch(/a two-letter ISO country code/);
+    expect((await act(salesIntents, 'merc', 'sales/never-list', { add: ['IL'] })).reason).toMatch(/^nothing changes: every place you named is already on the list/);
+    const done = await act(salesIntents, 'merc', 'sales/never-list', { add: [{ code: 'mm', why: 'The operator does not do business there' }], remove: ['BY'] });
+    expect(done.ok, done.reason).toBe(true);
+    expect(done.detail).toMatch(/^The never-list now stands as: .*Myanmar \(Burma\) \[MM\]\. Added: MM\. Taken off: BY\. Every screen, lead run and first email reads it/);
+    const after = await readNeverList(me.address);
+    expect(after.codes).toEqual([...before.codes.filter((c) => c !== 'BY'), 'MM']);
+    expect(after).toMatchObject({ reviewed: true, by: 'merc', home: before.home });
+    // What stood keeps its own reason and source.
+    expect(after.countries.find((c) => c.code === 'IR')).toEqual(before.countries.find((c) => c.code === 'IR'));
+    // Put back as the tests below expect it.
+    expect((await act(salesIntents, 'merc', 'sales/never-list', { add: [{ code: 'BY', why: before.countries.find((c) => c.code === 'BY').why }], remove: ['MM'] })).ok).toBe(true);
+    expect((await readNeverList(me.address)).codes.sort()).toEqual([...before.codes].sort());
+  });
+
   test('the sales office reads that one record: a listed place is refused as a lead and at the first email; a country simply not known holds nobody', async () => {
     const never = (await readNeverList(me.address)).codes;
     // Israel is on the list now: by its record, by the address alone, by its domain.

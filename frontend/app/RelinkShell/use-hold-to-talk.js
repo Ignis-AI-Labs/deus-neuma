@@ -12,6 +12,10 @@ import {
   spliceTranscript, holdsPushToTalkKey, stripHoldSpace, HOLD_TO_TALK_MS,
 } from './dictation.js';
 
+/** The longest a capture goes on with the window out of focus, and how long a returned window waits for the key's own repeat. */
+export const AWAY_MAX_MS = 20_000;
+export const BACK_HELD_MS = 900;
+
 // windowLane: whether this field also owns Space held anywhere the witness is not typing. The composer does; another
 // field that dictates into itself (an earlier message being edited, InlineEdit.jsx) does not — one recorder per hold.
 export const useHoldToTalk = ({ connected, setValue, fieldRef, windowLane = true }) => {
@@ -22,6 +26,13 @@ export const useHoldToTalk = ({ connected, setValue, fieldRef, windowLane = true
   const holdTimerRef = useRef(null);
   const spaceHoldRef = useRef(false);
   const pointerHoldRef = useRef(false);
+  // THE HOLD OUTLIVES A LOST FOCUS (Design note, 2026-11-25: […]). The window losing focus used to END the capture at once: a notice, another
+  // window or a dialog taking focus for a moment cut the recording while the key was still down, and everything said
+  // after it was never recorded. Now a lost focus only starts a watch. While the window is away the capture goes on,
+  // for at most AWAY_MAX_MS (the key's release cannot be seen from there, and a microphone is never left open). When
+  // focus returns, a key still held says so within BACK_HELD_MS by its own repeat; silence means it was let go.
+  const awayTimerRef = useRef(null);
+  const backTimerRef = useRef(null);
 
   // THE LIVE FLOW, IN THE BOX (Design note, 2026-08-28: […], superseding
   // the 2026-08-01 overlay line). The provisional text is written INTO the
@@ -90,7 +101,7 @@ export const useHoldToTalk = ({ connected, setValue, fieldRef, windowLane = true
       // RELEASE clicks it. Whatever the witness last pressed on the desk would
       // fire the moment they stopped dictating.
       e.preventDefault();
-      if (e.repeat) return;                 // the same hold, not a new one
+      if (e.repeat) { stillHeld(); return; } // the same hold, not a new one
       if (pointerHoldRef.current) return;   // mic button already holds the capture
       spaceHoldRef.current = true;
       beginCapture();
@@ -98,8 +109,11 @@ export const useHoldToTalk = ({ connected, setValue, fieldRef, windowLane = true
     // Space release only ends a capture Space started — a pointer-held
     // recording survives a stray spacebar tap. A still-pending hold timer
     // means no capture began at all: just disarm it.
+    const stillHeld = () => { clearTimeout(backTimerRef.current); backTimerRef.current = null; };
     const settle = () => {
       clearTimeout(holdTimerRef.current);
+      clearTimeout(awayTimerRef.current);
+      clearTimeout(backTimerRef.current);
       holdTimerRef.current = null;
       if (!spaceHoldRef.current) return;
       spaceHoldRef.current = false;
@@ -114,13 +128,34 @@ export const useHoldToTalk = ({ connected, setValue, fieldRef, windowLane = true
       settle();
     };
     if (windowLane) window.addEventListener('keydown', down);
+    const away = () => {
+      // A hold still being decided is only a typed space; a capture under way goes on, watched.
+      if (!spaceHoldRef.current) { settle(); return; }
+      clearTimeout(backTimerRef.current);
+      clearTimeout(awayTimerRef.current);
+      awayTimerRef.current = setTimeout(settle, AWAY_MAX_MS);
+    };
+    const back = () => {
+      clearTimeout(awayTimerRef.current);
+      if (!spaceHoldRef.current) return;
+      clearTimeout(backTimerRef.current);
+      backTimerRef.current = setTimeout(settle, BACK_HELD_MS);
+    };
+    // Any Space repeat, wherever it lands, says the key is still down (the field's own handler eats it first).
+    const repeat = (e) => { if (e.code === 'Space' && e.repeat) stillHeld(); };
+    window.addEventListener('keydown', repeat, true);
     window.addEventListener('keyup', up);
-    window.addEventListener('blur', settle);
+    window.addEventListener('blur', away);
+    window.addEventListener('focus', back);
     return () => {
       if (windowLane) window.removeEventListener('keydown', down);
+      window.removeEventListener('keydown', repeat, true);
       window.removeEventListener('keyup', up);
-      window.removeEventListener('blur', settle);
+      window.removeEventListener('blur', away);
+      window.removeEventListener('focus', back);
       clearTimeout(holdTimerRef.current);
+      clearTimeout(awayTimerRef.current);
+      clearTimeout(backTimerRef.current);
       holdTimerRef.current = null;
     };
   }, [connected, beginCapture, end, windowLane]);

@@ -36,16 +36,18 @@ const companyNameOf = async (wallet, id) => {
  * @param {{lead: object, to: string, payload: object, by: string}} q payload: the seat's draft
  * @returns {Promise<{refusal: string} | {subject: string, text: string, promise: string, formula: object}>}
  */
-export const formulaEmail = async (wallet, { lead, to, payload, by }) => {
+export const formulaEmail = async (wallet, { lead, to, payload, by }, { liveAddressCheck = true } = {}) => {
   const email = normalizeEmail(to);
-  // GATE ONE — a confirmed address: nothing is written to one no database confirmed.
-  const checkOf = async () => (await readAddressChecks(wallet)).find((c) => c.email === email) ?? null;
-  let check = await checkOf();
-  // Never checked, or standing only on a provider's stored flag: asked live now (a live answer outranks the flag).
-  if (!check || !check.live) { await checkBeforeSending(wallet, [email], { by }); check = await checkOf(); }
-  if (check?.status !== 'valid') {
-    return { refusal: check?.settled ? `${settledWords(email, check.settled)} No email is written to an address no database confirmed.`
-      : `${email} is not confirmed (${check ? `${check.checker}: ${check.status}` : 'it could not be checked'}) — no email is written to an unconfirmed address. Run sales/confirm-address {email: "${email}"} once (every database, then another address for them), or write to someone else at the company.` };
+  if (liveAddressCheck) {
+    // GATE ONE — a confirmed address: nothing is written to one no database confirmed.
+    const checkOf = async () => (await readAddressChecks(wallet)).find((c) => c.email === email) ?? null;
+    let check = await checkOf();
+    // Never checked, or standing only on a provider's stored flag: asked live now (a live answer outranks the flag).
+    if (!check || !check.live) { await checkBeforeSending(wallet, [email], { by }); check = await checkOf(); }
+    if (check?.status !== 'valid') {
+      return { refusal: check?.settled ? `${settledWords(email, check.settled)} No email is written to an address no database confirmed.`
+        : `${email} is not confirmed (${check ? `${check.checker}: ${check.status}` : 'it could not be checked'}) — no email is written to an unconfirmed address. Run sales/confirm-address {email: "${email}"} once (every database, then another address for them), or write to someone else at the company.` };
+    }
   }
   // The campaign the lead serves, and its email plan, locked in by the operator.
   const [campaigns, segments, prospects] = await Promise.all([readCampaigns(wallet), readSegments(wallet), readProspects(wallet)]);

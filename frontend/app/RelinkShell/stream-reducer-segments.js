@@ -4,6 +4,7 @@
 // deterministic exactly as the reducer is: no IO, no clocks.
 
 import { isInflightStatus } from '../../../core/runtime/tool-status.js';
+import { cutAfter } from './timeline-refold-pure.js';
 
 /** Index of the live (still-streaming) neuma message, or -1. At most one
  *  message streams at a time, and a retried TAKE streams IN PLACE at its
@@ -25,7 +26,8 @@ const withStreaming = (state, at, take) => {
         ...(message.takes || []),
         { takeIndex: take.takeIndex ?? (message.takes?.length || 0) + 1, at: at ?? null, segments: [], meta: null },
       ];
-      const messages = state.messages.slice();
+      // THE TIMELINE: what followed the older take leaves the view with it (timeline-refold.js).
+      const messages = cutAfter(state.messages, idx).slice();
       messages[idx] = {
         ...message, streaming: true,
         takeCount: takes.length, takeIndex: takes.length, takes,

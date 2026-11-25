@@ -69,14 +69,14 @@ describe('signed update freshness and its real filesystem floor', () => {
     expect(fs.existsSync(file)).toBe(false);
   });
 
-  it('enforces the signed minimumVersion against the running app and accepts an old releaseDate signed now', () => {
+  it('accepts a newer signed release and enforces minimumVersion against that release', () => {
     const signed = offer('2.0.0', Date.now() - 1000);
-    expect(acceptFreshFeed({ signed, ymlBytes: bytes('feed'), currentVersion: '1.9.0' })).toEqual({
+    expect(acceptFreshFeed({ signed, ymlBytes: bytes('feed') })).toEqual({ ok: true });
+    expect(acceptFreshFeed({ signed: { ...signed, minimumVersion: '2.0.1' }, ymlBytes: bytes('feed') })).toEqual({
       ok: false,
-      reason: 'this install runs 1.9.0, older than the signed minimumVersion 2.0.0',
+      reason: 'the signed release is below its minimumVersion',
     });
-    expect(acceptFreshFeed({ signed, ymlBytes: bytes('feed'), currentVersion: '2.0.0' })).toEqual({ ok: true });
-    expect(acceptFreshFeed({ signed: { ...signed, minimumVersion: undefined }, ymlBytes: bytes('feed'), currentVersion: '2.0.0' })).toEqual({
+    expect(acceptFreshFeed({ signed: { ...signed, minimumVersion: undefined }, ymlBytes: bytes('feed') })).toEqual({
       ok: false,
       reason: 'the signed feed has no valid minimumVersion',
     });

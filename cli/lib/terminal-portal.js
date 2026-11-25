@@ -105,7 +105,7 @@ const askQuestions = async (stdin, stderr, questions) => {
   for (const q of questions) {
     const options = (q.options || []).map((o, i) => `  ${i + 1}. ${o.label}`).join('\n');
     const rl = readline.createInterface({ input: stdin, output: stderr });
-    const answer = await new Promise((resolve) => rl.question(`\n${q.question}\n${options}${options ? '\n' : ''}> `, resolve));
+    const answer = await new Promise((resolve) => rl.question(ttyText(`\n${q.question}\n${options}${options ? '\n' : ''}> `), resolve));
     rl.close();
     const picked = (q.options || [])[Number(String(answer).trim()) - 1];
     answers.push(picked ? picked.label : String(answer || '').trim());
@@ -192,9 +192,9 @@ export const createCliPortal = ({ stdin, stdout, stderr, connection, resolveTool
       if (frame.kind === 'tool') {
         if (frame.status !== 'executing') state.acts += 1;
         // Words spoken before an act are a working note, never the answer.
-        if (finalRoundOnly && held.trim()) stderr.write(`  · note: ${held.trim().slice(0, 300)}\n`);
+        if (finalRoundOnly && held.trim()) stderr.write(ttyText(`  · note: ${held.trim().slice(0, 300)}\n`));
         if (finalRoundOnly) held = '';
-        stderr.write(`  ${frame.status === 'executing' ? '→' : '·'} ${frame.status}  ${frame.tool}${frame.summary ? ` — ${frame.summary.slice(0, 160)}` : ''}\n`);
+        stderr.write(ttyText(`  ${frame.status === 'executing' ? '→' : '·'} ${frame.status}  ${frame.tool}${frame.summary ? ` — ${frame.summary.slice(0, 160)}` : ''}\n`));
         return;
       }
       if (frame.kind === 'usage') {
@@ -214,24 +214,24 @@ export const createCliPortal = ({ stdin, stdout, stderr, connection, resolveTool
       }
       if (frame.kind === 'ask') {
         answerAsk({ stdin, stderr, connection, frame }).catch((error) => {
-          stderr.write(`  · ask failed — ${error.message}\n`);
+          stderr.write(ttyText(`  · ask failed — ${error.message}\n`));
         });
         return;
       }
       if (frame.kind !== 'approval') return;
       if (!stdin.isTTY) {
-        stderr.write(`  · approval refused (no terminal to ask): ${frame.tool}\n`);
+        stderr.write(ttyText(`  · approval refused (no terminal to ask): ${frame.tool}\n`));
         resolveToolApproval(connection, frame.id, 'deny');
         return;
       }
       const ask = readApproval(frame);
       if (!ask.showable) {
-        stderr.write(`  · approval refused: ${ask.name} — ${ask.why}\n`);
+        stderr.write(ttyText(`  · approval refused: ${ask.name} — ${ask.why}\n`));
         resolveToolApproval(connection, frame.id, 'deny');
         return;
       }
       stderr.write(`\n${approvalTerminalText(ask)}\n`);
-      askTerminal(stdin, stderr, `allow ${frame.tool}? [y/N] `)
+      askTerminal(stdin, stderr, ttyText(`allow ${frame.tool}? [y/N] `))
         .then((decision) => resolveToolApproval(connection, frame.id, decision));
     },
   };

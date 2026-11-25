@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "2.4.0",
+  "version": "2.5.0",
   "core": ["POLICY", "GNOSIS", "KISS", "SECURITY", "FUNCTIONAL", "PLANNING", "TESTING", "BRANCHING", "WRITING", "DESIGN"],
   "modules": {
     "WORKFLOW": "Shared work, substantial tasks, or interruption handoff",
@@ -10,6 +10,7 @@
     "RELEASES": "Versioned applications, packages, APIs, or artifacts",
     "INSTALLERS": "Anything a person installs: setup programs, packages, first-run setup",
     "ASSETS": "User interfaces, brand assets, or generated exports",
+    "COMPOSITION": "Layout, proportion, brand marks",
     "FUND_FLOW_PROOF": "Any movement or attribution of value",
     "SECURITY_CHECKLIST": "Whole-system audits or material attack-surface changes"
   }

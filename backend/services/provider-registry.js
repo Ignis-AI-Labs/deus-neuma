@@ -165,6 +165,8 @@ export const SERVICE_CATALOG = Object.freeze([
   Object.freeze({ id: 'tomba', name: 'Tomba (people and addresses at a company; its API key and its secret)', label: 'API key', kind: 'service', service: 'lead-data', endpoint: 'https://api.tomba.io/v1', keyEnv: 'TOMBA_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
   Object.freeze({ id: 'tomba-secret', partOf: 'tomba', name: 'Tomba secret', label: 'Secret', kind: 'service', service: 'lead-data', endpoint: null, keyEnv: 'TOMBA_API_SECRET', requiresKey: true, group: 'Lead data', format: 'key' }),
   Object.freeze({ id: 'apollo', name: 'Apollo (verified work addresses; a paid Apollo plan)', kind: 'service', service: 'lead-data', endpoint: 'https://api.apollo.io/api/v1', keyEnv: 'APOLLO_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
+  // RootData holds crypto projects, their backers and where they are reached, and no email (sales/rootdata-api.js).
+  Object.freeze({ id: 'rootdata', name: 'RootData (crypto projects: what each is, its backers, its X and LinkedIn; team members on its Pro plan)', kind: 'service', service: 'lead-data', endpoint: 'https://api.rootdata.com', keyEnv: 'ROOTDATA_API_KEY', requiresKey: true, group: 'Lead data', format: 'key' }),
   // PAYMENTS — the operator's own Stripe account, so an invoice can be paid by card (invoices/stripe-pay.js). A
   // restricted key is enough and is what to make: write on Payment Links, read on Checkout Sessions.
   Object.freeze({ id: 'stripe', name: 'Stripe (card payments on your invoices; a restricted key: Payment Links write, Checkout Sessions read)', kind: 'service', service: 'payments', endpoint: 'https://api.stripe.com', keyEnv: 'STRIPE_API_KEY', requiresKey: true, group: 'Payments', format: 'key' }),

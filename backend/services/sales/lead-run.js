@@ -42,7 +42,10 @@ import { readAddressChecks, readContactLookups } from './sales-store.js';
 import { confirmWithAny } from './address-check.js';
 import { attachedProviders } from './lead-spend.js';
 import { wideFinds } from './wide-search.js';
-import { refillPlan } from './lead-run-refill.js';
+import { refillPlan, refillGatherWithinCredits } from './lead-run-refill.js';
+import { peopleMessages, readPeople, reachWords, PEOPLE_FROM_PAGE } from './own-page-people.js';
+import { rootdataKey } from './rootdata-key.js';
+import { rootdataProject } from './rootdata-api.js';
 import { makeWriter } from './lead-run-write.js';
 import { readLegalPages } from './where-pages.js';
 import { neverSign } from './never-countries.js';
@@ -69,6 +72,11 @@ export const runRoom = () => Math.max(1, lineWidth() - 1);
 
 const emptyCounts = () => ({ checked: 0, held: 0, out: 0, left: 0, looked: 0, dead: 0, screened: 0, fit: 0, weak: 0, nofit: 0, moved: 0, unclear: 0, people: 0, noAddress: 0, leads: 0, countryOpen: 0, spentStop: null });
 const view = (run) => (run ? { id: run.id, segmentId: run.segmentId, segment: run.segment, want: run.want, credits: run.credits ?? null, spent: run.spent ?? 0, active: run.active, startedAt: run.startedAt, endedAt: run.endedAt ?? null, stopped: run.stopped, counts: { ...run.counts }, words: runWords(run.counts), last: run.lines.slice(-60), ended: run.ended ?? null } : null);
+const spendOfRun = async (wallet, run) => {
+  const lookups = (await readContactLookups(wallet)).filter((l) => String(l.at) >= run.startedAt);
+  run.spent = Math.round(lookups.filter((l) => run.domains.has(l.domain)).reduce((n, l) => n + (Number.isFinite(Number(l.spent)) ? Number(l.spent) : 1), 0) * 10) / 10;
+  return { spent: run.spent, lookups };
+};
 
 /** Every run standing for a house — the working ones first, then the last finished of each audience, newest first. */
 export const leadRunsOf = (wallet) => ofHouse(wallet).sort((a, b) => Number(b.active) - Number(a.active) || String(b.startedAt).localeCompare(String(a.startedAt))).map(view);
@@ -174,7 +182,19 @@ const work = async ({ wallet, run, segment, segments, connection, act, fetchPage
     const wide = new Set(wideFinds(asked, had).flatMap((f) => f.companies.map((c) => c.domain)));
     const plan = refillPlan({ segmentId: segment.id, want: run.want, waiting: had.filter((c) => screenable(c, segment.id, wide)).length, yields: sourceYield(had, held, segment.id), searches: asked });
     say(plan.gather ? `REFILL: ${plan.why}` : `no refill: ${plan.why}`);
-    if (plan.gather) { const got = await file(act('sales/gather'), { segment: segment.id, ...plan.gather }, connection, signal); say(got.ok ? `REFILL: ${String(got.detail ?? got.content ?? 'gathered').split('\n')[0].slice(0, 220)}` : `REFILL refused: ${String(got.reason).slice(0, 220)}`); }
+    let gather = plan.gather;
+    if (gather && run.credits && /-discover$/.test(gather.source)) {
+      // (spentNow is declared further down this function — read the spend directly here)
+      gather = refillGatherWithinCredits(gather, Math.max(0, run.credits - (await spendOfRun(wallet, run)).spent));
+      if (!gather) { run.counts.spentStop = `this run's own limit of ${run.credits} credits was reached`; say(`REFILL refused: ${run.counts.spentStop}`); }
+    }
+    if (gather) {
+      const got = await file(act('sales/gather'), { segment: segment.id, ...gather }, connection, signal);
+      say(got.ok ? `REFILL: ${String(got.detail ?? got.content ?? 'gathered').split('\n')[0].slice(0, 220)}` : `REFILL refused: ${String(got.reason).slice(0, 220)}`);
+      const { lookups } = await spendOfRun(wallet, run);
+      for (const lookup of lookups) run.domains.add(lookup.domain);
+      if (run.credits && (await spendOfRun(wallet, run)).spent >= run.credits) { run.counts.spentStop = `this run's own limit of ${run.credits} credits was reached`; say(`lookups stopped: ${run.counts.spentStop}`); }
+    }
   }
   const [candidates, searches] = await Promise.all([readCandidates(wallet), readSearches(wallet)]);
   const tooWide = new Set(wideFinds(searches, candidates).flatMap((f) => f.companies.map((c) => c.domain)));
@@ -218,7 +238,7 @@ const work = async ({ wallet, run, segment, segments, connection, act, fetchPage
   const keep = (domain, text, url) => { pagesRead.set(domain, { text, url }); if (pagesRead.size > 400) pagesRead.delete(pagesRead.keys().next().value); };
   say(`people are looked for at: ${providers.join(', then ') || 'no provider attached — the company\'s own pages only'}`);
   // What this run has spent so far: every lookup and check on record since it began.
-  const spentNow = async () => { run.spent = Math.round((await readContactLookups(wallet)).filter((l) => String(l.at) >= run.startedAt && run.domains.has(l.domain)).reduce((n, l) => n + (Number.isFinite(Number(l.spent)) ? Number(l.spent) : 1), 0) * 10) / 10; return run.spent; };
+  const spentNow = async () => (await spendOfRun(wallet, run)).spent;
   const lead = async (prospect, site, askedWhere = false) => {
     if (!going() || run.screenOnly) return;
     if (run.credits && !run.counts.spentStop && await spentNow() >= run.credits) { run.counts.spentStop = `this run's own limit of ${run.credits} credits was reached`; say(`lookups stopped: ${run.counts.spentStop}`); }
@@ -254,6 +274,21 @@ const work = async ({ wallet, run, segment, segments, connection, act, fetchPage
       else if (!asked.ok && /out of credits|quota|limit for now|plan may not|refused the key/i.test(asked.reason)) { spentOut.add(source); say(`${source} is not answering lookups (${asked.reason.slice(0, 100)}): the next provider is asked from here on`); }
       held = (await readContactPeople(wallet)).filter((l) => l.domain === prospect.domain).flatMap((l) => l.people ?? []);
     }
+    // NOBODY ON RECORD ANYWHERE: who the company's own page names as leading it, each looked up BY NAME (own-page-people.js).
+    const finder = act('sales/find-address');
+    if (finder && providers.length && !filed.length && !held.some((p) => p.email) && !run.counts.spentStop && going()) {
+      const page = pagesRead.get(prospect.domain)?.text ?? '';
+      const named = page ? readPeople(await ask(by, peopleMessages({ company: prospect, text: page }), signal).catch(() => null), page, prospect) : [];
+      for (const who of named.slice(0, PEOPLE_FROM_PAGE)) {
+        if (!going()) break;
+        run.domains.add(prospect.domain);
+        const found = await file(finder, { domain: prospect.domain, name: who.name, role: who.role }, connection, signal);
+        run.counts.byName = (run.counts.byName ?? 0) + 1;
+        say(`${prospect.name}: its own page names ${who.name} (${who.role}) — ${found.ok ? String(found.detail).split(' File them')[0].slice(0, 200) : `not looked up: ${String(found.reason).slice(0, 140)}`}`);
+        held = (await readContactPeople(wallet)).filter((l) => l.domain === prospect.domain).flatMap((l) => l.people ?? []);
+        if (held.some((p) => p.email)) break;
+      }
+    }
     const order = firstToWrite([...filed, ...held, ...own], segment.targetRole);
     if (order.length) run.counts.people += 1;
     let asked = 0;
@@ -278,6 +313,13 @@ const work = async ({ wallet, run, segment, segments, connection, act, fetchPage
       if (/country|not approved|no match|REQUIRED|investor|never written/i.test(put.reason)) break; // the company itself is held, not the person
     }
     run.counts.noAddress += 1;
+    // No address anywhere: where the company can still be reached by hand, said on the run's record.
+    // With a RootData key attached, its record of the project is read too: its team (when the plan returns one) and its X.
+    const rdKey = providers.length ? await rootdataKey() : null;
+    const rd = rdKey && !run.counts.spentStop ? await rootdataProject({ apiKey: rdKey, name: prospect.name, domain: prospect.domain, signal }).catch(() => null) : null;
+    if (rd?.ok && rd.project) { run.counts.rootdata = (run.counts.rootdata ?? 0) + 1; if (rd.project.team.length) say(`${prospect.name}: RootData names ${rd.project.team.slice(0, 4).map((m) => `${m.name} (${m.role})${m.x ? ` ${m.x}` : ''}`).join('; ')}`); }
+    const reach = reachWords({ ...(rd?.project?.reach ?? {}), ...(site?.socials ?? {}) });
+    if (reach) { run.counts.byHand = (run.counts.byHand ?? 0) + 1; say(`${prospect.name}: a fit with no address — reach it by hand: ${reach}`); }
   };
 
   // Each page read, with its own words and its own description of itself: where a required sign may be proved from.

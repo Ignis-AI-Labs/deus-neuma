@@ -24,6 +24,7 @@ import { HistoryImage } from './HistoryImage.jsx';
 import { useStreamWindow } from './use-stream-window.js';
 import { StreamFollow } from './StreamFollow.jsx';
 import { CompactMarker } from './CompactMarker.jsx';
+import { ChatFind } from './ChatFind.jsx';
 import { QueuedWordDoors, newestHoldId } from './QueuedWordDoors.jsx';
 import { CloneReportLine } from './CloneReportLine.jsx';
 import { InlineEdit } from './InlineEdit.jsx';
@@ -155,7 +156,7 @@ const MessageView = ({ message, onEdit, onRevise, onRetry, onContinue, onTakeSwi
   const when = message.streaming ? '' : formatClockStamp(message.at);
 
   return (
-    <div className={cls}>
+    <div className={cls} data-msg={message.id}>
       {when ? <div className="relink-msg-when label-data">{when}</div> : null}
       <div className="relink-msg-body">
         {editing ? (
@@ -345,6 +346,7 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
   // when the witness scrolls up to read — a human reads at reading speed —
   // re-arm when they return to the tail (or take the LIVE control).
   const [following, setFollowing] = useState(true);
+  const frameRef = useRef(null);
   const followingRef = useRef(true);
   followingRef.current = following;
   useEffect(() => { setFollowing(true); }, [thread]);
@@ -359,7 +361,7 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
   }, [zoomRef]);
 
   // A long chat draws its recent tail first (use-stream-window.js).
-  const { start, sentinelRef, showEarlier } = useStreamWindow({
+  const { start, sentinelRef, showEarlier, showFrom } = useStreamWindow({
     length: messages.length, thread, scroller: zoomRef, following,
   });
 
@@ -392,7 +394,8 @@ export const StreamPanel = ({ messages, thread, thinking, connected, onEdit, onR
   return (
     // The frame holds the transcript and, under it, the follow control's own
     // lane (StreamFollow) — the control never floats over the words.
-    <div className="relink-stream-frame">
+    <div className="relink-stream-frame" ref={frameRef}>
+      <ChatFind messages={messages} scroller={zoomRef} frame={frameRef} drawnFrom={start} showFrom={showFrom} onFound={() => setFollowing(false)} />
       <div
         className={isEmpty ? 'relink-stream is-empty' : 'relink-stream'}
         role="log"

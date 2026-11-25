@@ -31,7 +31,8 @@ const TALK = new Set([
   'operator', 'reflected', 'said', 'you', 'your', 'yours', 'its', 'it', 'are', 'was', 'were', 'been', 'why',
 ]);
 
-const WORD = /[\p{L}\p{N}][\p{L}\p{N}'’-]*/gu;
+const WORD_START = /[\p{L}\p{N}]/u;
+const WORD_PART = /[\p{L}\p{N}'’-]/u;
 const MAX_TEXT_CHARS = 200_000;
 const MAX_WORDS = 50_000;
 
@@ -49,14 +50,19 @@ export const wordsOf = (text) => {
   const whole = String(text || '').slice(0, MAX_TEXT_CHARS);
   const out = [];
   let end = 0;
-  for (const match of whole.matchAll(WORD)) {
-    if (out.length >= MAX_WORDS) break;
-    const shown = match[0].replace(/['’-]+$/, '');
+  let at = 0;
+  while (at < whole.length && out.length < MAX_WORDS) {
+    if (!WORD_START.test(whole[at])) { at += 1; continue; }
+    const start = at;
+    at += 1;
+    while (at < whole.length && WORD_PART.test(whole[at])) at += 1;
+    const match = whole.slice(start, at);
+    const shown = match.replace(/['’-]+$/, '');
     const key = shown.toLowerCase().replace(/['’]s$/, '');
     // Anything but blank space since the last word (a comma, a full stop, a bracket) parts the two.
-    const joins = out.length > 0 && /^\s+$/.test(whole.slice(end, match.index));
+    const joins = out.length > 0 && /^\s+$/.test(whole.slice(end, start));
     out.push({ key, shown, joins, skip: key.length < 3 || STOP.has(key) || TALK.has(key) || /^\d+$/.test(key) });
-    end = match.index + match[0].length;
+    end = at;
   }
   return out;
 };

@@ -9,8 +9,8 @@
 // email addresses, ENS names, handles).
 
 const ACCOUNT_SHAPES = Object.freeze([
-  [/0x[0-9a-fA-F]{40}/, 'a wallet address'],
-  [/\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]){11,30}\b/, 'an IBAN'],
+  [/0x[0-9a-fA-F]{40}/i, 'a wallet address'],
+  [/\b[A-Z]{2}\d{2}(?:[ .-]?[A-Z0-9]){11,30}\b/, 'an IBAN'],
   [/\b(?:routing|account|acct|swift|bic|iban|aba)\b[^\n]{0,40}?[A-Z0-9-]{6,}/i, 'bank details'],
 ]);
 const LONE_NUMBER = Object.freeze([/\b\d{8,}\b/, 'a long number that reads like an account']);
@@ -25,7 +25,7 @@ const NUMBER_BY_BANK_WORD = Object.freeze([
 // One pass, first reading wins: a web address · an email address · a bare
 // domain (an ENS name is one) · a handle. Every alternative starts only where
 // a word starts, so a long unbroken run of text is read once, not once per character.
-const POINTER = /(?:https?:\/\/|www\.)[^\s<>"']+|(?<![^\s<>"'(])[^\s@<>"'(]+@[a-z0-9-]+(?:\.[a-z0-9-]+)+|(?<![\w@.-])(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s<>"']*)?|(?<![\w.])@[a-z0-9_]{2,}/gi;
+const POINTER = /(?:https?:\/\/|www\.)[^\s<>"']+|(?<![^\s<>"'(])[^\s@<>"'(]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+|(?<![\w@.-])(?:[\p{L}\p{N}-]+\.)+[\p{L}]{2,}(?:\/[^\s<>"']*)?|(?<![\w.])@[a-z0-9_]{2,}/giu;
 
 const trimmed = (found) => found.replace(/[.,;:!?)\]]+$/, '');
 const bare = (link) => trimmed(String(link)).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/+$/, '');
@@ -45,10 +45,16 @@ const kindOf = (found) => {
  *   only beside a banking word
  * @returns {string[]} e.g. ['a wallet address', 'bank details']
  */
-const normalized = (text) => String(text ?? '').normalize('NFKC').replace(new RegExp('[\\u200b-\\u200d\\u2060\\ufeff]', 'g'), '');
+const normalized = (text) => String(text ?? '').normalize('NFKC')
+  .replace(/[。．｡]/g, '.')
+  .replace(/[\u00ad\u200b-\u200f\u202a-\u202e\u2060\ufeff]/g, '');
 
-export const paymentShapesIn = (text, { loneNumbers = true } = {}) => [...ACCOUNT_SHAPES, loneNumbers ? LONE_NUMBER : NUMBER_BY_BANK_WORD]
-  .filter(([shape]) => shape.test(normalized(text))).map(([, words]) => words);
+export const paymentShapesIn = (text, { loneNumbers = true } = {}) => {
+  const whole = normalized(text).toUpperCase();
+  const compact = whole.replace(/[\s-]+/g, '');
+  return [...ACCOUNT_SHAPES, loneNumbers ? LONE_NUMBER : NUMBER_BY_BANK_WORD]
+    .filter(([shape]) => shape.test(whole) || shape.test(compact)).map(([, words]) => words);
+};
 
 /**
  * The pointers a text carries that nobody pinned: links, email addresses, bare

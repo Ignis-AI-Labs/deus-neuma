@@ -95,7 +95,7 @@ const canonicalTypedValue = (types, type, value, name) => {
   const array = /^(.*)\[\d*\]$/.exec(type);
   if (array) {
     if (!Array.isArray(value)) throw new Error(`typed data: ${name} is not a list`);
-    return value.map((item, i) => canonicalTypedValue(types, array[1], item, `[${i}]`);
+    return value.map((item, i) => canonicalTypedValue(types, array[1], item, `${name}[${i}]`));
   }
   if (types[type]) {
     if (!value || typeof value !== 'object') throw new Error(`typed data: ${name} is not a ${type}`);

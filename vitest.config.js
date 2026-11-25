@@ -64,6 +64,7 @@ export default defineConfig({
           name: 'suite',
           include: [
             'test/unit/**/*.test.js',
+            'test/unit/**/*.test.cjs',
             'test/integration/**/*.test.js',
           ],
           exclude: ['test/test-*.js', ...LIVE_TESTS],

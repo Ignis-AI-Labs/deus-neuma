@@ -94,8 +94,8 @@ export const readNeverList = async (wallet) => {
 /** The legal seat proposes a list; it waits for the operator. */
 export const proposeNeverList = (wallet, list, by) => serialize(async () => { await appendJsonLine(fileOf(wallet), { type: 'proposed', list, by, at: new Date().toISOString() }); return { ok: true }; });
 
-/** The operator sets the list; it stands at once. */
-export const setNeverList = (wallet, list) => serialize(async () => { await appendJsonLine(fileOf(wallet), { type: 'set', list, by: 'operator', at: new Date().toISOString() }); return { ok: true }; });
+/** The operator sets the list (or approves the sales seat's change to it: by is then the seat); it stands at once. */
+export const setNeverList = (wallet, list, by = 'operator') => serialize(async () => { await appendJsonLine(fileOf(wallet), { type: 'set', list, by, at: new Date().toISOString() }); return { ok: true }; });
 
 /** The operator approves or returns what the legal seat proposed. */
 export const reviewNeverList = (wallet, { verdict, note = '' }) => serialize(async () => {

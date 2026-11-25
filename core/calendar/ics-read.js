@@ -15,6 +15,7 @@ const DAY_MS = 86_400_000;
 const WEEKDAYS = Object.freeze(['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']);
 /** The most times one repeating event is laid out, however long the window. */
 export const OCCURRENCES_MAX = 400;
+const RECURRENCE_STEPS_MAX = 20_000;
 
 // A folded line continues on the next line after one space or tab (RFC 5545 §3.1).
 const unfold = (text) => String(text ?? '').replace(/\r\n?/g, '\n').replace(/\n[ \t]/g, '');
@@ -188,7 +189,9 @@ export const occurrencesIn = (events, fromMs, toMs) => {
       organizer: e.organizer, attendees: e.attendees, repeats: Boolean(e.rule), ruleUnread: Boolean(e.rule && !e.rule.read), ...extra,
     });
   };
+  let steps = 0;
   for (const e of events) {
+    if (steps >= RECURRENCE_STEPS_MAX) break;
     if (e.cancelled) continue;
     if (!e.rule || !e.rule.read || e.replaces !== null) { put(e, e.start.ms); continue; }
     const { freq, interval, count, untilMs, byday } = e.rule;
@@ -196,7 +199,8 @@ export const occurrencesIn = (events, fromMs, toMs) => {
     // Weekly on several weekdays: each named weekday of the start's own week, repeated.
     const offsets = freq === 'WEEKLY' && byday.length ? [...new Set(byday.map((d) => WEEKDAYS.indexOf(d) - startDow))].sort((a, b) => a - b) : [0];
     let made = 0;
-    for (let n = 0; made < OCCURRENCES_MAX && n < 5000; n += 1) {
+    for (let n = 0; made < OCCURRENCES_MAX && n < 5000 && steps < RECURRENCE_STEPS_MAX; n += 1) {
+      steps += 1;
       const base = stepped(e.start.local, freq, n * interval);
       let past = false;
       for (const off of offsets) {

@@ -15,6 +15,7 @@
 // stream-reducer-messages.js. This file stays the sole import surface.
 
 import { reduceHeldWord } from './held-word.js';
+import { keepIds } from './timeline-refold-pure.js';
 import { streamingIndex, segmentHandlers } from './stream-reducer-segments.js';
 import { chipHandlers } from './stream-reducer-chips.js';
 import { compactHandlers } from './compact-marker.js';
@@ -413,6 +414,14 @@ export const reducer = (state, action) => {
         seq: state.seq + history.length,
         messages: [...history, ...state.messages],
       };
+    }
+
+    case 'REFOLD': {
+      // THE TIMELINE: the view moved to another take and the portal recorded it, so the screen is read again from
+      // the record, in place (timeline-refold.js). Never while a reply is arriving: the live take is the view.
+      if (state.messages.some((m) => m.streaming)) return state;
+      const fresh = toHistoryMessages(action.messages, state.seq, 'r');
+      return { ...state, seq: state.seq + fresh.length, messages: keepIds(fresh, state.messages) };
     }
 
     case 'LOAD': {

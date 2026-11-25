@@ -4,6 +4,7 @@ import { quoteSwap } from './lp-trade.js';
 import { independentSwapFloor } from './lp-swap-floor.js';
 import { resolveListedTokens } from './lp-pool-tokens.js';
 import { preflightCreatePool } from './lp-pool.js';
+import { houseRecipients, resolveRecipient } from './lp-house.js';
 
 const DECIMALS = new ethers.Interface(['function decimals() view returns (uint8)']);
 const decimalsOf = async (provider, token) => Number(DECIMALS.decodeFunctionResult('decimals', await provider.call({ to: token, data: DECIMALS.encodeFunctionData('decimals', []) }))[0]);
@@ -35,12 +36,24 @@ export const prepareSwapApproval = async (ask, { provider } = {}) => {
   }
 };
 
-/** Resolve a token send's contract after policy, before its card. impure — pool read. */
-export const prepareSendApproval = async (ask) => {
-  if (String(ask.token ?? 'ETH').toUpperCase() === 'ETH') return { ok: true, value: { ...ask, approvalPreview: { token: 'ETH (Base native asset)' } } };
-  const resolved = await resolveListedTokens([ask.token]);
-  if (!resolved.ok) return resolved;
-  return { ok: true, value: { ...ask, tokenAddress: resolved.addresses[0], approvalPreview: { token: `${resolved.book.get(resolved.addresses[0])} (${resolved.addresses[0]})` } } };
+/** Resolve a send's token and payee after policy, before its card. impure — pool and house reads. */
+export const prepareSendApproval = async (ask, { connection } = {}) => {
+  let value;
+  if (String(ask.token ?? 'ETH').toUpperCase() === 'ETH') {
+    value = { ...ask, approvalPreview: { token: 'ETH (Base native asset)' } };
+  } else {
+    const resolved = await resolveListedTokens([ask.token]);
+    if (!resolved.ok) return resolved;
+    value = { ...ask, tokenAddress: resolved.addresses[0], approvalPreview: { token: `${resolved.book.get(resolved.addresses[0])} (${resolved.addresses[0]})` } };
+  }
+  const laneId = connection?.companion?.neumaId;
+  if (!laneId) return { ok: true, value };
+  const recipient = resolveRecipient(await houseRecipients(laneId), ask.to);
+  if (!recipient) return { ok: false, reason: `${ask.to} does not name exactly one house recipient.` };
+  return { ok: true, value: { ...value, approvalPreview: {
+    ...value.approvalPreview,
+    recipient: `${recipient.name} · ${recipient.lane ?? recipient.wallet} (${recipient.address})`,
+  } } };
 };
 
 /** Resolve pool tokens and run its local/read-only preflight after policy. impure. */

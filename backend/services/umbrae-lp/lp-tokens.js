@@ -33,7 +33,7 @@ export const tokenLabel = (address, symbol) => {
   const pinned = PINNED_SYMBOL.get(address);
   if (pinned) return pinned;
   const said = String(symbol ?? '?');
-  return Object.hasOwn(PINNED_TOKENS, said.toUpperCase()) ? `${said}@${short(address)}` : said;
+  return Object.hasOwn(PINNED_TOKENS, said.toUpperCase()) || /[^\x20-\x7E]/.test(said) ? `${said}@${short(address)}` : said;
 };
 
 /**

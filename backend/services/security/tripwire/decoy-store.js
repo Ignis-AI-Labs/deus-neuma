@@ -142,7 +142,13 @@ export const syncDecoys = async (home, records = {}, { rand = randomBytes, nowMs
       }
       const present = await Promise.all(had.files.map((f) => exists(f.path)));
       if (present.every(Boolean)) {
-        next[spec.id] = had;
+        const intact = await Promise.all(had.files.map(holdsRecordedBytes));
+        if (intact.every(Boolean)) {
+          next[spec.id] = had;
+          continue;
+        }
+        const kept = await removeDecoy({ ...had, top: null });
+        next[spec.id] = { id: spec.id, status: 'retired', reason: 'a decoy changed on disk — the changed file is real now and stays untouched', files: kept };
         continue;
       }
       await removeDecoy(had);

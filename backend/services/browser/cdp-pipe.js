@@ -9,6 +9,7 @@ import { EventEmitter } from 'node:events';
 
 const CALL_TIMEOUT_MS = 30_000;
 const STDERR_TAIL = 2_000;
+const MESSAGE_MAX_CHARS = 8 * 1024 * 1024;
 
 // impure — end the browser and every helper process it started
 const killTree = (child) => {
@@ -58,6 +59,13 @@ export const openCdpPipe = (executable, args, env) => {
   fromBrowser.setEncoding('utf8');
   fromBrowser.on('data', (chunk) => {
     buffer += chunk;
+    const firstEnd = buffer.indexOf('\0');
+    if (buffer.length > MESSAGE_MAX_CHARS && (firstEnd < 0 || firstEnd > MESSAGE_MAX_CHARS)) {
+      buffer = '';
+      failAll(new Error(`the browser message exceeded ${MESSAGE_MAX_CHARS} characters`));
+      killTree(child);
+      return;
+    }
     for (let end = buffer.indexOf('\0'); end !== -1; end = buffer.indexOf('\0')) {
       const raw = buffer.slice(0, end);
       buffer = buffer.slice(end + 1);

@@ -41,8 +41,10 @@ describe('the engine fold matches the desk fold', () => {
       user('B', 'Q-B'), take('B', 1, 'B-take1'),
       take('A', 2, 'A-take2'),
     ];
-    expect(engineChain(records)).toEqual(['user:Q-A', 'assistant:A-take2', 'user:Q-B', 'assistant:B-take1']);
+    // THE TIMELINE (2026-11-24): B followed A's FIRST take, so it is out of the view while take 2 shows, and back with take 1.
+    expect(engineChain(records)).toEqual(['user:Q-A', 'assistant:A-take2']);
     expect(engineChain(records)).toEqual(deskChain(records));
+    expect(engineChain(records, { A: 1 })).toEqual(['user:Q-A', 'assistant:A-take1', 'user:Q-B', 'assistant:B-take1']);
     expect(engineChain(records, { A: 1 })).toEqual(deskChain(records, { A: 1 }));
   });
 

@@ -103,6 +103,7 @@ export const isAutoHardGated = (server, tool) => server === 'extension'
  * @returns {'allowed'|'denied'|'approval_required'}
  */
 export const applyProtocolGuard = (access, mode, server, tool, explicitlyAllowed = false, direct = false) => {
+  if (access === 'allowed' && explicitlyAllowed && !canAlwaysAllow(server, tool)) return 'approval_required';
   // SANDBOX OFF asks no more than ON does (Design note, 2026-11-18: […]):
   // the approval stance (DEFAULT / PLAN / AUTO) decides, not where the command runs.
   if (mode !== 'auto') return access;

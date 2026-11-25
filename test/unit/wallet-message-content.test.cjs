@@ -1,4 +1,3 @@
-const { describe, expect, test } = require('vitest');
 const { describeTypedData } = require('../../electron/wallet/message-content.cjs');
 
 describe('PR20 M-09: typed-data booleans match display and signature', () => {
@@ -9,7 +8,7 @@ describe('PR20 M-09: typed-data booleans match display and signature', () => {
   });
 
   test('a real boolean is rendered canonically and only true raises the grant warning', () => {
-    expect(describeTypedData({}, types, { authorized: true })).toMatchObject({ body: 'Authorization\nauthorized: true', grantee: 'another address' });
-    expect(describeTypedData({}, types, { authorized: false })).toMatchObject({ body: 'Authorization\nauthorized: false', grantee: null });
+    expect(describeTypedData({}, types, { authorized: true })).toMatchObject({ body: 'Authorization\n  authorized: true', grantee: 'another address' });
+    expect(describeTypedData({}, types, { authorized: false })).toMatchObject({ body: 'Authorization\n  authorized: false', grantee: null });
   });
 });

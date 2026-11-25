@@ -16,6 +16,7 @@ import { expirePendingPlans } from '../services/team-plan.js';
 import { neumaWorkspace, isValidTimeZone } from '../../core/index.js';
 import { turnPointCount } from '../../core/workspace/branch-view.js';
 import { resolveFocusPath } from '../services/user-files.js';
+import { refreshPortalScopeStanding } from '../services/portal-install-standing.js';
 import { clearSessionRuntime } from './portal-connections.js';
 import { markTurnAsked } from '../services/turn-timing-probe.js';
 import { lineTurn } from '../services/turn-line.js';
@@ -155,9 +156,10 @@ export const hydrateSessionRuntime = async (connection, neumaId, sessionId, entr
 
 // impure — a client focus is only a source hint for a disposable coding copy.
 // Invalid/closed paths clear the hint; they never degrade to process.cwd here.
-export const updateToolWorkspace = (connection, rawPath) => {
+export const updateToolWorkspace = async (connection, rawPath) => {
   if (rawPath === undefined) return;
-  connection.toolWorkspace = resolveFocusPath(rawPath);
+  const scopeGrantsAllowed = await refreshPortalScopeStanding(connection);
+  connection.toolWorkspace = resolveFocusPath(rawPath, scopeGrantsAllowed);
 };
 
 // The desk's IANA zone (2026-09-25 — every clock a being reads renders on the

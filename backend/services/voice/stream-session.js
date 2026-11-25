@@ -185,8 +185,10 @@ export class VoiceStreamSession {
    * Over-bound bytes are dropped; the operator is told once per window.
    * @param {Buffer} pcm
    */
-  sendPcm(pcm) {
+  sendPcm(pcm, { held = false } = {}) {
     if (this.closed || !this._ws) return;
+    // held: audio the caller kept while this link opened (bounded by the caller): real speech arriving late, not a flood.
+    if (held) { this._ws.send(pcm); return; }
     const now = Date.now();
     const candidate = recordWindowBytes(this._window, now, pcm.length, PCM_RATE_LIMIT.windowMs);
     if (windowByteTotal(candidate) > PCM_RATE_LIMIT.maxBytesPerWindow) {

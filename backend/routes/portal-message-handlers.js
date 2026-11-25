@@ -68,7 +68,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       // at manifest/resume is left untouched. (The desk sent a project space
       // until Projects was removed, 2026-11-10; it sends none now.)
       if (message.space !== undefined) connection.space = normalizeSpace(message.space);
-      updateToolWorkspace(connection, message.toolWorkspace);
+      await updateToolWorkspace(connection, message.toolWorkspace);
       // The desk's handle for this word while held — invalid shapes drop.
       if (!HOLD_ID_PATTERN.test(String(message.holdId ?? ''))) delete message.holdId;
       // MID-STREAM SPEECH (ruling, 2026-07-26) — the council's two ways, in the
@@ -156,7 +156,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
         break;
       }
       if (message.space !== undefined) connection.space = normalizeSpace(message.space);
-      updateToolWorkspace(connection, message.toolWorkspace);
+      await updateToolWorkspace(connection, message.toolWorkspace);
       // Attachments ride along only so the turn can refuse them out loud — a
       // retry answers the recorded point and never silently drops new ones.
       const retryMessage = {
@@ -205,7 +205,7 @@ export async function handlePortalMessage(connectionId, message, { birthHandler 
       if (turnId && takeIndex && laneId && connection.sessionId) {
         try {
           await neumaWorkspace.appendBranchView(laneId, connection.sessionId, { [turnId]: takeIndex });
-          ws.send(JSON.stringify({ type: 'consciousness:take_view', turnId, takeIndex }));
+          ws.send(JSON.stringify({ type: 'consciousness:take_view', turnId, takeIndex, sessionId: connection.sessionId }));
         } catch (err) {
           log.warn('branch-view marker not written', { neumaId: laneId, err: err?.message });
         }

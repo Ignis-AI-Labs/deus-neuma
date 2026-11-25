@@ -38,7 +38,7 @@ export const heldActFinding = ({ lane, tool, planted, at }) => {
   return {
     layer: 'house',
     source: 'injection',
-    externalId: `injected-value:${safeLane}:${safeTool}:${String(at).slice(0, 10)}`,
+    externalId: `injected-value:${safeLane}:${String(at).slice(0, 10)}`,
     title: `an act (${safeTool}) by lane ${safeLane} carried a value planted by injected text — held`,
     severity: 'high',
     summary: `The injected-value gate held ${safeTool}: its arguments carried `

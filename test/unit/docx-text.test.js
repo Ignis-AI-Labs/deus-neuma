@@ -2,7 +2,7 @@
 // byte by byte (test/helpers/docx-fixture.js); Node's own zlib inflates it.
 import { inflateRawSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { docxText, docxXmlToText } from '../../core/documents/docx-text.js';
+import { docxText, docxXmlToText, DOCX_XML_MAX_BYTES } from '../../core/documents/docx-text.js';
 import { docxSaying } from '../helpers/docx-fixture.js';
 
 const read = (bytes) => docxText(new Uint8Array(bytes), inflateRawSync);
@@ -20,5 +20,12 @@ describe('docxText', () => {
 
   it('a file that is not a .docx is refused with a reason, never read as noise', async () => {
     await expect(read(Buffer.from('{\\rtf1 an old doc}'))).rejects.toThrow(/not a Word document/);
+  });
+
+  it('refuses XML beyond the native reader output cap', async () => {
+    const bomb = docxSaying(['x'.repeat(DOCX_XML_MAX_BYTES + 1)]);
+    await expect(docxText(new Uint8Array(bomb),
+      (data) => inflateRawSync(data, { maxOutputLength: DOCX_XML_MAX_BYTES })))
+      .rejects.toThrow(/maxOutputLength|Buffer larger|output length/i);
   });
 });

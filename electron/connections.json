@@ -91,7 +91,7 @@
     {
       "id": "lead-sources",
       "name": "Lead sources",
-      "to": "the public lists your sales seat gathers companies from (GeckoTerminal, DefiLlama), the own websites of the companies it gathered, and the contact-data providers you attached, if any (Hunter, Tomba, Apollo)",
+      "to": "the public lists your sales seat gathers companies from (GeckoTerminal, DefiLlama), the own websites of the companies it gathered, and the contact-data providers you attached, if any (Hunter, Tomba, Apollo, RootData)",
       "when": "when your sales seat gathers companies or looks up a company's people",
       "sends": "a request for the public list; to a gathered company's own site, a request for its public pages; to an attached provider, a company's web address and your own key for it; to an attached provider's company search (Hunter's, Tomba's or Apollo's), the words or keywords your sales seat describes the companies with, the audience's countries and sizes, and your own key; to find or check one person's address, that person's name and their company's web address, or the address itself, and your own key",
       "whileOff": "your sales seat finds companies one at a time by reading the web",

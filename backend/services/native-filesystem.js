@@ -32,7 +32,7 @@ import path from 'path';
 import { inflateRawSync } from 'zlib';
 import { pdfRead, pdfText } from './pdf-text.js';
 import { NAME_SEARCH_EXCLUDES, searchNames } from './fs-name-search.js';
-import { docxText } from '../../core/documents/docx-text.js';
+import { docxText, DOCX_XML_MAX_BYTES } from '../../core/documents/docx-text.js';
 import { pathToFileURL } from 'url';
 import { createRequire } from 'module';
 import {
@@ -99,7 +99,8 @@ const readTextFile = async (args) => {
   if (isSightablePath(validPath)) return readMediaFile({ path: validPath });
   // A PDF or a Word document reads as its words (pdf-text.js, docx-text.js), never as decoded bytes; a PDF's scanned pages go to the eye.
   const asWords = /\.pdf$/i.test(validPath) ? pdfText
-    : /\.docx$/i.test(validPath) ? async (p) => docxText(await fs.readFile(p), inflateRawSync) : null;
+    : /\.docx$/i.test(validPath) ? async (p) => docxText(await fs.readFile(p),
+      (data) => inflateRawSync(data, { maxOutputLength: DOCX_XML_MAX_BYTES })) : null;
   if (Number.isInteger(args.offset) || Number.isInteger(args.limit)) {
     return said(lineRange(asWords ? await asWords(validPath) : await readFileContent(validPath), args));
   }

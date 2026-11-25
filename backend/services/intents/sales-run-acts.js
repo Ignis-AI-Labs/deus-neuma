@@ -16,6 +16,8 @@ import { startLeadRun, stopLeadRun, leadRunsOf, runRoom, RUN_MAX } from '../sale
 import { readPipelineReview } from '../sales/pipeline-review-read.js';
 import { startAudienceTest } from '../sales/audience-test.js';
 import { reviewWords, BATCH_DEFAULT } from '../sales/pipeline-review.js';
+import { salesNeverListIntent } from './sales-never-list-act.js';
+import { salesRootdataIntent } from './sales-rootdata-act.js';
 
 const officerRefusal = { ok: false, status: 'denied', reason: 'the lead engine is the Mercator office\'s — only the seated Mercator files to it (house/post reaches them; the operator seats the office)' };
 const seated = async (connection) => (await officeContext(connection).catch(() => null)) || null;
@@ -112,4 +114,4 @@ const salesReviewIntent = Object.freeze({
   },
 });
 
-export const salesRunIntents = Object.freeze([salesRunIntent, salesCountryIntent, salesReviewIntent]);
+export const salesRunIntents = Object.freeze([salesRunIntent, salesCountryIntent, salesReviewIntent, salesNeverListIntent, salesRootdataIntent]);

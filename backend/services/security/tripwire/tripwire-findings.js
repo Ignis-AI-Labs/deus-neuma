@@ -29,6 +29,7 @@ export const readerStanding = (proc, { selfPid, selfAncestors = [], procAncestor
   if (proc.pid === selfPid) return 'self';
   if (proc.pid === 1 || selfAncestors.includes(proc.pid)) return 'protected';
   const exe = proc.exe || '';
+  if (proc.script) return procAncestors.includes(selfPid) ? 'house' : 'outside';
   if (SESSION_EXECUTABLES.has(basename(exe)) && SESSION_DIRS.some((dir) => exe.startsWith(dir))) return 'protected';
   if (INDEXERS.has(basename(exe)) && SYSTEM_DIRS.some((dir) => exe.startsWith(dir))) return 'indexer';
   return procAncestors.includes(selfPid) ? 'house' : 'outside';
